@@ -1,0 +1,3 @@
+[submodule "Sources/secp256k1/secp256k1"]
+	path = Sources/secp256k1/secp256k1
+	url = https://github.com/bitcoin-core/secp256k1
