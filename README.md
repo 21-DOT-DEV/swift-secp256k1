@@ -2,7 +2,7 @@
 Swift bindings library for ECDSA signatures and secret/public key operations using the [libsecp256k1](https://github.com/bitcoin-core/secp256k1) C library.
 
 # Objective
-This library aims is to be a lightweight dependency for clients and wrapper libraries to include ECDSA functionality.
+This library aims to be a lightweight dependency for clients and wrapper libraries to include ECDSA functionality.
 
 This package targets the default git branch of secp256k1 and aims to stay up-to-date without using a mirrored repository.
 
