@@ -1,4 +1,4 @@
-# 🔐 secp256k1.swift
+# 🔐 secp256k1.swift [![Build Status](https://app.bitrise.io/app/ef44aebd8443b33b/status.svg?token=oDGzN3bMEwseXF_5MQUsTg&branch=main)](https://app.bitrise.io/app/ef44aebd8443b33b)
 Swift bindings library for ECDSA signatures and secret/public key operations using the [libsecp256k1](https://github.com/bitcoin-core/secp256k1) C library.
 
 # Objective
