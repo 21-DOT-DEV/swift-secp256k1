@@ -7,7 +7,6 @@ let package = Package(
     name: "secp256k1",
     products: [
         // The `libsecp256k1` bindings to programatically work with Swift.
-        //
         // WARNING: These APIs should not be considered stable and may change at any time.
         .library(
             name: "secp256k1",
@@ -34,13 +33,11 @@ let package = Package(
             cSettings: [
                 .headerSearchPath("secp256k1"),
                 // Basic config values that are universal and require no dependencies.
-                //
-                // https://github.com/bitcoin-core/secp256k1/blob/master/src/basic-config.h#L29-L34
+                // https://github.com/bitcoin-core/secp256k1/blob/master/src/basic-config.h#L27-L31
                 .define("USE_NUM_NONE"),
                 .define("USE_FIELD_INV_BUILTIN"),
                 .define("USE_SCALAR_INV_BUILTIN"),
-                .define("USE_FIELD_10X26"),
-                .define("USE_SCALAR_8X32"),
+                .define("USE_WIDEMUL_64"),
                 .define("ECMULT_WINDOW_SIZE", to: "15", nil),
                 .define("ECMULT_GEN_PREC_BITS", to: "4", nil)
             ]
