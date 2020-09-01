@@ -3,35 +3,28 @@ format_version: '8'
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 project_type: other
 trigger_map:
+- push_branch: "*"
+  workflow: Release
 - pull_request_source_branch: "*/edge/*"
-  workflow: Edge-Workflow
+  workflow: Edge-Pull-Request
 - pull_request_source_branch: "*"
-  workflow: Entry-Workflow
+  workflow: Pull-Request
 workflows:
-  Entry-Workflow:
+  Pull-Request:
     steps:
-    - activate-ssh-key@4:
-        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
     - git-clone@4: {}
-    - script@1:
-        title: Trigger Bitrise Workflow
-        inputs:
-        - content: bitrise --ci run --secret-filtering --workflow Code-Review --config
-            bitrise.yml
-  Code-Review:
-    steps:
     - swift-package-manager-test-for-mac@0: {}
     - deploy-to-bitrise-io@1: {}
-  Edge-Workflow:
+  Release:
     steps:
-    - activate-ssh-key@4:
-        run_if: '{{getenv "SSH_RSA_PRIVATE_KEY" | ne ""}}'
     - git-clone@4: {}
-    - script@1:
-        title: Trigger Bitrise Workflow
-        inputs:
-        - content: bitrise --ci run --secret-filtering --workflow Code-Review --config
-            bitrise.yml
+    - swift-package-manager-test-for-mac@0: {}
+    - deploy-to-bitrise-io@1: {}
+  Edge-Pull-Request:
+    steps:
+    - git-clone@4: {}
+    - swift-package-manager-test-for-mac@0: {}
+    - deploy-to-bitrise-io@1: {}
     meta:
       bitrise.io:
         stack: osx-xcode-12.0.x
