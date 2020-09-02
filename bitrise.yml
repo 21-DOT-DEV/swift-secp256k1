@@ -13,6 +13,35 @@ workflows:
   Pull-Request:
     steps:
     - git-clone@4: {}
+    - script@1:
+        title: brew cask install docker-toolbox
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            # fail if any commands fails; debug log
+            set -ex
+
+            brew cask install docker-toolbox
+    - script@1:
+        title: docker-machine create
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            # fail if any commands fails; debug log
+            set -ex
+
+            docker-machine create --driver "virtualbox" default
+    - script@1:
+        title: docker build
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            # fail if any commands fails; debug log
+            set -ex
+
+            eval $(docker-machine env default)
+
+            docker build .
     - swift-package-manager-test-for-mac@0: {}
     - deploy-to-bitrise-io@1: {}
   Release:
