@@ -10,7 +10,10 @@ let package = Package(
         // WARNING: These APIs should not be considered stable and may change at any time.
         .library(
             name: "secp256k1",
-            targets: ["secp256k1"]
+            targets: [
+                "secp256k1",
+                "secp256k1_utils"
+            ]
         )
     ],
     targets: [
@@ -42,9 +45,23 @@ let package = Package(
                 .define("ECMULT_GEN_PREC_BITS", to: "4", nil)
             ]
         ),
+        // Only include select utility extensions because most of Swift Crypto is not required
+        .target(
+            name: "secp256k1_utils",
+            path: "Sources/swift-crypto",
+            exclude: [
+                "swift-crypto/Sources",
+            ],
+            sources: [
+                "swift-crypto/Tests/CryptoTests/Utils/BytesUtil.swift"
+            ]
+        ),
         .testTarget(
             name: "secp256k1Tests",
-            dependencies: ["secp256k1"]
+            dependencies: [
+                "secp256k1",
+                "secp256k1_utils"
+            ]
         )
     ],
     swiftLanguageVersions: [.v5],

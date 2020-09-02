@@ -1,47 +1,68 @@
 import XCTest
 @testable import secp256k1
+@testable import secp256k1_utils
 
 final class secp256k1Tests: XCTestCase {
-    /// Basic Keypair test
-    func testKeypairCreation() {
+    /// Uncompressed Keypair test
+    func testUncompressedKeypairCreation() {
         // Initialize context
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
         // Destory context after execution
-        defer {
-            secp256k1_context_destroy(context)
-        }
+        defer { secp256k1_context_destroy(context) }
 
         // Setup private and public key variables
         var pubkeyLen = 65
         var cPubkey = secp256k1_pubkey()
-        var pubkey = [UInt8](repeating: 0, count: pubkeyLen)
-        let privkey: [UInt8] = [0,1,0,0,1,0,1,0,1,0,1,0,1,0,0,1,1,1,0,0,1,0,0,1,1,0,0,1,0,0,32,0]
-
+        var publicKey = [UInt8](repeating: 0, count: pubkeyLen)
+        
+        let privateKey = try! Array(hexString: "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".lowercased())
+        
         // Verify the context and keys are setup correctly
-        XCTAssertEqual(secp256k1_context_randomize(context, privkey), 1)
-        XCTAssertEqual(secp256k1_ec_pubkey_create(context, &cPubkey, privkey), 1)
-        XCTAssertEqual(secp256k1_ec_pubkey_serialize(context, &pubkey, &pubkeyLen, &cPubkey, UInt32(SECP256K1_EC_UNCOMPRESSED)), 1)
+        XCTAssertEqual(secp256k1_context_randomize(context, privateKey), 1)
+        XCTAssertEqual(secp256k1_ec_pubkey_create(context, &cPubkey, privateKey), 1)
+        XCTAssertEqual(secp256k1_ec_pubkey_serialize(context, &publicKey, &pubkeyLen, &cPubkey, UInt32(SECP256K1_EC_UNCOMPRESSED)), 1)
+
+        let hexString = """
+        04734B3511150A60FC8CAC329CD5FF804555728740F2F2E98BC4242135EF5D5E4E6C4918116B0866F50C46614F3015D8667FBFB058471D662A642B8EA2C9C78E8A
+        """
+        
+        // Define the expected public key
+        let expectedPublicKey = try! Array(hexString: hexString.lowercased())
+        
+        // Verify the generated public key matches the expected public key
+        XCTAssertEqual(expectedPublicKey, publicKey)
+    }
+    
+    /// Compressed Keypair test
+    func testCompressedKeypairCreation() {
+        // Initialize context
+        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+
+        // Destory context after execution
+        defer { secp256k1_context_destroy(context) }
+
+        // Setup private and public key variables
+        var pubkeyLen = 33
+        var cPubkey = secp256k1_pubkey()
+        var publicKey = [UInt8](repeating: 0, count: pubkeyLen)
+        
+        let privateKey = try! Array(hexString: "B035FCFC6ABF660856C5F3A6F9AC51FCA897BB4E76AD9ACA3EFD40DA6B9C864B".lowercased())
+        
+        // Verify the context and keys are setup correctly
+        XCTAssertEqual(secp256k1_context_randomize(context, privateKey), 1)
+        XCTAssertEqual(secp256k1_ec_pubkey_create(context, &cPubkey, privateKey), 1)
+        XCTAssertEqual(secp256k1_ec_pubkey_serialize(context, &publicKey, &pubkeyLen, &cPubkey, UInt32(SECP256K1_EC_COMPRESSED)), 1)
 
         // Define the expected public key
-        let expectedPublicKey: [UInt8] = [
-            4,96,104, 212, 128, 165, 213,
-            207, 134, 132, 22, 247, 38,
-            114, 82, 108, 77, 43, 6, 56,
-            80, 113, 12, 11, 119, 7, 240,
-            188, 73, 170, 44, 202, 33, 225,
-            30, 248, 53, 138, 34, 22, 100,
-            96, 31, 76, 64, 125, 71, 127,
-            62, 155, 108, 243, 17, 222, 97,
-            234, 75, 247, 187, 83, 151, 206,
-            27, 38, 228
-        ]
+        let expectedPublicKey = try! Array(hexString: "02EA724B70B48B61FB87E4310871A48C65BF38BF3FDFEFE73C2B90F8F32F9C1794".lowercased())
 
         // Verify the generated public key matches the expected public key
-        XCTAssertEqual(expectedPublicKey, pubkey)
+        XCTAssertEqual(expectedPublicKey, publicKey)
     }
 
     static var allTests = [
-        ("testKeypairCreation", testKeypairCreation),
+        ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
+        ("testCompressedKeypairCreation", testCompressedKeypairCreation),
     ]
 }
