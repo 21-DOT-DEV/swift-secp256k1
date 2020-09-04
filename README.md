@@ -12,7 +12,7 @@ In your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(name: "secp256k1", url: "https://github.com/GigaBitcoin/secp256k1.swift.git", from: "0.0.11"),
+    .package(name: "secp256k1", url: "https://github.com/GigaBitcoin/secp256k1.swift.git", from: "0.0.12"),
 ]
 ```
 
