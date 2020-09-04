@@ -1,4 +1,4 @@
-# 🔐 secp256k1.swift [![Build Status](https://app.bitrise.io/app/ef44aebd8443b33b/status.svg?token=oDGzN3bMEwseXF_5MQUsTg&branch=main)](https://app.bitrise.io/app/ef44aebd8443b33b)
+# 🔐 secp256k1.swift [![Build Status](https://app.bitrise.io/app/ef44aebd8443b33b/status.svg?token=oDGzN3bMEwseXF_5MQUsTg&branch=main)](https://app.bitrise.io/app/ef44aebd8443b33b) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift)
 Swift bindings library for ECDSA signatures and secret/public key operations using [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
 
 # Objective
@@ -12,7 +12,7 @@ In your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(name: "secp256k1", url: "https://github.com/GigaBitcoin/secp256k1.swift.git", from: "0.0.12"),
+    .package(name: "secp256k1", url: "https://github.com/GigaBitcoin/secp256k1.swift.git", from: "0.0.14"),
 ]
 ```
 
@@ -53,7 +53,8 @@ secp256k1_context_destroy(context)
 To start developing, clone the package from github, and from the root directory, run the following commands:
 
 ```shell
-git submodule update --init
+git clone --recurse-submodules https://github.com/GigaBitcoin/secp256k1.swift
+cd secp256k1.swift
 swift build
 ```
 
