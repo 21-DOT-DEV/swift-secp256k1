@@ -1,6 +1,6 @@
 import XCTest
 @testable import secp256k1
-@testable import secp256k1_utils
+import secp256k1_utils
 
 final class secp256k1Tests: XCTestCase {
     /// Uncompressed Keypair test
@@ -16,7 +16,7 @@ final class secp256k1Tests: XCTestCase {
         var cPubkey = secp256k1_pubkey()
         var publicKey = [UInt8](repeating: 0, count: pubkeyLen)
         
-        let privateKey = try! Array(hexString: "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".lowercased())
+        let privateKey = try! Array(hex: "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C")
         
         // Verify the context and keys are setup correctly
         XCTAssertEqual(secp256k1_context_randomize(context, privateKey), 1)
@@ -28,10 +28,11 @@ final class secp256k1Tests: XCTestCase {
         """
         
         // Define the expected public key
-        let expectedPublicKey = try! Array(hexString: hexString.lowercased())
+        let expectedPublicKey = try! Array(hex: hexString)
         
         // Verify the generated public key matches the expected public key
         XCTAssertEqual(expectedPublicKey, publicKey)
+        XCTAssertEqual(hexString.lowercased(), publicKey.hex)
     }
     
     /// Compressed Keypair test
@@ -47,7 +48,7 @@ final class secp256k1Tests: XCTestCase {
         var cPubkey = secp256k1_pubkey()
         var publicKey = [UInt8](repeating: 0, count: pubkeyLen)
         
-        let privateKey = try! Array(hexString: "B035FCFC6ABF660856C5F3A6F9AC51FCA897BB4E76AD9ACA3EFD40DA6B9C864B".lowercased())
+        let privateKey = try! Array(hex: "B035FCFC6ABF660856C5F3A6F9AC51FCA897BB4E76AD9ACA3EFD40DA6B9C864B")
         
         // Verify the context and keys are setup correctly
         XCTAssertEqual(secp256k1_context_randomize(context, privateKey), 1)
@@ -55,7 +56,7 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(secp256k1_ec_pubkey_serialize(context, &publicKey, &pubkeyLen, &cPubkey, UInt32(SECP256K1_EC_COMPRESSED)), 1)
 
         // Define the expected public key
-        let expectedPublicKey = try! Array(hexString: "02EA724B70B48B61FB87E4310871A48C65BF38BF3FDFEFE73C2B90F8F32F9C1794".lowercased())
+        let expectedPublicKey = try! Array(hex: "02EA724B70B48B61FB87E4310871A48C65BF38BF3FDFEFE73C2B90F8F32F9C1794")
 
         // Verify the generated public key matches the expected public key
         XCTAssertEqual(expectedPublicKey, publicKey)

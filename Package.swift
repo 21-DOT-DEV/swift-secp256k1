@@ -53,7 +53,9 @@ let package = Package(
                 "swift-crypto/Sources",
             ],
             sources: [
-                "swift-crypto/Tests/CryptoTests/Utils/BytesUtil.swift"
+                "swift-crypto/Tests/CryptoTests/Utils/BytesUtil.swift",
+                "extensions/Array.swift",
+                "extensions/Data.swift"
             ]
         ),
         .testTarget(
