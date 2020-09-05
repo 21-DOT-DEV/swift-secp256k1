@@ -13,6 +13,6 @@ import Foundation
 public extension DataProtocol {
     /// Public property backed by the `BytesUtil.swift` DataProtocol extension property `hexString`
     var hex: String {
-        hexString
+        return hexString
     }
 }
