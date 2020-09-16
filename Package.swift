@@ -26,9 +26,12 @@ let package = Package(
                 "secp256k1/src/bench_ecmult.c",
                 "secp256k1/src/bench_internal.c",
                 "secp256k1/src/bench_recover.c",
+                "secp256k1/src/bench_schnorrsig.c",
                 "secp256k1/src/bench_sign.c",
                 "secp256k1/src/bench_verify.c",
                 "secp256k1/src/gen_context.c",
+                "secp256k1/src/modules/extrakeys/tests_impl.h",
+                "secp256k1/src/modules/schnorrsig/tests_impl.h",
                 "secp256k1/src/tests_exhaustive.c",
                 "secp256k1/src/tests.c",
                 "secp256k1/src/valgrind_ctime_test.c"
@@ -37,12 +40,16 @@ let package = Package(
                 .headerSearchPath("secp256k1"),
                 // Basic config values that are universal and require no dependencies.
                 // https://github.com/bitcoin-core/secp256k1/blob/master/src/basic-config.h#L27-L31
+                .define("ECMULT_WINDOW_SIZE", to: "15", nil),
+                .define("ECMULT_GEN_PREC_BITS", to: "4", nil),
+                .define("SECP256K1_EXTRAKEYS_H"),
+                .define("SECP256K1_SCHNORRSIG_H"),
+                .define("_SECP256K1_MODULE_EXTRAKEYS_MAIN_"),
+                .define("_SECP256K1_MODULE_SCHNORRSIG_MAIN_"),
                 .define("USE_NUM_NONE"),
                 .define("USE_FIELD_INV_BUILTIN"),
                 .define("USE_SCALAR_INV_BUILTIN"),
-                .define("USE_WIDEMUL_64"),
-                .define("ECMULT_WINDOW_SIZE", to: "15", nil),
-                .define("ECMULT_GEN_PREC_BITS", to: "4", nil)
+                .define("USE_WIDEMUL_64")
             ]
         ),
         // Only include select utility extensions because most of Swift Crypto is not required
@@ -54,8 +61,7 @@ let package = Package(
             ],
             sources: [
                 "swift-crypto/Tests/CryptoTests/Utils/BytesUtil.swift",
-                "extensions/Array.swift",
-                "extensions/Data.swift"
+                "extensions/String.swift"
             ]
         ),
         .testTarget(
@@ -66,6 +72,6 @@ let package = Package(
             ]
         )
     ],
-    swiftLanguageVersions: [.v4, .v5],
+    swiftLanguageVersions: [.v5],
     cLanguageStandard: .c89
 )

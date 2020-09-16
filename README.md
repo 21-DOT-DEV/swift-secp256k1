@@ -12,7 +12,11 @@ In your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(name: "secp256k1", url: "https://github.com/GigaBitcoin/secp256k1.swift.git", from: "0.0.14"),
+    .package(
+        name: "secp256k1",
+        url: "https://github.com/GigaBitcoin/secp256k1.swift.git",
+        from: "0.1.0"
+    ),
 ]
 ```
 
@@ -31,7 +35,7 @@ let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1
 var pubkeyLen = 33
 var cPubkey = secp256k1_pubkey()
 var pubkey = [UInt8](repeating: 0, count: pubkeyLen)
-let privkey = try! Array(hex: "14e4a74438858920d8a35fb2d88677580b6a2ee9be4e711ae34ec6b396d87b5c")
+let privkey = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".byteArray()
 
 // Verify the context and keys are setup correctly
 guard secp256k1_context_randomize(context, privkey) == 1,
@@ -42,7 +46,7 @@ guard secp256k1_context_randomize(context, privkey) == 1,
     return
 }
 
-print(pubkey.hex) //  02734b3511150a60fc8cac329cd5ff804555728740f2f2e98bc4242135ef5d5e4e
+print(String(byteArray: pubKey)) //  02734b3511150a60fc8cac329cd5ff804555728740f2f2e98bc4242135ef5d5e4e
 
 // Destory context after creation
 secp256k1_context_destroy(context)
