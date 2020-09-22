@@ -1,4 +1,5 @@
-# 🔐 secp256k1.swift [![Build Status](https://app.bitrise.io/app/ef44aebd8443b33b/status.svg?token=oDGzN3bMEwseXF_5MQUsTg&branch=main)](https://app.bitrise.io/app/ef44aebd8443b33b) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift)
+# 🔐 secp256k1.swift [![Build Status](https://app.bitrise.io/app/ef44aebd8443b33b/status.svg?token=oDGzN3bMEwseXF_5MQUsTg&branch=main)](https://app.bitrise.io/app/ef44aebd8443b33b) [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FGigaBitcoin%2Fsecp256k1.swift.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FGigaBitcoin%2Fsecp256k1.swift?ref=badge_shield)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift)
 Swift bindings library for ECDSA signatures and secret/public key operations using [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
 
 # Objective
@@ -67,3 +68,7 @@ Tests can be run by calling `swift test`
 # Danger
 These APIs should not be considered stable and may change at any time. libsecp256k1 is still experimental and has not been formally released.
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FGigaBitcoin%2Fsecp256k1.swift.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FGigaBitcoin%2Fsecp256k1.swift?ref=badge_large)
