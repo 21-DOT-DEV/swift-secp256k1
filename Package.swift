@@ -11,15 +11,15 @@ let package = Package(
         .library(
             name: "secp256k1",
             targets: [
-                "secp256k1",
-                "secp256k1_utils"
+                "secp256k1_bindings",
+                "secp256k1_implementation"
             ]
         )
     ],
     targets: [
         .target(
-            name: "secp256k1",
-            path: "Sources/secp256k1",
+            name: "secp256k1_bindings",
+            path: "Sources/bindings",
             exclude: [
                 "secp256k1/src/asm",
                 "secp256k1/src/bench_ecdh.c",
@@ -54,21 +54,27 @@ let package = Package(
         ),
         // Only include select utility extensions because most of Swift Crypto is not required
         .target(
-            name: "secp256k1_utils",
-            path: "Sources/swift-crypto",
-            exclude: [
-                "swift-crypto/Sources",
+            name: "secp256k1_implementation",
+            dependencies: [
+                .target(name: "secp256k1_bindings")
             ],
+            path: "Sources/implementation",
             sources: [
                 "swift-crypto/Tests/CryptoTests/Utils/BytesUtil.swift",
-                "extensions/String.swift"
+                "swift-crypto/Sources/Crypto/Util/SecureBytes.swift",
+                "swift-crypto/Sources/Crypto/Util/BoringSSL/RNG_boring.swift",
+                "swift-crypto/Sources/Crypto/Util/BoringSSL/SafeCompare_boring.swift",
+                "String.swift",
+                "secp256k1.swift",
+                "SafeCompare.swift",
+                "NISTCurvesKeys.swift"
             ]
         ),
         .testTarget(
             name: "secp256k1Tests",
             dependencies: [
-                "secp256k1",
-                "secp256k1_utils"
+                "secp256k1_bindings",
+                "secp256k1_implementation"
             ]
         )
     ],
