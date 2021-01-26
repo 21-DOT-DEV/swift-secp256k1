@@ -12,18 +12,12 @@ trigger_map:
 workflows:
   Pull-Request:
     steps:
-    - git-clone@4: {}
-    - script@1:
-        title: brew cask install docker-toolbox
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            # fail if any commands fails; debug log
-            set -ex
-
-            brew cask install docker-toolbox
-    - script@1:
+    - git-clone: {}
+    - script:
         title: docker-machine create
+        deps:
+          brew:
+          - name: homebrew/cask/docker-toolbox
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -31,7 +25,7 @@ workflows:
             set -ex
 
             docker-machine create --driver "virtualbox" default
-    - script@1:
+    - script:
         title: docker build
         inputs:
         - content: |-
@@ -42,18 +36,21 @@ workflows:
             eval $(docker-machine env default)
 
             docker build .
-    - swift-package-manager-test-for-mac@0: {}
-    - deploy-to-bitrise-io@1: {}
-  Release:
-    steps:
-    - git-clone@4: {}
-    - swift-package-manager-test-for-mac@0: {}
-    - deploy-to-bitrise-io@1: {}
-  Edge-Pull-Request:
-    steps:
-    - git-clone@4: {}
-    - swift-package-manager-test-for-mac@0: {}
-    - deploy-to-bitrise-io@1: {}
+    - swift-package-manager-test-for-mac: {}
+    - deploy-to-bitrise-io: {}
     meta:
       bitrise.io:
-        stack: osx-xcode-12.0.x
+        stack: osx-xcode-12.2.x
+  Release:
+    steps:
+    - git-clone: {}
+    - swift-package-manager-test-for-mac: {}
+    - deploy-to-bitrise-io: {}
+  Edge-Pull-Request:
+    steps:
+    - git-clone: {}
+    - swift-package-manager-test-for-mac: {}
+    - deploy-to-bitrise-io: {}
+    meta:
+      bitrise.io:
+        stack: osx-xcode-12.3.x
