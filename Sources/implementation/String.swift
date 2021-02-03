@@ -23,6 +23,6 @@ public extension String {
     /// - Returns: initialized byte array
     func byteArray() throws -> [UInt8] {
         // The `BytesUtil.swift` Array extension expects lowercase strings
-        try Array(hexString: self.lowercased())
+        return try Array(hexString: self.lowercased())
     }
 }
