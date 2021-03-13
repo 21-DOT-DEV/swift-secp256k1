@@ -39,19 +39,21 @@ let package = Package(
             cSettings: [
                 .headerSearchPath("secp256k1"),
                 // Basic config values that are universal and require no dependencies.
-                // https://github.com/bitcoin-core/secp256k1/blob/master/src/basic-config.h#L27-L31
+                // https://github.com/bitcoin-core/secp256k1/blob/master/src/basic-config.h#L26-L30
                 .define("ECMULT_WINDOW_SIZE", to: "15", nil),
+                .define("USE_NUM_NONE"),
+                .define("USE_FIELD_INV_BUILTIN"),
+                .define("USE_SCALAR_INV_BUILTIN"),
+                .define("USE_WIDEMUL_64"),
+                // Mirroring default value of `ECMULT_GEN_PREC_BITS` to 4 bits.
                 .define("ECMULT_GEN_PREC_BITS", to: "4", nil),
+                // Enabling additional secp256k1 modules.
                 .define("SECP256K1_ECDH_H"),
                 .define("SECP256K1_MODULE_ECDH_MAIN_H"),
                 .define("SECP256K1_EXTRAKEYS_H"),
                 .define("SECP256K1_MODULE_EXTRAKEYS_MAIN_H"),
                 .define("SECP256K1_SCHNORRSIG_H"),
                 .define("SECP256K1_MODULE_SCHNORRSIG_MAIN_H"),
-                .define("USE_NUM_NONE"),
-                .define("USE_FIELD_INV_BUILTIN"),
-                .define("USE_SCALAR_INV_BUILTIN"),
-                .define("USE_WIDEMUL_64")
             ]
         ),
         // Only include select utility extensions because most of Swift Crypto is not required
@@ -66,11 +68,19 @@ let package = Package(
                 "swift-crypto/Sources/Crypto/Util/SecureBytes.swift",
                 "swift-crypto/Sources/Crypto/Util/BoringSSL/RNG_boring.swift",
                 "swift-crypto/Sources/Crypto/Util/BoringSSL/SafeCompare_boring.swift",
+                "swift-crypto/Sources/Crypto/Signatures/Signature.swift",
+                "swift-crypto/Sources/Crypto/Digests/Digest.swift",
+                "swift-crypto/Sources/Crypto/CryptoKitErrors.swift",
                 "Zeroization.swift",
+                "SHA256.swift",
                 "String.swift",
                 "secp256k1.swift",
+                "ECDSA.swift",
                 "SafeCompare.swift",
-                "NISTCurvesKeys.swift"
+                "NISTCurvesKeys.swift",
+                "PrettyBytes.swift",
+                "EdDSA.swift",
+                "Digests.swift"
             ]
         ),
         .testTarget(

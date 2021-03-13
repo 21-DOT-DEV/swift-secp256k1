@@ -1,15 +1,15 @@
 //
-//  secp256k1.swift
+//  Zeroization.swift
 //  GigaBitcoin/secp256k1.swift
 //
-//  Modifications Copyright (c) 2020 GigaBitcoin LLC
+//  Modifications Copyright (c) 2021 GigaBitcoin LLC
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
 //
 //
 //  NOTICE: THIS FILE HAS BEEN MODIFIED BY GigaBitcoin LLC
-//  UNDER COMPLIANCE WITH THE APACHE 2.0 LICENCE FROM THE
+//  UNDER COMPLIANCE WITH THE APACHE 2.0 LICENSE FROM THE
 //  ORIGINAL WORK OF THE COMPANY Apple Inc.
 //
 //  THE FOLLOWING IS THE COPYRIGHT OF THE ORIGINAL DOCUMENT:
