@@ -2,7 +2,7 @@
 //  secp256k1.swift
 //  GigaBitcoin/secp256k1.swift
 //
-//  Copyright (c) 2020 GigaBitcoin LLC
+//  Copyright (c) 2021 GigaBitcoin LLC
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -98,10 +98,8 @@ extension secp256k1.Signing {
             // Initialize context
             let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
-            defer {
-                // Destory context after creation
-                secp256k1_context_destroy(context)
-            }
+            // Destroy context after creation
+            defer { secp256k1_context_destroy(context) }
 
             // Setup private and public key variables
             var pubkeyLen = 33
@@ -141,10 +139,8 @@ extension secp256k1.Signing {
             // Initialize context
             let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
-            defer {
-                // Destory context after creation
-                secp256k1_context_destroy(context)
-            }
+            // Destroy context after creation
+            defer { secp256k1_context_destroy(context) }
 
             // Setup private and public key variables
             var pubkeyLen = 33
