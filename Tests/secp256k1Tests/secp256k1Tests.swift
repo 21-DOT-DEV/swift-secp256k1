@@ -1,6 +1,5 @@
 import XCTest
-@testable import secp256k1_bindings
-import secp256k1_implementation
+@testable import secp256k1
 
 final class secp256k1Tests: XCTestCase {
     /// Uncompressed Key pair test

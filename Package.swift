@@ -11,12 +11,19 @@ let package = Package(
         .library(
             name: "secp256k1",
             targets: [
-                "secp256k1_bindings",
-                "secp256k1_implementation"
+                "secp256k1"
             ]
         )
     ],
     targets: [
+        .target(
+            name: "secp256k1",
+            dependencies: [
+                "secp256k1_bindings",
+                "secp256k1_implementation"
+            ],
+            exclude: []
+        ),
         .target(
             name: "secp256k1_bindings",
             path: "Sources/bindings",
@@ -30,6 +37,7 @@ let package = Package(
                 "secp256k1/src/bench_sign.c",
                 "secp256k1/src/bench_verify.c",
                 "secp256k1/src/gen_context.c",
+                "secp256k1/src/gen_ecmult_static_pre_g.c",
                 "secp256k1/src/modules/extrakeys/tests_impl.h",
                 "secp256k1/src/modules/schnorrsig/tests_impl.h",
                 "secp256k1/src/tests_exhaustive.c",
@@ -39,14 +47,9 @@ let package = Package(
             cSettings: [
                 .headerSearchPath("secp256k1"),
                 // Basic config values that are universal and require no dependencies.
-                // https://github.com/bitcoin-core/secp256k1/blob/master/src/basic-config.h#L26-L30
-                .define("ECMULT_WINDOW_SIZE", to: "15", nil),
-                .define("USE_NUM_NONE"),
-                .define("USE_FIELD_INV_BUILTIN"),
-                .define("USE_SCALAR_INV_BUILTIN"),
-                .define("USE_WIDEMUL_64"),
-                // Mirroring default value of `ECMULT_GEN_PREC_BITS` to 4 bits.
-                .define("ECMULT_GEN_PREC_BITS", to: "4", nil),
+                // https://github.com/bitcoin-core/secp256k1/blob/master/src/basic-config.h#L12-L13
+                .define("ECMULT_WINDOW_SIZE", to: "15"),
+                .define("ECMULT_GEN_PREC_BITS", to: "4"),
                 // Enabling additional secp256k1 modules.
                 .define("SECP256K1_ECDH_H"),
                 .define("SECP256K1_MODULE_ECDH_MAIN_H"),
@@ -86,8 +89,7 @@ let package = Package(
         .testTarget(
             name: "secp256k1Tests",
             dependencies: [
-                "secp256k1_bindings",
-                "secp256k1_implementation"
+                "secp256k1"
             ]
         )
     ],
