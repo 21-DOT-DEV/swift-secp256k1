@@ -1,7 +1,10 @@
 ---
-format_version: '8'
+format_version: '11'
 default_step_lib_source: 'https://github.com/bitrise-io/bitrise-steplib.git'
 project_type: other
+meta:
+  bitrise.io:
+    stack: osx-xcode-13.0.x
 trigger_map:
 - push_branch: main
   workflow: Release
@@ -38,19 +41,16 @@ workflows:
             docker build .
     - swift-package-manager-test-for-mac: {}
     - deploy-to-bitrise-io: {}
-    meta:
-      bitrise.io:
-        stack: osx-xcode-12.2.x
   Release:
     steps:
     - git-clone: {}
     - swift-package-manager-test-for-mac: {}
     - deploy-to-bitrise-io: {}
   Edge-Pull-Request:
+    meta:
+      bitrise.io:
+        stack: osx-xcode-13.0.x
     steps:
     - git-clone: {}
     - swift-package-manager-test-for-mac: {}
     - deploy-to-bitrise-io: {}
-    meta:
-      bitrise.io:
-        stack: osx-xcode-12.3.x
