@@ -39,7 +39,7 @@ dependencies: [
     .package(
         name: "secp256k1",
         url: "https://github.com/GigaBitcoin/secp256k1.swift.git",
-        from: "0.3.0"
+        from: "0.3.2"
     ),
 ]
 ```
