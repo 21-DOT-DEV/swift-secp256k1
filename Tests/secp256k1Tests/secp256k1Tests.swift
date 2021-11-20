@@ -7,7 +7,7 @@ final class secp256k1Tests: XCTestCase {
         // Initialize context
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
-        // Destory context after execution
+        // Destroy context after execution
         defer { secp256k1_context_destroy(context) }
 
         // Setup private and public key variables
@@ -39,7 +39,7 @@ final class secp256k1Tests: XCTestCase {
         // Initialize context
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
-        // Destory context after execution
+        // Destroy context after execution
         defer { secp256k1_context_destroy(context) }
 
         // Setup private and public key variables
@@ -99,8 +99,6 @@ final class secp256k1Tests: XCTestCase {
     }
 
     func testVerifying() {
-//        let expectedDerSignature = "MEQCIGGvTtSQybMOSym7XmH9EofU3LLNaZo4jvFi1ZClPKA5AiBxjmZjAblJ11zKo76o/b4dhDvamwktCerS5SsTdyGqrg=="
-//        let expectedSignature = "OaA8pZDVYvGOOJppzbLc1IcS/WFeuylLDrPJkNROr2GuqiF3Eyvl0uoJLQmb2juEHb79qL6jylzXSbkBY2aOcQ=="
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.byteArray()
         let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
@@ -110,12 +108,10 @@ final class secp256k1Tests: XCTestCase {
 
         // Test the verification of the signature output
         XCTAssertTrue(privateKey.publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)))
-//        XCTAssertEqual(expectedSignature, signature.rawRepresentation.base64EncodedString())
     }
 
     func testVerifyingDER() {
         let expectedDerSignature = Data(base64Encoded: "MEQCIGGvTtSQybMOSym7XmH9EofU3LLNaZo4jvFi1ZClPKA5AiBxjmZjAblJ11zKo76o/b4dhDvamwktCerS5SsTdyGqrg==", options: .ignoreUnknownCharacters)!
-//        let expectedSignature = "OaA8pZDVYvGOOJppzbLc1IcS/WFeuylLDrPJkNROr2GuqiF3Eyvl0uoJLQmb2juEHb79qL6jylzXSbkBY2aOcQ=="
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.byteArray()
         let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
@@ -125,7 +121,49 @@ final class secp256k1Tests: XCTestCase {
 
         // Test the verification of the signature output
         XCTAssertTrue(privateKey.publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)))
-//        XCTAssertEqual(expectedSignature, signature.rawRepresentation.base64EncodedString())
+    }
+
+    func testPrivateKey() {
+        XCTAssertNoThrow(try secp256k1.Signing.PrivateKey())
+    }
+
+    func testInvalidRawSignature() {
+        XCTAssertThrowsError(
+            try secp256k1.Signing.ECDSASignature(rawRepresentation: Data()),
+            "Thrown Error",
+            { error in
+                XCTAssertEqual(error as? secp256k1Error, secp256k1Error.incorrectParameterSize)
+            }
+        )
+    }
+
+    func testInvalidDerSignature() {
+        XCTAssertThrowsError(
+            try secp256k1.Signing.ECDSASignature(derRepresentation: Data()),
+            "Thrown Error",
+            { error in
+                XCTAssertEqual(error as? secp256k1Error, secp256k1Error.underlyingCryptoError)
+            }
+        )
+    }
+
+    func testInvalidPrivateKeyBytes() {
+        let expectedPrivateKey = "55f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
+
+        XCTAssertThrowsError(try expectedPrivateKey.byteArray())
+    }
+
+    func testInvalidPrivateKeyLength() {
+        let expectedPrivateKey = "555f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
+        let privateKeyBytes = try! expectedPrivateKey.byteArray()
+
+        XCTAssertThrowsError(
+            try secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes),
+            "Thrown Error",
+            { error in
+                XCTAssertEqual(error as? secp256k1Error, secp256k1Error.incorrectKeySize)
+            }
+        )
     }
 
     static var allTests = [
@@ -136,6 +174,11 @@ final class secp256k1Tests: XCTestCase {
         ("testSigning", testSigning),
         ("testVerifying", testVerifying),
         ("testVerifyingDER", testVerifyingDER),
+        ("testInvalidPrivateKeyLength", testInvalidPrivateKeyLength),
+        ("testInvalidPrivateKeyBytes", testInvalidPrivateKeyBytes),
+        ("testInvalidDerSignature", testInvalidDerSignature),
+        ("testInvalidRawSignature", testInvalidRawSignature),
+        ("testPrivateKey", testPrivateKey),
     ]
 }
     

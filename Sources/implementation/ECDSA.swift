@@ -38,7 +38,7 @@ extension secp256k1.Signing {
         /// - Throws: If there is a failure with the dataRepresentation count
         public init<D: DataProtocol>(rawRepresentation: D) throws {
             guard rawRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount else {
-                throw CryptoKitError.incorrectParameterSize
+                throw secp256k1Error.incorrectParameterSize
             }
 
             self.rawRepresentation = Data(rawRepresentation)
@@ -49,7 +49,7 @@ extension secp256k1.Signing {
         /// - Throws: If there is a failure with the dataRepresentation count
         internal init(_ dataRepresentation: Data) throws {
             guard dataRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount else {
-                throw CryptoKitError.incorrectParameterSize
+                throw secp256k1Error.incorrectParameterSize
             }
 
             self.rawRepresentation = dataRepresentation
@@ -68,7 +68,7 @@ extension secp256k1.Signing {
             defer { secp256k1_context_destroy(context) }
 
             guard secp256k1_ecdsa_signature_parse_der(context, &signature, derSignatureBytes, derSignatureBytes.count) == 1 else {
-                throw CryptoKitError.incorrectParameterSize
+                throw secp256k1Error.underlyingCryptoError
             }
 
             self.rawRepresentation = Data(bytes: &signature.data, count: MemoryLayout.size(ofValue: signature.data))
@@ -100,7 +100,7 @@ extension secp256k1.Signing {
             }
 
             guard secp256k1_ecdsa_signature_serialize_compact(context, &compactSignature, &signature) == 1 else {
-                return Data()
+                throw secp256k1Error.underlyingCryptoError
             }
 
             return Data(bytes: &compactSignature, count: compactSignatureLength)
@@ -124,7 +124,7 @@ extension secp256k1.Signing {
             }
 
             guard secp256k1_ecdsa_signature_serialize_der(context, &derSignature, &derSignatureLength, &signature) == 1 else {
-                return Data()
+                throw secp256k1Error.underlyingCryptoError
             }
 
             return Data(bytes: &derSignature, count: derSignatureLength)
@@ -148,7 +148,7 @@ extension secp256k1.Signing.PrivateKey: DigestSigner {
         defer { secp256k1_context_destroy(context) }
 
         guard secp256k1_ecdsa_sign(context, &signature, Array(digest), Array(rawRepresentation), nil, nil) == 1 else {
-            throw CryptoKitError.incorrectParameterSize
+            throw secp256k1Error.underlyingCryptoError
         }
 
         return try secp256k1.Signing.ECDSASignature(Data(bytes: &signature.data, count: MemoryLayout.size(ofValue: signature.data)))

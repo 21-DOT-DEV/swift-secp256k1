@@ -1,5 +1,5 @@
 //
-//  Main.swift
+//  EntryPoint.swift
 //  GigaBitcoin/Main.swift
 //
 //  Copyright (c) 2021 GigaBitcoin LLC
