@@ -174,6 +174,11 @@ final class secp256k1Tests: XCTestCase {
         ("testSigning", testSigning),
         ("testVerifying", testVerifying),
         ("testVerifyingDER", testVerifyingDER),
+        ("testInvalidPrivateKeyLength", testInvalidPrivateKeyLength),
+        ("testInvalidPrivateKeyBytes", testInvalidPrivateKeyBytes),
+        ("testInvalidDerSignature", testInvalidDerSignature),
+        ("testInvalidRawSignature", testInvalidRawSignature),
+        ("testPrivateKey", testPrivateKey),
     ]
 }
     
