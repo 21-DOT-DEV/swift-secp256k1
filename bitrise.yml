@@ -11,7 +11,7 @@ workflows:
     - git-clone: {}
     - bitrise-run:
         title: Start Linux
-        run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "ad209ccccdafade3" }}'
+        run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "9cea59cfed6354ef" }}'
         inputs:
         - workflow_id: LINUX
     - bitrise-run:
