@@ -16,7 +16,7 @@ workflows:
         - workflow_id: LINUX
     - bitrise-run:
         title: Start macOS
-        run_if: '{{ getenv "BITRISE_APP_SLUG" | ne "ad209ccccdafade3" }}'
+        # run_if: '{{ getenv "BITRISE_APP_SLUG" | ne "ad209ccccdafade3" }}'
         inputs:
         - workflow_id: MACOS
   LINUX:
