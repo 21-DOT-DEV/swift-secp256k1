@@ -11,30 +11,30 @@ workflows:
     - git-clone: {}
     - bitrise-run:
         title: Start Linux
-        run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "9cea59cfed6354ef" }}'
+        run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "f1bbbdfeff08cd5c" }}'
         inputs:
         - workflow_id: LINUX
     - bitrise-run:
         title: Start macOS
-        # run_if: '{{ getenv "BITRISE_APP_SLUG" | ne "ad209ccccdafade3" }}'
+        run_if: '{{ getenv "BITRISE_APP_SLUG" | ne "f1bbbdfeff08cd5c" }}'
         inputs:
         - workflow_id: MACOS
   LINUX:
     steps:
-    - script:
-        title: docker-machine create
-        deps:
-          brew:
-          - name: homebrew/cask/docker-toolbox
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            # fail if any commands fails; debug log
-            set -ex
-            # envman add --key BITRISE_XCODE_VERSION --value $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9\.]*)/\1/p')
-            # envman add --key BITRISE_MACOS_VERSION --value $(sw_vers -productVersion)
+    # - script:
+    #     title: docker-machine create
+    #     deps:
+    #       brew:
+    #       - name: homebrew/cask/docker-toolbox
+    #     inputs:
+    #     - content: |-
+    #         #!/usr/bin/env bash
+    #         # fail if any commands fails; debug log
+    #         set -ex
+    #         # envman add --key BITRISE_XCODE_VERSION --value $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9\.]*)/\1/p')
+    #         # envman add --key BITRISE_MACOS_VERSION --value $(sw_vers -productVersion)
 
-            docker-machine create --driver "virtualbox" default
+    #         docker-machine create --driver "virtualbox" default
     - script:
         title: docker build
         inputs:
@@ -42,8 +42,6 @@ workflows:
             #!/usr/bin/env bash
             # fail if any commands fails; debug log
             set -ex
-
-            eval $(docker-machine env default)
 
             docker build .
   MACOS:
