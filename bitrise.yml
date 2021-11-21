@@ -4,7 +4,7 @@ default_step_lib_source: 'https://github.com/bitrise-io/bitrise-steplib.git'
 project_type: other
 meta:
   bitrise.io:
-    stack: osx-xcode-13.0.x
+    stack: osx-xcode-12.4.x
 trigger_map:
 - push_branch: main
   workflow: Release
@@ -49,7 +49,7 @@ workflows:
   Edge-Pull-Request:
     meta:
       bitrise.io:
-        stack: osx-xcode-13.0.x
+        stack: osx-xcode-12.4.x
     steps:
     - git-clone: {}
     - swift-package-manager-test-for-mac: {}
