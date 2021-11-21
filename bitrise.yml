@@ -1,18 +1,29 @@
 ---
-format_version: '8'
+format_version: '11'
 default_step_lib_source: 'https://github.com/bitrise-io/bitrise-steplib.git'
 project_type: other
+meta:
+  bitrise.io:
+    machine_type_id: elite
 trigger_map:
-- push_branch: main
-  workflow: Release
-- pull_request_source_branch: '*/edge/*'
-  workflow: Edge-Pull-Request
 - pull_request_source_branch: '*'
-  workflow: Pull-Request
+  workflow: ENTRY-POINT
 workflows:
-  Pull-Request:
+  ENTRY-POINT:
     steps:
     - git-clone: {}
+    - bitrise-run:
+        title: Start Linux
+        run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "0f7b96e4b23f73a0" }}'
+        inputs:
+        - workflow_id: LINUX
+    - bitrise-run:
+        title: Start macOS
+        run_if: '{{ getenv "BITRISE_APP_SLUG" | ne "0f7b96e4b23f73a0" }}'
+        inputs:
+        - workflow_id: MACOS
+  LINUX:
+    steps:
     - script:
         title: docker-machine create
         deps:
@@ -23,6 +34,8 @@ workflows:
             #!/usr/bin/env bash
             # fail if any commands fails; debug log
             set -ex
+            # envman add --key BITRISE_XCODE_VERSION --value $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9\.]*)/\1/p')
+            # envman add --key BITRISE_MACOS_VERSION --value $(sw_vers -productVersion)
 
             docker-machine create --driver "virtualbox" default
     - script:
@@ -36,21 +49,6 @@ workflows:
             eval $(docker-machine env default)
 
             docker build .
-    - swift-package-manager-test-for-mac: {}
-    - deploy-to-bitrise-io: {}
-    meta:
-      bitrise.io:
-        stack: osx-xcode-12.2.x
-  Release:
+  MACOS:
     steps:
-    - git-clone: {}
     - swift-package-manager-test-for-mac: {}
-    - deploy-to-bitrise-io: {}
-  Edge-Pull-Request:
-    steps:
-    - git-clone: {}
-    - swift-package-manager-test-for-mac: {}
-    - deploy-to-bitrise-io: {}
-    meta:
-      bitrise.io:
-        stack: osx-xcode-12.3.x
