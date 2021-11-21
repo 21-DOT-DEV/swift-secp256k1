@@ -34,9 +34,8 @@ workflows:
             #!/usr/bin/env bash
             # fail if any commands fails; debug log
             set -ex
-            # run_if: '{{ getenv "BITRISE_BUILD_PRO" | eq "false" }}'
-            #envman add --key BITRISE_XCODE_VERSION --value $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9\.]*)/\1/p')
-            #envman add --key BITRISE_MACOS_VERSION --value $(sw_vers -productVersion)
+            # envman add --key BITRISE_XCODE_VERSION --value $(xcodebuild -version | sed -En 's/Xcode[[:space:]]+([0-9\.]*)/\1/p')
+            # envman add --key BITRISE_MACOS_VERSION --value $(sw_vers -productVersion)
 
             docker-machine create --driver "virtualbox" default
     - script:
