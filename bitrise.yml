@@ -3,6 +3,8 @@ format_version: '11'
 default_step_lib_source: 'https://github.com/bitrise-io/bitrise-steplib.git'
 project_type: other
 trigger_map:
+- push_branch: main
+  workflow: ENTRY-POINT
 - pull_request_source_branch: '*'
   workflow: ENTRY-POINT
 workflows:
@@ -16,7 +18,7 @@ workflows:
         - workflow_id: LINUX
     - bitrise-run:
         title: macOS
-        run_if: '{{ getenv "BITRISE_APP_SLUG" | ne "f1bbbdfeff08cd5c" }}'
+        run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "18c18db60fc4fddf" }}'
         inputs:
         - workflow_id: MACOS
   LINUX:
