@@ -60,7 +60,10 @@ extension secp256k1.Signing {
         /// - Throws: If there is a failure with parsing the derRepresentation
         public init<D: DataProtocol>(derRepresentation: D) throws {
             // Initialize context
-            let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+            guard let context = secp256k1_context_create(secp256k1.Context.none.rawValue) else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
             let derSignatureBytes = Array(derRepresentation)
             var signature = secp256k1_ecdsa_signature()
 
@@ -87,7 +90,10 @@ extension secp256k1.Signing {
         /// - Returns: a 64-byte data representation of the compact serialization
         public func compactRepresentation() throws -> Data {
             // Initialize context
-            let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+            guard let context = secp256k1_context_create(secp256k1.Context.none.rawValue) else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
             let compactSignatureLength = 64
             var signature = secp256k1_ecdsa_signature()
             var compactSignature = [UInt8](repeating: 0, count: compactSignatureLength)
@@ -111,7 +117,10 @@ extension secp256k1.Signing {
         /// - Returns: a DER representation of the signature
         public func derRepresentation() throws -> Data {
             // Initialize context
-            let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+            guard let context = secp256k1_context_create(secp256k1.Context.none.rawValue) else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
             var signature = secp256k1_ecdsa_signature()
             var derSignatureLength = 80
             var derSignature = [UInt8](repeating: 0, count: derSignatureLength)
@@ -141,7 +150,9 @@ extension secp256k1.Signing.PrivateKey: DigestSigner {
     /// - Throws: If there is a failure producing the signature
     public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.ECDSASignature {
         // Initialize context
-        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+        guard let context = secp256k1_context_create(secp256k1.Context.sign.rawValue) else {
+            throw secp256k1Error.underlyingCryptoError
+        }
         var signature = secp256k1_ecdsa_signature()
 
         // Destroy context after creation
@@ -163,7 +174,7 @@ extension secp256k1.Signing.PrivateKey: Signer {
     /// - Returns: The ECDSA Signature.
     /// - Throws: If there is a failure producing the signature.
     public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Signing.ECDSASignature {
-        return try self.signature(for: SHA256.hash(data: data))
+        try self.signature(for: SHA256.hash(data: data))
     }
 }
 
@@ -176,7 +187,10 @@ extension secp256k1.Signing.PublicKey: DigestValidator {
     /// - Returns: True if the signature is valid, false otherwise.
     public func isValidSignature<D: Digest>(_ signature: secp256k1.Signing.ECDSASignature, for digest: D) -> Bool {
         // Initialize context
-        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+        guard let context = secp256k1_context_create(secp256k1.Context.verify.rawValue) else {
+            return false
+        }
+
         var secp256k1Signature = secp256k1_ecdsa_signature()
         var secp256k1PublicKey = secp256k1_pubkey()
 
@@ -204,6 +218,6 @@ extension secp256k1.Signing.PublicKey: DataValidator {
     ///   - data: The data that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
     public func isValidSignature<D: DataProtocol>(_ signature: secp256k1.Signing.ECDSASignature, for data: D) -> Bool {
-        return self.isValidSignature(signature, for: SHA256.hash(data: data))
+        isValidSignature(signature, for: SHA256.hash(data: data))
     }
  }

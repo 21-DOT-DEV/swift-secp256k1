@@ -30,21 +30,15 @@
 //===----------------------------------------------------------------------===//
 #if !(os(macOS) || os(iOS) || os(watchOS) || os(tvOS))
 
-typealias errno_t = CInt
+import secp256k1_bindings
 
-// This is a Swift wrapper for the libc function that does not exist on Linux. The original
-// shim used `OPENSSL_cleanse`, unfortunately we do not want to include openssl. This shim now
-// (1) starts with a `UnsafeMutableRawPointer`, (2) creates an `UnsafeMutableBufferPointer`,
-// and (3) iterates through the buffer pointer setting each element to 0.
+public typealias errno_t = CInt
+
 @discardableResult
-func memset_s(_ s: UnsafeMutableRawPointer!, _ smax: Int, _ byte: CInt, _ n: Int) -> errno_t {
+public func memset_s(_ s: UnsafeMutableRawPointer!, _ smax: Int, _ byte: CInt, _ n: Int) -> errno_t {
     assert(smax == n, "memset_s invariant not met")
     assert(byte == 0, "memset_s used to not zero anything")
-    let pointer = s.bindMemory(to: UInt8.self, capacity: smax)
-    let bufferPointer = UnsafeMutableBufferPointer(start: pointer, count: smax)
-    for i in stride(from: bufferPointer.startIndex, to: bufferPointer.endIndex, by: 1) {
-        bufferPointer[i] = 0
-    }
+    secp256k1_swift_memczero(s, smax, 1)
     return 0
 }
 #endif
