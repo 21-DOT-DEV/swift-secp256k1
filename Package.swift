@@ -66,7 +66,6 @@ let package = Package(
                 "swift-crypto/Tests/CryptoTests/Utils/BytesUtil.swift",
                 "swift-crypto/Sources/Crypto/Util/SecureBytes.swift",
                 "swift-crypto/Sources/Crypto/Util/BoringSSL/RNG_boring.swift",
-                "swift-crypto/Sources/Crypto/Util/BoringSSL/SafeCompare_boring.swift",
                 "swift-crypto/Sources/Crypto/Signatures/Signature.swift",
                 "swift-crypto/Sources/Crypto/Digests/Digest.swift",
                 "Zeroization.swift",

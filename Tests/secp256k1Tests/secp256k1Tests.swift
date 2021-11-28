@@ -127,6 +127,20 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertNoThrow(try secp256k1.Signing.PrivateKey())
     }
 
+    func testCompressedPublicKey() {
+        let privateKey = try! secp256k1.Signing.PrivateKey()
+
+        XCTAssertEqual(privateKey.publicKey.format, .compressed)
+        XCTAssertEqual(privateKey.publicKey.rawRepresentation.count, secp256k1.Format.compressed.length)
+    }
+
+    func testUncompressedPublicKey() {
+        let privateKey = try! secp256k1.Signing.PrivateKey(format: .uncompressed)
+
+        XCTAssertEqual(privateKey.publicKey.format, .uncompressed)
+        XCTAssertEqual(privateKey.publicKey.rawRepresentation.count, secp256k1.Format.uncompressed.length)
+    }
+
     func testInvalidRawSignature() {
         XCTAssertThrowsError(
             try secp256k1.Signing.ECDSASignature(rawRepresentation: Data()),
@@ -166,6 +180,42 @@ final class secp256k1Tests: XCTestCase {
         )
     }
 
+    func testKeypairSafeCompare() {
+        let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
+        var privateKeyBytes = try! expectedPrivateKey.byteArray()
+        let privateKey0 = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+        let privateKey1 = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+
+        // Verify the keys match
+        XCTAssertEqual(privateKey0, privateKey1)
+
+        let expectedFailingPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888dd"
+        privateKeyBytes = try! expectedFailingPrivateKey.byteArray()
+        let privateKey2 = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+
+        XCTAssertNotEqual(privateKey0, privateKey2)
+    }
+
+    func testZeroization() {
+        var array: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
+        memset_s(&array, array.capacity, 0, array.capacity)
+
+        let set0 = Set(array)
+
+        array = [UInt8](repeating: 1, count: Int.random(in: 10...100000))
+
+        XCTAssertGreaterThan(array.count, 9)
+
+        memset_s(&array, array.capacity, 0, array.capacity)
+
+        let set1 = Set(array)
+
+        XCTAssertEqual(set0.first, 0)
+        XCTAssertEqual(set0.count, 1)
+        XCTAssertEqual(set0, set1)
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
@@ -179,6 +229,10 @@ final class secp256k1Tests: XCTestCase {
         ("testInvalidDerSignature", testInvalidDerSignature),
         ("testInvalidRawSignature", testInvalidRawSignature),
         ("testPrivateKey", testPrivateKey),
+        ("testCompressedPublicKey", testCompressedPublicKey),
+        ("testUncompressedPublicKey", testUncompressedPublicKey),
+        ("testKeypairSafeCompare", testKeypairSafeCompare),
+        ("testZeroization", testZeroization),
     ]
 }
     

@@ -15,3 +15,9 @@ extension Data {
         self.withUnsafeBytes({ keyBytesPtr in Array(keyBytesPtr) })
     }
 }
+
+extension ContiguousBytes {
+    @inlinable var bytes: [UInt8] {
+        self.withUnsafeBytes({ keyBytesPtr in Array(keyBytesPtr) })
+    }
+}

@@ -35,13 +35,11 @@ print(try! signature.derRepresentation().base64EncodedString()) //  MEUCID8JELjY
 In your `Package.swift`:
 
 ```swift
-dependencies: [
     .package(
         name: "secp256k1",
         url: "https://github.com/GigaBitcoin/secp256k1.swift.git",
-        from: "0.3.2"
+        from: "0.3.3"
     ),
-]
 ```
 
 
