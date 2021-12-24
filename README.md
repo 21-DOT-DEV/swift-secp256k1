@@ -38,8 +38,8 @@ In your `Package.swift`:
     .package(
         name: "secp256k1",
         url: "https://github.com/GigaBitcoin/secp256k1.swift.git",
-        from: "0.3.3"
-    ),
+        .upToNextMajor(from: "0.3.4")
+    )
 ```
 
 

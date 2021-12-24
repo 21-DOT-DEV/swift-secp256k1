@@ -1,4 +1,4 @@
-// swift-tools-version:5.0
+// swift-tools-version:5.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
@@ -32,10 +32,10 @@ let package = Package(
                 "secp256k1/src/bench.c",
                 "secp256k1/src/bench_ecmult.c",
                 "secp256k1/src/bench_internal.c",
-                "secp256k1/src/gen_context.c",
-                "secp256k1/src/gen_ecmult_static_pre_g.c",
                 "secp256k1/src/modules/extrakeys/tests_impl.h",
                 "secp256k1/src/modules/schnorrsig/tests_impl.h",
+                "secp256k1/src/precompute_ecmult.c",
+                "secp256k1/src/precompute_ecmult_gen.c",
                 "secp256k1/src/tests_exhaustive.c",
                 "secp256k1/src/tests.c",
                 "secp256k1/src/valgrind_ctime_test.c"
