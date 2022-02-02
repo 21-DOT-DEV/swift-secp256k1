@@ -44,15 +44,13 @@ let package = Package(
                 .headerSearchPath("secp256k1"),
                 // Basic config values that are universal and require no dependencies.
                 // https://github.com/bitcoin-core/secp256k1/blob/master/src/basic-config.h#L12-L13
-                .define("ECMULT_WINDOW_SIZE", to: "15"),
                 .define("ECMULT_GEN_PREC_BITS", to: "4"),
+                .define("ECMULT_WINDOW_SIZE", to: "15"),
                 // Enabling additional secp256k1 modules.
-                .define("SECP256K1_ECDH_H"),
-                .define("SECP256K1_MODULE_ECDH_MAIN_H"),
-                .define("SECP256K1_EXTRAKEYS_H"),
-                .define("SECP256K1_MODULE_EXTRAKEYS_MAIN_H"),
-                .define("SECP256K1_SCHNORRSIG_H"),
-                .define("SECP256K1_MODULE_SCHNORRSIG_MAIN_H"),
+                .define("ENABLE_MODULE_ECDH"),
+                .define("ENABLE_MODULE_EXTRAKEYS"),
+                .define("ENABLE_MODULE_RECOVERY"),
+                .define("ENABLE_MODULE_SCHNORRSIG"),
             ]
         ),
         // Only include select utility extensions because most of Swift Crypto is not required

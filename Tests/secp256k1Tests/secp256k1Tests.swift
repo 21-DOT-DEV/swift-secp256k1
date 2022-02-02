@@ -59,6 +59,80 @@ final class secp256k1Tests: XCTestCase {
         // Verify the generated public key matches the expected public key
         XCTAssertEqual(expectedPublicKey, publicKey)
     }
+
+    func testECDHBindings() {
+        // Initialize context
+        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+
+        // Destroy context after execution
+        defer { secp256k1_context_destroy(context) }
+
+        var point = secp256k1_pubkey()
+        var res = [UInt8](repeating: 0, count: 32)
+        var s_one = [UInt8](repeating: 0, count: 32)
+
+        s_one[31] = 1;
+
+        XCTAssertEqual(secp256k1_ec_pubkey_create(context, &point, s_one), 1)
+        XCTAssertEqual(secp256k1_ecdh(context, &res, &point, s_one, nil, nil), 1)
+    }
+
+    func testExtraKeysBindings() {
+        // Initialize context
+        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+
+        // Destroy context after execution
+        defer { secp256k1_context_destroy(context) }
+
+        var pubKey = secp256k1_pubkey()
+        var xOnlyPubKey = secp256k1_xonly_pubkey()
+        var pk_parity = Int32()
+
+        let privateKey = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".byteArray()
+
+        XCTAssertEqual(secp256k1_ec_pubkey_create(context, &pubKey, privateKey), 1)
+        XCTAssertEqual(secp256k1_xonly_pubkey_from_pubkey(context, &xOnlyPubKey, &pk_parity, &pubKey), 1)
+    }
+
+    func testRecoveryBindings() {
+        // Initialize context
+        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+
+        // Destroy context after execution
+        defer { secp256k1_context_destroy(context) }
+
+        var pubKey = secp256k1_pubkey()
+        var recsig = secp256k1_ecdsa_recoverable_signature()
+        var message = [UInt8](repeating: 0, count: 32)
+
+        let privateKey = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".byteArray()
+
+        XCTAssertEqual(secp256k1_ec_seckey_verify(context, privateKey), 1)
+        XCTAssertEqual(secp256k1_ec_pubkey_create(context, &pubKey, privateKey), 1)
+        XCTAssertEqual(secp256k1_ecdsa_sign_recoverable(context, &recsig, &message, privateKey, nil, nil), 1)
+    }
+
+    func testSchnorrBindings() {
+        // Initialize context
+        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+
+        // Destroy context after execution
+        defer { secp256k1_context_destroy(context) }
+
+        var keypair = secp256k1_keypair()
+        var xpubKey = secp256k1_xonly_pubkey()
+        var xpubKeyBytes = [UInt8](repeating: 0, count: 32)
+
+        let privateKey = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".byteArray()
+
+        XCTAssertEqual(secp256k1_keypair_create(context, &keypair, privateKey), 1)
+        XCTAssertEqual(secp256k1_keypair_xonly_pub(context, &xpubKey, nil, &keypair), 1)
+        XCTAssertEqual(secp256k1_xonly_pubkey_serialize(context, &xpubKeyBytes, &xpubKey), 1)
+
+        let expectedXPubKey = "734b3511150a60fc8cac329cd5ff804555728740f2f2e98bc4242135ef5d5e4e"
+        
+        XCTAssertEqual(String(byteArray: xpubKeyBytes), expectedXPubKey)
+    }
     
     /// Compressed Key pair test
     func testCompressedKeypairImplementationWithRaw() {
@@ -219,6 +293,10 @@ final class secp256k1Tests: XCTestCase {
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
+        ("testECDHBindings", testECDHBindings),
+        ("testExtraKeysBindings", testExtraKeysBindings),
+        ("testRecoveryBindings", testRecoveryBindings),
+        ("testSchnorrBindings", testSchnorrBindings),
         ("testCompressedKeypairImplementationWithRaw", testCompressedKeypairImplementationWithRaw),
         ("testSha256", testSha256),
         ("testSigning", testSigning),
