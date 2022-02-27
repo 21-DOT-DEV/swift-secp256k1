@@ -28,6 +28,7 @@ let package = Package(
             name: "secp256k1_bindings",
             path: "Sources/bindings",
             exclude: [
+                "secp256k1/examples/",
                 "secp256k1/src/asm",
                 "secp256k1/src/bench.c",
                 "secp256k1/src/bench_ecmult.c",
