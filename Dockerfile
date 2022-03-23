@@ -8,4 +8,4 @@ ADD . /LinuxTests
 WORKDIR /LinuxTests
 
 # Execute Linux test suite
-RUN swift test --enable-test-discovery
+RUN swift test
