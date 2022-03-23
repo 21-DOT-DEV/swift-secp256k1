@@ -10,9 +10,15 @@
 
 import Foundation
 
-extension Data {
-    var bytes: [UInt8] {
+public extension Data {
+    @inlinable var bytes: [UInt8] {
         self.withUnsafeBytes({ keyBytesPtr in Array(keyBytesPtr) })
+    }
+
+    func copyToUnsafeMutableBytes<T>(of value: inout T) {
+        _ = Swift.withUnsafeMutableBytes(of: &value) { ptr in
+            ptr.copyBytes(from: self.prefix(ptr.count))
+        }
     }
 }
 
