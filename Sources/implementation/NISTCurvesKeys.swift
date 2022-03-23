@@ -52,13 +52,3 @@ protocol NISTECPrivateKey: ECPrivateKey where PublicKey: NISTECPublicKey {
     init <Bytes: ContiguousBytes>(rawRepresentation: Bytes) throws
     var rawRepresentation: Data { get }
 }
-
-extension secp256k1 {
-    @usableFromInline
-    struct CurveDetails {
-        @inlinable
-        static var coordinateByteCount: Int {
-            return 16
-        }
-    }
-}

@@ -10,7 +10,7 @@
 
 import Foundation
 
-/// Errors thrown in secp256k1.swift
+/// Errors thrown for secp256k1
 /// - incorrectKeySize: A key is being deserialized with an incorrect key size.
 /// - incorrectParameterSize: The number of bytes passed for a given argument is incorrect.
 /// - underlyingCryptoError: An unexpected error at a lower-level occurred.
