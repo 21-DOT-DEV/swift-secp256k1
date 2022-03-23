@@ -334,32 +334,6 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(set0.count, 1)
         XCTAssertEqual(set0, set1)
     }
-
-    static var allTests = [
-        ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
-        ("testCompressedKeypairCreation", testCompressedKeypairCreation),
-        ("testECDHBindings", testECDHBindings),
-        ("testExtraKeysBindings", testExtraKeysBindings),
-        ("testRecoveryBindings", testRecoveryBindings),
-        ("testSchnorrBindings", testSchnorrBindings),
-        ("testCompressedKeypairImplementationWithRaw", testCompressedKeypairImplementationWithRaw),
-        ("testSha256", testSha256),
-        ("testSigning", testSigning),
-        ("testSchnorrSigning", testSchnorrSigning),
-        ("testVerifying", testVerifying),
-        ("testSchnorrVerifyingPre", testSchnorrVerifyingPre),
-        ("testSchnorrVerifying", testSchnorrVerifying),
-        ("testVerifyingDER", testVerifyingDER),
-        ("testPrivateKey", testPrivateKey),
-        ("testCompressedPublicKey", testCompressedPublicKey),
-        ("testUncompressedPublicKey", testUncompressedPublicKey),
-        ("testInvalidRawSignature", testInvalidRawSignature),
-        ("testInvalidDerSignature", testInvalidDerSignature),
-        ("testInvalidPrivateKeyBytes", testInvalidPrivateKeyBytes),
-        ("testInvalidPrivateKeyLength", testInvalidPrivateKeyLength),
-        ("testKeypairSafeCompare", testKeypairSafeCompare),
-        ("testZeroization", testZeroization),
-    ]
 }
     
 
