@@ -1,4 +1,4 @@
-name: Run secp256k1.swift tests on linux
+name: Linux tests
 
 on:
   push:
@@ -7,15 +7,11 @@ on:
     branches: [ main ]
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    
     - uses: actions/checkout@v3
       with:
         submodules: recursive
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag linux-secp256k1.swift-tests:$(date +%s)
+      run: docker build .
