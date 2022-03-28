@@ -2,6 +2,19 @@
 
 import PackageDescription
 
+let dependencies: [Package.Dependency]
+
+#if os(macOS)
+    dependencies = [
+        // Dependencies used for package development
+        .package(url: "https://github.com/csjones/lefthook.git", branch: "swift"),
+        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", .exactItem("0.49.5")),
+        .package(url: "https://github.com/realm/SwiftLint.git", .exactItem("0.46.5"))
+    ]
+#else
+    dependencies = []
+#endif
+
 let package = Package(
     name: "secp256k1",
     products: [
@@ -13,12 +26,7 @@ let package = Package(
             ]
         )
     ],
-    dependencies: [
-        // Dependencies used for package development
-        .package(url: "https://github.com/csjones/lefthook.git", branch: "swift"),
-        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", .exactItem("0.49.5")),
-        .package(url: "https://github.com/realm/SwiftLint.git", .exactItem("0.46.5"))
-    ],
+    dependencies: dependencies,
     targets: [
         .target(
             name: "secp256k1",
