@@ -1,0 +1,43 @@
+# format options
+--allman false
+--binarygrouping none
+--closingparen balanced
+--commas inline
+--conflictmarkers reject
+--decimalgrouping none
+--elseposition same-line
+--empty void
+--exponentcase lowercase
+--exponentgrouping disabled
+--fractiongrouping disabled
+--fragment false
+--header ignore
+--hexgrouping 4,8
+--hexliteralcase uppercase
+--ifdef indent
+--importgrouping alphabetized
+--indent 4
+--indentcase false
+--linebreaks lf
+--octalgrouping none
+--operatorfunc spaced
+--patternlet hoist
+--ranges no-space
+--self init-only
+--selfrequired 
+--semicolons never
+--stripunusedargs closure-only
+--trailingclosures
+--trimwhitespace always
+--wraparguments before-first
+--wrapcollections before-first
+--xcodeindentation disabled
+
+# file options
+--swiftversion 5
+--exclude .build
+
+# rules
+# --disable elseOnSameLine,semicolons
+--disable strongOutlets
+--disable wrapMultilineStatementBraces

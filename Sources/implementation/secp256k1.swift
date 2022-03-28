@@ -15,17 +15,17 @@ import secp256k1_bindings
 public enum secp256k1 {}
 
 /// Flags passed to secp256k1_context_create, secp256k1_context_preallocated_size, and secp256k1_context_preallocated_create.
-extension secp256k1 {
-    public enum Context: UInt32 {
+public extension secp256k1 {
+    enum Context: UInt32 {
         case none, sign, verify
 
         public var rawValue: UInt32 {
             let value: Int32
 
             switch self {
-                case .none: value = SECP256K1_CONTEXT_NONE
-                case .sign: value = SECP256K1_CONTEXT_SIGN
-                case .verify: value = SECP256K1_CONTEXT_VERIFY
+            case .none: value = SECP256K1_CONTEXT_NONE
+            case .sign: value = SECP256K1_CONTEXT_SIGN
+            case .verify: value = SECP256K1_CONTEXT_VERIFY
             }
 
             return UInt32(value)
@@ -35,7 +35,7 @@ extension secp256k1 {
             var randomBytes = SecureBytes(count: 32).bytes
             guard let context = secp256k1_context_create(context.rawValue),
                   secp256k1_context_randomize(context, &randomBytes) == 1 else {
-                      throw secp256k1Error.underlyingCryptoError
+                throw secp256k1Error.underlyingCryptoError
             }
 
             return context
@@ -44,14 +44,14 @@ extension secp256k1 {
 }
 
 /// Flag to pass to secp256k1_ec_pubkey_serialize.
-extension secp256k1 {
-    public enum Format: UInt32 {
+public extension secp256k1 {
+    enum Format: UInt32 {
         case compressed, uncompressed
 
         public var length: Int {
             switch self {
-                case .compressed: return 33
-                case .uncompressed: return 65
+            case .compressed: return 33
+            case .uncompressed: return 65
             }
         }
 
@@ -59,8 +59,8 @@ extension secp256k1 {
             let value: Int32
 
             switch self {
-                case .compressed: value = SECP256K1_EC_COMPRESSED
-                case .uncompressed: value = SECP256K1_EC_UNCOMPRESSED
+            case .compressed: value = SECP256K1_EC_COMPRESSED
+            case .uncompressed: value = SECP256K1_EC_UNCOMPRESSED
             }
 
             return UInt32(value)
@@ -70,7 +70,7 @@ extension secp256k1 {
 
 extension secp256k1 {
     @usableFromInline
-    struct CurveDetails {
+    enum CurveDetails {
         @inlinable
         static var coordinateByteCount: Int {
             16
@@ -79,9 +79,9 @@ extension secp256k1 {
 }
 
 /// The secp256k1 Elliptic Curve.
-extension secp256k1 {
+public extension secp256k1 {
     /// Signing operations on secp256k1
-    public enum Signing {
+    enum Signing {
         /// A Private Key for signing.
         public struct PrivateKey: ECPrivateKey, Equatable {
             /// Generated secp256k1 Signing Key.
@@ -112,18 +112,18 @@ extension secp256k1 {
 
             /// Creates a random secp256k1 private key for signing
             public init(format: secp256k1.Format = .compressed) throws {
-                baseKey = try secp256k1.Signing.PrivateKeyImplementation(format: format)
-                ecdsa = secp256k1.Signing.ECDSASigner(signingKey: baseKey)
-                schnorr = secp256k1.Signing.SchnorrSigner(signingKey: baseKey)
+                self.baseKey = try secp256k1.Signing.PrivateKeyImplementation(format: format)
+                self.ecdsa = secp256k1.Signing.ECDSASigner(signingKey: baseKey)
+                self.schnorr = secp256k1.Signing.SchnorrSigner(signingKey: baseKey)
             }
 
             /// Creates a secp256k1 private key for signing from a data representation.
             /// - Parameter data: A raw representation of the key.
             /// - Throws: An error is thrown when the raw representation does not create a private key for signing.
             public init<D: ContiguousBytes>(rawRepresentation data: D, format: secp256k1.Format = .compressed) throws {
-                baseKey = try secp256k1.Signing.PrivateKeyImplementation(rawRepresentation: data, format: format)
-                ecdsa = secp256k1.Signing.ECDSASigner(signingKey: baseKey)
-                schnorr = secp256k1.Signing.SchnorrSigner(signingKey: baseKey)
+                self.baseKey = try secp256k1.Signing.PrivateKeyImplementation(rawRepresentation: data, format: format)
+                self.ecdsa = secp256k1.Signing.ECDSASigner(signingKey: baseKey)
+                self.schnorr = secp256k1.Signing.SchnorrSigner(signingKey: baseKey)
             }
 
             public static func == (lhs: secp256k1.Signing.PrivateKey, rhs: secp256k1.Signing.PrivateKey) -> Bool {
@@ -165,17 +165,17 @@ extension secp256k1 {
             /// - Parameter baseKey: generated secp256k1 public key.
             fileprivate init(baseKey: secp256k1.Signing.PublicKeyImplementation) {
                 self.baseKey = baseKey
-                ecdsa = secp256k1.Signing.ECDSAValidator(validatingKey: baseKey)
-                schnorr = secp256k1.Signing.SchnorrValidator(validatingKey: baseKey)
+                self.ecdsa = secp256k1.Signing.ECDSAValidator(validatingKey: baseKey)
+                self.schnorr = secp256k1.Signing.SchnorrValidator(validatingKey: baseKey)
             }
 
             /// Generates a secp256k1 public key from a raw representation.
             /// - Parameter data: A raw representation of the key.
             /// - Throws: An error is thrown when the raw representation does not create a public key.
             public init<D: ContiguousBytes>(rawRepresentation data: D, xonlyRawRepresentation xonly: D, format: secp256k1.Format) {
-                baseKey = secp256k1.Signing.PublicKeyImplementation(rawRepresentation: data, xonlyRawRepresentation: xonly, format: format)
-                ecdsa = secp256k1.Signing.ECDSAValidator(validatingKey: baseKey)
-                schnorr = secp256k1.Signing.SchnorrValidator(validatingKey: baseKey)
+                self.baseKey = secp256k1.Signing.PublicKeyImplementation(rawRepresentation: data, xonlyRawRepresentation: xonly, format: format)
+                self.ecdsa = secp256k1.Signing.ECDSAValidator(validatingKey: baseKey)
+                self.schnorr = secp256k1.Signing.SchnorrValidator(validatingKey: baseKey)
             }
         }
     }
@@ -218,9 +218,9 @@ extension secp256k1.Signing {
             let pubKeys = try secp256k1.Signing.PublicKeyImplementation.generatePublicKey(bytes: privateKey.backing.bytes, format: format)
 
             // Save
-            _privateKey = privateKey
-            _publicKeys = pubKeys
-            _format = format
+            self._privateKey = privateKey
+            self._publicKeys = pubKeys
+            self._format = format
         }
 
         /// Backing initialization that creates a secp256k1 private key for signing from a data representation.
@@ -231,9 +231,9 @@ extension secp256k1.Signing {
             let pubKeys = try secp256k1.Signing.PublicKeyImplementation.generatePublicKey(bytes: privateKey.backing.bytes, format: format)
 
             // Save
-            _privateKey = privateKey
-            _publicKeys = pubKeys
-            _format = format
+            self._privateKey = privateKey
+            self._publicKeys = pubKeys
+            self._format = format
         }
     }
 
@@ -271,7 +271,7 @@ extension secp256k1.Signing {
         /// Backing initialization that generates a secp256k1 public key from a raw representation.
         /// - Parameter data: A raw representation of the key.
         @usableFromInline init<D: ContiguousBytes>(rawRepresentation data: D, xonlyRawRepresentation xonly: D, format: secp256k1.Format) {
-            publicKeys = secp256k1.Signing.PubKeyBytes(keyBytes: data.bytes, xonlyKeyBytes: xonly.bytes)
+            self.publicKeys = secp256k1.Signing.PubKeyBytes(keyBytes: data.bytes, xonlyKeyBytes: xonly.bytes)
             self.format = format
         }
 
@@ -285,7 +285,7 @@ extension secp256k1.Signing {
         /// Generates a secp256k1 public key from bytes representation.
         /// - Parameter privKey: a private key object
         /// - Returns: a public key object
-        /// - Throws: An error is thrown when the bytes does not create a public key. 
+        /// - Throws: An error is thrown when the bytes does not create a public key.
         static func generatePublicKey(bytes privKey: [UInt8], format: secp256k1.Format) throws -> PubKeyBytes {
             guard privKey.count == secp256k1.Signing.PrivateKeyImplementation.byteCount else {
                 throw secp256k1Error.incorrectKeySize
@@ -302,7 +302,7 @@ extension secp256k1.Signing {
 
             guard secp256k1_ec_pubkey_create(context, &pubKey, privKey) == 1,
                   secp256k1_ec_pubkey_serialize(context, &keyBytes, &pubKeyLen, &pubKey, format.rawValue) == 1 else {
-                      throw secp256k1Error.underlyingCryptoError
+                throw secp256k1Error.underlyingCryptoError
             }
 
             // Schnorr
@@ -313,7 +313,7 @@ extension secp256k1.Signing {
             guard secp256k1_keypair_create(context, &keypair, privKey) == 1,
                   secp256k1_keypair_xonly_pub(context, &xonlyPubKey, nil, &keypair) == 1,
                   secp256k1_xonly_pubkey_serialize(context, &xonlyKeyBytes, &xonlyPubKey) == 1 else {
-                      throw secp256k1Error.underlyingCryptoError
+                throw secp256k1Error.underlyingCryptoError
             }
 
             return PubKeyBytes(keyBytes: keyBytes, xonlyKeyBytes: xonlyKeyBytes)

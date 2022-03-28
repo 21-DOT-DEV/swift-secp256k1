@@ -37,15 +37,17 @@ public struct SHA256Digest: Digest {
     let bytes: (UInt64, UInt64, UInt64, UInt64)
 
     public static var byteCount: Int {
-        get { return 32 }
+        get { 32 }
 
         set { fatalError("Cannot set SHA256.byteCount") }
     }
 
     public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-        return try Swift.withUnsafeBytes(of: bytes) {
-            let boundsCheckedPtr = UnsafeRawBufferPointer(start: $0.baseAddress,
-                                                          count: Self.byteCount)
+        try Swift.withUnsafeBytes(of: bytes) {
+            let boundsCheckedPtr = UnsafeRawBufferPointer(
+                start: $0.baseAddress,
+                count: Self.byteCount
+            )
             return try body(boundsCheckedPtr)
         }
     }
@@ -56,14 +58,14 @@ public struct SHA256Digest: Digest {
         array.appendByte(bytes.1)
         array.appendByte(bytes.2)
         array.appendByte(bytes.3)
-        return array.prefix(upTo: SHA256Digest.byteCount)
+        return array.prefix(upTo: Self.byteCount)
     }
 
     public var description: String {
-        return "\("SHA256") digest: \(toArray().hexString)"
+        "\("SHA256") digest: \(toArray().hexString)"
     }
 
     public func hash(into hasher: inout Hasher) {
-        self.withUnsafeBytes { hasher.combine(bytes: $0) }
+        withUnsafeBytes { hasher.combine(bytes: $0) }
     }
 }

@@ -1,0 +1,15 @@
+pre-push:
+  commands:
+    lefthook:
+      run: swift test
+
+pre-commit:
+  commands:
+    1_swiftformat:
+      glob: "*.{swift}"
+      run: swift run swiftformat --config .swiftformat {all_files}
+    2_swiftlint:
+      glob: "*.{swift}"
+      run: swift run swiftlint --autocorrect --strict --no-cache
+    3_git:
+      run: git add .

@@ -12,7 +12,7 @@ import Foundation
 import secp256k1_bindings
 
 extension secp256k1 {
-    @usableFromInline struct Schnorr {
+    @usableFromInline enum Schnorr {
         /// Fixed number of bytes for Schnorr signature
         ///
         /// [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#abstract)
@@ -33,9 +33,9 @@ extension secp256k1 {
 
 // MARK: - Schnorr Signatures
 
-/// A Schnorr (Schnorr Digital Signature Scheme) Signature 
-extension secp256k1.Signing {
-    public struct SchnorrSignature: ContiguousBytes, RawSignature {
+/// A Schnorr (Schnorr Digital Signature Scheme) Signature
+public extension secp256k1.Signing {
+    struct SchnorrSignature: ContiguousBytes, RawSignature {
         /// Returns the raw signature in a fixed 64-byte format.
         public var rawRepresentation: Data
 
@@ -69,15 +69,15 @@ extension secp256k1.Signing {
         /// - Throws: If there is a failure with underlying `withUnsafeBytes`
         /// - Returns: The signature as returned from the body closure.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-            try self.rawRepresentation.withUnsafeBytes(body)
+            try rawRepresentation.withUnsafeBytes(body)
         }
     }
 }
 
 // MARK: - secp256k1 + Signing Key
 
-extension secp256k1.Signing {
-    public struct SchnorrSigner {
+public extension secp256k1.Signing {
+    struct SchnorrSigner {
         /// Generated secp256k1 Signing Key.
         var signingKey: secp256k1.Signing.PrivateKeyImplementation
     }
@@ -182,8 +182,8 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
 
 // MARK: - Schnorr + Validating Key
 
-extension secp256k1.Signing {
-    public struct SchnorrValidator {
+public extension secp256k1.Signing {
+    struct SchnorrValidator {
         /// Generated Schnorr Validating Key.
         var validatingKey: secp256k1.Signing.PublicKeyImplementation
     }

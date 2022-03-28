@@ -1,7 +1,19 @@
 // swift-tools-version:5.5
 
-
 import PackageDescription
+
+let dependencies: [Package.Dependency]
+
+#if os(macOS)
+    dependencies = [
+        // Dependencies used for package development
+        .package(url: "https://github.com/csjones/lefthook.git", branch: "swift"),
+        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", .exactItem("0.49.5")),
+        .package(url: "https://github.com/realm/SwiftLint.git", .exactItem("0.46.5"))
+    ]
+#else
+    dependencies = []
+#endif
 
 let package = Package(
     name: "secp256k1",
@@ -14,6 +26,7 @@ let package = Package(
             ]
         )
     ],
+    dependencies: dependencies,
     targets: [
         .target(
             name: "secp256k1",
@@ -50,13 +63,13 @@ let package = Package(
                 "secp256k1/src/precompute_ecmult.c",
                 "secp256k1/src/tests_exhaustive.c",
                 "secp256k1/src/tests.c",
-                "secp256k1/src/valgrind_ctime_test.c",
+                "secp256k1/src/valgrind_ctime_test.c"
             ],
             sources: [
                 "secp256k1/src/precomputed_ecmult_gen.c",
                 "secp256k1/src/precomputed_ecmult.c",
                 "secp256k1/src/secp256k1.c",
-                "src/Utility.c",
+                "src/Utility.c"
             ],
             cSettings: [
                 // Basic config values that are universal and require no dependencies.
@@ -67,7 +80,7 @@ let package = Package(
                 .define("ENABLE_MODULE_ECDH"),
                 .define("ENABLE_MODULE_EXTRAKEYS"),
                 .define("ENABLE_MODULE_RECOVERY"),
-                .define("ENABLE_MODULE_SCHNORRSIG"),
+                .define("ENABLE_MODULE_SCHNORRSIG")
             ]
         ),
         // Only include select utility extensions because most of Swift Crypto is not required
@@ -129,7 +142,7 @@ let package = Package(
                 "swift-crypto/Tests/_CryptoExtrasVectors",
                 "swift-crypto/Tests/CryptoTests",
                 "swift-crypto/Tests/LinuxMain.swift",
-                "swift-crypto/Tests/Test Vectors",
+                "swift-crypto/Tests/Test Vectors"
             ],
             sources: [
                 "Data.swift",
@@ -149,7 +162,7 @@ let package = Package(
                 "swift-crypto/Sources/Crypto/Util/BoringSSL/RNG_boring.swift",
                 "swift-crypto/Sources/Crypto/Util/SecureBytes.swift",
                 "swift-crypto/Tests/_CryptoExtrasTests/Utils/BytesUtil.swift",
-                "Zeroization.swift",
+                "Zeroization.swift"
             ]
         ),
         .testTarget(

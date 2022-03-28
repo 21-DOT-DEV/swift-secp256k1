@@ -33,6 +33,6 @@ import Foundation
 
 extension MutableDataProtocol {
     mutating func appendByte(_ byte: UInt64) {
-        withUnsafePointer(to: byte.littleEndian, { self.append(contentsOf: UnsafeRawBufferPointer(start: $0, count: 8)) })
+        withUnsafePointer(to: byte.littleEndian) { self.append(contentsOf: UnsafeRawBufferPointer(start: $0, count: 8)) }
     }
 }
