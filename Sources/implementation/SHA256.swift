@@ -11,7 +11,7 @@
 import Foundation
 import secp256k1_bindings
 
-public struct SHA256 {
+public enum SHA256 {
     /// Computes a digest of the data.
     /// - Parameter data: The data to be hashed
     /// - Returns: The computed digest

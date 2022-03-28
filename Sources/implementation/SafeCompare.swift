@@ -29,20 +29,20 @@
 //
 //===----------------------------------------------------------------------===//
 #if (os(macOS) || os(iOS) || os(watchOS) || os(tvOS)) && CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
-@_exported import CryptoKit
+    @_exported import CryptoKit
 #else
-import Foundation
+    import Foundation
 
-/// A constant-time comparison function for any two collections of bytes.
-internal func safeCompare<LHS: ContiguousBytes, RHS: ContiguousBytes>(_ lhs: LHS, _ rhs: RHS) -> Bool {
-    let lBytes = lhs.bytes
-    let rBytes = rhs.bytes
+    /// A constant-time comparison function for any two collections of bytes.
+    internal func safeCompare<LHS: ContiguousBytes, RHS: ContiguousBytes>(_ lhs: LHS, _ rhs: RHS) -> Bool {
+        let lBytes = lhs.bytes
+        let rBytes = rhs.bytes
 
-    guard lBytes.count == rBytes.count else {
-        return false
+        guard lBytes.count == rBytes.count else {
+            return false
+        }
+
+        return zip(lBytes, rBytes).reduce(into: 0) { $0 |= $1.0 ^ $1.1 } == 0
     }
-
-    return zip(lBytes, rBytes).reduce(into: 0) { $0 |= $1.0 ^ $1.1 } == 0
-}
 
 #endif // Linux or !SwiftPM

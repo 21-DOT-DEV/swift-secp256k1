@@ -12,7 +12,7 @@ import Foundation
 
 public extension Data {
     @inlinable var bytes: [UInt8] {
-        self.withUnsafeBytes({ keyBytesPtr in Array(keyBytesPtr) })
+        withUnsafeBytes { keyBytesPtr in Array(keyBytesPtr) }
     }
 
     func copyToUnsafeMutableBytes<T>(of value: inout T) {
@@ -24,6 +24,6 @@ public extension Data {
 
 extension ContiguousBytes {
     @inlinable var bytes: [UInt8] {
-        self.withUnsafeBytes({ keyBytesPtr in Array(keyBytesPtr) })
+        withUnsafeBytes { keyBytesPtr in Array(keyBytesPtr) }
     }
 }

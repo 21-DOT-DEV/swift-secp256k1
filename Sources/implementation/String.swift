@@ -12,17 +12,18 @@ import Foundation
 
 public extension String {
     /// Public initializer backed by the `BytesUtil.swift` DataProtocol extension property `hexString`
-    /// - Parameter byteArray: byte array to initialize
-    init<T: DataProtocol>(byteArray: T) {
+    /// - Parameter bytes: byte array to initialize
+    init<T: DataProtocol>(bytes: T) {
         self.init()
-        self = byteArray.hexString
+        self = bytes.hexString
     }
 
-    /// Public convenience function backed by the `BytesUtil.swift` Array extension initializer
+    /// Public convenience property backed by the `BytesUtil.swift` Array extension initializer
     /// - Throws: `ByteHexEncodingErrors` for invalid string or hex value
-    /// - Returns: initialized byte array
-    func byteArray() throws -> [UInt8] {
-        // The `BytesUtil.swift` Array extension expects lowercase strings
-        return try Array(hexString: self.lowercased())
+    var bytes: [UInt8] {
+        get throws {
+            // The `BytesUtil.swift` Array extension expects lowercase strings
+            try Array(hexString: lowercased())
+        }
     }
 }

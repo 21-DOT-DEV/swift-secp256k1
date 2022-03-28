@@ -23,18 +23,18 @@ Long-term goals are:
 import secp256k1
 
 //  Private key
-let privateKeyBytes = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".byteArray()
-let privatekey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+let privateBytes = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
+let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateBytes)
 
 //  Public key
-print(String(byteArray: privatekey.publicKey.rawRepresentation))
+print(String(byteArray: privateKey.publicKey.rawRepresentation))
 
 // ECDSA
 let messageData = "We're all Satoshi.".data(using: .utf8)!
-let signature = try! privatekey.ecdsa.signature(for: messageData)
+let signature = try! privateKey.ecdsa.signature(for: messageData)
 
 //  DER signature
-print(try! signature.derRepresentation().base64EncodedString())
+print(try! signature.derRepresentation.base64EncodedString())
 ```
 
 ## Schnorr
@@ -68,5 +68,5 @@ arena GigaBitcoin/secp256k1.swift
 
 
 # Danger
-These APIs should not be considered stable and may change at any time. libsecp256k1 is still experimental and has not been formally released.
+These APIs should not be considered stable and may change at any time, libsecp256k1 is still experimental and has not been formally released.
 

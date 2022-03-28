@@ -31,7 +31,7 @@
 import Foundation
 
 protocol ECPublicKey {
-    init <Bytes: ContiguousBytes>(rawRepresentation: Bytes) throws
+    init<Bytes: ContiguousBytes>(rawRepresentation: Bytes) throws
     var rawRepresentation: Data { get }
 }
 
@@ -49,6 +49,6 @@ protocol NISTECPublicKey: ECPublicKey {
 }
 
 protocol NISTECPrivateKey: ECPrivateKey where PublicKey: NISTECPublicKey {
-    init <Bytes: ContiguousBytes>(rawRepresentation: Bytes) throws
+    init<Bytes: ContiguousBytes>(rawRepresentation: Bytes) throws
     var rawRepresentation: Data { get }
 }

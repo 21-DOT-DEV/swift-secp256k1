@@ -31,8 +31,8 @@ protocol CompactSignature {
 // MARK: - secp256k1 + ECDSA Signature
 
 /// An ECDSA (Elliptic Curve Digital Signature Algorithm) Signature
-extension secp256k1.Signing {
-    public struct ECDSASignature: ContiguousBytes, NISTECDSASignature, CompactSignature {
+public extension secp256k1.Signing {
+    struct ECDSASignature: ContiguousBytes, NISTECDSASignature, CompactSignature {
         /// Returns the raw signature.
         /// The raw signature format for ECDSA is r || s
         public var rawRepresentation: Data
@@ -102,7 +102,7 @@ extension secp256k1.Signing {
         /// - Throws: If there is a failure with underlying `withUnsafeBytes`
         /// - Returns: The signature as returned from the body closure.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-            try self.rawRepresentation.withUnsafeBytes(body)
+            try rawRepresentation.withUnsafeBytes(body)
         }
 
         /// Serialize an ECDSA signature in compact (64 byte) format.
@@ -155,48 +155,48 @@ extension secp256k1.Signing {
 
 // MARK: - secp256k1 + Signing Key
 
-extension secp256k1.Signing {
-    public struct ECDSASigner {
+public extension secp256k1.Signing {
+    struct ECDSASigner {
         /// Generated secp256k1 Signing Key.
         var signingKey: secp256k1.Signing.PrivateKeyImplementation
     }
 }
 
 extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
-        ///  Generates an ECDSA signature over the secp256k1 elliptic curve.
-        ///
-        /// - Parameter digest: The digest to sign.
-        /// - Returns: The ECDSA Signature.
-        /// - Throws: If there is a failure producing the signature
-        public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.ECDSASignature {
-            let context = try secp256k1.Context.create()
+    ///  Generates an ECDSA signature over the secp256k1 elliptic curve.
+    ///
+    /// - Parameter digest: The digest to sign.
+    /// - Returns: The ECDSA Signature.
+    /// - Throws: If there is a failure producing the signature
+    public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.ECDSASignature {
+        let context = try secp256k1.Context.create()
 
-            defer { secp256k1_context_destroy(context) }
+        defer { secp256k1_context_destroy(context) }
 
-            var signature = secp256k1_ecdsa_signature()
+        var signature = secp256k1_ecdsa_signature()
 
-            guard secp256k1_ecdsa_sign(context, &signature, Array(digest), Array(signingKey.rawRepresentation), nil, nil) == 1 else {
-                throw secp256k1Error.underlyingCryptoError
-            }
-
-            return try secp256k1.Signing.ECDSASignature(Data(bytes: &signature.data, count: MemoryLayout.size(ofValue: signature.data)))
+        guard secp256k1_ecdsa_sign(context, &signature, Array(digest), Array(signingKey.rawRepresentation), nil, nil) == 1 else {
+            throw secp256k1Error.underlyingCryptoError
         }
 
-        /// Generates an ECDSA signature over the secp256k1 elliptic curve.
-        /// SHA256 is used as the hash function.
-        ///
-        /// - Parameter data: The data to sign.
-        /// - Returns: The ECDSA Signature.
-        /// - Throws: If there is a failure producing the signature.
-        public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Signing.ECDSASignature {
-            try self.signature(for: SHA256.hash(data: data))
-        }
+        return try secp256k1.Signing.ECDSASignature(Data(bytes: &signature.data, count: MemoryLayout.size(ofValue: signature.data)))
+    }
+
+    /// Generates an ECDSA signature over the secp256k1 elliptic curve.
+    /// SHA256 is used as the hash function.
+    ///
+    /// - Parameter data: The data to sign.
+    /// - Returns: The ECDSA Signature.
+    /// - Throws: If there is a failure producing the signature.
+    public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Signing.ECDSASignature {
+        try signature(for: SHA256.hash(data: data))
+    }
 }
 
 // MARK: - secp256k1 + Validating Key
 
-extension secp256k1.Signing {
-    public struct ECDSAValidator {
+public extension secp256k1.Signing {
+    struct ECDSAValidator {
         /// Generated secp256k1 Validating Key.
         var validatingKey: secp256k1.Signing.PublicKeyImplementation
     }
@@ -236,4 +236,4 @@ extension secp256k1.Signing.ECDSAValidator: DigestValidator, DataValidator {
     public func isValidSignature<D: DataProtocol>(_ signature: secp256k1.Signing.ECDSASignature, for data: D) -> Bool {
         isValidSignature(signature, for: SHA256.hash(data: data))
     }
- }
+}
