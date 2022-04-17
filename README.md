@@ -1,7 +1,8 @@
 [![Build Status](https://app.bitrise.io/app/18c18db60fc4fddf/status.svg?token=nczB4mTPCrlTfDQnXH_8Pw&branch=main)](https://app.bitrise.io/app/18c18db60fc4fddf) [![Build Status](https://app.bitrise.io/app/f1bbbdfeff08cd5c/status.svg?token=ONB3exCALsB-_ayi6KsXFQ&branch=main)](https://app.bitrise.io/app/f1bbbdfeff08cd5c) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift)
 
 # 🔐 secp256k1.swift
-Swift package with elliptic curve public key, ECDSA, Schnorr Signatures for Bitcoin and bindings from [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
+Swift package with elliptic curve public key cryptography, ECDSA, Schnorr Signatures for Bitcoin and C bindings from [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
+
 
 
 # Objectives
@@ -27,7 +28,7 @@ let privateBytes = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B
 let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateBytes)
 
 //  Public key
-print(String(byteArray: privateKey.publicKey.rawRepresentation))
+print(String(bytes: privateKey.publicKey.rawRepresentation))
 
 // ECDSA
 let messageData = "We're all Satoshi.".data(using: .utf8)!
@@ -40,12 +41,12 @@ print(try! signature.derRepresentation.base64EncodedString())
 ## Schnorr
 
 ```swift
-let privateKeyBytes = try! "C90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9".byteArray()
-let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+let privateBytes = try! "C90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9".bytes
+let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateBytes)
 
 // Extra params for custom signing
-var auxRand = try! "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906".byteArray()
-var messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9D0A508B75C".byteArray()
+var auxRand = try! "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906".bytes
+var messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9D0A508B75C".bytes
 
 // API allows for signing variable length messages
 let signature = try! privateKey.schnorr.signature(message: &messageDigest, auxiliaryRand: &auxRand)
