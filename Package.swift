@@ -145,7 +145,6 @@ let package = Package(
                 "swift-crypto/Tests/Test Vectors"
             ],
             sources: [
-                "Data.swift",
                 "Digests.swift",
                 "ECDSA.swift",
                 "EdDSA.swift",
@@ -156,12 +155,13 @@ let package = Package(
                 "Schnorr.swift",
                 "secp256k1.swift",
                 "SHA256.swift",
-                "String.swift",
                 "swift-crypto/Sources/Crypto/Digests/Digest.swift",
                 "swift-crypto/Sources/Crypto/Signatures/Signature.swift",
                 "swift-crypto/Sources/Crypto/Util/BoringSSL/RNG_boring.swift",
                 "swift-crypto/Sources/Crypto/Util/SecureBytes.swift",
                 "swift-crypto/Tests/_CryptoExtrasTests/Utils/BytesUtil.swift",
+                "Tweak.swift",
+                "Utility.swift",
                 "Zeroization.swift"
             ]
         ),
