@@ -20,6 +20,10 @@ extension secp256k1 {
             64
         }
 
+        @inlinable static var xonlyByteCount: Int {
+            32
+        }
+
         /// Tuple representation of ``SECP256K1_SCHNORRSIG_EXTRAPARAMS_MAGIC``
         ///
         /// Only used at initialization and has no other function than making sure the object is initialized.
@@ -96,7 +100,7 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
     public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Signing.SchnorrSignature {
-        try signature(for: data, auxiliaryRand: SecureBytes(count: 32).bytes)
+        try signature(for: data, auxiliaryRand: SecureBytes(count: secp256k1.Schnorr.xonlyByteCount).bytes)
     }
 
     /// Generates an Schnorr signature from the hash digest object
@@ -111,7 +115,7 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
     public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.SchnorrSignature {
-        try signature(for: digest, auxiliaryRand: SecureBytes(count: 32).bytes)
+        try signature(for: digest, auxiliaryRand: SecureBytes(count: secp256k1.Schnorr.xonlyByteCount).bytes)
     }
 
     /// Generates an Schnorr signature from a hash of a variable length data object
@@ -239,7 +243,7 @@ extension secp256k1.Signing.SchnorrValidator: DigestValidator, DataValidator {
 
         var pubKey = secp256k1_xonly_pubkey()
 
-        return secp256k1_xonly_pubkey_parse(context, &pubKey, validatingKey.xonlyKeyBytes) == 1 &&
+        return secp256k1_xonly_pubkey_parse(context, &pubKey, validatingKey.xonly.bytes) == 1 &&
             secp256k1_schnorrsig_verify(context, signature.rawRepresentation.bytes, message, message.count, &pubKey) == 1
     }
 }

@@ -4,7 +4,6 @@
 Swift package with elliptic curve public key cryptography, ECDSA, Schnorr Signatures for Bitcoin and C bindings from [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
 
 
-
 # Objectives
 
 Long-term goals are:

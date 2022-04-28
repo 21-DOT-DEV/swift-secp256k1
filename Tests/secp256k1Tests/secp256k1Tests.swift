@@ -332,6 +332,22 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(set0, set1)
     }
 
+    func testPrivateKeyTweakAdd() {
+        let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
+        let expectedPublicKey = "023521df7b94248ffdf0d37f738a4792cc3932b6b1b89ef71cddde8251383b26e7"
+        let expectedTweakedPrivateKey = "5f0da318c6e02f653a789950e55756ade9f194e1ec228d7f368de1bd821322b6"
+        let privateKeyBytes = try! expectedPrivateKey.bytes
+        let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+        let tweak = SHA256.hash(data: expectedPrivateKey.data(using: .utf8)!)
+
+        // tweak the private key
+        let tweakedPrivateKey = try! privateKey.tweak(Array(tweak))
+
+        // Verify the keys matches the expected keys output
+        XCTAssertEqual(String(bytes: tweakedPrivateKey.rawRepresentation), expectedTweakedPrivateKey)
+        XCTAssertEqual(expectedPublicKey, String(bytes: privateKey.publicKey.rawRepresentation))
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
@@ -355,6 +371,7 @@ final class secp256k1Tests: XCTestCase {
         ("testInvalidPrivateKeyBytes", testInvalidPrivateKeyBytes),
         ("testInvalidPrivateKeyLength", testInvalidPrivateKeyLength),
         ("testKeypairSafeCompare", testKeypairSafeCompare),
-        ("testZeroization", testZeroization)
+        ("testZeroization", testZeroization),
+        ("testPrivateKeyTweakAdd", testPrivateKeyTweakAdd)
     ]
 }

@@ -76,7 +76,7 @@ public extension secp256k1.Signing {
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            self.rawRepresentation = Data(bytes: &signature.data, count: MemoryLayout.size(ofValue: signature.data))
+            self.rawRepresentation = signature.dataValue
         }
 
         /// Initializes ECDSASignature from the Compact representation.
@@ -87,14 +87,13 @@ public extension secp256k1.Signing {
 
             defer { secp256k1_context_destroy(context) }
 
-            let compactSignatureBytes = Array(compactRepresentation)
             var signature = secp256k1_ecdsa_signature()
 
-            guard secp256k1_ecdsa_signature_parse_compact(context, &signature, compactSignatureBytes) == 1 else {
+            guard secp256k1_ecdsa_signature_parse_compact(context, &signature, Array(compactRepresentation)) == 1 else {
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            self.rawRepresentation = Data(bytes: &signature.data, count: MemoryLayout.size(ofValue: signature.data))
+            self.rawRepresentation = signature.dataValue
         }
 
         /// Invokes the given closure with a buffer pointer covering the raw bytes of the digest.
@@ -170,7 +169,6 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
     /// - Throws: If there is a failure producing the signature
     public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.ECDSASignature {
         let context = try secp256k1.Context.create()
-
         defer { secp256k1_context_destroy(context) }
 
         var signature = secp256k1_ecdsa_signature()
@@ -179,7 +177,7 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try secp256k1.Signing.ECDSASignature(Data(bytes: &signature.data, count: MemoryLayout.size(ofValue: signature.data)))
+        return try secp256k1.Signing.ECDSASignature(signature.dataValue)
     }
 
     /// Generates an ECDSA signature over the secp256k1 elliptic curve.
@@ -218,11 +216,10 @@ extension secp256k1.Signing.ECDSAValidator: DigestValidator, DataValidator {
 
         var secp256k1Signature = secp256k1_ecdsa_signature()
         var secp256k1PublicKey = secp256k1_pubkey()
-        let pubKey = validatingKey.keyBytes
 
         signature.rawRepresentation.copyToUnsafeMutableBytes(of: &secp256k1Signature.data)
 
-        return secp256k1_ec_pubkey_parse(context, &secp256k1PublicKey, pubKey, pubKey.count) == 1 &&
+        return secp256k1_ec_pubkey_parse(context, &secp256k1PublicKey, validatingKey.bytes, validatingKey.bytes.count) == 1 &&
             secp256k1_ecdsa_verify(context, &secp256k1Signature, Array(digest), &secp256k1PublicKey) == 1
     }
 
