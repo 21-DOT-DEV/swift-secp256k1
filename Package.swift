@@ -145,11 +145,13 @@ let package = Package(
                 "swift-crypto/Tests/Test Vectors"
             ],
             sources: [
+                "Asymmetric.swift",
+                "DH.swift",
                 "Digests.swift",
+                "ECDH.swift",
                 "ECDSA.swift",
                 "EdDSA.swift",
                 "Errors.swift",
-                "NISTCurvesKeys.swift",
                 "PrettyBytes.swift",
                 "SafeCompare.swift",
                 "Schnorr.swift",

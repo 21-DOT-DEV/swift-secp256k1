@@ -16,15 +16,12 @@ public extension secp256k1.Signing.PrivateKey {
     /// - Parameter tweak: the 32-byte tweak object
     /// - Returns: tweaked `PrivateKey` object
     func tweak(_ tweak: [UInt8]) throws -> Self {
-        let context = try secp256k1.Context.create()
-        defer { secp256k1_context_destroy(context) }
-
         var keypair = secp256k1_keypair()
         var privateBytes = [UInt8](repeating: 0, count: secp256k1.ByteDetails.count)
 
-        guard secp256k1_keypair_create(context, &keypair, key.bytes).boolValue,
-              secp256k1_keypair_xonly_tweak_add(context, &keypair, tweak).boolValue,
-              secp256k1_keypair_sec(context, &privateBytes, &keypair).boolValue else {
+        guard secp256k1_keypair_create(secp256k1.Context.raw, &keypair, key.bytes).boolValue,
+              secp256k1_keypair_xonly_tweak_add(secp256k1.Context.raw, &keypair, tweak).boolValue,
+              secp256k1_keypair_sec(secp256k1.Context.raw, &privateBytes, &keypair).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
@@ -39,9 +36,6 @@ public extension secp256k1.Signing.PublicKey {
     ///   - format: the format of the tweaked `PublicKey` object
     /// - Returns: tweaked `PublicKey` object
     func tweak(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
-        let context = try secp256k1.Context.create()
-        defer { secp256k1_context_destroy(context) }
-
         var xonlyPubKey = secp256k1_xonly_pubkey()
         var pubKey = secp256k1_pubkey()
         var pubKeyLen = format.length
@@ -50,11 +44,11 @@ public extension secp256k1.Signing.PublicKey {
         var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.Schnorr.xonlyByteCount)
         var keyParity = Int32()
 
-        guard secp256k1_xonly_pubkey_parse(context, &xonlyPubKey, xonlyBytes).boolValue,
-              secp256k1_xonly_pubkey_tweak_add(context, &pubKey, &xonlyPubKey, tweak).boolValue,
-              secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue,
-              secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKeyOutput, &keyParity, &pubKey).boolValue,
-              secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &xonlyPubKeyOutput).boolValue else {
+        guard secp256k1_xonly_pubkey_parse(secp256k1.Context.raw, &xonlyPubKey, xonly.bytes).boolValue,
+              secp256k1_xonly_pubkey_tweak_add(secp256k1.Context.raw, &pubKey, &xonlyPubKey, tweak).boolValue,
+              secp256k1_ec_pubkey_serialize(secp256k1.Context.raw, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue,
+              secp256k1_xonly_pubkey_from_pubkey(secp256k1.Context.raw, &xonlyPubKeyOutput, &keyParity, &pubKey).boolValue,
+              secp256k1_xonly_pubkey_serialize(secp256k1.Context.raw, &xonlyBytes, &xonlyPubKeyOutput).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 

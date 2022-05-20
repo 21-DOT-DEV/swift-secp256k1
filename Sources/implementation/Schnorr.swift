@@ -16,22 +16,16 @@ extension secp256k1 {
         /// Fixed number of bytes for Schnorr signature
         ///
         /// [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#abstract)
-        @inlinable static var signatureByteCount: Int {
-            64
-        }
+        @inlinable static var signatureByteCount: Int { 64 }
 
-        @inlinable static var xonlyByteCount: Int {
-            32
-        }
+        @inlinable static var xonlyByteCount: Int { 32 }
 
         /// Tuple representation of ``SECP256K1_SCHNORRSIG_EXTRAPARAMS_MAGIC``
         ///
         /// Only used at initialization and has no other function than making sure the object is initialized.
         ///
         /// [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h#L88)
-        @inlinable static var magic: (UInt8, UInt8, UInt8, UInt8) {
-            (218, 111, 179, 140)
-        }
+        @inlinable static var magic: (UInt8, UInt8, UInt8, UInt8) { (218, 111, 179, 140) }
     }
 }
 
@@ -83,7 +77,7 @@ public extension secp256k1.Signing {
 public extension secp256k1.Signing {
     struct SchnorrSigner {
         /// Generated secp256k1 Signing Key.
-        var signingKey: secp256k1.Signing.PrivateKeyImplementation
+        var signingKey: PrivateKeyImplementation
     }
 }
 
@@ -166,16 +160,12 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure creating the context or signature.
     public func signature(message: inout [UInt8], auxiliaryRand: UnsafeMutableRawPointer?) throws -> secp256k1.Signing.SchnorrSignature {
-        let context = try secp256k1.Context.create()
-
-        defer { secp256k1_context_destroy(context) }
-
         var keypair = secp256k1_keypair()
         var signature = [UInt8](repeating: 0, count: secp256k1.Schnorr.signatureByteCount)
         var extraParams = secp256k1_schnorrsig_extraparams(magic: secp256k1.Schnorr.magic, noncefp: nil, ndata: auxiliaryRand)
 
-        guard secp256k1_keypair_create(context, &keypair, signingKey.key.bytes) == 1,
-              secp256k1_schnorrsig_sign_custom(context, &signature, &message, message.count, &keypair, &extraParams) == 1
+        guard secp256k1_keypair_create(secp256k1.Context.raw, &keypair, signingKey.key.bytes).boolValue,
+              secp256k1_schnorrsig_sign_custom(secp256k1.Context.raw, &signature, &message, message.count, &keypair, &extraParams).boolValue
         else {
             throw secp256k1Error.underlyingCryptoError
         }
@@ -189,7 +179,7 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
 public extension secp256k1.Signing {
     struct SchnorrValidator {
         /// Generated Schnorr Validating Key.
-        var validatingKey: secp256k1.Signing.PublicKeyImplementation
+        var validatingKey: PublicKeyImplementation
     }
 }
 
@@ -237,13 +227,9 @@ extension secp256k1.Signing.SchnorrValidator: DigestValidator, DataValidator {
     ///   - message:  The message that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
     public func isValid(_ signature: secp256k1.Signing.SchnorrSignature, for message: inout [UInt8]) -> Bool {
-        guard let context = try? secp256k1.Context.create() else { return false }
-
-        defer { secp256k1_context_destroy(context) }
-
         var pubKey = secp256k1_xonly_pubkey()
 
-        return secp256k1_xonly_pubkey_parse(context, &pubKey, validatingKey.xonly.bytes) == 1 &&
-            secp256k1_schnorrsig_verify(context, signature.rawRepresentation.bytes, message, message.count, &pubKey) == 1
+        return secp256k1_xonly_pubkey_parse(secp256k1.Context.raw, &pubKey, validatingKey.xonly.bytes).boolValue &&
+            secp256k1_schnorrsig_verify(secp256k1.Context.raw, signature.rawRepresentation.bytes, message, message.count, &pubKey).boolValue
     }
 }
