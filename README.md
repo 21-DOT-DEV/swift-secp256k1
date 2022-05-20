@@ -51,13 +51,35 @@ var messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9
 let signature = try! privateKey.schnorr.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 ```
 
+## Tweak
+
+```swift
+let privateBytes = try! "C90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9".bytes
+let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateBytes)
+
+// Adding a tweak to the private key and public key
+let tweak = try! "5f0da318c6e02f653a789950e55756ade9f194e1ec228d7f368de1bd821322b6".bytes
+let tweakedPrivateKey = try! privateKey.tweak(tweak)
+let tweakedPublicKeyKey = try! privateKey.publicKey.tweak(tweak)
+```
+
+## Elliptic Curve Diffie Hellman
+
+```swift
+let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey()
+let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey()
+
+let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
+let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey)
+```
+
 
 # Getting Started
 
-In your `Package.swift`:
+This repository primarily uses Swift package manager as its build tool, so we recommend using that as well. If you want to depend on `secp256k1.swift` in your own project, simply add it as a dependencies' clause in your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", .upToNextMajor(from: "0.5.0"))
+.package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", .upToNextMajor(from: "0.6.0"))
 ```
 
 Try in a [playground](spi-playgrounds://open?dependencies=GigaBitcoin/secp256k1.swift) using the [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground) or 🏟 [Arena](https://github.com/finestructure/arena)

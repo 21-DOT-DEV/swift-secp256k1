@@ -28,11 +28,10 @@ public enum SHA256 {
     /// - Parameter data: The data to be hashed
     /// - Returns: The computed digest
     public static func taggedHash<D: DataProtocol>(tag: [UInt8], data: D) throws -> SHA256Digest {
-        let context = try secp256k1.Context.create()
         let messageBytes = Array(data)
         var output = [UInt8](repeating: 0, count: 32)
 
-        guard secp256k1_tagged_sha256(context, &output, tag, tag.count, messageBytes, messageBytes.count) == 1 else {
+        guard secp256k1_tagged_sha256(secp256k1.Context.raw, &output, tag, tag.count, messageBytes, messageBytes.count).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 

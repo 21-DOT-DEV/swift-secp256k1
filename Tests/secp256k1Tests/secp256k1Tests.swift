@@ -348,6 +348,43 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(expectedPublicKey, String(bytes: privateKey.publicKey.rawRepresentation))
     }
 
+    func testKeyAgreement() {
+        let privateString1 = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
+        let privateString2 = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
+
+        let privateBytes1 = try! privateString1.bytes
+        let privateBytes2 = try! privateString2.bytes
+
+        let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateBytes1)
+        let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateBytes2)
+
+        let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
+        let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey)
+
+        XCTAssertEqual(sharedSecret1.bytes, sharedSecret2.bytes)
+    }
+
+    func testKeyAgreementPublicKeyTweakAdd() {
+        let privateSign1 = try! secp256k1.Signing.PrivateKey()
+        let privateSign2 = try! secp256k1.Signing.PrivateKey()
+
+        let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateSign1.rawRepresentation)
+        let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateSign2.rawRepresentation)
+
+        let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
+        let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey)
+
+        XCTAssertEqual(sharedSecret1.bytes, sharedSecret2.bytes)
+
+        let sharedSecretSign1 = try! secp256k1.Signing.PrivateKey(rawRepresentation: sharedSecret1.bytes)
+        let sharedSecretSign2 = try! secp256k1.Signing.PrivateKey(rawRepresentation: sharedSecret2.bytes)
+
+        let privateTweak1 = try! sharedSecretSign1.tweak(privateSign1.publicKey.xonly.bytes)
+        let publicTweak2 = try! sharedSecretSign2.publicKey.tweak(privateSign1.publicKey.xonly.bytes)
+
+        XCTAssertEqual(privateTweak1.publicKey.rawRepresentation, publicTweak2.rawRepresentation)
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
@@ -372,6 +409,8 @@ final class secp256k1Tests: XCTestCase {
         ("testInvalidPrivateKeyLength", testInvalidPrivateKeyLength),
         ("testKeypairSafeCompare", testKeypairSafeCompare),
         ("testZeroization", testZeroization),
-        ("testPrivateKeyTweakAdd", testPrivateKeyTweakAdd)
+        ("testPrivateKeyTweakAdd", testPrivateKeyTweakAdd),
+        ("testPrivateKeyTweakAdd", testKeyAgreement),
+        ("testPrivateKeyTweakAdd", testKeyAgreementPublicKeyTweakAdd)
     ]
 }

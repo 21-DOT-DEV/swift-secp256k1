@@ -65,14 +65,10 @@ public extension secp256k1.Signing {
         /// - Parameter derRepresentation: A DER representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with parsing the derRepresentation
         public init<D: DataProtocol>(derRepresentation: D) throws {
-            let context = try secp256k1.Context.create()
-
-            defer { secp256k1_context_destroy(context) }
-
             let derSignatureBytes = Array(derRepresentation)
             var signature = secp256k1_ecdsa_signature()
 
-            guard secp256k1_ecdsa_signature_parse_der(context, &signature, derSignatureBytes, derSignatureBytes.count) == 1 else {
+            guard secp256k1_ecdsa_signature_parse_der(secp256k1.Context.raw, &signature, derSignatureBytes, derSignatureBytes.count).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
             }
 
@@ -83,13 +79,9 @@ public extension secp256k1.Signing {
         /// - Parameter derRepresentation: A Compact representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with parsing the derRepresentation
         public init<D: DataProtocol>(compactRepresentation: D) throws {
-            let context = try secp256k1.Context.create()
-
-            defer { secp256k1_context_destroy(context) }
-
             var signature = secp256k1_ecdsa_signature()
 
-            guard secp256k1_ecdsa_signature_parse_compact(context, &signature, Array(compactRepresentation)) == 1 else {
+            guard secp256k1_ecdsa_signature_parse_compact(secp256k1.Context.raw, &signature, Array(compactRepresentation)).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
             }
 
@@ -109,17 +101,13 @@ public extension secp256k1.Signing {
         /// - Returns: a 64-byte data representation of the compact serialization
         public var compactRepresentation: Data {
             get throws {
-                let context = try secp256k1.Context.create()
-
-                defer { secp256k1_context_destroy(context) }
-
                 let compactSignatureLength = 64
                 var signature = secp256k1_ecdsa_signature()
                 var compactSignature = [UInt8](repeating: 0, count: compactSignatureLength)
 
                 rawRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
 
-                guard secp256k1_ecdsa_signature_serialize_compact(context, &compactSignature, &signature) == 1 else {
+                guard secp256k1_ecdsa_signature_serialize_compact(secp256k1.Context.raw, &compactSignature, &signature).boolValue else {
                     throw secp256k1Error.underlyingCryptoError
                 }
 
@@ -132,17 +120,13 @@ public extension secp256k1.Signing {
         /// - Returns: a DER representation of the signature
         public var derRepresentation: Data {
             get throws {
-                let context = try secp256k1.Context.create()
-
-                defer { secp256k1_context_destroy(context) }
-
                 var signature = secp256k1_ecdsa_signature()
                 var derSignatureLength = 80
                 var derSignature = [UInt8](repeating: 0, count: derSignatureLength)
 
                 rawRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
 
-                guard secp256k1_ecdsa_signature_serialize_der(context, &derSignature, &derSignatureLength, &signature) == 1 else {
+                guard secp256k1_ecdsa_signature_serialize_der(secp256k1.Context.raw, &derSignature, &derSignatureLength, &signature).boolValue else {
                     throw secp256k1Error.underlyingCryptoError
                 }
 
@@ -157,7 +141,7 @@ public extension secp256k1.Signing {
 public extension secp256k1.Signing {
     struct ECDSASigner {
         /// Generated secp256k1 Signing Key.
-        var signingKey: secp256k1.Signing.PrivateKeyImplementation
+        var signingKey: PrivateKeyImplementation
     }
 }
 
@@ -168,12 +152,9 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
     /// - Returns: The ECDSA Signature.
     /// - Throws: If there is a failure producing the signature
     public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.ECDSASignature {
-        let context = try secp256k1.Context.create()
-        defer { secp256k1_context_destroy(context) }
-
         var signature = secp256k1_ecdsa_signature()
 
-        guard secp256k1_ecdsa_sign(context, &signature, Array(digest), Array(signingKey.rawRepresentation), nil, nil) == 1 else {
+        guard secp256k1_ecdsa_sign(secp256k1.Context.raw, &signature, Array(digest), Array(signingKey.rawRepresentation), nil, nil).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
@@ -196,7 +177,7 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
 public extension secp256k1.Signing {
     struct ECDSAValidator {
         /// Generated secp256k1 Validating Key.
-        var validatingKey: secp256k1.Signing.PublicKeyImplementation
+        var validatingKey: PublicKeyImplementation
     }
 }
 
@@ -208,19 +189,13 @@ extension secp256k1.Signing.ECDSAValidator: DigestValidator, DataValidator {
     ///   - digest: The digest that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
     public func isValidSignature<D: Digest>(_ signature: secp256k1.Signing.ECDSASignature, for digest: D) -> Bool {
-        guard let context = try? secp256k1.Context.create() else {
-            return false
-        }
-
-        defer { secp256k1_context_destroy(context) }
-
         var secp256k1Signature = secp256k1_ecdsa_signature()
         var secp256k1PublicKey = secp256k1_pubkey()
 
         signature.rawRepresentation.copyToUnsafeMutableBytes(of: &secp256k1Signature.data)
 
-        return secp256k1_ec_pubkey_parse(context, &secp256k1PublicKey, validatingKey.bytes, validatingKey.bytes.count) == 1 &&
-            secp256k1_ecdsa_verify(context, &secp256k1Signature, Array(digest), &secp256k1PublicKey) == 1
+        return secp256k1_ec_pubkey_parse(secp256k1.Context.raw, &secp256k1PublicKey, validatingKey.bytes, validatingKey.bytes.count).boolValue &&
+            secp256k1_ecdsa_verify(secp256k1.Context.raw, &secp256k1Signature, Array(digest), &secp256k1PublicKey).boolValue
     }
 
     /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
