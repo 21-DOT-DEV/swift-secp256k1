@@ -23,8 +23,8 @@ public extension secp256k1 {
             ///   - data: A raw representation of the public key as a collection of contiguous bytes.
             ///   - xonly: A raw representation of the xonly key as a collection of contiguous bytes.
             ///   - format: the format of the public key object
-            public init<D: ContiguousBytes>(rawRepresentation data: D, xonly: D, format: secp256k1.Format) {
-                self.baseKey = PublicKeyImplementation(rawRepresentation: data, xonly: xonly, format: format)
+            public init<D: ContiguousBytes>(rawRepresentation data: D, xonly: D, keyParity: Int32, format: secp256k1.Format) {
+                self.baseKey = PublicKeyImplementation(rawRepresentation: data, xonly: xonly, keyParity: keyParity, format: format)
             }
 
             /// Initializes a secp256k1 public key for key agreement.

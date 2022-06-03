@@ -260,6 +260,25 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(privateKey.publicKey.rawRepresentation.count, secp256k1.Format.uncompressed.length)
     }
 
+    func testUncompressedPublicKeyWithKey() {
+        let privateBytes = try! "703d3b63e84421e59f9359f8b27c25365df9d85b6b1566e3168412fa599c12f4".bytes
+        let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateBytes, format: .uncompressed)
+
+        XCTAssertEqual(privateKey.publicKey.format, .uncompressed)
+        XCTAssertEqual(privateKey.publicKey.rawRepresentation.count, secp256k1.Format.uncompressed.length)
+
+        let expectedPublicKeyString = """
+        04c9c68596824505dd6cd1993a16452b4b1a13bacde56f80e9049fd03850cce137c1fa4acb7bef7edcc04f4fa29e071ea17e34fa07fa5d87b5ebf6340df6558498
+        """
+
+        // Define the expected public key
+        let expectedPublicKey = try! expectedPublicKeyString.bytes
+
+        // Verify the generated public key matches the expected public key
+        XCTAssertEqual(expectedPublicKey, privateKey.publicKey.rawRepresentation.bytes)
+        XCTAssertEqual(expectedPublicKeyString, String(bytes: privateKey.publicKey.rawRepresentation.bytes))
+    }
+
     func testInvalidRawSignature() {
         XCTAssertThrowsError(
             try secp256k1.Signing.ECDSASignature(rawRepresentation: Data()),
@@ -341,7 +360,7 @@ final class secp256k1Tests: XCTestCase {
         let tweak = SHA256.hash(data: expectedPrivateKey.data(using: .utf8)!)
 
         // tweak the private key
-        let tweakedPrivateKey = try! privateKey.tweak(Array(tweak))
+        let tweakedPrivateKey = try! privateKey.add(xonly: Array(tweak))
 
         // Verify the keys matches the expected keys output
         XCTAssertEqual(String(bytes: tweakedPrivateKey.rawRepresentation), expectedTweakedPrivateKey)
@@ -379,10 +398,17 @@ final class secp256k1Tests: XCTestCase {
         let sharedSecretSign1 = try! secp256k1.Signing.PrivateKey(rawRepresentation: sharedSecret1.bytes)
         let sharedSecretSign2 = try! secp256k1.Signing.PrivateKey(rawRepresentation: sharedSecret2.bytes)
 
-        let privateTweak1 = try! sharedSecretSign1.tweak(privateSign1.publicKey.xonly.bytes)
-        let publicTweak2 = try! sharedSecretSign2.publicKey.tweak(privateSign1.publicKey.xonly.bytes)
+        let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xonly.bytes)
+        let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
+        let xonlyTweak2 = try! sharedSecretSign2.publicKey.xonly.add(privateSign1.publicKey.xonly.bytes)
 
-        XCTAssertEqual(privateTweak1.publicKey.rawRepresentation, publicTweak2.rawRepresentation)
+        if sharedSecretSign2.publicKey.xonly.parity {
+            XCTAssertNotEqual(privateTweak1.publicKey.rawRepresentation, publicTweak2.rawRepresentation)
+        } else {
+            XCTAssertEqual(privateTweak1.publicKey.rawRepresentation, publicTweak2.rawRepresentation)
+        }
+
+        XCTAssertEqual(privateTweak1.publicKey.xonly.bytes, xonlyTweak2.bytes)
     }
 
     static var allTests = [
@@ -403,6 +429,7 @@ final class secp256k1Tests: XCTestCase {
         ("testPrivateKey", testPrivateKey),
         ("testCompressedPublicKey", testCompressedPublicKey),
         ("testUncompressedPublicKey", testUncompressedPublicKey),
+        ("testUncompressedPublicKeyWithKey", testUncompressedPublicKeyWithKey),
         ("testInvalidRawSignature", testInvalidRawSignature),
         ("testInvalidDerSignature", testInvalidDerSignature),
         ("testInvalidPrivateKeyBytes", testInvalidPrivateKeyBytes),
@@ -410,7 +437,7 @@ final class secp256k1Tests: XCTestCase {
         ("testKeypairSafeCompare", testKeypairSafeCompare),
         ("testZeroization", testZeroization),
         ("testPrivateKeyTweakAdd", testPrivateKeyTweakAdd),
-        ("testPrivateKeyTweakAdd", testKeyAgreement),
-        ("testPrivateKeyTweakAdd", testKeyAgreementPublicKeyTweakAdd)
+        ("testKeyAgreement", testKeyAgreement),
+        ("testKeyAgreementPublicKeyTweakAdd", testKeyAgreementPublicKeyTweakAdd)
     ]
 }
