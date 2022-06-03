@@ -16,20 +16,14 @@ public enum secp256k1 {}
 
 /// Flags passed to secp256k1_context_create, secp256k1_context_preallocated_size, and secp256k1_context_preallocated_create.
 public extension secp256k1 {
-    enum Context: UInt32 {
-        case none, sign, verify
-
-        public var rawValue: UInt32 {
-            let value: Int32
-
-            switch self {
-            case .none: value = SECP256K1_CONTEXT_NONE
-            case .sign: value = SECP256K1_CONTEXT_SIGN
-            case .verify: value = SECP256K1_CONTEXT_VERIFY
-            }
-
-            return UInt32(value)
-        }
+    struct Context: OptionSet {
+        public let rawValue: UInt32
+        public init(rawValue: UInt32) { self.rawValue = rawValue }
+        init(rawValue: Int32) { self.rawValue = UInt32(rawValue) }
+        public static let declassify = Context(rawValue: SECP256K1_CONTEXT_DECLASSIFY)
+        public static let none = Context(rawValue: SECP256K1_CONTEXT_NONE)
+        public static let sign = Context(rawValue: SECP256K1_CONTEXT_SIGN)
+        public static let verify = Context(rawValue: SECP256K1_CONTEXT_VERIFY)
 
         public static func create(_ context: Context = .none) throws -> OpaquePointer {
             var randomBytes = SecureBytes(count: secp256k1.ByteDetails.count).bytes
@@ -104,9 +98,12 @@ extension secp256k1 {
     /// Backing public key format
     @usableFromInline let _format: secp256k1.Format
 
+    /// Backing key parity
+    @usableFromInline var _keyParity: Int32
+
     /// Backing implementation for a public key object
     @usableFromInline var publicKey: PublicKeyImplementation {
-        PublicKeyImplementation(_publicBytes, xonly: _xonlyBytes, format: _format)
+        PublicKeyImplementation(_publicBytes, xonly: _xonlyBytes, keyParity: _keyParity, format: _format)
     }
 
     /// Backing secp256k1 private key object
@@ -123,10 +120,11 @@ extension secp256k1 {
     @usableFromInline init(format: secp256k1.Format = .compressed) throws {
         let privateKey = SecureBytes(count: secp256k1.ByteDetails.count)
         // Verify Private Key here
+        self._keyParity = 0
         self._format = format
         self._privateBytes = privateKey
-        self._publicBytes = try PublicKeyImplementation.generate(bytes: privateKey, format: format)
-        self._xonlyBytes = try XonlyKeyImplementation.generate(bytes: _publicBytes, format: format)
+        self._publicBytes = try PublicKeyImplementation.generate(bytes: &_privateBytes, format: format)
+        self._xonlyBytes = try XonlyKeyImplementation.generate(bytes: _publicBytes, keyParity: &_keyParity, format: format)
     }
 
     /// Backing initialization that creates a secp256k1 private key for signing from a data representation.
@@ -135,10 +133,11 @@ extension secp256k1 {
     init<D: ContiguousBytes>(rawRepresentation data: D, format: secp256k1.Format = .compressed) throws {
         let privateKey = SecureBytes(bytes: data)
         // Verify Private Key here
+        self._keyParity = 0
         self._format = format
         self._privateBytes = privateKey
-        self._publicBytes = try PublicKeyImplementation.generate(bytes: privateKey, format: format)
-        self._xonlyBytes = try XonlyKeyImplementation.generate(bytes: _publicBytes, format: format)
+        self._publicBytes = try PublicKeyImplementation.generate(bytes: &_privateBytes, format: format)
+        self._xonlyBytes = try XonlyKeyImplementation.generate(bytes: _publicBytes, keyParity: &_keyParity, format: format)
     }
 }
 
@@ -150,9 +149,12 @@ extension secp256k1 {
     /// Backing x-only public key object
     @usableFromInline let _xonlyBytes: [UInt8]
 
+    /// Backing key parity object
+    @usableFromInline let _keyParity: Int32
+
     /// Backing implementation for a public key object
     @usableFromInline var xonly: XonlyKeyImplementation {
-        XonlyKeyImplementation(_xonlyBytes)
+        XonlyKeyImplementation(_xonlyBytes, keyParity: _keyParity)
     }
 
     /// A data representation of the backing public key
@@ -165,25 +167,27 @@ extension secp256k1 {
 
     /// Backing initialization that generates a secp256k1 public key from a raw representation.
     /// - Parameter data: A raw representation of the key.
-    @usableFromInline init<D: ContiguousBytes>(rawRepresentation data: D, xonly: D, format: secp256k1.Format) {
+    @usableFromInline init<D: ContiguousBytes>(rawRepresentation data: D, xonly: D, keyParity: Int32, format: secp256k1.Format) {
         self.bytes = data.bytes
         self.format = format
         self._xonlyBytes = xonly.bytes
+        self._keyParity = keyParity
     }
 
     /// Backing initialization that sets the public key from a public key object.
     /// - Parameter keyBytes: a public key object
-    @usableFromInline init(_ bytes: [UInt8], xonly: [UInt8], format: secp256k1.Format) {
+    @usableFromInline init(_ bytes: [UInt8], xonly: [UInt8], keyParity: Int32, format: secp256k1.Format) {
         self.bytes = bytes
         self.format = format
         self._xonlyBytes = xonly
+        self._keyParity = keyParity
     }
 
     /// Generates a secp256k1 public key from bytes representation.
     /// - Parameter privateBytes: a private key object in bytes form
     /// - Returns: a public key object
     /// - Throws: An error is thrown when the bytes does not create a public key.
-    static func generate(bytes privateBytes: SecureBytes, format: secp256k1.Format) throws -> [UInt8] {
+    static func generate(bytes privateBytes: inout SecureBytes, format: secp256k1.Format) throws -> [UInt8] {
         guard privateBytes.count == secp256k1.ByteDetails.count else {
             throw secp256k1Error.incorrectKeySize
         }
@@ -192,7 +196,8 @@ extension secp256k1 {
         var pubKey = secp256k1_pubkey()
         var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-        guard secp256k1_ec_pubkey_create(secp256k1.Context.raw, &pubKey, privateBytes.bytes).boolValue,
+        guard secp256k1_ec_seckey_verify(secp256k1.Context.raw, privateBytes.bytes).boolValue,
+              secp256k1_ec_pubkey_create(secp256k1.Context.raw, &pubKey, privateBytes.bytes).boolValue,
               secp256k1_ec_pubkey_serialize(secp256k1.Context.raw, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue
         else {
             throw secp256k1Error.underlyingCryptoError
@@ -212,23 +217,28 @@ extension secp256k1 {
         Data(bytes)
     }
 
+    /// Backing key parity object
+    @usableFromInline let keyParity: Int32
+
     /// Backing initialization that generates a x-only public key from a raw representation.
     /// - Parameter data: A raw representation of the key.
-    @usableFromInline init<D: ContiguousBytes>(rawRepresentation data: D) {
+    @usableFromInline init<D: ContiguousBytes>(rawRepresentation data: D, keyParity: Int32) {
         self.bytes = data.bytes
+        self.keyParity = keyParity
     }
 
     /// Backing initialization that sets the public key from a x-only public key object.
     /// - Parameter bytes: a x-only public key in byte form
-    @usableFromInline init(_ bytes: [UInt8]) {
+    @usableFromInline init(_ bytes: [UInt8], keyParity: Int32) {
         self.bytes = bytes
+        self.keyParity = keyParity
     }
 
     /// Create a x-only public key from bytes representation.
     /// - Parameter privateBytes: a private key object in byte form
     /// - Returns: a public key object
     /// - Throws: An error is thrown when the bytes does not create a public key.
-    static func generate(bytes publicBytes: [UInt8], format: secp256k1.Format) throws -> [UInt8] {
+    static func generate(bytes publicBytes: [UInt8], keyParity: inout Int32, format: secp256k1.Format) throws -> [UInt8] {
         guard publicBytes.count == format.length else {
             throw secp256k1Error.incorrectKeySize
         }
@@ -238,7 +248,7 @@ extension secp256k1 {
         var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.ByteDetails.count)
 
         guard secp256k1_ec_pubkey_parse(secp256k1.Context.raw, &pubKey, publicBytes, format.length).boolValue,
-              secp256k1_xonly_pubkey_from_pubkey(secp256k1.Context.raw, &xonlyPubKey, nil, &pubKey).boolValue,
+              secp256k1_xonly_pubkey_from_pubkey(secp256k1.Context.raw, &xonlyPubKey, &keyParity, &pubKey).boolValue,
               secp256k1_xonly_pubkey_serialize(secp256k1.Context.raw, &xonlyBytes, &xonlyPubKey).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }

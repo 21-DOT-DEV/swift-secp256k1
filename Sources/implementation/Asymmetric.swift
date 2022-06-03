@@ -69,7 +69,7 @@ public extension secp256k1 {
             private let baseKey: PublicKeyImplementation
 
             /// The secp256k1 public key object
-            var keyBytes: [UInt8] {
+            var bytes: [UInt8] {
                 baseKey.bytes
             }
 
@@ -109,8 +109,8 @@ public extension secp256k1 {
             /// Generates a secp256k1 public key from a raw representation.
             /// - Parameter data: A raw representation of the key.
             /// - Throws: An error is thrown when the raw representation does not create a public key.
-            public init<D: ContiguousBytes>(rawRepresentation data: D, xonly: D, format: secp256k1.Format) {
-                self.baseKey = PublicKeyImplementation(rawRepresentation: data, xonly: xonly, format: format)
+            public init<D: ContiguousBytes>(rawRepresentation data: D, xonly: D, keyParity: Int32, format: secp256k1.Format) {
+                self.baseKey = PublicKeyImplementation(rawRepresentation: data, xonly: xonly, keyParity: keyParity, format: format)
             }
         }
 
@@ -124,12 +124,18 @@ public extension secp256k1 {
                 baseKey.bytes
             }
 
+            /// A boolean that will be set to true if the point encoded by xonly is the
+            /// negation of the pubkey and set to false otherwise.
+            public var parity: Bool {
+                baseKey.keyParity.boolValue
+            }
+
             fileprivate init(baseKey: XonlyKeyImplementation) {
                 self.baseKey = baseKey
             }
 
-            public init<D: ContiguousBytes>(rawRepresentation data: D) {
-                self.baseKey = XonlyKeyImplementation(rawRepresentation: data)
+            public init<D: ContiguousBytes>(rawRepresentation data: D, keyParity: Int32) {
+                self.baseKey = XonlyKeyImplementation(rawRepresentation: data, keyParity: keyParity)
             }
         }
     }
