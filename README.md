@@ -73,7 +73,7 @@ let publicKey = try! secp256k1.KeyAgreement.PrivateKey().publicKey
 let sharedSecret = try! privateKey.sharedSecretFromKeyAgreement(with: publicKey)
 ```
 
-## Silent Payment
+## Silent Payments
 
 ```swift
 let privateSign1 = try! secp256k1.Signing.PrivateKey()
