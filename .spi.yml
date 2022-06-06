@@ -2,4 +2,4 @@ version: 1
 builder:
   configs:
     - platform: ios
-      documentation_targets: [secp256k1]
+      documentation_targets: [secp256k1, secp256k1_implementation]
