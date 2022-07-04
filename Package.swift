@@ -154,6 +154,7 @@ let package = Package(
                 "EdDSA.swift",
                 "Errors.swift",
                 "PrettyBytes.swift",
+                "Recovery.swift",
                 "SafeCompare.swift",
                 "Schnorr.swift",
                 "secp256k1.swift",

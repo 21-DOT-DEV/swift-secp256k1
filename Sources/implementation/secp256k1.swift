@@ -182,6 +182,32 @@ extension secp256k1 {
         self._xonlyBytes = xonly
         self._keyParity = keyParity
     }
+    
+    /// Backing initialization that sets the public key from a digest and recoverable signature.
+    /// - Parameters:
+    ///   - digest: The digest that was signed.
+    ///   - signature: The signature to recover the public key from
+    ///   - format: the format of the public key object
+    /// - Throws: An error is thrown when a public key is not recoverable from the  signature.  
+    @usableFromInline init<D: Digest>(_ digest: D, signature: secp256k1.Recovery.ECDSASignature, format: secp256k1.Format) throws {
+        var keyParity = Int32()
+        var pubKeyLen = format.length
+        var pubKey = secp256k1_pubkey()
+        var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
+        var recoverySignature = secp256k1_ecdsa_recoverable_signature()
+
+        signature.rawRepresentation.copyToUnsafeMutableBytes(of: &recoverySignature.data)
+
+        guard secp256k1_ecdsa_recover(secp256k1.Context.raw, &pubKey, &recoverySignature, Array(digest)).boolValue,
+              secp256k1_ec_pubkey_serialize(secp256k1.Context.raw, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+            throw secp256k1Error.underlyingCryptoError
+        }
+
+        self._xonlyBytes = try XonlyKeyImplementation.generate(bytes: pubBytes, keyParity: &keyParity, format: format)
+        self._keyParity = keyParity
+        self.format = format
+        self.bytes = pubBytes
+    }
 
     /// Generates a secp256k1 public key from bytes representation.
     /// - Parameter privateBytes: a private key object in bytes form
