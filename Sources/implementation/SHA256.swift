@@ -21,7 +21,7 @@ public enum SHA256 {
 
         secp256k1_swift_sha256(&output, stringData, stringData.count)
 
-        return convert(output)
+        return .init(output)
     }
 
     /// Computes a digest of the data.
@@ -35,15 +35,6 @@ public enum SHA256 {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return convert(output)
-    }
-
-    private static func convert(_ output: [UInt8]) -> SHA256Digest {
-        let first = output[0..<8].withUnsafeBytes { $0.load(as: UInt64.self) }
-        let second = output[8..<16].withUnsafeBytes { $0.load(as: UInt64.self) }
-        let third = output[16..<24].withUnsafeBytes { $0.load(as: UInt64.self) }
-        let forth = output[24..<32].withUnsafeBytes { $0.load(as: UInt64.self) }
-
-        return SHA256Digest(bytes: (first, second, third, forth))
+        return .init(output)
     }
 }

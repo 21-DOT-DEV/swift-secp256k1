@@ -31,11 +31,22 @@
 
 import Foundation
 
-// MARK: - SHA256Digest + DigestPrivate
+// MARK: - Hash32BytesDigest + DigestPrivate
 
-public struct SHA256Digest: Digest {
+public typealias SHA256Digest = Hash32BytesDigest
+
+public struct Hash32BytesDigest: Digest {
     let bytes: (UInt64, UInt64, UInt64, UInt64)
 
+    public init(_ output: [UInt8]) {
+        let first = output[0..<8].withUnsafeBytes { $0.load(as: UInt64.self) }
+        let second = output[8..<16].withUnsafeBytes { $0.load(as: UInt64.self) }
+        let third = output[16..<24].withUnsafeBytes { $0.load(as: UInt64.self) }
+        let forth = output[24..<32].withUnsafeBytes { $0.load(as: UInt64.self) }
+        
+        bytes = (first, second, third, forth)
+    }
+    
     public static var byteCount: Int {
         get { 32 }
 
