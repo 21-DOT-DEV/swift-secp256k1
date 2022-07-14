@@ -157,6 +157,18 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(expectedHashDigest, String(bytes: Array(digest)))
     }
 
+    func testSha32BytesDigest() {
+        let expectedHash = try! "f08a78cbbaee082b052ae0708f32fa1e50c5c421aa772ba5dbb406a2ea6be342".bytes
+        let data = "For this sample, this 63-byte string will be used as input data".data(using: .utf8)!
+        
+        let digest = SHA256.hash(data: data)
+        
+        let constructedDigest = SHA32BytesDigest(expectedHash)
+        
+        // Verify the generated hash digest matches the manual constructed hash digest
+        XCTAssertEqual(String(bytes: Array(digest)), String(bytes: Array(constructedDigest)))
+    }
+    
     func testSigning() {
         let expectedDerSignature = "MEQCIHS177uYACnX8HzD+hGbG5X/F4iHuRm2DvTylOCV4fmsAiBWbj0MDud/oVzRqL87JjZpCN+kLl8Egcc/GiOigWJg+A=="
         let expectedSignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVg=="
@@ -420,6 +432,7 @@ final class secp256k1Tests: XCTestCase {
         ("testSchnorrBindings", testSchnorrBindings),
         ("testCompressedKeypairImplementationWithRaw", testCompressedKeypairImplementationWithRaw),
         ("testSha256", testSha256),
+        ("testSha32BytesDigest", testSha32BytesDigest),
         ("testSigning", testSigning),
         ("testSchnorrSigning", testSchnorrSigning),
         ("testVerifying", testVerifying),
