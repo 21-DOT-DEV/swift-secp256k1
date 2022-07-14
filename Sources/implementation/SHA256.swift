@@ -15,7 +15,7 @@ public enum SHA256 {
     /// Computes a digest of the data.
     /// - Parameter data: The data to be hashed
     /// - Returns: The computed digest
-    public static func hash<D: DataProtocol>(data: D) -> SHA32BytesDigest {
+    public static func hash<D: DataProtocol>(data: D) -> SHA256Digest {
         let stringData = Array(data)
         var output = [UInt8](repeating: 0, count: 32)
 
@@ -27,7 +27,7 @@ public enum SHA256 {
     /// Computes a digest of the data.
     /// - Parameter data: The data to be hashed
     /// - Returns: The computed digest
-    public static func taggedHash<D: DataProtocol>(tag: [UInt8], data: D) throws -> SHA32BytesDigest {
+    public static func taggedHash<D: DataProtocol>(tag: [UInt8], data: D) throws -> SHA256Digest {
         let messageBytes = Array(data)
         var output = [UInt8](repeating: 0, count: 32)
 

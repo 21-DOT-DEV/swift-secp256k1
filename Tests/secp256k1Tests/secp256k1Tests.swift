@@ -163,7 +163,7 @@ final class secp256k1Tests: XCTestCase {
         
         let digest = SHA256.hash(data: data)
         
-        let constructedDigest = SHA32BytesDigest(expectedHash)
+        let constructedDigest = Hash32BytesDigest(expectedHash)
         
         // Verify the generated hash digest matches the manual constructed hash digest
         XCTAssertEqual(String(bytes: Array(digest)), String(bytes: Array(constructedDigest)))

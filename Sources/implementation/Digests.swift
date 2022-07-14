@@ -31,11 +31,11 @@
 
 import Foundation
 
-// MARK: - SHA32BytesDigest + DigestPrivate
+// MARK: - Hash32BytesDigest + DigestPrivate
 
-public typealias SHA256Digest = SHA32BytesDigest
+public typealias SHA256Digest = Hash32BytesDigest
 
-public struct SHA32BytesDigest: Digest {
+public struct Hash32BytesDigest: Digest {
     let bytes: (UInt64, UInt64, UInt64, UInt64)
 
     public init(_ output: [UInt8]) {
