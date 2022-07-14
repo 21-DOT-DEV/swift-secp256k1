@@ -152,7 +152,13 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
     /// - Returns: The ECDSA Signature.
     /// - Throws: If there is a failure producing the signature
     public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.ECDSASignature {
-        try signature(hash: Array(digest))
+        var signature = secp256k1_ecdsa_signature()
+
+        guard secp256k1_ecdsa_sign(secp256k1.Context.raw, &signature, Array(digest), Array(signingKey.rawRepresentation), nil, nil).boolValue else {
+            throw secp256k1Error.underlyingCryptoError
+        }
+
+        return try secp256k1.Signing.ECDSASignature(signature.dataValue)
     }
 
     /// Generates an ECDSA signature over the secp256k1 elliptic curve.
@@ -163,22 +169,6 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
     /// - Throws: If there is a failure producing the signature.
     public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Signing.ECDSASignature {
         try signature(for: SHA256.hash(data: data))
-    }
-    
-    /// Generates an ECDSA signature over the secp256k1 elliptic curve.
-    /// Condition: data is a 32-byte (256-bit) hash
-    ///
-    /// - Parameter data: The data to sign.
-    /// - Returns: The ECDSA Signature.
-    /// - Throws: If there is a failure producing the signature.
-    public func signature(hash: [UInt8]) throws -> secp256k1.Signing.ECDSASignature {
-        var signature = secp256k1_ecdsa_signature()
-
-        guard secp256k1_ecdsa_sign(secp256k1.Context.raw, &signature, hash, Array(signingKey.rawRepresentation), nil, nil).boolValue else {
-            throw secp256k1Error.underlyingCryptoError
-        }
-
-        return try secp256k1.Signing.ECDSASignature(signature.dataValue)
     }
 }
 
@@ -199,7 +189,13 @@ extension secp256k1.Signing.ECDSAValidator: DigestValidator, DataValidator {
     ///   - digest: The digest that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
     public func isValidSignature<D: Digest>(_ signature: secp256k1.Signing.ECDSASignature, for digest: D) -> Bool {
-        isValidSignature(signature, hash: Array(digest))
+        var secp256k1Signature = secp256k1_ecdsa_signature()
+        var secp256k1PublicKey = secp256k1_pubkey()
+
+        signature.rawRepresentation.copyToUnsafeMutableBytes(of: &secp256k1Signature.data)
+
+        return secp256k1_ec_pubkey_parse(secp256k1.Context.raw, &secp256k1PublicKey, validatingKey.bytes, validatingKey.bytes.count).boolValue &&
+            secp256k1_ecdsa_verify(secp256k1.Context.raw, &secp256k1Signature, Array(digest), &secp256k1PublicKey).boolValue
     }
 
     /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
@@ -211,22 +207,5 @@ extension secp256k1.Signing.ECDSAValidator: DigestValidator, DataValidator {
     /// - Returns: True if the signature is valid, false otherwise.
     public func isValidSignature<D: DataProtocol>(_ signature: secp256k1.Signing.ECDSASignature, for data: D) -> Bool {
         isValidSignature(signature, for: SHA256.hash(data: data))
-    }
-    
-    /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
-    /// Condition: data is a 32-byte (256-bit) hash
-    ///
-    /// - Parameters:
-    ///   - signature: The signature to verify
-    ///   - data: The data that was signed.
-    /// - Returns: True if the signature is valid, false otherwise.
-    public func isValidSignature(_ signature: secp256k1.Signing.ECDSASignature, hash: [UInt8]) -> Bool {
-        var secp256k1Signature = secp256k1_ecdsa_signature()
-        var secp256k1PublicKey = secp256k1_pubkey()
-
-        signature.rawRepresentation.copyToUnsafeMutableBytes(of: &secp256k1Signature.data)
-        
-        return secp256k1_ec_pubkey_parse(secp256k1.Context.raw, &secp256k1PublicKey, validatingKey.bytes, validatingKey.bytes.count).boolValue &&
-            secp256k1_ecdsa_verify(secp256k1.Context.raw, &secp256k1Signature, hash, &secp256k1PublicKey).boolValue
     }
 }
