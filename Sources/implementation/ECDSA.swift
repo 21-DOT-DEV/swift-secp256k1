@@ -51,7 +51,7 @@ public extension secp256k1.Signing {
 
         /// Initializes ECDSASignature from the raw representation.
         /// - Parameters:
-        ///   - rawRepresentation: A raw representation of the key as a collection of contiguous bytes.
+        ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
         internal init(_ dataRepresentation: Data) throws {
             guard dataRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount else {
@@ -146,6 +146,28 @@ public extension secp256k1.Signing {
 }
 
 extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
+    ///  Generates a recoverable ECDSA signature.
+    ///
+    /// - Parameter digest: The digest to sign.
+    /// - Returns: The recoverable ECDSA Signature.
+    /// - Throws: If there is a failure producing the signature
+    public func recoverableSignature<D: Digest>(for digest: D) throws -> secp256k1.Recovery.ECDSASignature {
+        var signature = secp256k1_ecdsa_recoverable_signature()
+        
+        guard secp256k1_ecdsa_sign_recoverable(
+            secp256k1.Context.raw,
+            &signature,
+            Array(digest),
+            Array(signingKey.rawRepresentation),
+            nil,
+            nil
+        ).boolValue else {
+            throw secp256k1Error.underlyingCryptoError
+        }
+
+        return try secp256k1.Recovery.ECDSASignature(signature.dataValue)
+    }
+    
     ///  Generates an ECDSA signature over the secp256k1 elliptic curve.
     ///
     /// - Parameter digest: The digest to sign.
@@ -154,11 +176,28 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
     public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.ECDSASignature {
         var signature = secp256k1_ecdsa_signature()
 
-        guard secp256k1_ecdsa_sign(secp256k1.Context.raw, &signature, Array(digest), Array(signingKey.rawRepresentation), nil, nil).boolValue else {
+        guard secp256k1_ecdsa_sign(
+            secp256k1.Context.raw,
+            &signature,
+            Array(digest),
+            Array(signingKey.rawRepresentation),
+            nil,
+            nil
+        ).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
         return try secp256k1.Signing.ECDSASignature(signature.dataValue)
+    }
+    
+    /// Generates an ECDSA signature over the secp256k1 elliptic curve.
+    /// SHA256 is used as the hash function.
+    ///
+    /// - Parameter data: The data to sign.
+    /// - Returns: The ECDSA Signature.
+    /// - Throws: If there is a failure producing the signature.
+    public func recoverableSignature<D: DataProtocol>(for data: D) throws -> secp256k1.Recovery.ECDSASignature {
+        try recoverableSignature(for: SHA256.hash(data: data))
     }
 
     /// Generates an ECDSA signature over the secp256k1 elliptic curve.

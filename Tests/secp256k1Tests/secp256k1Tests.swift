@@ -183,6 +183,45 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(expectedSignature, signature.rawRepresentation.base64EncodedString())
         XCTAssertEqual(expectedDerSignature, try! signature.derRepresentation.base64EncodedString())
     }
+    
+    func testRecoverySigning() {
+        let expectedDerSignature = "MEQCIHS177uYACnX8HzD+hGbG5X/F4iHuRm2DvTylOCV4fmsAiBWbj0MDud/oVzRqL87JjZpCN+kLl8Egcc/GiOigWJg+A=="
+        let expectedRecoverySignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVgE="
+        let expectedSignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVg=="
+        let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
+        let privateKeyBytes = try! expectedPrivateKey.bytes
+        let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+        let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
+
+        let recoverySignature = try! privateKey.ecdsa.recoverableSignature(for: messageData)
+
+        // Verify the recovery signature matches the expected output
+        XCTAssertEqual(expectedRecoverySignature, recoverySignature.rawRepresentation.base64EncodedString())
+        
+        let signature = try! recoverySignature.normalize
+        
+        // Verify the signature matches the expected output
+        XCTAssertEqual(expectedSignature, signature.rawRepresentation.base64EncodedString())
+        XCTAssertEqual(expectedDerSignature, try! signature.derRepresentation.base64EncodedString())
+    }
+    
+    func testPublicKeyRecovery() {
+        let expectedRecoverySignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVgE="
+        let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
+        let privateKeyBytes = try! expectedPrivateKey.bytes
+        let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+        let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
+
+        let recoverySignature = try! privateKey.ecdsa.recoverableSignature(for: messageData)
+
+        // Verify the recovery signature matches the expected output
+        XCTAssertEqual(expectedRecoverySignature, recoverySignature.rawRepresentation.base64EncodedString())
+        
+        let publicKey = try! secp256k1.Recovery.PublicKey(messageData, signature: recoverySignature)
+        
+        // Verify the recovered public key matches the expected public key
+        XCTAssertEqual(publicKey.rawRepresentation, privateKey.publicKey.rawRepresentation)
+    }
 
     func testSchnorrSigning() {
         let expectedDerSignature = "6QeDH4CEjRBppTcbQCQQNkvfHF+DB7AITFXxzi3KghUl9mpKheqLceSCp084LSzl6+7o/bIXL0d99JANMQU2wA=="
@@ -433,6 +472,8 @@ final class secp256k1Tests: XCTestCase {
         ("testCompressedKeypairImplementationWithRaw", testCompressedKeypairImplementationWithRaw),
         ("testSha256", testSha256),
         ("testSha32BytesDigest", testSha32BytesDigest),
+        ("testRecoverySigning", testRecoverySigning),
+        ("testPublicKeyRecovery", testPublicKeyRecovery),
         ("testSigning", testSigning),
         ("testSchnorrSigning", testSchnorrSigning),
         ("testVerifying", testVerifying),

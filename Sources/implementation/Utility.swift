@@ -42,6 +42,13 @@ public extension secp256k1_ecdsa_signature {
     }
 }
 
+public extension secp256k1_ecdsa_recoverable_signature {
+    var dataValue: Data {
+        var mutableSig = self
+        return Data(bytes: &mutableSig.data, count: MemoryLayout.size(ofValue: data))
+    }
+}
+
 public extension String {
     /// Public initializer backed by the `BytesUtil.swift` DataProtocol extension property `hexString`
     /// - Parameter bytes: byte array to initialize

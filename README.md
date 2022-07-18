@@ -59,8 +59,8 @@ let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateByt
 
 // Adding a tweak to the private key and public key
 let tweak = try! "5f0da318c6e02f653a789950e55756ade9f194e1ec228d7f368de1bd821322b6".bytes
-let tweakedPrivateKey = try! privateKey.tweak(tweak)
-let tweakedPublicKeyKey = try! privateKey.publicKey.tweak(tweak)
+let tweakedPrivateKey = try! privateKey.add(tweak)
+let tweakedPublicKeyKey = try! privateKey.publicKey.add(tweak)
 ```
 
 ## Elliptic Curve Diffie Hellman
@@ -93,6 +93,22 @@ let xonlyTweak2 = try! sharedSecretSign2.publicKey.xonly.add(privateSign1.public
 
 // Spendable Silent Payment private key
 let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xonly.bytes)
+```
+
+## Recovery
+
+```swift
+let privateKey = try! secp256k1.Signing.PrivateKey()
+let messageData = "We're all Satoshi.".data(using: .utf8)!
+
+// Create a recoverable ECDSA signature
+let recoverySignature = try! privateKey.ecdsa.recoverableSignature(for: messageData)
+
+// Recover an ECDSA public key from a signature
+let publicKey = try! secp256k1.Recovery.PublicKey(messageData, signature: recoverySignature)
+
+// Convert a recoverable signature into a normal signature
+let signature = try! recoverySignature.normalize
 ```
 
 
