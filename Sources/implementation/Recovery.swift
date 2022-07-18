@@ -18,6 +18,11 @@ public extension secp256k1 {
         public struct PublicKey {
             let baseKey: PublicKeyImplementation
             
+            /// Initializes a secp256k1 public key using a data message and a recovery signature.
+            /// - Parameters:
+            ///   - data: The data to be hash and assumed signed.
+            ///   - signature: A raw representation of the initialized signature that supports pubkey recovery.
+            ///   - format: the format of the public key object
             public init<D: DataProtocol>(
                 _ data: D,
                 signature: secp256k1.Recovery.ECDSASignature,
@@ -30,10 +35,10 @@ public extension secp256k1 {
                 )
             }
 
-            /// Creates a secp256k1 public key for key agreement from a collection of bytes.
+            /// Initializes a secp256k1 public key using a hash digest and a recovery signature.
             /// - Parameters:
-            ///   - data: A raw representation of the public key as a collection of contiguous bytes.
-            ///   - xonly: A raw representation of the xonly key as a collection of contiguous bytes.
+            ///   - digest: The hash digest assumed to be signed.
+            ///   - signature: A raw representation of the initialized signature that supports pubkey recovery.
             ///   - format: the format of the public key object
             public init<D: Digest>(
                 _ digest: D,
@@ -43,7 +48,7 @@ public extension secp256k1 {
                 self.baseKey = try PublicKeyImplementation(digest, signature: signature, format: format)
             }
 
-            /// Initializes a secp256k1 public key for key agreement.
+            /// Initializes a secp256k1 public key for recovery.
             /// - Parameter baseKey: generated secp256k1 public key.
             init(baseKey: PublicKeyImplementation) {
                 self.baseKey = baseKey
@@ -60,7 +65,8 @@ public extension secp256k1 {
 
 /// An ECDSA (Elliptic Curve Digital Signature Algorithm) Recovery Signature
 public extension secp256k1.Recovery {
-//    secp256k1_ecdsa_recoverable_signature
+    
+    /// Recovery Signature
     struct ECDSACompactSignature {
         let signature: Data
         let recoveryId: Int32
@@ -148,10 +154,13 @@ public extension secp256k1.Recovery {
             }
         }
         
+        /// Convert a recoverable signature into a normal signature.
         public var normalize: secp256k1.Signing.ECDSASignature {
             get throws {
                 var normalizedSignature = secp256k1_ecdsa_signature()
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
+                
+                rawRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
                 
                 guard secp256k1_ecdsa_recoverable_signature_convert(
                     secp256k1.Context.raw,

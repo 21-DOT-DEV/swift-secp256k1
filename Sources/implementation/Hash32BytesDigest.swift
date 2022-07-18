@@ -1,5 +1,5 @@
 //
-//  Digests.swift
+//  Hash32BytesDigest.swift
 //  GigaBitcoin/secp256k1.swift
 //
 //  Modifications Copyright (c) 2021 GigaBitcoin LLC

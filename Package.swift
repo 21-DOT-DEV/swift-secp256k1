@@ -148,7 +148,7 @@ let package = Package(
             sources: [
                 "Asymmetric.swift",
                 "DH.swift",
-                "Digests.swift",
+                "Hash32BytesDigest.swift",
                 "ECDH.swift",
                 "ECDSA.swift",
                 "EdDSA.swift",

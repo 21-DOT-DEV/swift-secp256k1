@@ -189,6 +189,16 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
 
         return try secp256k1.Signing.ECDSASignature(signature.dataValue)
     }
+    
+    /// Generates an ECDSA signature over the secp256k1 elliptic curve.
+    /// SHA256 is used as the hash function.
+    ///
+    /// - Parameter data: The data to sign.
+    /// - Returns: The ECDSA Signature.
+    /// - Throws: If there is a failure producing the signature.
+    public func recoverableSignature<D: DataProtocol>(for data: D) throws -> secp256k1.Recovery.ECDSASignature {
+        try recoverableSignature(for: SHA256.hash(data: data))
+    }
 
     /// Generates an ECDSA signature over the secp256k1 elliptic curve.
     /// SHA256 is used as the hash function.
