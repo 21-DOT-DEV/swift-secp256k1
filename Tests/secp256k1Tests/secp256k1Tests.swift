@@ -440,9 +440,11 @@ final class secp256k1Tests: XCTestCase {
 
         let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateSign1.rawRepresentation)
         let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateSign2.rawRepresentation)
+        
+        let publicKey1 = try! secp256k1.KeyAgreement.PublicKey(rawRepresentation: privateKey1.publicKey.rawRepresentation)
 
         let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
-        let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey)
+        let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: publicKey1)
 
         XCTAssertEqual(sharedSecret1.bytes, sharedSecret2.bytes)
 

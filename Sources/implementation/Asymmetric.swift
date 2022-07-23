@@ -109,8 +109,8 @@ public extension secp256k1 {
             /// Generates a secp256k1 public key from a raw representation.
             /// - Parameter data: A raw representation of the key.
             /// - Throws: An error is thrown when the raw representation does not create a public key.
-            public init<D: ContiguousBytes>(rawRepresentation data: D, xonly: D, keyParity: Int32, format: secp256k1.Format) {
-                self.baseKey = PublicKeyImplementation(rawRepresentation: data, xonly: xonly, keyParity: keyParity, format: format)
+            public init<D: ContiguousBytes>(rawRepresentation data: D, format: secp256k1.Format) throws {
+                self.baseKey = try PublicKeyImplementation(rawRepresentation: data, format: format)
             }
         }
 

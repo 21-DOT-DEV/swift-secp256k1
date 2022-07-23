@@ -20,7 +20,6 @@ public extension secp256k1 {
         public let rawValue: UInt32
         public init(rawValue: UInt32) { self.rawValue = rawValue }
         init(rawValue: Int32) { self.rawValue = UInt32(rawValue) }
-        public static let declassify = Context(rawValue: SECP256K1_CONTEXT_DECLASSIFY)
         public static let none = Context(rawValue: SECP256K1_CONTEXT_NONE)
         public static let sign = Context(rawValue: SECP256K1_CONTEXT_SIGN)
         public static let verify = Context(rawValue: SECP256K1_CONTEXT_VERIFY)
@@ -164,13 +163,17 @@ extension secp256k1 {
 
     /// A key format representation of the backing public key
     @usableFromInline let format: secp256k1.Format
-
-    /// Backing initialization that generates a secp256k1 public key from a raw representation.
-    /// - Parameter data: A raw representation of the key.
-    @usableFromInline init<D: ContiguousBytes>(rawRepresentation data: D, xonly: D, keyParity: Int32, format: secp256k1.Format) {
+    
+    /// Backing initialization that generates a secp256k1 public key from only a raw representation and key format.
+    /// - Parameters:
+    ///   - data: A raw representation of the public key.
+    ///   - format: an enum that represents the format of the public key
+    @usableFromInline init<D: ContiguousBytes>(rawRepresentation data: D, format: secp256k1.Format) throws {
+        var keyParity = Int32()
+        
         self.bytes = data.bytes
         self.format = format
-        self._xonlyBytes = xonly.bytes
+        self._xonlyBytes = try XonlyKeyImplementation.generate(bytes: data.bytes, keyParity: &keyParity, format: format)
         self._keyParity = keyParity
     }
 

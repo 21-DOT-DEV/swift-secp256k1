@@ -69,22 +69,18 @@ public extension secp256k1.Signing.PublicKey {
     ///   - format: the format of the tweaked `PublicKey` object
     /// - Returns: tweaked `PublicKey` object
     func add(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
+        let context = secp256k1.Context.raw
         var pubKey = secp256k1_pubkey()
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
-        var xonlyKey = secp256k1_xonly_pubkey()
-        var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.Schnorr.xonlyByteCount)
-        var keyParity = Int32()
 
-        guard secp256k1_ec_pubkey_parse(secp256k1.Context.raw, &pubKey, bytes, pubKeyLen).boolValue,
-              secp256k1_ec_pubkey_tweak_add(secp256k1.Context.raw, &pubKey, tweak).boolValue,
-              secp256k1_ec_pubkey_serialize(secp256k1.Context.raw, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue,
-              secp256k1_xonly_pubkey_from_pubkey(secp256k1.Context.raw, &xonlyKey, &keyParity, &pubKey).boolValue,
-              secp256k1_xonly_pubkey_serialize(secp256k1.Context.raw, &xonlyBytes, &xonlyKey).boolValue else {
+        guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, pubKeyLen).boolValue,
+              secp256k1_ec_pubkey_tweak_add(context, &pubKey, tweak).boolValue,
+              secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return Self(rawRepresentation: pubKeyBytes, xonly: xonlyBytes, keyParity: keyParity, format: format)
+        return try Self(rawRepresentation: pubKeyBytes, format: format)
     }
 
     /// Create a new `PublicKey` by multiplying tweak to the public key.
@@ -93,22 +89,18 @@ public extension secp256k1.Signing.PublicKey {
     ///   - format: the format of the tweaked `PublicKey` object
     /// - Returns: tweaked `PublicKey` object
     func multiply(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
+        let context = secp256k1.Context.raw
         var pubKey = secp256k1_pubkey()
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
-        var xonlyKey = secp256k1_xonly_pubkey()
-        var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.Schnorr.xonlyByteCount)
-        var keyParity = Int32()
 
-        guard secp256k1_ec_pubkey_parse(secp256k1.Context.raw, &pubKey, bytes, pubKeyLen).boolValue,
-              secp256k1_ec_pubkey_tweak_mul(secp256k1.Context.raw, &pubKey, tweak).boolValue,
-              secp256k1_ec_pubkey_serialize(secp256k1.Context.raw, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue,
-              secp256k1_xonly_pubkey_from_pubkey(secp256k1.Context.raw, &xonlyKey, &keyParity, &pubKey).boolValue,
-              secp256k1_xonly_pubkey_serialize(secp256k1.Context.raw, &xonlyBytes, &xonlyKey).boolValue else {
+        guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, pubKeyLen).boolValue,
+              secp256k1_ec_pubkey_tweak_mul(context, &pubKey, tweak).boolValue,
+              secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return Self(rawRepresentation: pubKeyBytes, xonly: xonlyBytes, keyParity: keyParity, format: format)
+        return try Self(rawRepresentation: pubKeyBytes, format: format)
     }
 }
 
@@ -119,17 +111,18 @@ public extension secp256k1.Signing.XonlyKey {
     ///   - format: the format of the tweaked `XonlyKey` object
     /// - Returns: tweaked `PublicKey` object
     func add(_ tweak: [UInt8]) throws -> Self {
+        let context = secp256k1.Context.raw
         var pubKey = secp256k1_pubkey()
         var inXonlyPubKey = secp256k1_xonly_pubkey()
         var outXonlyPubKey = secp256k1_xonly_pubkey()
         var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.Schnorr.xonlyByteCount)
         var keyParity = Int32()
 
-        guard secp256k1_xonly_pubkey_parse(secp256k1.Context.raw, &inXonlyPubKey, bytes).boolValue,
-              secp256k1_xonly_pubkey_tweak_add(secp256k1.Context.raw, &pubKey, &inXonlyPubKey, tweak).boolValue,
-              secp256k1_xonly_pubkey_from_pubkey(secp256k1.Context.raw, &outXonlyPubKey, &keyParity, &pubKey).boolValue,
-              secp256k1_xonly_pubkey_serialize(secp256k1.Context.raw, &xonlyBytes, &outXonlyPubKey).boolValue,
-              secp256k1_xonly_pubkey_tweak_add_check(secp256k1.Context.raw, &xonlyBytes, keyParity, &inXonlyPubKey, tweak).boolValue else {
+        guard secp256k1_xonly_pubkey_parse(context, &inXonlyPubKey, bytes).boolValue,
+              secp256k1_xonly_pubkey_tweak_add(context, &pubKey, &inXonlyPubKey, tweak).boolValue,
+              secp256k1_xonly_pubkey_from_pubkey(context, &outXonlyPubKey, &keyParity, &pubKey).boolValue,
+              secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &outXonlyPubKey).boolValue,
+              secp256k1_xonly_pubkey_tweak_add_check(context, &xonlyBytes, keyParity, &inXonlyPubKey, tweak).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
