@@ -132,7 +132,11 @@ included: # paths to include during linting. `--path` is ignored if present.
   - Sources
   - Tests
 excluded: # paths to ignore during linting. Takes precedence over `included`.
-  - Sources/implementation/swift-crypto
+  - Sources/secp256k1/Digest.swift
+  - Sources/secp256k1/PrettyBytes.swift
+  - Sources/secp256k1/RNG_boring.swift
+  - Sources/secp256k1/SecureBytes.swift
+  - Sources/secp256k1/Signature.swift
 analyzer_rules: # Rules run by `swiftlint analyze`
   - explicit_self
 
