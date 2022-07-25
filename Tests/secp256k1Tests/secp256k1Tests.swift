@@ -160,15 +160,15 @@ final class secp256k1Tests: XCTestCase {
     func testSha32BytesDigest() {
         let expectedHash = try! "f08a78cbbaee082b052ae0708f32fa1e50c5c421aa772ba5dbb406a2ea6be342".bytes
         let data = "For this sample, this 63-byte string will be used as input data".data(using: .utf8)!
-        
+
         let digest = SHA256.hash(data: data)
-        
-        let constructedDigest = Hash32BytesDigest(expectedHash)
-        
+
+        let constructedDigest = HashDigest(expectedHash)
+
         // Verify the generated hash digest matches the manual constructed hash digest
         XCTAssertEqual(String(bytes: Array(digest)), String(bytes: Array(constructedDigest)))
     }
-    
+
     func testSigning() {
         let expectedDerSignature = "MEQCIHS177uYACnX8HzD+hGbG5X/F4iHuRm2DvTylOCV4fmsAiBWbj0MDud/oVzRqL87JjZpCN+kLl8Egcc/GiOigWJg+A=="
         let expectedSignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVg=="
@@ -183,7 +183,7 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(expectedSignature, signature.rawRepresentation.base64EncodedString())
         XCTAssertEqual(expectedDerSignature, try! signature.derRepresentation.base64EncodedString())
     }
-    
+
     func testRecoverySigning() {
         let expectedDerSignature = "MEQCIHS177uYACnX8HzD+hGbG5X/F4iHuRm2DvTylOCV4fmsAiBWbj0MDud/oVzRqL87JjZpCN+kLl8Egcc/GiOigWJg+A=="
         let expectedRecoverySignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVgE="
@@ -197,14 +197,14 @@ final class secp256k1Tests: XCTestCase {
 
         // Verify the recovery signature matches the expected output
         XCTAssertEqual(expectedRecoverySignature, recoverySignature.rawRepresentation.base64EncodedString())
-        
+
         let signature = try! recoverySignature.normalize
-        
+
         // Verify the signature matches the expected output
         XCTAssertEqual(expectedSignature, signature.rawRepresentation.base64EncodedString())
         XCTAssertEqual(expectedDerSignature, try! signature.derRepresentation.base64EncodedString())
     }
-    
+
     func testPublicKeyRecovery() {
         let expectedRecoverySignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVgE="
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
@@ -216,9 +216,9 @@ final class secp256k1Tests: XCTestCase {
 
         // Verify the recovery signature matches the expected output
         XCTAssertEqual(expectedRecoverySignature, recoverySignature.rawRepresentation.base64EncodedString())
-        
+
         let publicKey = try! secp256k1.Recovery.PublicKey(messageData, signature: recoverySignature)
-        
+
         // Verify the recovered public key matches the expected public key
         XCTAssertEqual(publicKey.rawRepresentation, privateKey.publicKey.rawRepresentation)
     }
@@ -440,7 +440,7 @@ final class secp256k1Tests: XCTestCase {
 
         let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateSign1.rawRepresentation)
         let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateSign2.rawRepresentation)
-        
+
         let publicKey1 = try! secp256k1.KeyAgreement.PublicKey(rawRepresentation: privateKey1.publicKey.rawRepresentation)
 
         let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
