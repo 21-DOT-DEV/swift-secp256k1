@@ -1,4 +1,4 @@
 version: 1
 builder:
   configs:
-    - documentation_targets: [secp256k1_implementation]
+    - documentation_targets: [secp256k1]
