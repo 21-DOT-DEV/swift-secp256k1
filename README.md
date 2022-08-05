@@ -15,6 +15,21 @@ Long-term goals are:
  - Availability for Linux and Apple platform ecosystems
 
 
+# Getting Started
+
+This repository primarily uses Swift package manager as its build tool, so we recommend using that as well. Xcode comes with [built-in support](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) for Swift packages. From the menu bar, goto: `File > Add Packages...` If you manage packages via a `Package.swift` file, simply add `secp256k1.swift` as a dependencies' clause in your Swift manifest:
+
+```swift
+.package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", .upToNextMajor(from: "0.6.0"))
+```
+
+Try in a [playground](spi-playgrounds://open?dependencies=GigaBitcoin/secp256k1.swift) using the [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground) or 🏟 [Arena](https://github.com/finestructure/arena)
+
+```swift
+arena GigaBitcoin/secp256k1.swift
+```
+
+
 # Example Usage
 
 ## ECDSA
@@ -40,8 +55,7 @@ print(try! signature.derRepresentation.base64EncodedString())
 ## Schnorr
 
 ```swift
-let privateBytes = try! "C90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9".bytes
-let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateBytes)
+let privateKey = try! secp256k1.Signing.PrivateKey()
 
 // Extra params for custom signing
 var auxRand = try! "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906".bytes
@@ -54,8 +68,7 @@ let signature = try! privateKey.schnorr.signature(message: &messageDigest, auxil
 ## Tweak
 
 ```swift
-let privateBytes = try! "C90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B14E5C9".bytes
-let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateBytes)
+let privateKey = try! secp256k1.Signing.PrivateKey()
 
 // Adding a tweak to the private key and public key
 let tweak = try! "5f0da318c6e02f653a789950e55756ade9f194e1ec228d7f368de1bd821322b6".bytes
@@ -109,21 +122,6 @@ let publicKey = try! secp256k1.Recovery.PublicKey(messageData, signature: recove
 
 // Convert a recoverable signature into a normal signature
 let signature = try! recoverySignature.normalize
-```
-
-
-# Getting Started
-
-This repository primarily uses Swift package manager as its build tool, so we recommend using that as well. If you want to depend on `secp256k1.swift` in your own project, simply add it as a dependencies' clause in your `Package.swift`:
-
-```swift
-.package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", .upToNextMajor(from: "0.6.0"))
-```
-
-Try in a [playground](spi-playgrounds://open?dependencies=GigaBitcoin/secp256k1.swift) using the [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground) or 🏟 [Arena](https://github.com/finestructure/arena)
-
-```swift
-arena GigaBitcoin/secp256k1.swift
 ```
 
 
