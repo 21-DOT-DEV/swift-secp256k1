@@ -25,6 +25,12 @@ let package = Package(
             targets: [
                 "secp256k1"
             ]
+        ),
+        .library(
+            name: "zkp",
+            targets: [
+                "zkp"
+            ]
         )
     ],
     dependencies: dependencies,
@@ -33,6 +39,12 @@ let package = Package(
             name: "secp256k1",
             dependencies: [
                 "secp256k1_bindings"
+            ]
+        ),
+        .target(
+            name: "zkp",
+            dependencies: [
+                "secp256k1_zkp_bindings"
             ]
         ),
         .target(
@@ -79,6 +91,12 @@ let package = Package(
             name: "secp256k1Tests",
             dependencies: [
                 "secp256k1"
+            ]
+        ),
+        .testTarget(
+            name: "zkpTests",
+            dependencies: [
+                "zkp"
             ]
         )
     ],

@@ -1,6 +1,6 @@
 import XCTest
 
-final class secp256k1Tests: XCTestCase, APITestingType {
+final class zkpTests: XCTestCase, APITestingType {
     func testUncompressedKeypairCreation() { uncompressedKeypairCreation() }
     func testCompressedKeypairCreation() { compressedKeypairCreation() }
     func testECDHBindings() { ecdhBindings() }
