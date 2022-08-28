@@ -16,26 +16,19 @@ workflows:
     steps:
     - git-clone: {}
     - bitrise-run:
-        title: Linux
-        run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "f1bbbdfeff08cd5c" }}'
-        inputs:
-        - workflow_id: LINUX
-    - bitrise-run:
         title: macOS
         run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "18c18db60fc4fddf" }}'
         inputs:
         - workflow_id: MACOS
-  LINUX:
+  MACOS:
     steps:
+    - swift-package-manager-test-for-mac: {}
     - script:
-        title: docker build
+        title: Build ZKP
         inputs:
         - content: |-
             #!/usr/bin/env bash
             # fail if any commands fails; debug log
             set -ex
 
-            docker build .
-  MACOS:
-    steps:
-    - swift-package-manager-test-for-mac: {}
+            swift build --target zkp --use-integrated-swift-driver

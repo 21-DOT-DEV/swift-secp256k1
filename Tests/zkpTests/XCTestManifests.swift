@@ -1,11 +1,10 @@
 import XCTest
-
-@_exported import secp256k1
+@_exported import zkp
 
 #if !canImport(ObjectiveC)
     public func allTests() -> [XCTestCaseEntry] {
         [
-            testCase(secp256k1Tests.allTests)
+            testCase(zkpTests.allTests)
         ]
     }
 #endif
