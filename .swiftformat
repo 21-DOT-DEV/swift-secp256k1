@@ -36,6 +36,7 @@
 # file options
 --swiftversion 5
 --exclude .build
+--exclude Submodules
 --exclude Sources/**/Digest.swift
 --exclude Sources/**/PrettyBytes.swift
 --exclude Sources/**/RNG_boring.swift
