@@ -8,4 +8,4 @@ ADD . /LinuxTests
 WORKDIR /LinuxTests
 
 # Execute Linux test suite
-RUN swift test && swift build --target zkp
+RUN swift test && swift build --target zkp --use-integrated-swift-driver

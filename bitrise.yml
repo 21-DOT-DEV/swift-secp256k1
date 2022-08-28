@@ -31,4 +31,4 @@ workflows:
             # fail if any commands fails; debug log
             set -ex
 
-            swift build --target zkp
+            swift build --target zkp --use-integrated-swift-driver
