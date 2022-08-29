@@ -57,9 +57,7 @@ let package = Package(
                 .define("ENABLE_MODULE_ECDH"),
                 .define("ENABLE_MODULE_EXTRAKEYS"),
                 .define("ENABLE_MODULE_RECOVERY"),
-                .define("ENABLE_MODULE_SCHNORRSIG"),
-                // Disables SPM warnings
-                .unsafeFlags(["-Wno-shorten-64-to-32"])
+                .define("ENABLE_MODULE_SCHNORRSIG")
             ]
         ),
         .target(
@@ -82,9 +80,7 @@ let package = Package(
                 .define("ENABLE_MODULE_WHITELIST"),
                 // Some modules need additional header search paths
                 .headerSearchPath("../../Submodules/secp256k1-zkp"),
-                .headerSearchPath("../../Submodules/secp256k1-zkp/src"),
-                // Disables SPM warnings
-                .unsafeFlags(["-Wno-shorten-64-to-32"])
+                .headerSearchPath("../../Submodules/secp256k1-zkp/src")
             ]
         ),
         .testTarget(
