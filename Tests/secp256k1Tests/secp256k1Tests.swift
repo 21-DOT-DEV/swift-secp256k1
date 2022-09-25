@@ -31,6 +31,7 @@ final class secp256k1Tests: XCTestCase, APITestingType {
     func testPrivateKeyTweakAdd() { privateKeyTweakAdd() }
     func testKeyAgreement() { keyAgreement() }
     func testKeyAgreementPublicKeyTweakAdd() { keyAgreementPublicKeyTweakAdd() }
+    func testXonlyToPublicKey() { xonlyToPublicKey() }
 
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
@@ -62,6 +63,7 @@ final class secp256k1Tests: XCTestCase, APITestingType {
         ("testZeroization", testZeroization),
         ("testPrivateKeyTweakAdd", testPrivateKeyTweakAdd),
         ("testKeyAgreement", testKeyAgreement),
-        ("testKeyAgreementPublicKeyTweakAdd", testKeyAgreementPublicKeyTweakAdd)
+        ("testKeyAgreementPublicKeyTweakAdd", testKeyAgreementPublicKeyTweakAdd),
+        ("testXonlyToPublicKey", testXonlyToPublicKey)
     ]
 }
