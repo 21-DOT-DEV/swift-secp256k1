@@ -106,6 +106,16 @@ public extension secp256k1 {
                 self.baseKey = baseKey
             }
 
+            /// Generates a secp256k1 public key from a xonly key.
+            /// - Parameter xonlyKey: a xonly key object.
+            public init(xonlyKey: XonlyKey) {
+                let key = XonlyKeyImplementation(
+                    rawRepresentation: xonlyKey.bytes,
+                    keyParity: xonlyKey.parity ? 1 : 0
+                )
+                self.baseKey = PublicKeyImplementation(xonlyKey: key)
+            }
+
             /// Generates a secp256k1 public key from a raw representation.
             /// - Parameter data: A raw representation of the key.
             /// - Throws: An error is thrown when the raw representation does not create a public key.

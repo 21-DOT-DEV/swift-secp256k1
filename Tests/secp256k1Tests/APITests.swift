@@ -41,6 +41,7 @@ protocol APITestingType {
     func privateKeyTweakAdd()
     func keyAgreement()
     func keyAgreementPublicKeyTweakAdd()
+    func xonlyToPublicKey()
 }
 
 extension APITestingType {
@@ -504,5 +505,12 @@ extension APITestingType {
         }
 
         XCTAssertEqual(privateTweak1.publicKey.xonly.bytes, xonlyTweak2.bytes)
+    }
+
+    func xonlyToPublicKey() {
+        let privateKey = try! secp256k1.Signing.PrivateKey()
+        let publicKey = secp256k1.Signing.PublicKey(xonlyKey: privateKey.publicKey.xonly)
+
+        XCTAssertEqual(privateKey.publicKey.rawRepresentation, publicKey.rawRepresentation)
     }
 }

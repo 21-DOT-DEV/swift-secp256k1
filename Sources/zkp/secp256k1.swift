@@ -185,6 +185,17 @@ extension secp256k1 {
         self._keyParity = keyParity
     }
 
+    /// Backing initialization that sets the public key from a xonly key object.
+    /// - Parameter xonlyKey: a xonly key object
+    @usableFromInline init(xonlyKey: XonlyKeyImplementation) {
+        let yCoord: [UInt8] = xonlyKey.keyParity.boolValue ? [3] : [2]
+
+        self.format = .compressed
+        self._xonlyBytes = xonlyKey.bytes
+        self._keyParity = xonlyKey.keyParity
+        self.bytes = yCoord + xonlyKey.bytes
+    }
+
     /// Backing initialization that sets the public key from a digest and recoverable signature.
     /// - Parameters:
     ///   - digest: The digest that was signed.
