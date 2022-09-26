@@ -8,8 +8,8 @@
 //  See the accompanying file LICENSE for information
 //
 
-#if canImport(secp256k1_zkp_bindings)
-    @_exported import secp256k1_zkp_bindings
+#if canImport(zkp_bindings)
+    @_exported import zkp_bindings
 #else
     @_exported import secp256k1_bindings
 #endif
