@@ -44,7 +44,7 @@ let package = Package(
         .target(
             name: "zkp",
             dependencies: [
-                "secp256k1_zkp_bindings"
+                "zkp_bindings"
             ]
         ),
         .target(
@@ -61,7 +61,7 @@ let package = Package(
             ]
         ),
         .target(
-            name: "secp256k1_zkp_bindings",
+            name: "zkp_bindings",
             cSettings: [
                 // Basic config values that are universal and require no dependencies.
                 .define("ECMULT_GEN_PREC_BITS", to: "4"),
