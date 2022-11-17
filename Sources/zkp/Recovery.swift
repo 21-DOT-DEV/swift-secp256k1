@@ -66,8 +66,8 @@ public extension secp256k1 {
 public extension secp256k1.Recovery {
     /// Recovery Signature
     struct ECDSACompactSignature {
-        let signature: Data
-        let recoveryId: Int32
+        public let signature: Data
+        public let recoveryId: Int32
     }
 
     struct ECDSASignature: ContiguousBytes, RawSignature {
