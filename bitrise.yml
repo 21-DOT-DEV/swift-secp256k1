@@ -4,7 +4,7 @@ default_step_lib_source: 'https://github.com/bitrise-io/bitrise-steplib.git'
 project_type: other
 meta:
   bitrise.io:
-    stack: osx-xcode-13.4.x
+    stack: osx-xcode-14.0.x
     machine_type_id: g2.4core
 trigger_map:
 - push_branch: main
@@ -14,17 +14,13 @@ trigger_map:
 workflows:
   ENTRY-POINT:
     steps:
-    - git-clone: {}
-    - bitrise-run:
-        title: macOS
-        run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "18c18db60fc4fddf" }}'
-        inputs:
-        - workflow_id: MACOS
-  MACOS:
-    steps:
-    - swift-package-manager-test-for-mac: {}
+    - git-clone:
+        timeout: 60
+    - swift-package-manager-test-for-mac:
+        timeout: 300
     - script:
         title: Build ZKP
+        timeout: 300
         inputs:
         - content: |-
             #!/usr/bin/env bash
