@@ -15,7 +15,7 @@ workflows:
   ENTRY-POINT:
     steps:
     - git-clone:
-        timeout: 300
+        timeout: 60
     - bitrise-run:
         title: macOS
         timeout: 600
