@@ -16,17 +16,19 @@ workflows:
     steps:
     - git-clone:
         timeout: 60
-    - bitrise-run:
-        title: macOS
-        timeout: 600
-        run_if: '{{ getenv "BITRISE_APP_SLUG" | eq "18c18db60fc4fddf" }}'
+    - script:
+        title: Build secp256k1
+        timeout: 300
         inputs:
-        - workflow_id: MACOS
-  MACOS:
-    steps:
-    - swift-package-manager-test-for-mac: {}
+        - content: |-
+            #!/usr/bin/env bash
+            # fail if any commands fails; debug log
+            set -ex
+
+            swift test --use-integrated-swift-driver
     - script:
         title: Build ZKP
+        timeout: 300
         inputs:
         - content: |-
             #!/usr/bin/env bash
