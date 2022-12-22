@@ -431,7 +431,7 @@ extension APITestingType {
 
         let set0 = Set(array)
 
-        array = [UInt8](repeating: 1, count: Int.random(in: 10...100_000))
+        array = [UInt8](repeating: 1, count: Int.random(in: 10...100000))
 
         XCTAssertGreaterThan(array.count, 9)
 
