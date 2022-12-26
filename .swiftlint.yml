@@ -137,6 +137,8 @@ excluded: # paths to ignore during linting. Takes precedence over `included`.
   - Sources/**/RNG_boring.swift
   - Sources/**/SecureBytes.swift
   - Sources/**/Signature.swift
+  - Exhaustive/**/secp256k1Tests.swift
+  - Exhaustive/**/XCTestManifests.swift
 analyzer_rules: # Rules run by `swiftlint analyze`
   - explicit_self
 
