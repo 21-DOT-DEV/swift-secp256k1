@@ -1,0 +1,11 @@
+# Use an official Swift runtime image
+FROM swift:5.7.2
+
+# Copies the root directory of the repository into the image's filesystem at `/LinuxTests`
+ADD . /LinuxTests
+
+# Set the working directory to `/LinuxTests/Exhaustive/zkp`
+WORKDIR /LinuxTests/Exhaustive/zkp
+
+# Execute Linux test suite
+RUN ls -a && swift test --use-integrated-swift-driver

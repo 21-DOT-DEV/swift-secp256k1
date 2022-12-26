@@ -89,13 +89,6 @@ let package = Package(
                 "secp256k1"
             ]
         )
-        // Breaks CI
-//        .testTarget(
-//            name: "zkpTests",
-//            dependencies: [
-//                "zkp"
-//            ]
-//        )
     ],
     swiftLanguageVersions: [.v5],
     cLanguageStandard: .c89

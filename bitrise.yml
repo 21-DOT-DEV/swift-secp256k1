@@ -18,13 +18,6 @@ workflows:
         timeout: 60
     - swift-package-manager-test-for-mac:
         timeout: 300
-    - script:
-        title: Build ZKP
+    - swift-package-manager-test-for-mac:
         timeout: 300
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            # fail if any commands fails; debug log
-            set -ex
-
-            swift build --target zkp --use-integrated-swift-driver
+        build_path: Exhaustive/zkp
