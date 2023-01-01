@@ -3,15 +3,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "zkp",
+    name: "Package",
     dependencies: [
         .package(name: "secp256k1", path: "../..")
     ],
     targets: [
         .testTarget(
-            name: "zkpTests",
+            name: "secp256k1Tests",
             dependencies: [
-                .product(name: "zkp", package: "secp256k1")
+                .product(name: "secp256k1", package: "secp256k1")
             ]
         )
     ]
