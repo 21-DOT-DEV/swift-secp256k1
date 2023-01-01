@@ -84,9 +84,9 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "secp256k1Tests",
+            name: "zkpTests",
             dependencies: [
-                "secp256k1"
+                "zkp"
             ]
         )
     ],

@@ -1,0 +1,1 @@
+../../../../Tests/zkpTests/XCTestManifests.swift

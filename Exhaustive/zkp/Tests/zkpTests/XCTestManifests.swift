@@ -1,1 +1,0 @@
-../../../../Tests/secp256k1Tests/XCTestManifests.swift
