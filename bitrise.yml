@@ -27,4 +27,4 @@ workflows:
             # fail if any commands fails; debug log
             set -ex
 
-            swift test --package-path Exhaustive/zkp --use-integrated-swift-driver
+            swift test --package-path Exhaustive/Package --use-integrated-swift-driver
