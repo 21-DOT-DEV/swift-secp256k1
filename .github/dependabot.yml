@@ -19,3 +19,10 @@ updates:
   open-pull-requests-limit: 10
   reviewers:
   - csjones
+- package-ecosystem: github-actions
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  reviewers:
+  - csjones
