@@ -5,7 +5,7 @@ project_type: other
 meta:
   bitrise.io:
     stack: osx-xcode-14.2.x-ventura
-    machine_type_id: g2.4core
+    machine_type_id: g2-m1.4core
 trigger_map:
 - push_branch: main
   pipeline: PIPELINE-SECP256K1-ZKP
@@ -40,23 +40,30 @@ workflows:
     before_run:
     - PULL-PACKAGE-FILES
     steps:
-    - swift-package-manager-test-for-mac:
-        title: BUILD ZKP
-        timeout: 300
-  BUILD-SECP256K1:
-    before_run:
-    - PULL-PACKAGE-FILES
-    steps:
     - script:
-        title: BUILD SECP256K1
-        timeout: 300
+        title: BUILD ZKP
+        timeout: 120
         inputs:
         - content: |-
             #!/usr/bin/env bash
             # fail if any commands fails; debug log
             set -ex
 
-            swift test --package-path Exhaustive/Package --use-integrated-swift-driver
+            swift test --use-integrated-swift-driver
+  BUILD-SECP256K1:
+    before_run:
+    - PULL-PACKAGE-FILES
+    steps:
+    - script:
+        title: BUILD SECP256K1
+        timeout: 120
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            # fail if any commands fails; debug log
+            set -ex
+
+            swift test --package-path Exhaustive/Package
   PULL-PACKAGE-FILES:
     steps:
     - pull-intermediate-files:
