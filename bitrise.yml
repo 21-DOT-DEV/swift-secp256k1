@@ -4,27 +4,68 @@ default_step_lib_source: 'https://github.com/bitrise-io/bitrise-steplib.git'
 project_type: other
 meta:
   bitrise.io:
-    stack: osx-xcode-14.0.x
-    machine_type_id: g2.4core
+    stack: osx-xcode-14.2.x-ventura
+    machine_type_id: g2-m1.4core
 trigger_map:
 - push_branch: main
-  workflow: ENTRY-POINT
+  pipeline: PIPELINE-SECP256K1-ZKP
 - pull_request_source_branch: '*'
-  workflow: ENTRY-POINT
+  pipeline: PIPELINE-SECP256K1-ZKP
+pipelines:  
+  PIPELINE-SECP256K1-ZKP:
+    stages:
+    - CLONE: {}
+    - SECP256K1: {}
+    - ZKP: {}
+stages:
+  CLONE:
+    workflows:
+    - SECP256K1-SWIFT: {}
+  SECP256K1:
+    workflows:
+    - BUILD-SECP256K1: {}
+  ZKP:
+    workflows:
+    - BUILD-ZKP: {}
 workflows:
-  ENTRY-POINT:
+  SECP256K1-SWIFT:
     steps:
     - git-clone:
+        title: CLONE SECP256K1.SWIFT
         timeout: 60
-    - swift-package-manager-test-for-mac:
-        timeout: 300
+    - deploy-to-bitrise-io:
+        inputs:
+        - pipeline_intermediate_files: "$BITRISE_SOURCE_DIR:BITRISE_SOURCE_DIR"
+  BUILD-ZKP:
+    before_run:
+    - PULL-PACKAGE-FILES
+    steps:
     - script:
-        title: Build ZKP
-        timeout: 300
+        title: BUILD ZKP
+        timeout: 120
         inputs:
         - content: |-
             #!/usr/bin/env bash
             # fail if any commands fails; debug log
             set -ex
 
-            swift test --package-path Exhaustive/Package --use-integrated-swift-driver
+            swift test --use-integrated-swift-driver
+  BUILD-SECP256K1:
+    before_run:
+    - PULL-PACKAGE-FILES
+    steps:
+    - script:
+        title: BUILD SECP256K1
+        timeout: 120
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            # fail if any commands fails; debug log
+            set -ex
+
+            swift test --package-path Exhaustive/Package
+  PULL-PACKAGE-FILES:
+    steps:
+    - pull-intermediate-files:
+        inputs:
+        - artifact_sources: CLONE.SECP256K1-SWIFT
