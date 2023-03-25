@@ -14,7 +14,7 @@ jobs:
       with:
         submodules: recursive
     - name: Check symbolic links
-      run: find . -type l ! -exec test -e {} \; -print -quit && exit 1
+      run: find . -type d -name .build -prune -o -type l ! -exec test -e {} \; -print | grep -q . && exit 1 || exit 0
     - name: Build the Docker zkp image
       run: docker build .
     - name: Build the Docker secp256k1 image

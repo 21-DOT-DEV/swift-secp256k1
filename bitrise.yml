@@ -46,7 +46,7 @@ workflows:
             # It uses the find command to follow symbolic links and checks if they are
             # broken with the test command. If a broken symbolic link is found, the
             # script fails with a non-zero status code.
-            find . -type l ! -exec test -e {} \; -print -quit && exit 1
+            find . -type d -name .build -prune -o -type l ! -exec test -e {} \; -print | grep -q . && exit 1 || exit 0
     - deploy-to-bitrise-io:
         inputs:
         - pipeline_intermediate_files: "$BITRISE_SOURCE_DIR:BITRISE_SOURCE_DIR"
@@ -56,7 +56,7 @@ workflows:
     steps:
     - script:
         title: BUILD ZKP
-        timeout: 120
+        timeout: 180
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -70,7 +70,7 @@ workflows:
     steps:
     - script:
         title: BUILD SECP256K1
-        timeout: 120
+        timeout: 180
         inputs:
         - content: |-
             #!/usr/bin/env bash
