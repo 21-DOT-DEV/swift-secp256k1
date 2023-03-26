@@ -31,21 +31,24 @@
 
 import Foundation
 
-/// A Diffie-Hellman Key Agreement Key
+/// A protocol representing a Diffie-Hellman Key Agreement Key.
 protocol DiffieHellmanKeyAgreement {
-    /// The public key share type to perform the DH Key Agreement
+    /// The public key share type to perform the DH Key Agreement.
     associatedtype P
+    /// The public key associated with this instance.
     var publicKey: P { get }
 
-    /// Performs a Diffie-Hellman Key Agreement
+    /// Performs a Diffie-Hellman Key Agreement.
     ///
-    /// - Parameter publicKeyShare: The public key share
-    /// - Returns: The resulting key agreement result
+    /// - Parameter publicKeyShare: The public key share of the other party.
+    /// - Returns: The resulting shared secret as a `SharedSecret` instance.
+    /// - Throws: An error if the key agreement fails.
     func sharedSecretFromKeyAgreement(with publicKeyShare: P) throws -> SharedSecret
 }
 
-/// A Key Agreement Result
-/// A SharedSecret has to go through a Key Derivation Function before being able to use by a symmetric key operation.
+/// A Key Agreement Result.
+///
+/// A `SharedSecret` has to go through a Key Derivation Function before being able to use by a symmetric key operation.
 public struct SharedSecret: ContiguousBytes {
     var ss: SecureBytes
 
@@ -60,7 +63,7 @@ extension SharedSecret: Hashable {
     }
 }
 
-// We want to implement constant-time comparison for digests.
+/// Extension providing constant-time comparison and custom string representation for `SharedSecret`.
 extension SharedSecret: CustomStringConvertible, Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
         safeCompare(lhs, rhs)
@@ -75,6 +78,7 @@ extension SharedSecret: CustomStringConvertible, Equatable {
         }
     }
 
+    /// A string representation of the `SharedSecret` object.
     public var description: String {
         "\(Self.self): \(ss.hexString)"
     }
