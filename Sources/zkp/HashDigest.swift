@@ -33,11 +33,16 @@ import Foundation
 
 // MARK: - HashDigest + DigestPrivate
 
+/// A typealias for the `HashDigest` struct as `SHA256Digest`.
 public typealias SHA256Digest = HashDigest
 
+/// A struct representing a hash digest.
 public struct HashDigest: Digest {
     let bytes: (UInt64, UInt64, UInt64, UInt64)
 
+    /// Initializes a hash digest from an array of bytes.
+    ///
+    /// - Parameter output: An array of bytes to create the hash digest.
     public init(_ output: [UInt8]) {
         let first = output[0..<8].withUnsafeBytes { $0.load(as: UInt64.self) }
         let second = output[8..<16].withUnsafeBytes { $0.load(as: UInt64.self) }
@@ -47,12 +52,16 @@ public struct HashDigest: Digest {
         self.bytes = (first, second, third, forth)
     }
 
+    /// The byte count of the hash digest.
     public static var byteCount: Int {
         get { 32 }
-
         set { fatalError("Cannot set SHA256.byteCount") }
     }
 
+    /// Executes a closure while passing an `UnsafeRawBufferPointer`.
+    ///
+    /// - Parameter body: A closure that takes an `UnsafeRawBufferPointer` as its argument.
+    /// - Returns: The value returned from the closure.
     public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
         try Swift.withUnsafeBytes(of: bytes) {
             let boundsCheckedPtr = UnsafeRawBufferPointer(
@@ -63,6 +72,9 @@ public struct HashDigest: Digest {
         }
     }
 
+    /// Converts the hash digest to an array slice of bytes.
+    ///
+    /// - Returns: An array slice of bytes.
     private func toArray() -> ArraySlice<UInt8> {
         var array = [UInt8]()
         array.appendByte(bytes.0)
@@ -72,10 +84,14 @@ public struct HashDigest: Digest {
         return array.prefix(upTo: Self.byteCount)
     }
 
+    /// A string representation of the hash digest.
     public var description: String {
-        "\("SHA256") digest: \(toArray().hexString)"
+        "SHA256 digest: \(toArray().hexString)"
     }
 
+    /// Hashes the hash digest into the hasher.
+    ///
+    /// - Parameter hasher: An inout hasher.
     public func hash(into hasher: inout Hasher) {
         withUnsafeBytes { hasher.combine(bytes: $0) }
     }

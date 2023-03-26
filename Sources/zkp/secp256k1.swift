@@ -13,16 +13,32 @@ import Foundation
 /// The secp256k1 Elliptic Curve.
 public enum secp256k1 {}
 
-/// Flags passed to secp256k1_context_create, secp256k1_context_preallocated_size, and secp256k1_context_preallocated_create.
+/// An extension to secp256k1 containing a Context structure that represents the flags
+/// passed to secp256k1_context_create, secp256k1_context_preallocated_size, and secp256k1_context_preallocated_create.
 public extension secp256k1 {
     struct Context: OptionSet {
+        /// Raw value representing the underlying UInt32 flags.
         public let rawValue: UInt32
+
+        /// Initializes a new Context with the specified raw value.
+        /// - Parameter rawValue: The UInt32 raw value for the context flags.
         public init(rawValue: UInt32) { self.rawValue = rawValue }
+
+        /// Initializes a new Context with the specified raw value.
+        /// - Parameter rawValue: The Int32 raw value for the context flags.
         init(rawValue: Int32) { self.rawValue = UInt32(rawValue) }
+
+        /// No context flag.
         public static let none = Context(rawValue: SECP256K1_CONTEXT_NONE)
+        /// Context flag for signing.
         public static let sign = Context(rawValue: SECP256K1_CONTEXT_SIGN)
+        /// Context flag for verifying.
         public static let verify = Context(rawValue: SECP256K1_CONTEXT_VERIFY)
 
+        /// Creates a new secp256k1 context with the specified flags.
+        /// - Parameter context: The context flags to create a new secp256k1 context.
+        /// - Throws: Throws an error if the context creation or randomization fails.
+        /// - Returns: Returns an opaque pointer to the created context.
         public static func create(_ context: Context = .none) throws -> OpaquePointer {
             var randomBytes = SecureBytes(count: secp256k1.ByteDetails.count).bytes
             guard let context = secp256k1_context_create(context.rawValue),
@@ -33,15 +49,21 @@ public extension secp256k1 {
             return context
         }
 
+        /// The raw secp256k1 context.
         public static let raw = try! secp256k1.Context.create()
     }
 }
 
-/// Flag to pass to secp256k1_ec_pubkey_serialize.
+/// An extension to secp256k1 containing an enum for public key formats.
 public extension secp256k1 {
+    /// Enum representing public key formats to be passed to `secp256k1_ec_pubkey_serialize`.
     enum Format: UInt32 {
-        case compressed, uncompressed
+        /// Compressed public key format.
+        case compressed
+        /// Uncompressed public key format.
+        case uncompressed
 
+        /// The length of the public key in bytes, based on the format.
         public var length: Int {
             switch self {
             case .compressed: return 33
@@ -49,6 +71,7 @@ public extension secp256k1 {
             }
         }
 
+        /// The raw UInt32 value corresponding to the public key format.
         public var rawValue: UInt32 {
             let value: Int32
 
@@ -62,17 +85,22 @@ public extension secp256k1 {
     }
 }
 
+/// An extension for secp256k1 containing nested enums for curve and byte details.
 extension secp256k1 {
+    /// An enum containing details about the secp256k1 curve.
     @usableFromInline
     enum CurveDetails {
+        /// The number of bytes in a coordinate of the secp256k1 curve.
         @inlinable
         static var coordinateByteCount: Int {
             16
         }
     }
 
+    /// An enum containing details about bytes in secp256k1.
     @usableFromInline
     enum ByteDetails {
+        /// The number of bytes in a secp256k1 object.
         @inlinable
         static var count: Int {
             32

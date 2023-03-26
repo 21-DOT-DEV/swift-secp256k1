@@ -10,10 +10,11 @@
 
 import Foundation
 
+/// The SHA256 hashing algorithm.
 public enum SHA256 {
     /// Computes a digest of the data.
-    /// - Parameter data: The data to be hashed
-    /// - Returns: The computed digest
+    /// - Parameter data: The data to be hashed.
+    /// - Returns: The computed digest.
     public static func hash<D: DataProtocol>(data: D) -> SHA256Digest {
         let stringData = Array(data)
         var output = [UInt8](repeating: 0, count: 32)
@@ -23,9 +24,12 @@ public enum SHA256 {
         return .init(output)
     }
 
-    /// Computes a digest of the data.
-    /// - Parameter data: The data to be hashed
-    /// - Returns: The computed digest
+    /// Computes a tagged hash of the data.
+    /// - Parameters:
+    ///   - tag: The tag to be used in the hash computation.
+    ///   - data: The data to be hashed.
+    /// - Throws: An error if the tagged hash computation fails.
+    /// - Returns: The computed digest.
     public static func taggedHash<D: DataProtocol>(tag: [UInt8], data: D) throws -> SHA256Digest {
         let messageBytes = Array(data)
         var output = [UInt8](repeating: 0, count: 32)

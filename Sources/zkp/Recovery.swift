@@ -12,8 +12,10 @@ import Foundation
 
 // MARK: - secp256k1 + Recovery
 
+/// An extension for secp256k1 with a nested Recovery enum.
 public extension secp256k1 {
     enum Recovery {
+        /// A struct representing a secp256k1 public key for recovery purposes.
         public struct PublicKey {
             let baseKey: PublicKeyImplementation
 
@@ -21,7 +23,7 @@ public extension secp256k1 {
             /// - Parameters:
             ///   - data: The data to be hash and assumed signed.
             ///   - signature: A raw representation of the initialized signature that supports pubkey recovery.
-            ///   - format: the format of the public key object
+            ///   - format: The format of the public key object.
             public init<D: DataProtocol>(
                 _ data: D,
                 signature: secp256k1.Recovery.ECDSASignature,
@@ -38,7 +40,7 @@ public extension secp256k1 {
             /// - Parameters:
             ///   - digest: The hash digest assumed to be signed.
             ///   - signature: A raw representation of the initialized signature that supports pubkey recovery.
-            ///   - format: the format of the public key object
+            ///   - format: The format of the public key object.
             public init<D: Digest>(
                 _ digest: D,
                 signature: secp256k1.Recovery.ECDSASignature,
@@ -48,15 +50,15 @@ public extension secp256k1 {
             }
 
             /// Initializes a secp256k1 public key for recovery.
-            /// - Parameter baseKey: generated secp256k1 public key.
+            /// - Parameter baseKey: Generated secp256k1 public key.
             init(baseKey: PublicKeyImplementation) {
                 self.baseKey = baseKey
             }
 
-            /// A data representation of the public key
+            /// A data representation of the public key.
             public var rawRepresentation: Data { baseKey.rawRepresentation }
 
-            /// Implementation public key object
+            /// Implementation public key object.
             var bytes: [UInt8] { baseKey.bytes }
         }
     }
