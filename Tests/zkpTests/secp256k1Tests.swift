@@ -182,7 +182,7 @@ final class secp256k1Tests: XCTestCase {
         let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
-        let signature = try! privateKey.ecdsa.signature(for: messageData)
+        let signature = try! privateKey.signature(for: messageData)
 
         // Verify the signature matches the expected output
         XCTAssertEqual(expectedSignature, signature.rawRepresentation.base64EncodedString())
@@ -195,10 +195,10 @@ final class secp256k1Tests: XCTestCase {
         let expectedSignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVg=="
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+        let privateKey = try! secp256k1.Recovery.PrivateKey(rawRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
-        let recoverySignature = try! privateKey.ecdsa.recoverableSignature(for: messageData)
+        let recoverySignature = try! privateKey.signature(for: messageData)
 
         // Verify the recovery signature matches the expected output
         XCTAssertEqual(expectedRecoverySignature, recoverySignature.rawRepresentation.base64EncodedString())
@@ -214,10 +214,10 @@ final class secp256k1Tests: XCTestCase {
         let expectedRecoverySignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVgE="
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+        let privateKey = try! secp256k1.Recovery.PrivateKey(rawRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
-        let recoverySignature = try! privateKey.ecdsa.recoverableSignature(for: messageData)
+        let recoverySignature = try! privateKey.signature(for: messageData)
 
         // Verify the recovery signature matches the expected output
         XCTAssertEqual(expectedRecoverySignature, recoverySignature.rawRepresentation.base64EncodedString())
@@ -233,12 +233,12 @@ final class secp256k1Tests: XCTestCase {
         let expectedSignature = "e907831f80848d1069a5371b402410364bdf1c5f8307b0084c55f1ce2dca821525f66a4a85ea8b71e482a74f382d2ce5ebeee8fdb2172f477df4900d310536c0"
         let expectedPrivateKey = "0000000000000000000000000000000000000000000000000000000000000003"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+        let privateKey = try! secp256k1.Schnorr.PrivateKey(rawRepresentation: privateKeyBytes)
         var messageDigest = try! "0000000000000000000000000000000000000000000000000000000000000000".bytes
 
         var auxRand = try! "0000000000000000000000000000000000000000000000000000000000000000".bytes
 
-        let signature = try! privateKey.schnorr.signature(message: &messageDigest, auxiliaryRand: &auxRand)
+        let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 
         // Verify the signature matches the expected output
         XCTAssertEqual(expectedSignature, String(bytes: Array(signature.rawRepresentation)))
@@ -251,38 +251,38 @@ final class secp256k1Tests: XCTestCase {
         let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
-        let signature = try! privateKey.ecdsa.signature(for: messageData)
+        let signature = try! privateKey.signature(for: messageData)
 
         // Test the verification of the signature output
-        XCTAssertTrue(privateKey.publicKey.ecdsa.isValidSignature(signature, for: SHA256.hash(data: messageData)))
+        XCTAssertTrue(privateKey.publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)))
     }
 
     func testSchnorrVerifyingPre() {
         let expectedPrivateKey = "4894b8087f428971b55ff96e16f7127340138bc84e7973821a224cad02055975"
         let expectedSignature = "ad57c21d383ef8ac799adfd469a221c40ef9f09563a16682b9ab1edc46c33d6d6a1d719761d269e87ab971e0ffafc1618a4666a4f9aef4abddc3ea9fc0cd5b12"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+        let privateKey = try! secp256k1.Schnorr.PrivateKey(rawRepresentation: privateKeyBytes)
         var messageDigest = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.bytes
         var auxRand = try! "f50c8c99e39a82f125fa83186b5f2483f39fb0fb56269c755689313a177be6ea".bytes
 
-        let signature = try! privateKey.schnorr.signature(message: &messageDigest, auxiliaryRand: &auxRand)
+        let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 
         // Test the verification of the signature output
         XCTAssertEqual(expectedSignature, String(bytes: signature.rawRepresentation.bytes))
-        XCTAssertTrue(privateKey.publicKey.schnorr.isValid(signature, for: &messageDigest))
+        XCTAssertTrue(privateKey.xonly.isValid(signature, for: &messageDigest))
     }
 
     func testSchnorrVerifying() {
         let expectedPrivateKey = "0000000000000000000000000000000000000000000000000000000000000003"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateKeyBytes)
+        let privateKey = try! secp256k1.Schnorr.PrivateKey(rawRepresentation: privateKeyBytes)
         var messageDigest = try! "0000000000000000000000000000000000000000000000000000000000000000".bytes
         var auxRand = try! "0000000000000000000000000000000000000000000000000000000000000000".bytes
 
-        let signature = try! privateKey.schnorr.signature(message: &messageDigest, auxiliaryRand: &auxRand)
+        let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 
         // Test the verification of the signature output
-        XCTAssertTrue(privateKey.publicKey.schnorr.isValid(signature, for: &messageDigest))
+        XCTAssertTrue(privateKey.xonly.isValid(signature, for: &messageDigest))
     }
 
     func testVerifyingDER() {
@@ -295,7 +295,7 @@ final class secp256k1Tests: XCTestCase {
         let signature = try! secp256k1.Signing.ECDSASignature(derRepresentation: expectedDerSignature)
 
         // Test the verification of the signature output
-        XCTAssertTrue(privateKey.publicKey.ecdsa.isValidSignature(signature, for: SHA256.hash(data: messageData)))
+        XCTAssertTrue(privateKey.publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)))
     }
 
     func testPrivateKey() {

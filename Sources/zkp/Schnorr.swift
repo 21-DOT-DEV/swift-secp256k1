@@ -10,8 +10,8 @@
 
 import Foundation
 
-extension secp256k1 {
-    @usableFromInline enum Schnorr {
+public extension secp256k1 {
+    enum Schnorr {
         /// Fixed number of bytes for Schnorr signature
         ///
         /// [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#abstract)
@@ -28,10 +28,88 @@ extension secp256k1 {
     }
 }
 
+/// An elliptic curve that enables secp256k1 signatures and key agreement.
+public extension secp256k1.Schnorr {
+    /// A representation of a secp256k1 private key used for signing.
+    struct PrivateKey: Equatable {
+        /// Generated secp256k1 Signing Key.
+        private let baseKey: PrivateKeyImplementation
+
+        /// The associated x-only public key for verifying Schnorr signatures.
+        ///
+        /// - Returns: The associated x-only public key.
+        public var xonly: XonlyKey {
+            XonlyKey(baseKey: baseKey.publicKey.xonly)
+        }
+
+        /// A data representation of the private key.
+        public var rawRepresentation: Data {
+            baseKey.rawRepresentation
+        }
+
+        /// Creates a random secp256k1 private key for signing.
+        ///
+        /// - Parameter format: The key format, default is .compressed.
+        /// - Throws: An error if the private key cannot be generated.
+        public init(format: secp256k1.Format = .compressed) throws {
+            self.baseKey = try PrivateKeyImplementation(format: format)
+        }
+
+        /// Creates a secp256k1 private key for signing from a data representation.
+        ///
+        /// - Parameter data: A raw representation of the key.
+        /// - Parameter format: The key format, default is .compressed.
+        /// - Throws: An error if the raw representation does not create a private key for signing.
+        public init<D: ContiguousBytes>(rawRepresentation data: D, format: secp256k1.Format = .compressed) throws {
+            self.baseKey = try PrivateKeyImplementation(rawRepresentation: data, format: format)
+        }
+
+        /// Determines if two private keys are equal.
+        ///
+        /// - Parameters:
+        ///   - lhs: The left-hand side private key.
+        ///   - rhs: The right-hand side private key.
+        /// - Returns: True if the private keys are equal, false otherwise.
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.baseKey.key == rhs.baseKey.key
+        }
+    }
+
+    /// The corresponding x-only public key for the secp256k1 curve.
+    struct XonlyKey {
+        /// Generated secp256k1 x-only public key.
+        private let baseKey: XonlyKeyImplementation
+
+        /// The secp256k1 x-only public key object.
+        public var bytes: [UInt8] {
+            baseKey.bytes
+        }
+
+        /// Schnorr x-only public key are implicit of the point being even, therefore this will always return `false`.`
+        public var parity: Bool {
+            false
+        }
+
+        /// Generates a secp256k1 x-only public key.
+        ///
+        /// - Parameter baseKey: Generated secp256k1 x-only public key.
+        fileprivate init(baseKey: XonlyKeyImplementation) {
+            self.baseKey = baseKey
+        }
+
+        /// Generates a secp256k1 x-only public key from a raw representation.
+        ///
+        /// - Parameter data: A raw representation of the x-only public key.
+        public init<D: ContiguousBytes>(rawRepresentation data: D) {
+            self.baseKey = XonlyKeyImplementation(rawRepresentation: data, keyParity: 0)
+        }
+    }
+}
+
 // MARK: - Schnorr Signatures
 
 /// A Schnorr (Schnorr Digital Signature Scheme) Signature
-public extension secp256k1.Signing {
+public extension secp256k1.Schnorr {
     struct SchnorrSignature: ContiguousBytes, RawSignature {
         /// Returns the raw signature in a fixed 64-byte format.
         public var rawRepresentation: Data
@@ -71,16 +149,9 @@ public extension secp256k1.Signing {
     }
 }
 
-// MARK: - secp256k1 + Signing Key
+// MARK: - secp256k1 + Schnorr
 
-public extension secp256k1.Signing {
-    struct SchnorrSigner {
-        /// Generated secp256k1 Signing Key.
-        var signingKey: PrivateKeyImplementation
-    }
-}
-
-extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
+extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
     /// Generates an Schnorr signature from a hash of a variable length data object
     ///
     /// This function uses SHA256 to create a hash of the variable length the data argument to ensure only 32-byte messages are signed.
@@ -92,7 +163,7 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
     ///     - data: The data object to hash and sign.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
-    public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Signing.SchnorrSignature {
+    public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Schnorr.SchnorrSignature {
         try signature(for: data, auxiliaryRand: SecureBytes(count: secp256k1.Schnorr.xonlyByteCount).bytes)
     }
 
@@ -107,7 +178,7 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
     ///     - digest: The digest to sign.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
-    public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.SchnorrSignature {
+    public func signature<D: Digest>(for digest: D) throws -> secp256k1.Schnorr.SchnorrSignature {
         try signature(for: digest, auxiliaryRand: SecureBytes(count: secp256k1.Schnorr.xonlyByteCount).bytes)
     }
 
@@ -123,7 +194,7 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
     ///     - auxiliaryRand: Auxiliary randomness.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
-    public func signature<D: DataProtocol>(for data: D, auxiliaryRand: [UInt8]) throws -> secp256k1.Signing.SchnorrSignature {
+    public func signature<D: DataProtocol>(for data: D, auxiliaryRand: [UInt8]) throws -> secp256k1.Schnorr.SchnorrSignature {
         try signature(for: SHA256.hash(data: data), auxiliaryRand: auxiliaryRand)
     }
 
@@ -139,7 +210,7 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
     ///     - auxiliaryRand: Auxiliary randomness; BIP340 requires 32-bytes.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
-    public func signature<D: Digest>(for digest: D, auxiliaryRand: [UInt8]) throws -> secp256k1.Signing.SchnorrSignature {
+    public func signature<D: Digest>(for digest: D, auxiliaryRand: [UInt8]) throws -> secp256k1.Schnorr.SchnorrSignature {
         var hashDataBytes = Array(digest).bytes
         var randomBytes = auxiliaryRand
 
@@ -158,31 +229,24 @@ extension secp256k1.Signing.SchnorrSigner: DigestSigner, Signer {
     ///   - auxiliaryRand: Auxiliary randomness; BIP340 requires 32-bytes.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure creating the context or signature.
-    public func signature(message: inout [UInt8], auxiliaryRand: UnsafeMutableRawPointer?) throws -> secp256k1.Signing.SchnorrSignature {
+    public func signature(message: inout [UInt8], auxiliaryRand: UnsafeMutableRawPointer?) throws -> secp256k1.Schnorr.SchnorrSignature {
         var keypair = secp256k1_keypair()
         var signature = [UInt8](repeating: 0, count: secp256k1.Schnorr.signatureByteCount)
         var extraParams = secp256k1_schnorrsig_extraparams(magic: secp256k1.Schnorr.magic, noncefp: nil, ndata: auxiliaryRand)
 
-        guard secp256k1_keypair_create(secp256k1.Context.raw, &keypair, signingKey.key.bytes).boolValue,
+        guard secp256k1_keypair_create(secp256k1.Context.raw, &keypair, Array(rawRepresentation)).boolValue,
               secp256k1_schnorrsig_sign_custom(secp256k1.Context.raw, &signature, &message, message.count, &keypair, &extraParams).boolValue
         else {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try secp256k1.Signing.SchnorrSignature(Data(bytes: signature, count: secp256k1.Schnorr.signatureByteCount))
+        return try secp256k1.Schnorr.SchnorrSignature(Data(bytes: signature, count: secp256k1.Schnorr.signatureByteCount))
     }
 }
 
 // MARK: - Schnorr + Validating Key
 
-public extension secp256k1.Signing {
-    struct SchnorrValidator {
-        /// Generated Schnorr Validating Key.
-        var validatingKey: PublicKeyImplementation
-    }
-}
-
-extension secp256k1.Signing.SchnorrValidator: DigestValidator, DataValidator {
+extension secp256k1.Schnorr.XonlyKey: DigestValidator, DataValidator {
     /// Verifies a Schnorr signature with a variable length data object
     ///
     /// This function uses SHA256 to create a hash of the variable length the data argument to ensure only 32-byte messages are verified.
@@ -194,7 +258,7 @@ extension secp256k1.Signing.SchnorrValidator: DigestValidator, DataValidator {
     ///   - signature: The signature to verify
     ///   - data: The data that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
-    public func isValidSignature<D: DataProtocol>(_ signature: secp256k1.Signing.SchnorrSignature, for data: D) -> Bool {
+    public func isValidSignature<D: DataProtocol>(_ signature: secp256k1.Schnorr.SchnorrSignature, for data: D) -> Bool {
         isValidSignature(signature, for: SHA256.hash(data: data))
     }
 
@@ -209,7 +273,7 @@ extension secp256k1.Signing.SchnorrValidator: DigestValidator, DataValidator {
     ///   - signature: The signature to verify.
     ///   - digest: The digest that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
-    public func isValidSignature<D: Digest>(_ signature: secp256k1.Signing.SchnorrSignature, for digest: D) -> Bool {
+    public func isValidSignature<D: Digest>(_ signature: secp256k1.Schnorr.SchnorrSignature, for digest: D) -> Bool {
         var hashDataBytes = Array(digest).bytes
 
         return isValid(signature, for: &hashDataBytes)
@@ -225,10 +289,10 @@ extension secp256k1.Signing.SchnorrValidator: DigestValidator, DataValidator {
     ///   - signature: The signature to verify.
     ///   - message:  The message that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
-    public func isValid(_ signature: secp256k1.Signing.SchnorrSignature, for message: inout [UInt8]) -> Bool {
+    public func isValid(_ signature: secp256k1.Schnorr.SchnorrSignature, for message: inout [UInt8]) -> Bool {
         var pubKey = secp256k1_xonly_pubkey()
 
-        return secp256k1_xonly_pubkey_parse(secp256k1.Context.raw, &pubKey, validatingKey.xonly.bytes).boolValue &&
+        return secp256k1_xonly_pubkey_parse(secp256k1.Context.raw, &pubKey, bytes).boolValue &&
             secp256k1_schnorrsig_verify(secp256k1.Context.raw, signature.rawRepresentation.bytes, message, message.count, &pubKey).boolValue
     }
 }

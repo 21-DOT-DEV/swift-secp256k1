@@ -25,21 +25,6 @@ public extension secp256k1 {
                 baseKey.key
             }
 
-            /// The ECDSA signing object.
-            ///
-            /// You can use this object to create a digital signature for a given piece of data.
-            public var ecdsa: secp256k1.Signing.ECDSASigner {
-                ECDSASigner(signingKey: baseKey)
-            }
-
-            /// The Schnorr signing object.
-            ///
-            /// You can use this object to create a digital signature for a given piece of data
-            /// using the Schnorr algorithm.
-            public var schnorr: secp256k1.Signing.SchnorrSigner {
-                SchnorrSigner(signingKey: baseKey)
-            }
-
             /// The associated public key for verifying signatures created with this private key.
             ///
             /// - Returns: The associated public key.
@@ -93,21 +78,6 @@ public extension secp256k1 {
             /// A data representation of the public key.
             public var rawRepresentation: Data {
                 baseKey.rawRepresentation
-            }
-
-            /// The ECDSA validating object.
-            ///
-            /// You can use this object to verify digital signatures created by the corresponding private key.
-            public var ecdsa: secp256k1.Signing.ECDSAValidator {
-                ECDSAValidator(validatingKey: baseKey)
-            }
-
-            /// The Schnorr validating object.
-            ///
-            /// You can use this object to verify digital signatures created by the corresponding private key
-            /// using the Schnorr algorithm.
-            public var schnorr: secp256k1.Signing.SchnorrValidator {
-                SchnorrValidator(validatingKey: baseKey)
             }
 
             /// The associated x-only public key for verifying Schnorr signatures.

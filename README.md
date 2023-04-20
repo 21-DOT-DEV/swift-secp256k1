@@ -20,7 +20,7 @@ Long-term goals are:
 This repository primarily uses Swift package manager as its build tool, so we recommend using that as well. Xcode comes with [built-in support](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) for Swift packages. From the menu bar, goto: `File > Add Packages...` If you manage packages via a `Package.swift` file, simply add `secp256k1.swift` as a dependencies' clause in your Swift manifest:
 
 ```swift
-.package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", .upToNextMajor(from: "0.10.0"))
+.package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", from: "0.11.0"),
 ```
 
 Try in a [playground](spi-playgrounds://open?dependencies=GigaBitcoin/secp256k1.swift) using the [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground) or 🏟 [Arena](https://github.com/finestructure/arena)
@@ -46,7 +46,7 @@ print(String(bytes: privateKey.publicKey.rawRepresentation))
 
 // ECDSA
 let messageData = "We're all Satoshi.".data(using: .utf8)!
-let signature = try! privateKey.ecdsa.signature(for: messageData)
+let signature = try! privateKey.signature(for: messageData)
 
 //  DER signature
 print(try! signature.derRepresentation.base64EncodedString())
@@ -55,14 +55,14 @@ print(try! signature.derRepresentation.base64EncodedString())
 ## Schnorr
 
 ```swift
-let privateKey = try! secp256k1.Signing.PrivateKey()
+let privateKey = try! secp256k1.Schnorr.PrivateKey()
 
 // Extra params for custom signing
 var auxRand = try! "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906".bytes
 var messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9D0A508B75C".bytes
 
 // API allows for signing variable length messages
-let signature = try! privateKey.schnorr.signature(message: &messageDigest, auxiliaryRand: &auxRand)
+let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 ```
 
 ## Tweak
@@ -111,11 +111,11 @@ let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xon
 ## Recovery
 
 ```swift
-let privateKey = try! secp256k1.Signing.PrivateKey()
+let privateKey = try! secp256k1.Recovery.PrivateKey()
 let messageData = "We're all Satoshi.".data(using: .utf8)!
 
 // Create a recoverable ECDSA signature
-let recoverySignature = try! privateKey.ecdsa.recoverableSignature(for: messageData)
+let recoverySignature = try! privateKey.signature(for: messageData)
 
 // Recover an ECDSA public key from a signature
 let publicKey = try! secp256k1.Recovery.PublicKey(messageData, signature: recoverySignature)
@@ -126,5 +126,5 @@ let signature = try! recoverySignature.normalize
 
 
 # Danger
-These APIs should not be considered stable and may change at any time, libsecp256k1 is still experimental and has not been formally released.
+These APIs should not be considered stable and may change at any time.
 
