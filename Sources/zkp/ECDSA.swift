@@ -137,36 +137,7 @@ public extension secp256k1.Signing {
 
 // MARK: - secp256k1 + Signing Key
 
-public extension secp256k1.Signing {
-    struct ECDSASigner {
-        /// Generated secp256k1 Signing Key.
-        var signingKey: PrivateKeyImplementation
-    }
-}
-
-extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
-    ///  Generates a recoverable ECDSA signature.
-    ///
-    /// - Parameter digest: The digest to sign.
-    /// - Returns: The recoverable ECDSA Signature.
-    /// - Throws: If there is a failure producing the signature
-    public func recoverableSignature<D: Digest>(for digest: D) throws -> secp256k1.Recovery.ECDSASignature {
-        var signature = secp256k1_ecdsa_recoverable_signature()
-
-        guard secp256k1_ecdsa_sign_recoverable(
-            secp256k1.Context.raw,
-            &signature,
-            Array(digest),
-            Array(signingKey.rawRepresentation),
-            nil,
-            nil
-        ).boolValue else {
-            throw secp256k1Error.underlyingCryptoError
-        }
-
-        return try secp256k1.Recovery.ECDSASignature(signature.dataValue)
-    }
-
+extension secp256k1.Signing.PrivateKey: DigestSigner {
     ///  Generates an ECDSA signature over the secp256k1 elliptic curve.
     ///
     /// - Parameter digest: The digest to sign.
@@ -179,7 +150,7 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
             secp256k1.Context.raw,
             &signature,
             Array(digest),
-            Array(signingKey.rawRepresentation),
+            Array(rawRepresentation),
             nil,
             nil
         ).boolValue else {
@@ -188,17 +159,9 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
 
         return try secp256k1.Signing.ECDSASignature(signature.dataValue)
     }
+}
 
-    /// Generates an ECDSA signature over the secp256k1 elliptic curve.
-    /// SHA256 is used as the hash function.
-    ///
-    /// - Parameter data: The data to sign.
-    /// - Returns: The ECDSA Signature.
-    /// - Throws: If there is a failure producing the signature.
-    public func recoverableSignature<D: DataProtocol>(for data: D) throws -> secp256k1.Recovery.ECDSASignature {
-        try recoverableSignature(for: SHA256.hash(data: data))
-    }
-
+extension secp256k1.Signing.PrivateKey: Signer {
     /// Generates an ECDSA signature over the secp256k1 elliptic curve.
     /// SHA256 is used as the hash function.
     ///
@@ -212,14 +175,7 @@ extension secp256k1.Signing.ECDSASigner: DigestSigner, Signer {
 
 // MARK: - secp256k1 + Validating Key
 
-public extension secp256k1.Signing {
-    struct ECDSAValidator {
-        /// Generated secp256k1 Validating Key.
-        var validatingKey: PublicKeyImplementation
-    }
-}
-
-extension secp256k1.Signing.ECDSAValidator: DigestValidator, DataValidator {
+extension secp256k1.Signing.PublicKey: DigestValidator {
     /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
     ///
     /// - Parameters:
@@ -227,15 +183,17 @@ extension secp256k1.Signing.ECDSAValidator: DigestValidator, DataValidator {
     ///   - digest: The digest that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
     public func isValidSignature<D: Digest>(_ signature: secp256k1.Signing.ECDSASignature, for digest: D) -> Bool {
-        var secp256k1Signature = secp256k1_ecdsa_signature()
-        var secp256k1PublicKey = secp256k1_pubkey()
+        var ecdsaSignature = secp256k1_ecdsa_signature()
+        var publicKey = secp256k1_pubkey()
 
-        signature.rawRepresentation.copyToUnsafeMutableBytes(of: &secp256k1Signature.data)
+        signature.rawRepresentation.copyToUnsafeMutableBytes(of: &ecdsaSignature.data)
 
-        return secp256k1_ec_pubkey_parse(secp256k1.Context.raw, &secp256k1PublicKey, validatingKey.bytes, validatingKey.bytes.count).boolValue &&
-            secp256k1_ecdsa_verify(secp256k1.Context.raw, &secp256k1Signature, Array(digest), &secp256k1PublicKey).boolValue
+        return secp256k1_ec_pubkey_parse(secp256k1.Context.raw, &publicKey, bytes, bytes.count).boolValue &&
+            secp256k1_ecdsa_verify(secp256k1.Context.raw, &ecdsaSignature, Array(digest), &publicKey).boolValue
     }
+}
 
+extension secp256k1.Signing.PublicKey: DataValidator {
     /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
     /// SHA256 is used as the hash function.
     ///
