@@ -476,6 +476,75 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(privateKey.publicKey.rawRepresentation, publicKey.rawRepresentation)
     }
 
+    func testTapscript() {
+        let OP_CHECKSEQUENCEVERIFY = Data([0xB2])
+        let OP_DROP = Data([0x75])
+        let OP_CHECKSIG = Data([0xAC])
+        let OP_SHA256 = Data([0xA8])
+        let OP_EQUALVERIFY = Data([0x88])
+
+        var value = UInt64(144)
+        let numberOfBytes = ((64 - value.leadingZeroBitCount) / 8) + 1
+        let array = withUnsafeBytes(of: &value) { Array($0).prefix(numberOfBytes) }
+
+        let aliceBytes = try! "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90".bytes
+        let alice = try! secp256k1.Signing.PrivateKey(rawRepresentation: aliceBytes)
+        let aliceScript = Data([UInt8(array.count)] + array) +
+            OP_CHECKSEQUENCEVERIFY +
+            OP_DROP +
+            Data([UInt8(alice.publicKey.xonly.bytes.count)] + alice.publicKey.xonly.bytes) +
+            OP_CHECKSIG
+        let aliceLeafHash = try! SHA256.taggedHash(
+            tag: "TapLeaf".data(using: .utf8)!,
+            data: Data([0xC0]) + aliceScript.compactSizePrefix
+        )
+
+        let aliceExpectedLeafHash = "c81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9"
+
+        XCTAssertEqual(String(bytes: Array(aliceLeafHash).bytes), aliceExpectedLeafHash)
+
+        let bobBytes = try! "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9".bytes
+        let bob = try! secp256k1.Signing.PrivateKey(rawRepresentation: bobBytes)
+        let preimageBytes = try! "6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333".bytes
+        let bobScript = OP_SHA256 +
+            Data([UInt8(preimageBytes.count)] + preimageBytes.bytes) +
+            OP_EQUALVERIFY +
+            Data([UInt8(bob.publicKey.xonly.bytes.count)] + bob.publicKey.xonly.bytes) +
+            OP_CHECKSIG
+        let bobLeafHash = try! SHA256.taggedHash(
+            tag: "TapLeaf".data(using: .utf8)!,
+            data: Data([0xC0]) + bobScript.compactSizePrefix
+        )
+
+        let bobExpectedLeafHash = "632c8632b4f29c6291416e23135cf78ecb82e525788ea5ed6483e3c6ce943b42"
+
+        XCTAssertEqual(String(bytes: Array(bobLeafHash).bytes), bobExpectedLeafHash)
+
+        var leftHash, rightHash: Data
+        if aliceLeafHash < bobLeafHash {
+            leftHash = Data(aliceLeafHash)
+            rightHash = Data(bobLeafHash)
+        } else {
+            leftHash = Data(bobLeafHash)
+            rightHash = Data(aliceLeafHash)
+        }
+
+        let merkleRoot = try! SHA256.taggedHash(
+            tag: "TapBranch".data(using: .utf8)!,
+            data: leftHash + rightHash
+        )
+
+        let expectedMerkleRoot = "41646f8c1fe2a96ddad7f5471bc4fee7da98794ef8c45a4f4fc6a559d60c9f6b"
+
+        XCTAssertEqual(String(bytes: Array(merkleRoot).bytes), expectedMerkleRoot)
+    }
+
+    func testCompactSizePrefix() {
+        let bytes = try! "c15bf08d58a430f8c222bffaf9127249c5cdff70a2d68b2b45637eb662b6b88eb5c81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9".bytes
+        let compactBytes = "41c15bf08d58a430f8c222bffaf9127249c5cdff70a2d68b2b45637eb662b6b88eb5c81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9"
+        XCTAssertEqual(compactBytes, String(bytes: Array(Data(bytes).compactSizePrefix)), "Compact size prefix encoding is incorrect.")
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
@@ -507,6 +576,8 @@ final class secp256k1Tests: XCTestCase {
         ("testPrivateKeyTweakAdd", testPrivateKeyTweakAdd),
         ("testKeyAgreement", testKeyAgreement),
         ("testKeyAgreementPublicKeyTweakAdd", testKeyAgreementPublicKeyTweakAdd),
-        ("testXonlyToPublicKey", testXonlyToPublicKey)
+        ("testXonlyToPublicKey", testXonlyToPublicKey),
+        ("testTapscript", testTapscript),
+        ("testCompactSizePrefix", testCompactSizePrefix)
     ]
 }

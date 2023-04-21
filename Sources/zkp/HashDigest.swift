@@ -96,3 +96,9 @@ public struct HashDigest: Digest {
         withUnsafeBytes { hasher.combine(bytes: $0) }
     }
 }
+
+extension HashDigest: Comparable {
+    public static func < (lhs: HashDigest, rhs: HashDigest) -> Bool {
+        Data(lhs).lexicographicallyPrecedes(Data(rhs))
+    }
+}
