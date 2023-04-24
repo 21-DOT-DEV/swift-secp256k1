@@ -55,7 +55,7 @@ print(try! signature.derRepresentation.base64EncodedString())
 ## Schnorr
 
 ```swift
-// Disable BIP340 to enable allows Schnorr signing of variable length messages
+// Disable BIP340 to enable Schnorr signatures of variable length messages
 let privateKey = try! secp256k1.Schnorr.PrivateKey(strict: false)
 
 // Extra params for custom signing
