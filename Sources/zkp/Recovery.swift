@@ -124,6 +124,7 @@ public extension secp256k1.Recovery {
         /// - Returns: a 64-byte data representation of the compact serialization
         public var compactRepresentation: ECDSACompactSignature {
             get throws {
+                let context = secp256k1.Context.rawRepresentation
                 let compactSignatureLength = 64
                 var recoveryId = Int32()
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
@@ -132,7 +133,7 @@ public extension secp256k1.Recovery {
                 rawRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
 
                 guard secp256k1_ecdsa_recoverable_signature_serialize_compact(
-                    secp256k1.Context.raw,
+                    context,
                     &compactSignature,
                     &recoveryId,
                     &recoverableSignature
@@ -150,13 +151,14 @@ public extension secp256k1.Recovery {
         /// Convert a recoverable signature into a normal signature.
         public var normalize: secp256k1.Signing.ECDSASignature {
             get throws {
+                let context = secp256k1.Context.rawRepresentation
                 var normalizedSignature = secp256k1_ecdsa_signature()
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
 
                 rawRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
 
                 guard secp256k1_ecdsa_recoverable_signature_convert(
-                    secp256k1.Context.raw,
+                    context,
                     &normalizedSignature,
                     &recoverableSignature
                 ).boolValue else {
@@ -195,10 +197,11 @@ public extension secp256k1.Recovery {
         /// - Parameter compactRepresentation: A Compact representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with parsing the derRepresentation
         public init<D: DataProtocol>(compactRepresentation: D, recoveryId: Int32) throws {
+            let context = secp256k1.Context.rawRepresentation
             var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
 
             guard secp256k1_ecdsa_recoverable_signature_parse_compact(
-                secp256k1.Context.raw,
+                context,
                 &recoverableSignature,
                 Array(compactRepresentation),
                 recoveryId
@@ -230,10 +233,11 @@ extension secp256k1.Recovery.PrivateKey: DigestSigner {
     /// - Returns: The recoverable ECDSA Signature.
     /// - Throws: If there is a failure producing the signature
     public func signature<D: Digest>(for digest: D) throws -> Signature {
+        let context = secp256k1.Context.rawRepresentation
         var signature = secp256k1_ecdsa_recoverable_signature()
 
         guard secp256k1_ecdsa_sign_recoverable(
-            secp256k1.Context.raw,
+            context,
             &signature,
             Array(digest),
             Array(rawRepresentation),

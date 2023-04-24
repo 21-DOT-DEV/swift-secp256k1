@@ -15,10 +15,11 @@ public extension secp256k1.Signing.PrivateKey {
     /// - Parameter tweak: the 32-byte tweak object
     /// - Returns: tweaked `PrivateKey` object
     func add(_ tweak: [UInt8]) throws -> Self {
+        let context = secp256k1.Context.rawRepresentation
         var privateBytes = key.bytes
 
-        guard secp256k1_ec_seckey_tweak_add(secp256k1.Context.raw, &privateBytes, tweak).boolValue,
-              secp256k1_ec_seckey_verify(secp256k1.Context.raw, privateBytes).boolValue else {
+        guard secp256k1_ec_seckey_tweak_add(context, &privateBytes, tweak).boolValue,
+              secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
@@ -31,15 +32,16 @@ public extension secp256k1.Signing.PrivateKey {
     /// - Parameter tweak: the 32-byte tweak object
     /// - Returns: tweaked `PrivateKey` object
     func add(xonly tweak: [UInt8]) throws -> Self {
+        let context = secp256k1.Context.rawRepresentation
         var keypair = secp256k1_keypair()
         var privateBytes = [UInt8](repeating: 0, count: secp256k1.ByteDetails.count)
         var xonly = secp256k1_xonly_pubkey()
         var keyParity = Int32()
 
-        guard secp256k1_keypair_create(secp256k1.Context.raw, &keypair, key.bytes).boolValue,
-              secp256k1_keypair_xonly_tweak_add(secp256k1.Context.raw, &keypair, tweak).boolValue,
-              secp256k1_keypair_sec(secp256k1.Context.raw, &privateBytes, &keypair).boolValue,
-              secp256k1_keypair_xonly_pub(secp256k1.Context.raw, &xonly, &keyParity, &keypair).boolValue else {
+        guard secp256k1_keypair_create(context, &keypair, key.bytes).boolValue,
+              secp256k1_keypair_xonly_tweak_add(context, &keypair, tweak).boolValue,
+              secp256k1_keypair_sec(context, &privateBytes, &keypair).boolValue,
+              secp256k1_keypair_xonly_pub(context, &xonly, &keyParity, &keypair).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
@@ -50,10 +52,11 @@ public extension secp256k1.Signing.PrivateKey {
     /// - Parameter tweak: the 32-byte tweak object
     /// - Returns: tweaked `PrivateKey` object
     func multiply(_ tweak: [UInt8]) throws -> Self {
+        let context = secp256k1.Context.rawRepresentation
         var privateBytes = key.bytes
 
-        guard secp256k1_ec_seckey_tweak_mul(secp256k1.Context.raw, &privateBytes, tweak).boolValue,
-              secp256k1_ec_seckey_verify(secp256k1.Context.raw, privateBytes).boolValue else {
+        guard secp256k1_ec_seckey_tweak_mul(context, &privateBytes, tweak).boolValue,
+              secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
@@ -68,7 +71,7 @@ public extension secp256k1.Signing.PublicKey {
     ///   - format: the format of the tweaked `PublicKey` object
     /// - Returns: tweaked `PublicKey` object
     func add(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
-        let context = secp256k1.Context.raw
+        let context = secp256k1.Context.rawRepresentation
         var pubKey = secp256k1_pubkey()
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
@@ -88,7 +91,7 @@ public extension secp256k1.Signing.PublicKey {
     ///   - format: the format of the tweaked `PublicKey` object
     /// - Returns: tweaked `PublicKey` object
     func multiply(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
-        let context = secp256k1.Context.raw
+        let context = secp256k1.Context.rawRepresentation
         var pubKey = secp256k1_pubkey()
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
@@ -110,7 +113,7 @@ public extension secp256k1.Signing.XonlyKey {
     ///   - format: the format of the tweaked `XonlyKey` object
     /// - Returns: tweaked `PublicKey` object
     func add(_ tweak: [UInt8]) throws -> Self {
-        let context = secp256k1.Context.raw
+        let context = secp256k1.Context.rawRepresentation
         var pubKey = secp256k1_pubkey()
         var inXonlyPubKey = secp256k1_xonly_pubkey()
         var outXonlyPubKey = secp256k1_xonly_pubkey()

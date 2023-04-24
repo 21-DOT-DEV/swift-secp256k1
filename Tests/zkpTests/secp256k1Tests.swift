@@ -261,7 +261,8 @@ final class secp256k1Tests: XCTestCase {
         let expectedPrivateKey = "4894b8087f428971b55ff96e16f7127340138bc84e7973821a224cad02055975"
         let expectedSignature = "ad57c21d383ef8ac799adfd469a221c40ef9f09563a16682b9ab1edc46c33d6d6a1d719761d269e87ab971e0ffafc1618a4666a4f9aef4abddc3ea9fc0cd5b12"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Schnorr.PrivateKey(rawRepresentation: privateKeyBytes)
+        let throwKey = try! secp256k1.Schnorr.PrivateKey(rawRepresentation: privateKeyBytes)
+        let privateKey = try! secp256k1.Schnorr.PrivateKey(rawRepresentation: privateKeyBytes, strict: false)
         var messageDigest = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.bytes
         var auxRand = try! "f50c8c99e39a82f125fa83186b5f2483f39fb0fb56269c755689313a177be6ea".bytes
 
@@ -270,6 +271,7 @@ final class secp256k1Tests: XCTestCase {
         // Test the verification of the signature output
         XCTAssertEqual(expectedSignature, String(bytes: signature.rawRepresentation.bytes))
         XCTAssertTrue(privateKey.xonly.isValid(signature, for: &messageDigest))
+        XCTAssertThrowsError(try throwKey.signature(message: &messageDigest, auxiliaryRand: &auxRand))
     }
 
     func testSchnorrVerifying() {
@@ -545,6 +547,25 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(compactBytes, String(bytes: Array(Data(bytes).compactSizePrefix)), "Compact size prefix encoding is incorrect.")
     }
 
+    func testSchnorrNegating() {
+        let privateBytes = try! "56baa476b36a5b1548279f5bf57b82db39e594aee7912cde30977b8e80e6edca".bytes
+        let negatedBytes = try! "a9455b894c95a4eab7d860a40a847d2380c94837c7b7735d8f3ae2fe4f4f5377".bytes
+
+        let privateKey = try! secp256k1.Schnorr.PrivateKey(rawRepresentation: privateBytes)
+        let negatedKey = try! secp256k1.Schnorr.PrivateKey(rawRepresentation: negatedBytes)
+        let notStrictKey = try! secp256k1.Schnorr.PrivateKey(rawRepresentation: privateBytes, strict: false)
+
+        XCTAssertEqual(privateKey, negatedKey)
+        XCTAssertEqual(privateKey.rawRepresentation, negatedKey.rawRepresentation)
+        XCTAssertEqual(privateKey.xonly, negatedKey.xonly)
+        XCTAssertEqual(privateKey.xonly.bytes, negatedKey.xonly.bytes)
+
+        XCTAssertNotEqual(privateKey, notStrictKey)
+        XCTAssertNotEqual(privateKey.rawRepresentation, notStrictKey.rawRepresentation)
+        XCTAssertEqual(privateKey.xonly, notStrictKey.xonly)
+        XCTAssertEqual(privateKey.xonly.bytes, notStrictKey.xonly.bytes)
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
@@ -578,6 +599,7 @@ final class secp256k1Tests: XCTestCase {
         ("testKeyAgreementPublicKeyTweakAdd", testKeyAgreementPublicKeyTweakAdd),
         ("testXonlyToPublicKey", testXonlyToPublicKey),
         ("testTapscript", testTapscript),
-        ("testCompactSizePrefix", testCompactSizePrefix)
+        ("testCompactSizePrefix", testCompactSizePrefix),
+        ("testSchnorrNegating", testSchnorrNegating)
     ]
 }
