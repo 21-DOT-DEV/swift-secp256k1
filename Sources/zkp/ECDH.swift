@@ -150,11 +150,11 @@ extension secp256k1.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
         handler: HashFunctionType? = nil,
         data: UnsafeMutableRawPointer? = nil
     ) throws -> SharedSecret {
-        let context = secp256k1.Context.raw
+        let context = secp256k1.Context.rawRepresentation
         var publicKey = secp256k1_pubkey()
         var sharedSecret = [UInt8](repeating: 0, count: 32)
 
-        guard secp256k1_ec_pubkey_parse(secp256k1.Context.raw, &publicKey, publicKeyShare.bytes, publicKeyShare.bytes.count).boolValue,
+        guard secp256k1_ec_pubkey_parse(context, &publicKey, publicKeyShare.bytes, publicKeyShare.bytes.count).boolValue,
               secp256k1_ecdh(context, &sharedSecret, &publicKey, baseKey.key.bytes, handler, data).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }

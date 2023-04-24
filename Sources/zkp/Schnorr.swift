@@ -35,6 +35,11 @@ public extension secp256k1.Schnorr {
         /// Generated secp256k1 Signing Key.
         private let baseKey: PrivateKeyImplementation
 
+        /// Whether strict BIP340 adherence is enabled
+        public var strict: Bool {
+            baseKey.strict
+        }
+
         /// The associated x-only public key for verifying Schnorr signatures.
         ///
         /// - Returns: The associated x-only public key.
@@ -51,8 +56,8 @@ public extension secp256k1.Schnorr {
         ///
         /// - Parameter format: The key format, default is .compressed.
         /// - Throws: An error if the private key cannot be generated.
-        public init(format: secp256k1.Format = .compressed) throws {
-            self.baseKey = try PrivateKeyImplementation(format: format)
+        public init(strict: Bool = true) throws {
+            self.baseKey = try PrivateKeyImplementation(strict: strict)
         }
 
         /// Creates a secp256k1 private key for signing from a data representation.
@@ -60,8 +65,11 @@ public extension secp256k1.Schnorr {
         /// - Parameter data: A raw representation of the key.
         /// - Parameter format: The key format, default is .compressed.
         /// - Throws: An error if the raw representation does not create a private key for signing.
-        public init<D: ContiguousBytes>(rawRepresentation data: D, format: secp256k1.Format = .compressed) throws {
-            self.baseKey = try PrivateKeyImplementation(rawRepresentation: data, format: format)
+        public init<D: ContiguousBytes>(
+            rawRepresentation data: D,
+            strict: Bool = true
+        ) throws {
+            self.baseKey = try PrivateKeyImplementation(rawRepresentation: data, strict: strict)
         }
 
         /// Determines if two private keys are equal.
@@ -76,7 +84,7 @@ public extension secp256k1.Schnorr {
     }
 
     /// The corresponding x-only public key for the secp256k1 curve.
-    struct XonlyKey {
+    struct XonlyKey: Equatable {
         /// Generated secp256k1 x-only public key.
         private let baseKey: XonlyKeyImplementation
 
@@ -87,7 +95,12 @@ public extension secp256k1.Schnorr {
 
         /// Schnorr x-only public key are implicit of the point being even, therefore this will always return `false`.`
         public var parity: Bool {
-            false
+            baseKey.strict ? false : baseKey.keyParity.boolValue
+        }
+
+        /// Whether strict BIP340 adherence is enabled
+        public var strict: Bool {
+            baseKey.strict
         }
 
         /// Generates a secp256k1 x-only public key.
@@ -102,6 +115,16 @@ public extension secp256k1.Schnorr {
         /// - Parameter data: A raw representation of the x-only public key.
         public init<D: ContiguousBytes>(rawRepresentation data: D) {
             self.baseKey = XonlyKeyImplementation(rawRepresentation: data, keyParity: 0)
+        }
+
+        /// Determines if two x-only keys are equal.
+        ///
+        /// - Parameters:
+        ///   - lhs: The left-hand side private key.
+        ///   - rhs: The right-hand side private key.
+        /// - Returns: True if the private keys are equal, false otherwise.
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.baseKey.bytes == rhs.baseKey.bytes
         }
     }
 }
@@ -229,14 +252,29 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
     ///   - auxiliaryRand: Auxiliary randomness; BIP340 requires 32-bytes.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure creating the context or signature.
-    public func signature(message: inout [UInt8], auxiliaryRand: UnsafeMutableRawPointer?) throws -> secp256k1.Schnorr.SchnorrSignature {
+    public func signature(
+        message: inout [UInt8],
+        auxiliaryRand: UnsafeMutableRawPointer?
+    ) throws -> secp256k1.Schnorr.SchnorrSignature {
+        guard strict == false || message.count == secp256k1.Schnorr.xonlyByteCount else {
+            throw secp256k1Error.incorrectParameterSize
+        }
+
+        let context = secp256k1.Context.rawRepresentation
+        let magic = secp256k1.Schnorr.magic
         var keypair = secp256k1_keypair()
         var signature = [UInt8](repeating: 0, count: secp256k1.Schnorr.signatureByteCount)
-        var extraParams = secp256k1_schnorrsig_extraparams(magic: secp256k1.Schnorr.magic, noncefp: nil, ndata: auxiliaryRand)
+        var extraParams = secp256k1_schnorrsig_extraparams(magic: magic, noncefp: nil, ndata: auxiliaryRand)
 
-        guard secp256k1_keypair_create(secp256k1.Context.raw, &keypair, Array(rawRepresentation)).boolValue,
-              secp256k1_schnorrsig_sign_custom(secp256k1.Context.raw, &signature, &message, message.count, &keypair, &extraParams).boolValue
-        else {
+        guard secp256k1_keypair_create(context, &keypair, Array(rawRepresentation)).boolValue,
+              secp256k1_schnorrsig_sign_custom(
+                  context,
+                  &signature,
+                  &message,
+                  message.count,
+                  &keypair,
+                  &extraParams
+              ).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
@@ -290,9 +328,16 @@ extension secp256k1.Schnorr.XonlyKey: DigestValidator, DataValidator {
     ///   - message:  The message that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
     public func isValid(_ signature: secp256k1.Schnorr.SchnorrSignature, for message: inout [UInt8]) -> Bool {
+        let context = secp256k1.Context.rawRepresentation
         var pubKey = secp256k1_xonly_pubkey()
 
-        return secp256k1_xonly_pubkey_parse(secp256k1.Context.raw, &pubKey, bytes).boolValue &&
-            secp256k1_schnorrsig_verify(secp256k1.Context.raw, signature.rawRepresentation.bytes, message, message.count, &pubKey).boolValue
+        return secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
+            secp256k1_schnorrsig_verify(
+                context,
+                signature.rawRepresentation.bytes,
+                message,
+                message.count,
+                &pubKey
+            ).boolValue
     }
 }

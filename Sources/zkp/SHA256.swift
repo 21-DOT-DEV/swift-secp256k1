@@ -31,11 +31,19 @@ public enum SHA256 {
     /// - Throws: An error if the tagged hash computation fails.
     /// - Returns: The computed digest.
     public static func taggedHash<D: DataProtocol>(tag: D, data: D) throws -> SHA256Digest {
+        let context = secp256k1.Context.rawRepresentation
         let tagBytes = Array(tag)
         let messageBytes = Array(data)
         var output = [UInt8](repeating: 0, count: 32)
 
-        guard secp256k1_tagged_sha256(secp256k1.Context.raw, &output, tagBytes, tagBytes.count, messageBytes, messageBytes.count).boolValue else {
+        guard secp256k1_tagged_sha256(
+            context,
+            &output,
+            tagBytes,
+            tagBytes.count,
+            messageBytes,
+            messageBytes.count
+        ).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
