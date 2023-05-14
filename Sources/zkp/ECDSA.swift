@@ -10,11 +10,11 @@
 
 import Foundation
 
-typealias NISTECDSASignature = RawSignature & DERSignature
+typealias NISTECDSASignature = DataSignature & DERSignature
 
-protocol RawSignature {
-    init<D: DataProtocol>(rawRepresentation: D) throws
-    var rawRepresentation: Data { get }
+protocol DataSignature {
+    init<D: DataProtocol>(dataRepresentation: D) throws
+    var dataRepresentation: Data { get }
 }
 
 protocol DERSignature {
@@ -32,20 +32,20 @@ protocol CompactSignature {
 /// An ECDSA (Elliptic Curve Digital Signature Algorithm) Signature
 public extension secp256k1.Signing {
     struct ECDSASignature: ContiguousBytes, NISTECDSASignature, CompactSignature {
-        /// Returns the raw signature.
+        /// Returns the data signature.
         /// The raw signature format for ECDSA is r || s
-        public var rawRepresentation: Data
+        public var dataRepresentation: Data
 
         /// Initializes ECDSASignature from the raw representation.
         /// - Parameters:
-        ///   - rawRepresentation: A raw representation of the key as a collection of contiguous bytes.
+        ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
-        public init<D: DataProtocol>(rawRepresentation: D) throws {
-            guard rawRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount else {
+        public init<D: DataProtocol>(dataRepresentation: D) throws {
+            guard dataRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
-            self.rawRepresentation = Data(rawRepresentation)
+            self.dataRepresentation = Data(dataRepresentation)
         }
 
         /// Initializes ECDSASignature from the raw representation.
@@ -57,7 +57,7 @@ public extension secp256k1.Signing {
                 throw secp256k1Error.incorrectParameterSize
             }
 
-            self.rawRepresentation = dataRepresentation
+            self.dataRepresentation = dataRepresentation
         }
 
         /// Initializes ECDSASignature from the DER representation.
@@ -77,7 +77,7 @@ public extension secp256k1.Signing {
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            self.rawRepresentation = signature.dataValue
+            self.dataRepresentation = signature.dataValue
         }
 
         /// Initializes ECDSASignature from the Compact representation.
@@ -95,7 +95,7 @@ public extension secp256k1.Signing {
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            self.rawRepresentation = signature.dataValue
+            self.dataRepresentation = signature.dataValue
         }
 
         /// Invokes the given closure with a buffer pointer covering the raw bytes of the digest.
@@ -103,7 +103,7 @@ public extension secp256k1.Signing {
         /// - Throws: If there is a failure with underlying `withUnsafeBytes`
         /// - Returns: The signature as returned from the body closure.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-            try rawRepresentation.withUnsafeBytes(body)
+            try dataRepresentation.withUnsafeBytes(body)
         }
 
         /// Serialize an ECDSA signature in compact (64 byte) format.
@@ -116,7 +116,7 @@ public extension secp256k1.Signing {
                 var signature = secp256k1_ecdsa_signature()
                 var compactSignature = [UInt8](repeating: 0, count: compactSignatureLength)
 
-                rawRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
+                dataRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
 
                 guard secp256k1_ecdsa_signature_serialize_compact(
                     context,
@@ -140,7 +140,7 @@ public extension secp256k1.Signing {
                 var derSignatureLength = 80
                 var derSignature = [UInt8](repeating: 0, count: derSignatureLength)
 
-                rawRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
+                dataRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
 
                 guard secp256k1_ecdsa_signature_serialize_der(
                     context,
@@ -173,7 +173,7 @@ extension secp256k1.Signing.PrivateKey: DigestSigner {
             context,
             &signature,
             Array(digest),
-            Array(rawRepresentation),
+            Array(dataRepresentation),
             nil,
             nil
         ).boolValue else {
@@ -210,7 +210,7 @@ extension secp256k1.Signing.PublicKey: DigestValidator {
         var ecdsaSignature = secp256k1_ecdsa_signature()
         var publicKey = secp256k1_pubkey()
 
-        signature.rawRepresentation.copyToUnsafeMutableBytes(of: &ecdsaSignature.data)
+        signature.dataRepresentation.copyToUnsafeMutableBytes(of: &ecdsaSignature.data)
 
         return secp256k1_ec_pubkey_parse(context, &publicKey, bytes, bytes.count).boolValue &&
             secp256k1_ecdsa_verify(context, &ecdsaSignature, Array(digest), &publicKey).boolValue

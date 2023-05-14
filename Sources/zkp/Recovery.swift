@@ -28,8 +28,8 @@ public extension secp256k1 {
             }
 
             /// A data representation of the private key.
-            public var rawRepresentation: Data {
-                baseKey.rawRepresentation
+            public var dataRepresentation: Data {
+                baseKey.dataRepresentation
             }
 
             /// Creates a random secp256k1 private key for signing.
@@ -42,11 +42,11 @@ public extension secp256k1 {
 
             /// Creates a secp256k1 private key for signing from a data representation.
             ///
-            /// - Parameter data: A raw representation of the key.
+            /// - Parameter data: A data representation of the key.
             /// - Parameter format: The key format, default is .compressed.
             /// - Throws: An error if the raw representation does not create a private key for signing.
-            public init<D: ContiguousBytes>(rawRepresentation data: D, format: secp256k1.Format = .compressed) throws {
-                self.baseKey = try PrivateKeyImplementation(rawRepresentation: data, format: format)
+            public init<D: ContiguousBytes>(dataRepresentation data: D, format: secp256k1.Format = .compressed) throws {
+                self.baseKey = try PrivateKeyImplementation(dataRepresentation: data, format: format)
             }
 
             /// Determines if two private keys are equal.
@@ -63,7 +63,10 @@ public extension secp256k1 {
         /// A struct representing a secp256k1 public key for recovery purposes.
         public struct PublicKey {
             /// A data representation of the public key.
-            public var rawRepresentation: Data { baseKey.rawRepresentation }
+            public var dataRepresentation: Data { baseKey.dataRepresentation }
+
+            /// A raw representation of the public key.
+            public var rawRepresentation: secp256k1_pubkey { baseKey.rawRepresentation }
 
             /// Generated secp256k1 Public Key.
             private let baseKey: PublicKeyImplementation
@@ -115,9 +118,9 @@ public extension secp256k1.Recovery {
         public let recoveryId: Int32
     }
 
-    struct ECDSASignature: ContiguousBytes, RawSignature {
+    struct ECDSASignature: ContiguousBytes, DataSignature {
         /// Returns the raw signature.
-        public var rawRepresentation: Data
+        public var dataRepresentation: Data
 
         /// Serialize an ECDSA signature in compact (64 byte) format.
         /// - Throws: If there is a failure parsing signature
@@ -130,7 +133,7 @@ public extension secp256k1.Recovery {
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
                 var compactSignature = [UInt8](repeating: 0, count: compactSignatureLength)
 
-                rawRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
+                dataRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
 
                 guard secp256k1_ecdsa_recoverable_signature_serialize_compact(
                     context,
@@ -155,7 +158,7 @@ public extension secp256k1.Recovery {
                 var normalizedSignature = secp256k1_ecdsa_signature()
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
 
-                rawRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
+                dataRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
 
                 guard secp256k1_ecdsa_recoverable_signature_convert(
                     context,
@@ -171,26 +174,26 @@ public extension secp256k1.Recovery {
 
         /// Initializes ECDSASignature from the raw representation.
         /// - Parameters:
-        ///   - rawRepresentation: A raw representation of the key as a collection of contiguous bytes.
+        ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
-        public init<D: DataProtocol>(rawRepresentation: D) throws {
-            guard rawRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount + 1 else {
+        public init<D: DataProtocol>(dataRepresentation: D) throws {
+            guard dataRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount + 1 else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
-            self.rawRepresentation = Data(rawRepresentation)
+            self.dataRepresentation = Data(dataRepresentation)
         }
 
         /// Initializes ECDSASignature from the raw representation.
         /// - Parameters:
-        ///   - rawRepresentation: A raw representation of the key as a collection of contiguous bytes.
+        ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
         internal init(_ dataRepresentation: Data) throws {
             guard dataRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount + 1 else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
-            self.rawRepresentation = dataRepresentation
+            self.dataRepresentation = dataRepresentation
         }
 
         /// Initializes ECDSASignature from the Compact representation.
@@ -209,7 +212,7 @@ public extension secp256k1.Recovery {
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            self.rawRepresentation = recoverableSignature.dataValue
+            self.dataRepresentation = recoverableSignature.dataValue
         }
 
         /// Invokes the given closure with a buffer pointer covering the raw bytes of the digest.
@@ -217,7 +220,7 @@ public extension secp256k1.Recovery {
         /// - Throws: If there is a failure with underlying `withUnsafeBytes`
         /// - Returns: The signature as returned from the body closure.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-            try rawRepresentation.withUnsafeBytes(body)
+            try dataRepresentation.withUnsafeBytes(body)
         }
     }
 }
@@ -240,7 +243,7 @@ extension secp256k1.Recovery.PrivateKey: DigestSigner {
             context,
             &signature,
             Array(digest),
-            Array(rawRepresentation),
+            Array(dataRepresentation),
             nil,
             nil
         ).boolValue else {

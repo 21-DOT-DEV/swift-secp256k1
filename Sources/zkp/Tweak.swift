@@ -23,7 +23,7 @@ public extension secp256k1.Signing.PrivateKey {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try Self(rawRepresentation: privateBytes)
+        return try Self(dataRepresentation: privateBytes)
     }
 
     /// Create a new `PrivateKey` by adding tweak to the secret key. When tweaking x-only keys,
@@ -45,7 +45,7 @@ public extension secp256k1.Signing.PrivateKey {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try Self(rawRepresentation: privateBytes)
+        return try Self(dataRepresentation: privateBytes)
     }
 
     /// Create a new `PrivateKey` by multiplying tweak to the secret key.
@@ -60,7 +60,7 @@ public extension secp256k1.Signing.PrivateKey {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try Self(rawRepresentation: privateBytes)
+        return try Self(dataRepresentation: privateBytes)
     }
 }
 
@@ -82,7 +82,7 @@ public extension secp256k1.Signing.PublicKey {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try Self(rawRepresentation: pubKeyBytes, format: format)
+        return try Self(dataRepresentation: pubKeyBytes, format: format)
     }
 
     /// Create a new `PublicKey` by multiplying tweak to the public key.
@@ -102,7 +102,7 @@ public extension secp256k1.Signing.PublicKey {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try Self(rawRepresentation: pubKeyBytes, format: format)
+        return try Self(dataRepresentation: pubKeyBytes, format: format)
     }
 }
 
@@ -128,6 +128,6 @@ public extension secp256k1.Signing.XonlyKey {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return Self(rawRepresentation: xonlyBytes, keyParity: keyParity)
+        return Self(dataRepresentation: xonlyBytes, keyParity: keyParity)
     }
 }

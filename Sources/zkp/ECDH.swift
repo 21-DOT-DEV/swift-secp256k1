@@ -24,11 +24,11 @@ public extension secp256k1 {
             /// Creates a secp256k1 public key for key agreement from a collection of bytes.
             ///
             /// - Parameters:
-            ///   - data: A raw representation of the public key as a collection of contiguous bytes.
+            ///   - data: A data representation of the public key as a collection of contiguous bytes.
             ///   - format: The format of the public key object.
             /// - Throws: An error if the raw representation does not create a public key.
-            public init<D: ContiguousBytes>(rawRepresentation data: D, format: secp256k1.Format = .compressed) throws {
-                self.baseKey = try PublicKeyImplementation(rawRepresentation: data, format: format)
+            public init<D: ContiguousBytes>(dataRepresentation data: D, format: secp256k1.Format = .compressed) throws {
+                self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
             }
 
             /// Initializes a secp256k1 public key for key agreement.
@@ -46,7 +46,10 @@ public extension secp256k1 {
             }
 
             /// A data representation of the public key.
-            public var rawRepresentation: Data { baseKey.rawRepresentation }
+            public var dataRepresentation: Data { baseKey.dataRepresentation }
+
+            /// A raw representation of the public key.
+            public var rawRepresentation: secp256k1_pubkey { baseKey.rawRepresentation }
 
             /// Implementation public key object.
             var bytes: [UInt8] { baseKey.bytes }
@@ -58,7 +61,10 @@ public extension secp256k1 {
             private let baseKey: XonlyKeyImplementation
 
             /// A data representation of the backing x-only public key.
-            public var rawRepresentation: Data { baseKey.rawRepresentation }
+            public var dataRepresentation: Data { baseKey.dataRepresentation }
+
+            /// A raw representation of the backing x-only public key.
+            public var rawRepresentation: secp256k1_xonly_pubkey { baseKey.rawRepresentation }
 
             /// A boolean that will be set to true if the point encoded by xonly is the
             /// negation of the pubkey and set to false otherwise.
@@ -91,8 +97,8 @@ public extension secp256k1 {
             ///   - data: A raw representation of the key.
             ///   - format: The format of the secp256k1 key (default is .compressed).
             /// - Throws: An error is thrown when the raw representation does not create a private key for key agreement.
-            public init<D: ContiguousBytes>(rawRepresentation data: D, format: secp256k1.Format = .compressed) throws {
-                self.baseKey = try PrivateKeyImplementation(rawRepresentation: data, format: format)
+            public init<D: ContiguousBytes>(dataRepresentation data: D, format: secp256k1.Format = .compressed) throws {
+                self.baseKey = try PrivateKeyImplementation(dataRepresentation: data, format: format)
             }
 
             /// Initializes a secp256k1 private key for key agreement.
@@ -108,7 +114,7 @@ public extension secp256k1 {
             }
 
             /// A data representation of the private key.
-            public var rawRepresentation: Data { baseKey.rawRepresentation }
+            public var rawRepresentation: Data { baseKey.dataRepresentation }
 
             /// A secure bytes representation of the private key.
             var bytes: SecureBytes { baseKey.key }
