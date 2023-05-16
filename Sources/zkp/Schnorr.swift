@@ -107,8 +107,8 @@ public extension secp256k1.Schnorr {
         /// Generates a secp256k1 x-only public key from a raw representation.
         ///
         /// - Parameter data: A data representation of the x-only public key.
-        public init<D: ContiguousBytes>(dataRepresentation data: D) {
-            self.baseKey = XonlyKeyImplementation(dataRepresentation: data, keyParity: 0)
+        public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0) {
+            self.baseKey = XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity)
         }
 
         /// Determines if two x-only keys are equal.

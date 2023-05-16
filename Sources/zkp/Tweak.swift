@@ -106,7 +106,7 @@ public extension secp256k1.Signing.PublicKey {
     }
 }
 
-public extension secp256k1.Signing.XonlyKey {
+public extension secp256k1.Schnorr.XonlyKey {
     /// Create a new `XonlyKey` by adding tweak to the x-only public key.
     /// - Parameters:
     ///   - tweak: the 32-byte tweak object

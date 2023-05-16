@@ -460,7 +460,9 @@ final class secp256k1Tests: XCTestCase {
 
         let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xonly.bytes)
         let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
-        let xonlyTweak2 = try! sharedSecretSign2.publicKey.xonly.add(privateSign1.publicKey.xonly.bytes)
+
+        let schnorrPrivate = try! secp256k1.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)
+        let xonlyTweak2 = try! schnorrPrivate.xonly.add(privateSign1.publicKey.xonly.bytes)
 
         if sharedSecretSign2.publicKey.xonly.parity {
             XCTAssertNotEqual(privateTweak1.publicKey.dataRepresentation, publicTweak2.dataRepresentation)
@@ -560,6 +562,25 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(privateKey.xonly.bytes, negatedKey.xonly.bytes)
     }
 
+    func testTaprootDerivation() {
+        let privateKeyBytes = try! "41F41D69260DF4CF277826A9B65A3717E4EEDDBEEDF637F212CA096576479361".bytes
+        let privateKey = try! secp256k1.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
+        let internalKeyBytes = try! "cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115".bytes
+        let internalKey = privateKey.xonly
+
+        XCTAssertEqual(internalKey.bytes, internalKeyBytes)
+
+        let tweakHash = try! SHA256.taggedHash(
+            tag: "TapTweak".data(using: .utf8)!,
+            data: Data(internalKey.bytes)
+        )
+
+        let outputKeyBytes = try! "a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c".bytes
+        let outputKey = try! internalKey.add(tweakHash.bytes)
+
+        XCTAssertEqual(outputKey.bytes, outputKeyBytes)
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
@@ -594,6 +615,7 @@ final class secp256k1Tests: XCTestCase {
         ("testXonlyToPublicKey", testXonlyToPublicKey),
         ("testTapscript", testTapscript),
         ("testCompactSizePrefix", testCompactSizePrefix),
-        ("testSchnorrNegating", testSchnorrNegating)
+        ("testSchnorrNegating", testSchnorrNegating),
+        ("testTaprootDerivation", testTaprootDerivation)
     ]
 }
