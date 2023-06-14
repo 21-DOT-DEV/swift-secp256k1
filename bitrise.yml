@@ -56,7 +56,7 @@ workflows:
     steps:
     - script:
         title: BUILD ZKP
-        timeout: 180
+        timeout: 360
         inputs:
         - content: |-
             #!/usr/bin/env bash
