@@ -20,7 +20,15 @@ Long-term goals are:
 This repository primarily uses Swift package manager as its build tool, so we recommend using that as well. Xcode comes with [built-in support](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) for Swift packages. From the menu bar, goto: `File > Add Packages...` If you manage packages via a `Package.swift` file, simply add `secp256k1.swift` as a dependencies' clause in your Swift manifest:
 
 ```swift
-.package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", from: "0.11.0"),
+.package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", from: "0.12.0"),
+```
+
+Include `secp256k1` as a dependency for your executable target:
+
+```swift
+.target(name: "<target>", dependencies: [
+    .product(name: "secp256k1", package: "secp256k1.swift")]),
+]),
 ```
 
 Try in a [playground](spi-playgrounds://open?dependencies=GigaBitcoin/secp256k1.swift) using the [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground) or 🏟 [Arena](https://github.com/finestructure/arena)
