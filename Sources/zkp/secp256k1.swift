@@ -151,16 +151,14 @@ extension secp256k1 {
 
     /// Backing initialization that creates a random secp256k1 private key for signing
     @usableFromInline init(format: secp256k1.Format = .compressed) throws {
-        let privateKey = SecureBytes(count: secp256k1.ByteDetails.count)
-        self.keyParity = 0
-        self.format = format
-        self.privateBytes = privateKey
-        self.publicBytes = try PublicKeyImplementation.generate(bytes: &privateBytes, format: format)
-        self.xonlyBytes = try XonlyKeyImplementation.generate(
-            bytes: publicBytes,
-            keyParity: &keyParity,
-            format: format
-        )
+        for _ in 0 ..< 10 {
+            let randomBytes = SecureBytes(count: secp256k1.ByteDetails.count)
+            if let privateKey = try? PrivateKeyImplementation(dataRepresentation: Data(randomBytes), format: format) {
+                self = privateKey
+                return
+            }
+        }
+        fatalError("Looped more than 10 times trying to generate a key")
     }
 
     /// Backing initialization that creates a secp256k1 private key for signing from a data representation.
