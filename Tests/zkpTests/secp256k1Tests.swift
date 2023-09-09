@@ -80,6 +80,39 @@ final class secp256k1Tests: XCTestCase {
 
         XCTAssertEqual(secp256k1_ec_pubkey_create(context, &point, s_one), 1)
         XCTAssertEqual(secp256k1_ecdh(context, &res, &point, s_one, nil, nil), 1)
+        
+        // Test with handler and data.
+        var data = try! [UInt8](hexString: "abcdef")
+        let copyx : secp256k1.KeyAgreement.PrivateKey.HashFunctionType = {
+            (out, x, y, data) -> Int32 in
+            guard let out = out, let x = x else {
+                return 0;
+            }
+            out.initialize(from: x, count: 32)
+            return 1
+        }
+        XCTAssertEqual(secp256k1_ecdh(context, &res, &point, s_one, copyx, &data), 1)
+    }
+    
+    func testECDH() {
+        let privateKey = try! secp256k1.KeyAgreement.PrivateKey()
+        let publicKey = try! secp256k1.KeyAgreement.PrivateKey().publicKey
+        
+        // Test without optional parameters.
+        XCTAssertNoThrow(try privateKey.sharedSecretFromKeyAgreement(with: publicKey))
+        
+        // Test with handler and outputLength and data.
+        var data = try! [UInt8](hexString: "abcdef")
+        let copyxy : secp256k1.KeyAgreement.PrivateKey.HashFunctionType = {
+            (out, x, y, data) -> Int32 in
+            guard let out = out, let x = x, let y = y else {
+                return 0;
+            }
+            out.initialize(from: x, count: 32)
+            out.advanced(by: 32).initialize(from: y, count: 32)
+            return 1
+        }
+        XCTAssertNoThrow(try privateKey.sharedSecretFromKeyAgreement(with: publicKey, handler: copyxy, outputLength: 64, data: &data))
     }
 
     func testExtraKeysBindings() {

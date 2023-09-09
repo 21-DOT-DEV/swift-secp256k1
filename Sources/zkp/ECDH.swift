@@ -148,17 +148,19 @@ extension secp256k1.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
     /// - Parameters:
     ///   - publicKeyShare: The public key to perform the ECDH with.
     ///   - handler: Closure for customizing a hash function; Defaults to nil.
+    ///   - outputLength: Length of the shared secret output; Defaults to 32.
     ///   - data: Additional data for the hash function; Defaults to nil.
     /// - Returns: Returns a shared secret.
     /// - Throws: An error occurred while computing the shared secret.
     public func sharedSecretFromKeyAgreement(
         with publicKeyShare: secp256k1.KeyAgreement.PublicKey,
         handler: HashFunctionType? = nil,
+        outputLength: Int = 32,
         data: UnsafeMutableRawPointer? = nil
     ) throws -> SharedSecret {
         let context = secp256k1.Context.rawRepresentation
         var publicKey = secp256k1_pubkey()
-        var sharedSecret = [UInt8](repeating: 0, count: 32)
+        var sharedSecret = [UInt8](repeating: 0, count: outputLength)
 
         guard secp256k1_ec_pubkey_parse(context, &publicKey, publicKeyShare.bytes, publicKeyShare.bytes.count).boolValue,
               secp256k1_ecdh(context, &sharedSecret, &publicKey, baseKey.key.bytes, handler, data).boolValue else {
