@@ -63,7 +63,7 @@ workflows:
             # fail if any commands fails; debug log
             set -ex
 
-            swift test --use-integrated-swift-driver
+            swift test
   BUILD-SECP256K1:
     before_run:
     - PULL-PACKAGE-FILES

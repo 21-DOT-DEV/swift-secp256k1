@@ -44,7 +44,7 @@ public extension secp256k1 {
         ///
         /// This static property represents a `Context` with no flags. It can be used when creating a `secp256k1`
         /// context with no flags.
-        public static let none = Context(rawValue: SECP256K1_CONTEXT_NONE)
+        public static let none = Self(rawValue: SECP256K1_CONTEXT_NONE)
 
         /// Creates a new `secp256k1` context with the specified flags.
         ///
@@ -56,7 +56,7 @@ public extension secp256k1 {
         /// This static method creates a new `secp256k1` context with the specified flags. The flags are represented by
         /// the `Context` structure. The method throws an error if the context creation or randomization fails. If the
         /// context creation is successful, the method returns an opaque pointer to the created context.
-        public static func create(_ context: Context = .none) throws -> OpaquePointer {
+        public static func create(_ context: Self = .none) throws -> OpaquePointer {
             var randomBytes = SecureBytes(count: secp256k1.ByteLength.privateKey).bytes
             guard let context = secp256k1_context_create(context.rawValue),
                   secp256k1_context_randomize(context, &randomBytes).boolValue else {

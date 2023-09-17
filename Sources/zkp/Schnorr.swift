@@ -41,7 +41,7 @@ public extension secp256k1.Schnorr {
         }
 
         /// Negates a secret key.
-        public var negation: PrivateKey {
+        public var negation: Self {
             get throws {
                 let negatedKey = try baseKey.negation.dataRepresentation
                 return try Self(dataRepresentation: negatedKey)
