@@ -34,7 +34,7 @@
     import Foundation
 
     /// A constant-time comparison function for any two collections of bytes.
-    internal func safeCompare<LHS: ContiguousBytes, RHS: ContiguousBytes>(_ lhs: LHS, _ rhs: RHS) -> Bool {
+    func safeCompare<LHS: ContiguousBytes, RHS: ContiguousBytes>(_ lhs: LHS, _ rhs: RHS) -> Bool {
         let lBytes = lhs.bytes
         let rBytes = rhs.bytes
 

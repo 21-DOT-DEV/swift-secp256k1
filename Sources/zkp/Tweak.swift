@@ -34,7 +34,7 @@ public extension secp256k1.Signing.PrivateKey {
     func add(xonly tweak: [UInt8]) throws -> Self {
         let context = secp256k1.Context.rawRepresentation
         var keypair = secp256k1_keypair()
-        var privateBytes = [UInt8](repeating: 0, count: secp256k1.ByteDetails.count)
+        var privateBytes = [UInt8](repeating: 0, count: secp256k1.ByteLength.privateKey)
         var xonly = secp256k1_xonly_pubkey()
         var keyParity = Int32()
 
@@ -117,7 +117,7 @@ public extension secp256k1.Schnorr.XonlyKey {
         var pubKey = secp256k1_pubkey()
         var inXonlyPubKey = secp256k1_xonly_pubkey()
         var outXonlyPubKey = secp256k1_xonly_pubkey()
-        var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.Schnorr.xonlyByteCount)
+        var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.ByteLength.dimension)
         var keyParity = Int32()
 
         guard secp256k1_xonly_pubkey_parse(context, &inXonlyPubKey, bytes).boolValue,

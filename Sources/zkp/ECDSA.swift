@@ -10,7 +10,7 @@
 
 import Foundation
 
-typealias NISTECDSASignature = DataSignature & DERSignature
+typealias NISTECDSASignature = DERSignature & DataSignature
 
 protocol DataSignature {
     init<D: DataProtocol>(dataRepresentation: D) throws
@@ -41,7 +41,7 @@ public extension secp256k1.Signing {
         ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
         public init<D: DataProtocol>(dataRepresentation: D) throws {
-            guard dataRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount else {
+            guard dataRepresentation.count == secp256k1.ByteLength.signature else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
@@ -52,8 +52,8 @@ public extension secp256k1.Signing {
         /// - Parameters:
         ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
-        internal init(_ dataRepresentation: Data) throws {
-            guard dataRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount else {
+        init(_ dataRepresentation: Data) throws {
+            guard dataRepresentation.count == secp256k1.ByteLength.signature else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
@@ -112,9 +112,8 @@ public extension secp256k1.Signing {
         public var compactRepresentation: Data {
             get throws {
                 let context = secp256k1.Context.rawRepresentation
-                let compactSignatureLength = 64
                 var signature = secp256k1_ecdsa_signature()
-                var compactSignature = [UInt8](repeating: 0, count: compactSignatureLength)
+                var compactSignature = [UInt8](repeating: 0, count: secp256k1.ByteLength.signature)
 
                 dataRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
 
@@ -126,7 +125,7 @@ public extension secp256k1.Signing {
                     throw secp256k1Error.underlyingCryptoError
                 }
 
-                return Data(bytes: &compactSignature, count: compactSignatureLength)
+                return Data(bytes: &compactSignature, count: secp256k1.ByteLength.signature)
             }
         }
 

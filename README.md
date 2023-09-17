@@ -20,14 +20,14 @@ Long-term goals are:
 This repository primarily uses Swift package manager as its build tool, so we recommend using that as well. Xcode comes with [built-in support](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) for Swift packages. From the menu bar, goto: `File > Add Packages...` If you manage packages via a `Package.swift` file, simply add `secp256k1.swift` as a dependencies' clause in your Swift manifest:
 
 ```swift
-.package(url: "https://github.com/GigaBitcoin/secp256k1.swift.git", from: "0.12.0"),
+.package(name: "secp256k1.swift", url: "https://github.com/GigaBitcoin/secp256k1.swift.git", exact: "0.13.0"),
 ```
 
 Include `secp256k1` as a dependency for your executable target:
 
 ```swift
 .target(name: "<target>", dependencies: [
-    .product(name: "secp256k1", package: "secp256k1.swift")]),
+    .product(name: "secp256k1", package: "secp256k1.swift")
 ]),
 ```
 
@@ -63,8 +63,8 @@ print(try! signature.derRepresentation.base64EncodedString())
 ## Schnorr
 
 ```swift
-// Disable BIP340 to enable Schnorr signatures of variable length messages
-let privateKey = try! secp256k1.Schnorr.PrivateKey(strict: false)
+// Strict BIP340 mode is disabled by default for Schnorr signatures with variable length messages
+let privateKey = try! secp256k1.Schnorr.PrivateKey()
 
 // Extra params for custom signing
 var auxRand = try! "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906".bytes
@@ -91,11 +91,14 @@ let tweakedPublicKeyKey = try! privateKey.publicKey.add(tweak)
 let privateKey = try! secp256k1.KeyAgreement.PrivateKey()
 let publicKey = try! secp256k1.KeyAgreement.PrivateKey().publicKey
 
-// Create a shared secret with a private key from only a public key
-let sharedSecret = try! privateKey.sharedSecretFromKeyAgreement(with: publicKey)
+// Create a compressed shared secret with a private key from only a public key
+let sharedSecret = try! privateKey.sharedSecretFromKeyAgreement(with: publicKey, format: .compressed)
+
+// By default, libsecp256k1 hashes the x-coordinate with version information.
+let symmetricKey = SHA256.hash(data: sharedSecret.bytes)
 ```
 
-## Silent Payments
+## Silent Payments Scheme
 
 ```swift
 let privateSign1 = try! secp256k1.Signing.PrivateKey()

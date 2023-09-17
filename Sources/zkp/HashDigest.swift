@@ -54,7 +54,7 @@ public struct HashDigest: Digest {
 
     /// The byte count of the hash digest.
     public static var byteCount: Int {
-        get { 32 }
+        get { SHA256.digestByteCount }
         set { fatalError("Cannot set SHA256.byteCount") }
     }
 

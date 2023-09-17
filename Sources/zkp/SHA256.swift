@@ -12,12 +12,18 @@ import Foundation
 
 /// The SHA256 hashing algorithm.
 public enum SHA256 {
+    /// The number of bytes in a SHA256 digest.
+    @inlinable
+    static var digestByteCount: Int {
+        32
+    }
+
     /// Computes a digest of the data.
     /// - Parameter data: The data to be hashed.
     /// - Returns: The computed digest.
     public static func hash<D: DataProtocol>(data: D) -> SHA256Digest {
         let stringData = Array(data)
-        var output = [UInt8](repeating: 0, count: 32)
+        var output = [UInt8](repeating: 0, count: Self.digestByteCount)
 
         secp256k1_swift_sha256(&output, stringData, stringData.count)
 
@@ -34,7 +40,7 @@ public enum SHA256 {
         let context = secp256k1.Context.rawRepresentation
         let tagBytes = Array(tag)
         let messageBytes = Array(data)
-        var output = [UInt8](repeating: 0, count: 32)
+        var output = [UInt8](repeating: 0, count: Self.digestByteCount)
 
         guard secp256k1_tagged_sha256(
             context,

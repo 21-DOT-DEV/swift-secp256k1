@@ -128,10 +128,9 @@ public extension secp256k1.Recovery {
         public var compactRepresentation: ECDSACompactSignature {
             get throws {
                 let context = secp256k1.Context.rawRepresentation
-                let compactSignatureLength = 64
                 var recoveryId = Int32()
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
-                var compactSignature = [UInt8](repeating: 0, count: compactSignatureLength)
+                var compactSignature = [UInt8](repeating: 0, count: secp256k1.ByteLength.signature)
 
                 dataRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
 
@@ -145,7 +144,7 @@ public extension secp256k1.Recovery {
                 }
 
                 return secp256k1.Recovery.ECDSACompactSignature(
-                    signature: Data(bytes: &compactSignature, count: compactSignatureLength),
+                    signature: Data(bytes: &compactSignature, count: secp256k1.ByteLength.signature),
                     recoveryId: recoveryId
                 )
             }
@@ -177,7 +176,7 @@ public extension secp256k1.Recovery {
         ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
         public init<D: DataProtocol>(dataRepresentation: D) throws {
-            guard dataRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount + 1 else {
+            guard dataRepresentation.count == secp256k1.ByteLength.signature + 1 else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
@@ -188,8 +187,8 @@ public extension secp256k1.Recovery {
         /// - Parameters:
         ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
-        internal init(_ dataRepresentation: Data) throws {
-            guard dataRepresentation.count == 4 * secp256k1.CurveDetails.coordinateByteCount + 1 else {
+        init(_ dataRepresentation: Data) throws {
+            guard dataRepresentation.count == secp256k1.ByteLength.signature + 1 else {
                 throw secp256k1Error.incorrectParameterSize
             }
 

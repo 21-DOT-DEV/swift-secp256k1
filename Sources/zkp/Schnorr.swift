@@ -12,13 +12,6 @@ import Foundation
 
 public extension secp256k1 {
     enum Schnorr {
-        /// Fixed number of bytes for Schnorr signature
-        ///
-        /// [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#abstract)
-        @inlinable static var signatureByteCount: Int { 64 }
-
-        @inlinable static var xonlyByteCount: Int { 32 }
-
         /// Tuple representation of ``SECP256K1_SCHNORRSIG_EXTRAPARAMS_MAGIC``
         ///
         /// Only used at initialization and has no other function than making sure the object is initialized.
@@ -136,7 +129,7 @@ public extension secp256k1.Schnorr {
         ///     - dataRepresentation: A raw representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the rawRepresentation count
         public init<D: DataProtocol>(dataRepresentation: D) throws {
-            guard dataRepresentation.count == secp256k1.Schnorr.signatureByteCount else {
+            guard dataRepresentation.count == secp256k1.ByteLength.signature else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
@@ -147,8 +140,8 @@ public extension secp256k1.Schnorr {
         /// - Parameters:
         ///     - rawRepresentation: A raw representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
-        internal init(_ dataRepresentation: Data) throws {
-            guard dataRepresentation.count == secp256k1.Schnorr.signatureByteCount else {
+        init(_ dataRepresentation: Data) throws {
+            guard dataRepresentation.count == secp256k1.ByteLength.signature else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
@@ -181,7 +174,7 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
     public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Schnorr.SchnorrSignature {
-        try signature(for: data, auxiliaryRand: SecureBytes(count: secp256k1.Schnorr.xonlyByteCount).bytes)
+        try signature(for: data, auxiliaryRand: SecureBytes(count: secp256k1.ByteLength.dimension).bytes)
     }
 
     /// Generates an Schnorr signature from the hash digest object
@@ -196,7 +189,7 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
     public func signature<D: Digest>(for digest: D) throws -> secp256k1.Schnorr.SchnorrSignature {
-        try signature(for: digest, auxiliaryRand: SecureBytes(count: secp256k1.Schnorr.xonlyByteCount).bytes)
+        try signature(for: digest, auxiliaryRand: SecureBytes(count: secp256k1.ByteLength.dimension).bytes)
     }
 
     /// Generates an Schnorr signature from a hash of a variable length data object
@@ -249,16 +242,16 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
     public func signature(
         message: inout [UInt8],
         auxiliaryRand: UnsafeMutableRawPointer?,
-        strict: Bool = true
+        strict: Bool = false
     ) throws -> secp256k1.Schnorr.SchnorrSignature {
-        guard strict == false || message.count == secp256k1.Schnorr.xonlyByteCount else {
+        guard strict == false || message.count == secp256k1.ByteLength.dimension else {
             throw secp256k1Error.incorrectParameterSize
         }
 
         let context = secp256k1.Context.rawRepresentation
         let magic = secp256k1.Schnorr.magic
         var keypair = secp256k1_keypair()
-        var signature = [UInt8](repeating: 0, count: secp256k1.Schnorr.signatureByteCount)
+        var signature = [UInt8](repeating: 0, count: secp256k1.ByteLength.signature)
         var extraParams = secp256k1_schnorrsig_extraparams(magic: magic, noncefp: nil, ndata: auxiliaryRand)
 
         guard secp256k1_keypair_create(context, &keypair, Array(dataRepresentation)).boolValue,
@@ -273,7 +266,7 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try secp256k1.Schnorr.SchnorrSignature(Data(bytes: signature, count: secp256k1.Schnorr.signatureByteCount))
+        return try secp256k1.Schnorr.SchnorrSignature(Data(bytes: signature, count: secp256k1.ByteLength.signature))
     }
 }
 
