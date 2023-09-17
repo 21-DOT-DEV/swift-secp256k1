@@ -13,42 +13,6 @@ import Foundation
 /// The secp256k1 Elliptic Curve.
 public enum secp256k1 {}
 
-/// An extension to secp256k1 containing a Context structure that represents the flags
-/// passed to secp256k1_context_create, secp256k1_context_preallocated_size, and secp256k1_context_preallocated_create.
-public extension secp256k1 {
-    struct Context: OptionSet {
-        /// The raw representation of `secp256k1.Context`
-        public static let rawRepresentation = try! secp256k1.Context.create()
-        /// Raw value representing the underlying UInt32 flags.
-        public let rawValue: UInt32
-
-        /// Initializes a new Context with the specified raw value.
-        /// - Parameter rawValue: The UInt32 raw value for the context flags.
-        public init(rawValue: UInt32) { self.rawValue = rawValue }
-
-        /// Initializes a new Context with the specified raw value.
-        /// - Parameter rawValue: The Int32 raw value for the context flags.
-        init(rawValue: Int32) { self.rawValue = UInt32(rawValue) }
-
-        /// No context flag.
-        public static let none = Context(rawValue: SECP256K1_CONTEXT_NONE)
-
-        /// Creates a new secp256k1 context with the specified flags.
-        /// - Parameter context: The context flags to create a new secp256k1 context.
-        /// - Throws: Throws an error if the context creation or randomization fails.
-        /// - Returns: Returns an opaque pointer to the created context.
-        public static func create(_ context: Context = .none) throws -> OpaquePointer {
-            var randomBytes = SecureBytes(count: secp256k1.ByteDetails.count).bytes
-            guard let context = secp256k1_context_create(context.rawValue),
-                  secp256k1_context_randomize(context, &randomBytes).boolValue else {
-                throw secp256k1Error.underlyingCryptoError
-            }
-
-            return context
-        }
-    }
-}
-
 /// An extension to secp256k1 containing an enum for public key formats.
 public extension secp256k1 {
     /// Enum representing public key formats to be passed to `secp256k1_ec_pubkey_serialize`.
@@ -61,8 +25,8 @@ public extension secp256k1 {
         /// The length of the public key in bytes, based on the format.
         public var length: Int {
             switch self {
-            case .compressed: return 33
-            case .uncompressed: return 65
+            case .compressed: return secp256k1.ByteLength.dimension + 1
+            case .uncompressed: return 2 * secp256k1.ByteLength.dimension + 1
             }
         }
 
@@ -80,26 +44,22 @@ public extension secp256k1 {
     }
 }
 
-/// An extension for secp256k1 containing nested enums for curve and byte details.
+/// An extension for secp256k1 containing nested enum byte length details.
 extension secp256k1 {
-    /// An enum containing details about the secp256k1 curve.
+    /// An enum containing byte details about in secp256k1.
     @usableFromInline
-    enum CurveDetails {
-        /// The number of bytes in a coordinate of the secp256k1 curve.
+    enum ByteLength {
+        /// Number of bytes for one dimension of a secp256k1 coordinate.
         @inlinable
-        static var coordinateByteCount: Int {
-            16
-        }
-    }
+        static var dimension: Int { 32 }
 
-    /// An enum containing details about bytes in secp256k1.
-    @usableFromInline
-    enum ByteDetails {
-        /// The number of bytes in a secp256k1 object.
+        /// Number of bytes in a secp256k1 private key.
         @inlinable
-        static var count: Int {
-            32
-        }
+        static var privateKey: Int { 32 }
+
+        /// Number of bytes in a secp256k1 signature.
+        @inlinable
+        static var signature: Int { 64 }
     }
 }
 
@@ -151,7 +111,7 @@ extension secp256k1 {
 
     /// Backing initialization that creates a random secp256k1 private key for signing
     @usableFromInline init(format: secp256k1.Format = .compressed) throws {
-        let privateKey = SecureBytes(count: secp256k1.ByteDetails.count)
+        let privateKey = SecureBytes(count: secp256k1.ByteLength.privateKey)
         self.keyParity = 0
         self.format = format
         self.privateBytes = privateKey
@@ -322,7 +282,7 @@ extension secp256k1 {
         bytes privateBytes: inout SecureBytes,
         format: secp256k1.Format
     ) throws -> [UInt8] {
-        guard privateBytes.count == secp256k1.ByteDetails.count else {
+        guard privateBytes.count == secp256k1.ByteLength.privateKey else {
             throw secp256k1Error.incorrectKeySize
         }
 
@@ -398,7 +358,7 @@ extension secp256k1 {
         let context = secp256k1.Context.rawRepresentation
         var pubKey = secp256k1_pubkey()
         var xonlyPubKey = secp256k1_xonly_pubkey()
-        var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.ByteDetails.count)
+        var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.ByteLength.privateKey)
 
         guard secp256k1_ec_pubkey_parse(context, &pubKey, publicBytes, format.length).boolValue,
               secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue,

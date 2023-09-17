@@ -140,31 +140,52 @@ extension secp256k1.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
     /// - Returns: Returns a shared secret.
     /// - Throws: An error occurred while computing the shared secret.
     func sharedSecretFromKeyAgreement(with publicKeyShare: secp256k1.KeyAgreement.PublicKey) throws -> SharedSecret {
-        try sharedSecretFromKeyAgreement(with: publicKeyShare, handler: nil)
+        try sharedSecretFromKeyAgreement(with: publicKeyShare, format: .compressed)
     }
 
     /// Performs a key agreement with the provided public key share.
     ///
     /// - Parameters:
     ///   - publicKeyShare: The public key to perform the ECDH with.
-    ///   - handler: Closure for customizing a hash function; Defaults to nil.
-    ///   - data: Additional data for the hash function; Defaults to nil.
+    ///   - format: An enum that represents the format of the shared secret.
     /// - Returns: Returns a shared secret.
     /// - Throws: An error occurred while computing the shared secret.
     public func sharedSecretFromKeyAgreement(
         with publicKeyShare: secp256k1.KeyAgreement.PublicKey,
-        handler: HashFunctionType? = nil,
-        data: UnsafeMutableRawPointer? = nil
+        format: secp256k1.Format = .compressed
     ) throws -> SharedSecret {
         let context = secp256k1.Context.rawRepresentation
         var publicKey = secp256k1_pubkey()
-        var sharedSecret = [UInt8](repeating: 0, count: 32)
+        var sharedSecret = [UInt8](repeating: 0, count: format.length)
+        var data = [UInt8](repeating: format == .compressed ? 1 : 0, count: 1)
 
         guard secp256k1_ec_pubkey_parse(context, &publicKey, publicKeyShare.bytes, publicKeyShare.bytes.count).boolValue,
-              secp256k1_ecdh(context, &sharedSecret, &publicKey, baseKey.key.bytes, handler, data).boolValue else {
+              secp256k1_ecdh(context, &sharedSecret, &publicKey, baseKey.key.bytes, hashClosure(), &data).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return SharedSecret(ss: SecureBytes(bytes: sharedSecret))
+        return SharedSecret(ss: SecureBytes(bytes: sharedSecret), format: format)
+    }
+
+    /// Creates a closure which handles creating either a compressed or uncompressed shared secret
+    ///
+    /// - Returns: Closure to override the libsecp256k1 hashing function
+    func hashClosure() -> HashFunctionType {
+        { output, x32, y32, data in
+            guard let output, let x32, let y32, let compressed = data?.load(as: Bool.self) else { return 0 }
+
+            let lastByte = y32.advanced(by: secp256k1.ByteLength.dimension - 1).pointee
+            let version: UInt8 = compressed ? (lastByte & 0x01) | 0x02 : 0x04
+
+            output.update(repeating: version, count: 1)
+            output.advanced(by: 1).update(from: x32, count: secp256k1.ByteLength.dimension)
+
+            if compressed == false {
+                output.advanced(by: secp256k1.ByteLength.dimension + 1)
+                    .update(from: y32, count: secp256k1.ByteLength.dimension)
+            }
+
+            return 1
+        }
     }
 }

@@ -266,12 +266,12 @@ final class secp256k1Tests: XCTestCase {
         var messageDigest = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.bytes
         var auxRand = try! "f50c8c99e39a82f125fa83186b5f2483f39fb0fb56269c755689313a177be6ea".bytes
 
-        let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand, strict: false)
+        let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 
         // Test the verification of the signature output
         XCTAssertEqual(expectedSignature, String(bytes: signature.dataRepresentation.bytes))
         XCTAssertTrue(privateKey.xonly.isValid(signature, for: &messageDigest))
-        XCTAssertThrowsError(try throwKey.signature(message: &messageDigest, auxiliaryRand: &auxRand))
+        XCTAssertThrowsError(try throwKey.signature(message: &messageDigest, auxiliaryRand: &auxRand, strict: true))
     }
 
     func testSchnorrVerifying() {
@@ -396,7 +396,7 @@ final class secp256k1Tests: XCTestCase {
 
         let set0 = Set(array)
 
-        array = [UInt8](repeating: 1, count: Int.random(in: 10...100_000))
+        array = [UInt8](repeating: 1, count: Int.random(in: 10...100000))
 
         XCTAssertGreaterThan(array.count, 9)
 
@@ -435,10 +435,27 @@ final class secp256k1Tests: XCTestCase {
         let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey(dataRepresentation: privateBytes1)
         let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey(dataRepresentation: privateBytes2)
 
-        let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
-        let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey)
+        let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey, format: .uncompressed)
+        let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey, format: .uncompressed)
 
         XCTAssertEqual(sharedSecret1.bytes, sharedSecret2.bytes)
+    }
+
+    func testKeyAgreementHashFunction() {
+        let context = secp256k1.Context.rawRepresentation
+        let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey()
+        let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey()
+
+        var pub = secp256k1_pubkey()
+        let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
+        var sharedSecret2 = [UInt8](repeating: 0, count: 32)
+
+        XCTAssertEqual(secp256k1_ec_pubkey_parse(context, &pub, privateKey1.publicKey.bytes, privateKey1.publicKey.bytes.count), 1)
+        XCTAssertEqual(secp256k1_ecdh(context, &sharedSecret2, &pub, privateKey2.baseKey.key.bytes, nil, nil), 1)
+
+        let symmerticKey = SHA256.hash(data: sharedSecret1.bytes)
+
+        XCTAssertEqual(symmerticKey.bytes, sharedSecret2)
     }
 
     func testKeyAgreementPublicKeyTweakAdd() {
@@ -455,8 +472,11 @@ final class secp256k1Tests: XCTestCase {
 
         XCTAssertEqual(sharedSecret1.bytes, sharedSecret2.bytes)
 
-        let sharedSecretSign1 = try! secp256k1.Signing.PrivateKey(dataRepresentation: sharedSecret1.bytes)
-        let sharedSecretSign2 = try! secp256k1.Signing.PrivateKey(dataRepresentation: sharedSecret2.bytes)
+        let symmetricKey1 = SHA256.hash(data: sharedSecret1.bytes)
+        let symmetricKey2 = SHA256.hash(data: sharedSecret2.bytes)
+
+        let sharedSecretSign1 = try! secp256k1.Signing.PrivateKey(dataRepresentation: symmetricKey1.bytes)
+        let sharedSecretSign2 = try! secp256k1.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
 
         let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xonly.bytes)
         let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
@@ -611,6 +631,7 @@ final class secp256k1Tests: XCTestCase {
         ("testZeroization", testZeroization),
         ("testPrivateKeyTweakAdd", testPrivateKeyTweakAdd),
         ("testKeyAgreement", testKeyAgreement),
+        ("testKeyAgreementHashFunction", testKeyAgreementHashFunction),
         ("testKeyAgreementPublicKeyTweakAdd", testKeyAgreementPublicKeyTweakAdd),
         ("testXonlyToPublicKey", testXonlyToPublicKey),
         ("testTapscript", testTapscript),
