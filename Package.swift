@@ -1,52 +1,23 @@
-// swift-tools-version:5.6
+// swift-tools-version:5.8
 
 import PackageDescription
-
-let dependencies: [Package.Dependency]
-
-#if os(macOS)
-    dependencies = [
-        // Dependencies used for package development
-        .package(url: "https://github.com/csjones/lefthook.git", branch: "swift"),
-        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", from: "0.49.5"),
-        .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.46.5"),
-        .package(url: "https://github.com/apple/swift-docc-plugin", from: "1.0.0")
-    ]
-#else
-    dependencies = []
-#endif
 
 let package = Package(
     name: "secp256k1.swift",
     products: [
         // WARNING: These APIs should not be considered stable and may change at any time.
-        .library(
-            name: "secp256k1",
-            targets: [
-                "secp256k1"
-            ]
-        ),
-        .library(
-            name: "zkp",
-            targets: [
-                "zkp"
-            ]
-        )
+        .library(name: "secp256k1", targets: ["secp256k1"]),
+        .library(name: "zkp", targets: ["zkp"])
     ],
-    dependencies: dependencies,
+    dependencies: [
+        // Dependencies used for package development
+        .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "1.4.11"),
+        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.52.3"),
+        .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.52.4")
+    ],
     targets: [
-        .target(
-            name: "secp256k1",
-            dependencies: [
-                "secp256k1_bindings"
-            ]
-        ),
-        .target(
-            name: "zkp",
-            dependencies: [
-                "zkp_bindings"
-            ]
-        ),
+        .target(name: "secp256k1", dependencies: ["secp256k1_bindings"]),
+        .target(name: "zkp", dependencies: ["zkp_bindings"]),
         .target(
             name: "secp256k1_bindings",
             cSettings: [
@@ -83,12 +54,7 @@ let package = Package(
                 .headerSearchPath("../../Submodules/secp256k1-zkp/src")
             ]
         ),
-        .testTarget(
-            name: "zkpTests",
-            dependencies: [
-                "zkp"
-            ]
-        )
+        .testTarget(name: "zkpTests", dependencies: ["zkp"])
     ],
     swiftLanguageVersions: [.v5],
     cLanguageStandard: .c89

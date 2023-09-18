@@ -8,4 +8,4 @@ ADD . /LinuxTests
 WORKDIR /LinuxTests
 
 # Execute Linux test suite
-RUN swift test && swift build --target secp256k1 --use-integrated-swift-driver
+RUN swift test -v && swift build --target secp256k1

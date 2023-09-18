@@ -38,7 +38,7 @@ public extension secp256k1 {
             }
 
             /// Negates a secret key.
-            public var negation: PrivateKey {
+            public var negation: Self {
                 get throws {
                     let negatedKey = try baseKey.negation.dataRepresentation
                     return try Self(dataRepresentation: negatedKey)
@@ -106,7 +106,7 @@ public extension secp256k1 {
             }
 
             /// Negates a public key.
-            public var negation: PublicKey {
+            public var negation: Self {
                 get throws {
                     let negatedKey = try baseKey.negation
                     return try Self(dataRepresentation: negatedKey.dataRepresentation, format: negatedKey.format)

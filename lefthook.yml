@@ -9,7 +9,7 @@ pre-commit:
   commands:
     1_swiftformat:
       glob: "*.{swift}"
-      run: swift run swiftformat --config .swiftformat {all_files}
+      run: swift package plugin --allow-writing-to-package-directory swiftformat --config .swiftformat {all_files}
     2_swiftlint:
       glob: "*.{swift}"
       run: swift run swiftlint --autocorrect --strict --no-cache

@@ -93,14 +93,14 @@ extension secp256k1 {
     }
 
     /// Negates a secret key in place.
-    @usableFromInline var negation: PrivateKeyImplementation {
+    @usableFromInline var negation: Self {
         get throws {
             var privateBytes = privateBytes.bytes
             guard secp256k1_ec_seckey_negate(secp256k1.Context.rawRepresentation, &privateBytes).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            return try PrivateKeyImplementation(dataRepresentation: privateBytes, format: format)
+            return try Self(dataRepresentation: privateBytes, format: format)
         }
     }
 
@@ -176,7 +176,7 @@ extension secp256k1 {
     }
 
     /// Negates a public key in place.
-    @usableFromInline var negation: PublicKeyImplementation {
+    @usableFromInline var negation: Self {
         get throws {
             let context = secp256k1.Context.rawRepresentation
             var key = rawRepresentation
@@ -188,7 +188,7 @@ extension secp256k1 {
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            return try PublicKeyImplementation(dataRepresentation: bytes, format: format)
+            return try Self(dataRepresentation: bytes, format: format)
         }
     }
 
