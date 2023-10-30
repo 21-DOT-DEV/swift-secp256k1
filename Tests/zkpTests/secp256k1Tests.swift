@@ -601,6 +601,18 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(outputKey.bytes, outputKeyBytes)
     }
 
+    func testPubkeyCombine() {
+        let publicKeyBytes1 = try! "021b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014".bytes
+        let publicKeyBytes2 = try! "0260303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752".bytes
+
+        let publicKey1 = try! secp256k1.Signing.PublicKey(dataRepresentation: publicKeyBytes1, format: .compressed)
+        let publicKey2 = try! secp256k1.Signing.PublicKey(dataRepresentation: publicKeyBytes2, format: .compressed)
+
+//        let combinedPublicKey = try! publicKey1.combine([publicKey2])
+//
+//        print(String(bytes: combinedPublicKey.bytes))
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
@@ -637,6 +649,7 @@ final class secp256k1Tests: XCTestCase {
         ("testTapscript", testTapscript),
         ("testCompactSizePrefix", testCompactSizePrefix),
         ("testSchnorrNegating", testSchnorrNegating),
-        ("testTaprootDerivation", testTaprootDerivation)
+        ("testTaprootDerivation", testTaprootDerivation),
+        ("testPubkeyCombine", testPubkeyCombine)
     ]
 }
