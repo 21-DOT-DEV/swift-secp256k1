@@ -613,6 +613,39 @@ final class secp256k1Tests: XCTestCase {
 //        print(String(bytes: combinedPublicKey.bytes))
     }
 
+    func testPubkeyCombineBindings() {
+        // Initialize context
+        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_NONE))!
+
+        // Destroy context after execution
+        defer { secp256k1_context_destroy(context) }
+
+        // Setup private and public key variables
+        var pubKeyLen = 33
+        var cPubKey1 = secp256k1_pubkey()
+        var cPubKey2 = secp256k1_pubkey()
+
+        let publicKeyBytes1 = try! "021b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014".bytes
+        let publicKeyBytes2 = try! "0260303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752".bytes
+
+        // Verify the context and keys are setup correctly
+        XCTAssertEqual(secp256k1_ec_pubkey_parse(context, &cPubKey1, publicKeyBytes1, pubKeyLen), 1)
+        XCTAssertEqual(secp256k1_ec_pubkey_parse(context, &cPubKey2, publicKeyBytes2, pubKeyLen), 1)
+
+        let pubKeys: [UnsafePointer<secp256k1_pubkey>?] = [UnsafePointer(&cPubKey1), UnsafePointer(&cPubKey2)]
+        var combinedKey = secp256k1_pubkey()
+        var combinedKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
+
+        // Combine the two public keys
+        XCTAssertEqual(secp256k1_ec_pubkey_combine(context, &combinedKey, pubKeys, 2), 1)
+        XCTAssertEqual(secp256k1_ec_pubkey_serialize(context, &combinedKeyBytes, &pubKeyLen, &combinedKey, secp256k1.Format.compressed.rawValue), 1)
+
+        // Define the expected combined key
+        let expectedCombinedKey = try! "03d6a3a9d62c7650fcac18f9ee68c7a004ebad71b7581b683062213ad9f37ddb28".bytes
+
+        XCTAssertEqual(combinedKeyBytes, expectedCombinedKey)
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
@@ -650,6 +683,7 @@ final class secp256k1Tests: XCTestCase {
         ("testCompactSizePrefix", testCompactSizePrefix),
         ("testSchnorrNegating", testSchnorrNegating),
         ("testTaprootDerivation", testTaprootDerivation),
-        ("testPubkeyCombine", testPubkeyCombine)
+        ("testPubkeyCombine", testPubkeyCombine),
+        ("testPubkeyCombineBindings", testPubkeyCombineBindings)
     ]
 }
