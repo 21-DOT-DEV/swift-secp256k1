@@ -608,9 +608,12 @@ final class secp256k1Tests: XCTestCase {
         let publicKey1 = try! secp256k1.Signing.PublicKey(dataRepresentation: publicKeyBytes1, format: .compressed)
         let publicKey2 = try! secp256k1.Signing.PublicKey(dataRepresentation: publicKeyBytes2, format: .compressed)
 
-//        let combinedPublicKey = try! publicKey1.combine([publicKey2])
-//
-//        print(String(bytes: combinedPublicKey.bytes))
+        let combinedPublicKey = try! publicKey1.combine([publicKey2])
+
+        // Define the expected combined key
+        let expectedCombinedKey = try! "03d6a3a9d62c7650fcac18f9ee68c7a004ebad71b7581b683062213ad9f37ddb28".bytes
+
+        XCTAssertEqual(combinedPublicKey.dataRepresentation.bytes, expectedCombinedKey)
     }
 
     func testPubkeyCombineBindings() {

@@ -19,22 +19,37 @@ public extension secp256k1.Signing.PublicKey {
     func combine(_ pubkeys: [Self], format: secp256k1.Format = .compressed) throws -> Self {
         let context = secp256k1.Context.rawRepresentation
         let allPubKeys = [self] + pubkeys
-        var publicKey = secp256k1_pubkey()
         var pubKeyLen = format.length
-        var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
+        var combinedKey = secp256k1_pubkey()
+        var combinedBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-        var keys = allPubKeys.map {
-            var newPubKey = secp256k1_pubkey()
-            $0.dataRepresentation.copyToUnsafeMutableBytes(of: &newPubKey.data)
-            let pointerKey: UnsafePointer<secp256k1_pubkey>? = withUnsafePointer(to: &newPubKey) { $0 }
-            return pointerKey
-        }
-
-        guard secp256k1_ec_pubkey_combine(context, &publicKey, &keys, pubkeys.count).boolValue,
-              secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &publicKey, format.rawValue).boolValue else {
+        guard withUnsafePointersToPubKeys(allPubKeys.map { $0.rawRepresentation }, { ptrsToCombine in
+            secp256k1_ec_pubkey_combine(context, &combinedKey, ptrsToCombine, ptrsToCombine.count).boolValue
+        }), secp256k1_ec_pubkey_serialize(context, &combinedBytes, &pubKeyLen, &combinedKey, format.rawValue).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try Self(dataRepresentation: pubBytes, format: format)
+        return try Self(dataRepresentation: combinedBytes, format: format)
+    }
+}
+
+extension secp256k1.Signing.PublicKey {
+    func withUnsafePointersToPubKeys<Result>(
+        _ pubKeys: [secp256k1_pubkey],
+        _ body: ([UnsafePointer<secp256k1_pubkey>?]) -> Result
+    ) -> Result {
+        let pointers = pubKeys.map { pubKey -> UnsafePointer<secp256k1_pubkey>? in
+            let mutablePubKey = UnsafeMutablePointer<secp256k1_pubkey>.allocate(capacity: 1)
+            mutablePubKey.initialize(to: pubKey)
+            return UnsafePointer(mutablePubKey)
+        }
+
+        defer {
+            for ptr in pointers {
+                ptr?.deallocate()
+            }
+        }
+
+        return body(pointers)
     }
 }
