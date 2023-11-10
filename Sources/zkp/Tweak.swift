@@ -72,12 +72,11 @@ public extension secp256k1.Signing.PublicKey {
     /// - Returns: tweaked `PublicKey` object
     func add(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
         let context = secp256k1.Context.rawRepresentation
-        var pubKey = secp256k1_pubkey()
+        var pubKey = rawRepresentation
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-        guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, pubKeyLen).boolValue,
-              secp256k1_ec_pubkey_tweak_add(context, &pubKey, tweak).boolValue,
+        guard secp256k1_ec_pubkey_tweak_add(context, &pubKey, tweak).boolValue,
               secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
@@ -92,12 +91,11 @@ public extension secp256k1.Signing.PublicKey {
     /// - Returns: tweaked `PublicKey` object
     func multiply(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
         let context = secp256k1.Context.rawRepresentation
-        var pubKey = secp256k1_pubkey()
+        var pubKey = rawRepresentation
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-        guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, pubKeyLen).boolValue,
-              secp256k1_ec_pubkey_tweak_mul(context, &pubKey, tweak).boolValue,
+        guard secp256k1_ec_pubkey_tweak_mul(context, &pubKey, tweak).boolValue,
               secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }

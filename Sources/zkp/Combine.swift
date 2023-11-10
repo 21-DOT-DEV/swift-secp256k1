@@ -34,6 +34,11 @@ public extension secp256k1.Signing.PublicKey {
 }
 
 extension secp256k1.Signing.PublicKey {
+    /// Executes a closure with an array of `UnsafePointer<secp256k1_pubkey>?` for pointer operations on an array of `secp256k1_pubkey`.
+    /// - Parameters:
+    ///   - pubKeys: An array of `secp256k1_pubkey` to be converted to `UnsafePointer<secp256k1_pubkey>?`.
+    ///   - body: A closure that takes an array of `UnsafePointer<secp256k1_pubkey>?` and returns a result of type `Result`.
+    /// - Returns: The result of the closure of type `Result`.
     func withUnsafePointersToPubKeys<Result>(
         _ pubKeys: [secp256k1_pubkey],
         _ body: ([UnsafePointer<secp256k1_pubkey>?]) -> Result
