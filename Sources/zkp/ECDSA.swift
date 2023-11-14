@@ -207,12 +207,11 @@ extension secp256k1.Signing.PublicKey: DigestValidator {
     public func isValidSignature<D: Digest>(_ signature: secp256k1.Signing.ECDSASignature, for digest: D) -> Bool {
         let context = secp256k1.Context.rawRepresentation
         var ecdsaSignature = secp256k1_ecdsa_signature()
-        var publicKey = secp256k1_pubkey()
+        var publicKey = rawRepresentation
 
         signature.dataRepresentation.copyToUnsafeMutableBytes(of: &ecdsaSignature.data)
 
-        return secp256k1_ec_pubkey_parse(context, &publicKey, bytes, bytes.count).boolValue &&
-            secp256k1_ecdsa_verify(context, &ecdsaSignature, Array(digest), &publicKey).boolValue
+        return secp256k1_ecdsa_verify(context, &ecdsaSignature, Array(digest), &publicKey).boolValue
     }
 }
 

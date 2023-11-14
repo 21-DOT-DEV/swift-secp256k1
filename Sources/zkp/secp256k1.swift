@@ -171,7 +171,7 @@ extension secp256k1 {
     /// A raw representation of the backing public key
     @usableFromInline var rawRepresentation: secp256k1_pubkey {
         var pubKey = secp256k1_pubkey()
-        dataRepresentation.copyToUnsafeMutableBytes(of: &pubKey.data)
+        _ = secp256k1_ec_pubkey_parse(secp256k1.Context.rawRepresentation, &pubKey, bytes, bytes.count)
         return pubKey
     }
 
