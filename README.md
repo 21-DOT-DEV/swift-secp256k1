@@ -136,6 +136,16 @@ let publicKey = try! secp256k1.Recovery.PublicKey(messageData, signature: recove
 let signature = try! recoverySignature.normalize
 ```
 
+# Combine Public Keys
+
+```swift
+let privateKey = try! secp256k1.Signing.PrivateKey()
+let publicKey = try! secp256k1.Signing.PrivateKey().public
+
+// The Combine API arguments are an array of PublicKey objects and an optional format 
+publicKey.combine([privateKey.publicKey], format: .uncompressed)
+```
+
 
 # Danger
 These APIs should not be considered stable and may change at any time.
