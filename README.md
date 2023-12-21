@@ -20,7 +20,7 @@ Long-term goals are:
 This repository primarily uses Swift package manager as its build tool, so we recommend using that as well. Xcode comes with [built-in support](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) for Swift packages. From the menu bar, goto: `File > Add Packages...` If you manage packages via a `Package.swift` file, simply add `secp256k1.swift` as a dependencies' clause in your Swift manifest:
 
 ```swift
-.package(name: "secp256k1.swift", url: "https://github.com/GigaBitcoin/secp256k1.swift.git", exact: "0.13.0"),
+.package(name: "secp256k1.swift", url: "https://github.com/GigaBitcoin/secp256k1.swift.git", exact: "0.15.0"),
 ```
 
 Include `secp256k1` as a dependency for your executable target:
@@ -136,7 +136,7 @@ let publicKey = try! secp256k1.Recovery.PublicKey(messageData, signature: recove
 let signature = try! recoverySignature.normalize
 ```
 
-# Combine Public Keys
+## Combine Public Keys
 
 ```swift
 let privateKey = try! secp256k1.Signing.PrivateKey()
@@ -144,6 +144,21 @@ let publicKey = try! secp256k1.Signing.PrivateKey().public
 
 // The Combine API arguments are an array of PublicKey objects and an optional format 
 publicKey.combine([privateKey.publicKey], format: .uncompressed)
+```
+
+## PEM Key Format
+
+```swift
+let privateKeyString = """
+-----BEGIN EC PRIVATE KEY-----
+MHQCAQEEIBXwHPDpec6b07GeLbnwetT0dvWzp0nV3MR+4pPKXIc7oAcGBSuBBAAK
+oUQDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMAcjHIrTDS6HEELgguOatmFBOp
+2wU4P2TAl/0Ihiq+nMkrAIV69m2W8g==
+-----END EC PRIVATE KEY-----
+"""
+
+// Import keys generated from OpenSSL
+let privateKey = try! secp256k1.Signing.PrivateKey(pemRepresentation: privateKeyString)
 ```
 
 
