@@ -649,6 +649,75 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertEqual(combinedKeyBytes, expectedCombinedKey)
     }
 
+    func testPrivateKeyPEM() {
+        let privateKeyString = """
+        -----BEGIN EC PRIVATE KEY-----
+        MHQCAQEEIBXwHPDpec6b07GeLbnwetT0dvWzp0nV3MR+4pPKXIc7oAcGBSuBBAAK
+        oUQDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMAcjHIrTDS6HEELgguOatmFBOp
+        2wU4P2TAl/0Ihiq+nMkrAIV69m2W8g==
+        -----END EC PRIVATE KEY-----
+        """
+
+        let privateKey = try! secp256k1.Signing.PrivateKey(pemRepresentation: privateKeyString)
+        let expectedPrivateKey = "15f01cf0e979ce9bd3b19e2db9f07ad4f476f5b3a749d5dcc47ee293ca5c873b"
+
+        // Verify the keys matches the expected keys output
+        XCTAssertEqual(expectedPrivateKey, String(bytes: privateKey.dataRepresentation))
+    }
+
+    func testPublicKeyPEM() {
+        let publicKeyString = """
+        -----BEGIN PUBLIC KEY-----
+        MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMA
+        cjHIrTDS6HEELgguOatmFBOp2wU4P2TAl/0Ihiq+nMkrAIV69m2W8g==
+        -----END PUBLIC KEY-----
+        """
+
+        let privateKeyBytes = try! "15f01cf0e979ce9bd3b19e2db9f07ad4f476f5b3a749d5dcc47ee293ca5c873b".bytes
+        let privateKey = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateKeyBytes, format: .uncompressed)
+        let publicKey = try! secp256k1.Signing.PublicKey(pemRepresentation: publicKeyString)
+
+        // Verify the keys matches the expected keys output
+        XCTAssertEqual(privateKey.publicKey.dataRepresentation, publicKey.dataRepresentation)
+    }
+
+    func testSigningPEM() {
+        let privateKeyString = """
+        -----BEGIN EC PRIVATE KEY-----
+        MHQCAQEEIBXwHPDpec6b07GeLbnwetT0dvWzp0nV3MR+4pPKXIc7oAcGBSuBBAAK
+        oUQDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMAcjHIrTDS6HEELgguOatmFBOp
+        2wU4P2TAl/0Ihiq+nMkrAIV69m2W8g==
+        -----END EC PRIVATE KEY-----
+        """
+
+        let expectedDerSignature = "MEQCIC8k5whKPsPg7XtWTInvhGL4iEU6lP6yPdpEXXZ2mOhFAiAZ3Po9tEDV8mQ8LDzwF0nhPmAn9VLYG8bkuY6PKruZNQ=="
+        let privateKey = try! secp256k1.Signing.PrivateKey(pemRepresentation: privateKeyString)
+        let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
+
+        let signature = try! privateKey.signature(for: messageData)
+
+        // Verify the signature matches the expected output
+        XCTAssertEqual(expectedDerSignature, try! signature.derRepresentation.base64EncodedString())
+    }
+
+    func testVerifyingPEM() {
+        let publicKeyString = """
+        -----BEGIN PUBLIC KEY-----
+        MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMA
+        cjHIrTDS6HEELgguOatmFBOp2wU4P2TAl/0Ihiq+nMkrAIV69m2W8g==
+        -----END PUBLIC KEY-----
+        """
+
+        let expectedSignature = "MEQCIEwVxXLE/mwaRzxLvz9VIcMtHaa/Wf1WRxiBJ6NEuWHeAiAQWf2oqqBqEtBABbmwsXqjCJFvsaPt8o+VaOthto1kWQ=="
+        let expectedDerSignature = Data(base64Encoded: expectedSignature, options: .ignoreUnknownCharacters)!
+
+        let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
+        let signature = try! secp256k1.Signing.ECDSASignature(derRepresentation: expectedDerSignature)
+        let publicKey = try! secp256k1.Signing.PublicKey(pemRepresentation: publicKeyString)
+
+        XCTAssertTrue(publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)))
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
@@ -687,6 +756,10 @@ final class secp256k1Tests: XCTestCase {
         ("testSchnorrNegating", testSchnorrNegating),
         ("testTaprootDerivation", testTaprootDerivation),
         ("testPubkeyCombine", testPubkeyCombine),
-        ("testPubkeyCombineBindings", testPubkeyCombineBindings)
+        ("testPubkeyCombineBindings", testPubkeyCombineBindings),
+        ("testPrivateKeyPEM", testPrivateKeyPEM),
+        ("testPublicKeyPEM", testPublicKeyPEM),
+        ("testSigningPEM", testSigningPEM),
+        ("testVerifyingPEM", testVerifyingPEM)
     ]
 }

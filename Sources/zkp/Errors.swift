@@ -8,14 +8,14 @@
 //  See the accompanying file LICENSE for information
 //
 
-import Foundation
-
 /// Errors thrown for secp256k1
-/// - incorrectKeySize: A key is being deserialized with an incorrect key size.
-/// - incorrectParameterSize: The number of bytes passed for a given argument is incorrect.
-/// - underlyingCryptoError: An unexpected error at a lower-level occurred.
 public enum secp256k1Error: Error {
+    /// A key is being deserialized with an incorrect key size.
     case incorrectKeySize
+
+    /// The number of bytes passed for a given argument is incorrect.
     case incorrectParameterSize
+
+    /// An unexpected error at a lower-level occurred.
     case underlyingCryptoError
 }

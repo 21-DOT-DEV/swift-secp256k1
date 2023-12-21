@@ -62,6 +62,45 @@ public extension secp256k1 {
                 self.baseKey = try PrivateKeyImplementation(dataRepresentation: data, format: format)
             }
 
+            /// Creates a secp256k1 private key for signing from a Privacy-Enhanced Mail (PEM) representation.
+            ///
+            /// - Parameters:
+            ///   - pemRepresentation: A PEM representation of the key.
+            public init(pemRepresentation: String) throws {
+                let pem = try ASN1.PEMDocument(pemString: pemRepresentation)
+
+                switch pem.type {
+                case "EC PRIVATE KEY":
+                    let parsed = try ASN1.SEC1PrivateKey(asn1Encoded: Array(pem.derBytes))
+                    self = try .init(dataRepresentation: parsed.privateKey)
+                case "PRIVATE KEY":
+                    let parsed = try ASN1.PKCS8PrivateKey(asn1Encoded: Array(pem.derBytes))
+                    self = try .init(dataRepresentation: parsed.privateKey.privateKey)
+
+                default:
+                    throw CryptoKitASN1Error.invalidPEMDocument
+                }
+            }
+
+            /// Creates a secp256k1 private key for signing from a Distinguished Encoding Rules (DER) encoded representation.
+            ///
+            /// - Parameters:
+            ///   - derRepresentation: A DER-encoded representation of the key.
+            public init<Bytes: RandomAccessCollection>(derRepresentation: Bytes) throws where Bytes.Element == UInt8 {
+                let bytes = Array(derRepresentation)
+
+                // We have to try to parse this twice because we have no information about what kind of key this is.
+                // We try with PKCS#8 first, and then fall back to SEC.1.
+
+                do {
+                    let key = try ASN1.PKCS8PrivateKey(asn1Encoded: bytes)
+                    self = try .init(dataRepresentation: key.privateKey.privateKey)
+                } catch {
+                    let key = try ASN1.SEC1PrivateKey(asn1Encoded: bytes)
+                    self = try .init(dataRepresentation: key.privateKey)
+                }
+            }
+
             /// Determines if two private keys are equal.
             ///
             /// - Parameters:
@@ -138,6 +177,45 @@ public extension secp256k1 {
             /// - Throws: An error if the data representation does not create a public key.
             public init<D: ContiguousBytes>(dataRepresentation data: D, format: secp256k1.Format) throws {
                 self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
+            }
+
+            /// Creates a secp256k1 public key for signing from a Privacy-Enhanced Mail (PEM) representation.
+            ///
+            /// - Parameters:
+            ///   - pemRepresentation: A PEM representation of the key.
+            public init(pemRepresentation: String) throws {
+                let pem = try ASN1.PEMDocument(pemString: pemRepresentation)
+                guard pem.type == "PUBLIC KEY" else {
+                    throw CryptoKitASN1Error.invalidPEMDocument
+                }
+                self = try .init(derRepresentation: pem.derBytes)
+            }
+
+            /// Creates a secp256k1 public key for signing from a Distinguished Encoding Rules (DER) encoded representation.
+            ///
+            /// - Parameters:
+            ///   - derRepresentation: A DER-encoded representation of the key.
+            public init<Bytes: RandomAccessCollection>(derRepresentation: Bytes) throws where Bytes.Element == UInt8 {
+                let bytes = Array(derRepresentation)
+                let parsed = try ASN1.SubjectPublicKeyInfo(asn1Encoded: bytes)
+                self = try .init(x963Representation: parsed.key)
+            }
+
+            /// Creates a secp256k1 public key for signing from an ANSI x9.63 representation.
+            ///
+            /// - Parameters:
+            ///   - x963Representation: An ANSI x9.63 representation of the key.
+            public init<Bytes: ContiguousBytes>(x963Representation: Bytes) throws {
+                // Before we do anything, we validate that the x963 representation has the right number of bytes.
+                let length = x963Representation.withUnsafeBytes { $0.count }
+
+                switch length {
+                case (2 * secp256k1.ByteLength.dimension) + 1:
+                    self.baseKey = try PublicKeyImplementation(dataRepresentation: x963Representation, format: .uncompressed)
+
+                default:
+                    throw CryptoKitError.incorrectParameterSize
+                }
             }
         }
 
