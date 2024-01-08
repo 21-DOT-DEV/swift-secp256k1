@@ -718,6 +718,27 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertTrue(publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)))
     }
 
+    func testBreakSig() {
+        let sigHex = "3f5723bc367993c7492f8d79087b499e776012e0d744426e1be8e12d57264ab765f52dad6dac7df61d2209e875b037390c181b8c205ad47443c5bfea2f08c149"
+        let dataHex = "03a69666f5863ecc3b35ac143ef843f2a07ef98a76c09fba6bbd23ea36c7839602"
+
+        let sigData = Data(try! sigHex.bytes)
+        let data = Data(try! dataHex.bytes)
+
+        let sig = try! secp256k1.Recovery.ECDSASignature(compactRepresentation: sigData, recoveryId: 1)
+
+        let publicKey = try! secp256k1.Recovery.PublicKey(data, signature: sig)
+
+        let verifyKey = try! secp256k1.Signing.PublicKey(dataRepresentation: publicKey.dataRepresentation, format: .compressed)
+
+        XCTAssertTrue(
+            verifyKey.isValidSignature(
+                try! secp256k1.Signing.ECDSASignature(compactRepresentation: sigData),
+                for: data
+            )
+        )
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
