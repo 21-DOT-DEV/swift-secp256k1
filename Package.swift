@@ -13,7 +13,7 @@ let package = Package(
         // Dependencies used for package development
         .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "1.6.10"),
         .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.53.9"),
-        .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.52.4")
+        .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.55.0")
     ],
     targets: [
         .target(name: "secp256k1", dependencies: ["secp256k1_bindings"]),
