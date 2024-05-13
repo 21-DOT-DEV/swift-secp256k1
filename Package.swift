@@ -26,6 +26,7 @@ let package = Package(
                 .define("ECMULT_WINDOW_SIZE", to: "15"),
                 // Enabling additional secp256k1 modules.
                 .define("ENABLE_MODULE_ECDH"),
+                .define("ENABLE_MODULE_ELLSWIFT"),
                 .define("ENABLE_MODULE_EXTRAKEYS"),
                 .define("ENABLE_MODULE_RECOVERY"),
                 .define("ENABLE_MODULE_SCHNORRSIG")
@@ -38,15 +39,18 @@ let package = Package(
                 .define("ECMULT_GEN_PREC_BITS", to: "4"),
                 .define("ECMULT_WINDOW_SIZE", to: "15"),
                 // Enabling additional secp256k1-zkp modules.
+                .define("ENABLE_MODULE_BPPP"),
                 .define("ENABLE_MODULE_ECDH"),
                 .define("ENABLE_MODULE_ECDSA_ADAPTOR"),
                 .define("ENABLE_MODULE_ECDSA_S2C"),
+                .define("ENABLE_MODULE_ELLSWIFT"),
                 .define("ENABLE_MODULE_EXTRAKEYS"),
                 .define("ENABLE_MODULE_GENERATOR"),
                 .define("ENABLE_MODULE_MUSIG"),
                 .define("ENABLE_MODULE_RANGEPROOF"),
                 .define("ENABLE_MODULE_RECOVERY"),
                 .define("ENABLE_MODULE_SCHNORRSIG"),
+                .define("ENABLE_MODULE_SCHNORRSIG_HALFAGG"),
                 .define("ENABLE_MODULE_SURJECTIONPROOF"),
                 .define("ENABLE_MODULE_WHITELIST"),
                 // Some modules need additional header search paths
