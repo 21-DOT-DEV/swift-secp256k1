@@ -249,7 +249,7 @@ public extension secp256k1 {
             /// - Parameter data: A data representation of the x-only public key.
             /// - Parameter keyParity: The key parity as an `Int32`.
             public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32) {
-                self.baseKey = XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity)
+                self.baseKey = XonlyKeyImplementation(dataRepresentation: data.bytes, keyParity: keyParity)
             }
         }
     }
