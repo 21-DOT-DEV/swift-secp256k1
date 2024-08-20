@@ -718,6 +718,35 @@ final class secp256k1Tests: XCTestCase {
         XCTAssertTrue(publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)))
     }
 
+    @available(macOS 13.3, *)
+    func testUInt256() {
+        let expectedPrivateKey: UInt256 = 0x7DA1_2CC3_9BB4_189A_C72D_34FC_2225_DF5C_F36A_AACD_CAC7_E5A4_3963_299B_C8D8_88ED
+        let expectedPrivateKey2: UInt256 = 0x1BB5_FC86_3773_7549_414D_7F1B_82A5_C12D_234B_56DB_AC17_5E14_0F63_046A_EBA8_DF87
+        let expectedPublicKey = "023521df7b94248ffdf0d37f738a4792cc3932b6b1b89ef71cddde8251383b26e7"
+        let combinedPrivateKey = expectedPrivateKey + expectedPrivateKey2
+
+        let privateKey = try! secp256k1.Signing.PrivateKey(expectedPrivateKey)
+        let privateKey2 = try! secp256k1.Signing.PrivateKey(expectedPrivateKey2)
+        let privateKey3 = try! secp256k1.Signing.PrivateKey(combinedPrivateKey)
+
+        print("privateKey \(String(bytes: privateKey.rawRepresentation))")
+        print("privateKey2 \(String(bytes: privateKey2.rawRepresentation))")
+        print("combinedPrivateKey UInt256 \(combinedPrivateKey)")
+        print("combinedPrivateKey P256K1 \(String(bytes: privateKey3.rawRepresentation))")
+
+        print("publicKey \(String(bytes: privateKey.publicKey.rawRepresentation))")
+        print("publicKey2 \(String(bytes: privateKey2.publicKey.rawRepresentation))")
+
+        let combinedPublicKey = try! secp256k1.Signing.PublicKey.combine(privateKey.publicKey, privateKey2.publicKey)
+
+        print("combinedPublicKey UInt256 \(String(bytes: privateKey3.publicKey.rawRepresentation))")
+        print("combinedPublicKey P256K1 \(String(bytes: combinedPublicKey.rawRepresentation))")
+
+        // Verify the keys matches the expected keys output
+        XCTAssertEqual(expectedPrivateKey, UInt256(rawValue: privateKey.rawRepresentation))
+        XCTAssertEqual(expectedPublicKey, String(bytes: privateKey.publicKey.rawRepresentation))
+    }
+
     static var allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
