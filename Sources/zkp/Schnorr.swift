@@ -38,6 +38,13 @@ public extension secp256k1.Schnorr {
         /// Generated secp256k1 Signing Key.
         private let baseKey: PrivateKeyImplementation
 
+        /// The associated public key for verifying signatures created with this private key.
+        ///
+        /// - Returns: The associated public key.
+        public var publicKey: PublicKey {
+            PublicKey(baseKey: baseKey.publicKey)
+        }
+
         /// The associated x-only public key for verifying Schnorr signatures.
         ///
         /// - Returns: The associated x-only public key.
@@ -82,6 +89,75 @@ public extension secp256k1.Schnorr {
         /// - Returns: True if the private keys are equal, false otherwise.
         public static func == (lhs: Self, rhs: Self) -> Bool {
             lhs.baseKey.key == rhs.baseKey.key
+        }
+    }
+        
+    /// The corresponding public key for the secp256k1 curve.
+    struct PublicKey {
+        /// Generated secp256k1 public key.
+        private let baseKey: PublicKeyImplementation
+
+        /// The secp256k1 public key object.
+        var bytes: [UInt8] {
+            baseKey.bytes
+        }
+
+        /// The cache of information about public key aggregation.
+        var cache: Data {
+            Data(baseKey.cache)
+        }
+
+        /// The key format representation of the public key.
+        public var format: secp256k1.Format {
+            baseKey.format
+        }
+
+        /// A data representation of the public key.
+        public var dataRepresentation: Data {
+            baseKey.dataRepresentation
+        }
+
+        /// The associated x-only public key for verifying Schnorr signatures.
+        ///
+        /// - Returns: The associated x-only public key.
+        public var xonly: XonlyKey {
+            XonlyKey(baseKey: baseKey.xonly)
+        }
+
+        /// Generates a secp256k1 public key.
+        ///
+        /// - Parameter baseKey: Generated secp256k1 public key.
+        fileprivate init(baseKey: PublicKeyImplementation) {
+            self.baseKey = baseKey
+        }
+
+        /// Generates a secp256k1 public key from an x-only key.
+        ///
+        /// - Parameter xonlyKey: An x-only key object.
+        public init(xonlyKey: XonlyKey) {
+            let key = XonlyKeyImplementation(
+                dataRepresentation: xonlyKey.bytes,
+                keyParity: xonlyKey.parity ? 1 : 0,
+                cache: xonlyKey.cache.bytes
+            )
+            self.baseKey = PublicKeyImplementation(xonlyKey: key)
+        }
+
+        /// Generates a secp256k1 public key from a raw representation.
+        ///
+        /// - Parameter data: A data representation of the key.
+        /// - Parameter format: The key format.
+        /// - Throws: An error if the raw representation does not create a public key.
+        public init<D: ContiguousBytes>(
+            dataRepresentation data: D,
+            format: secp256k1.Format,
+            cache: [UInt8]
+        ) throws {
+            self.baseKey = try PublicKeyImplementation(
+                dataRepresentation: data,
+                format: format,
+                cache: cache
+            )
         }
     }
 

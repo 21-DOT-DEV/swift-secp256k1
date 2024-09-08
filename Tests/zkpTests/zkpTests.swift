@@ -2,14 +2,24 @@ import XCTest
 @testable import zkp
 
 final class zkpTests: XCTestCase {
-    func testExample() throws {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-//        XCTAssertEqual(zkp().text, "Hello, World!")
+    func testMusig() throws {
+        // Test MuSig aggregate
+        let privateKeys = [
+            try secp256k1.Schnorr.PrivateKey(),
+            try secp256k1.Schnorr.PrivateKey(),
+            try secp256k1.Schnorr.PrivateKey()
+        ]
+        
+        let publicKeys = privateKeys.map(\.publicKey)
+        let aggregate = try! secp256k1.Schnorr.aggregate(publicKeys)
+        
+        let signature = try aggregate.xonly.
+        let aggregateSignature = try aggregate.sign(message: "Hello World", signature: signature)
+        
+        XCTAssert
     }
 
     static var allTests = [
-        ("testExample", testExample)
+        ("testMusig", testMusig)
     ]
 }
