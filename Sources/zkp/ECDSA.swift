@@ -159,11 +159,15 @@ public extension secp256k1.Signing {
 // MARK: - secp256k1 + Signing Key
 
 extension secp256k1.Signing.PrivateKey: DigestSigner {
-    ///  Generates an ECDSA signature over the secp256k1 elliptic curve.
+    /// Generates an Elliptic Curve Digital Signature Algorithm (ECDSA)
+    /// signature of the digest you provide over the SECP256K1 elliptic curve.
     ///
-    /// - Parameter digest: The digest to sign.
-    /// - Returns: The ECDSA Signature.
-    /// - Throws: If there is a failure producing the signature
+    /// - Parameters:
+    ///   - digest: The digest of the data to sign.
+    /// - Returns: The signature corresponding to the digest. The signing
+    /// algorithm uses deterministic k (RFC 6979) by default, but can also
+    /// employ randomization if a nonce function is provided. The created
+    /// signature is always in lower-S form.
     public func signature<D: Digest>(for digest: D) throws -> secp256k1.Signing.ECDSASignature {
         let context = secp256k1.Context.rawRepresentation
         var signature = secp256k1_ecdsa_signature()
@@ -184,12 +188,16 @@ extension secp256k1.Signing.PrivateKey: DigestSigner {
 }
 
 extension secp256k1.Signing.PrivateKey: Signer {
-    /// Generates an ECDSA signature over the secp256k1 elliptic curve.
-    /// SHA256 is used as the hash function.
+    /// Generates an Elliptic Curve Digital Signature Algorithm (ECDSA)
+    /// signature of the data you provide over the SECP256K1 elliptic curve,
+    /// using SHA-256 as the hash function.
     ///
-    /// - Parameter data: The data to sign.
-    /// - Returns: The ECDSA Signature.
-    /// - Throws: If there is a failure producing the signature.
+    /// - Parameters:
+    ///   - data: The data to sign.
+    /// - Returns: The signature corresponding to the data. By default, the
+    /// signing algorithm uses RFC6979 (HMAC-SHA256) as the nonce generation
+    /// function. If additional entropy is provided, it must be 32 bytes. The
+    /// created signature is always in lower-S form.
     public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Signing.ECDSASignature {
         try signature(for: SHA256.hash(data: data))
     }
@@ -198,12 +206,14 @@ extension secp256k1.Signing.PrivateKey: Signer {
 // MARK: - secp256k1 + Validating Key
 
 extension secp256k1.Signing.PublicKey: DigestValidator {
-    /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
+    /// Verifies an elliptic curve digital signature algorithm (ECDSA)
+    /// signature on a digest over the secp256k1 elliptic curve.
     ///
     /// - Parameters:
-    ///   - signature: The signature to verify
-    ///   - digest: The digest that was signed.
-    /// - Returns: True if the signature is valid, false otherwise.
+    ///   - signature: The signature to verify.
+    ///   - digest: The signed digest.
+    /// - Returns: A Boolean value that’s `true` if the signature is valid for
+    /// the given digest using the secp256k1_ecdsa_verify function; otherwise, `false`.
     public func isValidSignature<D: Digest>(_ signature: secp256k1.Signing.ECDSASignature, for digest: D) -> Bool {
         let context = secp256k1.Context.rawRepresentation
         var ecdsaSignature = secp256k1_ecdsa_signature()
@@ -216,13 +226,16 @@ extension secp256k1.Signing.PublicKey: DigestValidator {
 }
 
 extension secp256k1.Signing.PublicKey: DataValidator {
-    /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
-    /// SHA256 is used as the hash function.
+    /// Verifies an Elliptic Curve Digital Signature Algorithm (ECDSA)
+    /// signature on a block of data over the secp256k1 elliptic curve,
+    /// using SHA-256 as the hash function.
     ///
     /// - Parameters:
-    ///   - signature: The signature to verify
-    ///   - data: The data that was signed.
-    /// - Returns: True if the signature is valid, false otherwise.
+    ///   - signature: The ECDSA signature to verify.
+    ///   - data: The original data that was signed.
+    /// - Returns: A Boolean value that’s `true` if the signature is
+    /// valid for the given data after hashing it with SHA-256 using
+    /// the secp256k1_ecdsa_verify function; otherwise, `false`.
     public func isValidSignature<D: DataProtocol>(_ signature: secp256k1.Signing.ECDSASignature, for data: D) -> Bool {
         isValidSignature(signature, for: SHA256.hash(data: data))
     }
