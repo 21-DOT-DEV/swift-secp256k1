@@ -12,6 +12,16 @@ import Foundation
 
 public extension secp256k1 {
     enum Schnorr {
+        /// Fixed number of bytes for Schnorr signature
+        ///
+        /// [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#abstract)
+        @inlinable static var signatureByteCount: Int { 64 }
+
+        /// Fixed number of bytes for x-only key
+        ///
+        /// [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#abstract)
+        @inlinable static var xonlyByteCount: Int { 32 }
+
         /// Tuple representation of ``SECP256K1_SCHNORRSIG_EXTRAPARAMS_MAGIC``
         ///
         /// Only used at initialization and has no other function than making sure the object is initialized.
@@ -90,18 +100,24 @@ public extension secp256k1.Schnorr {
             baseKey.keyParity.boolValue
         }
 
+        /// The cache of information about public key aggregation.
+        public var cache: Data {
+            Data(baseKey.cache)
+        }
+
         /// Generates a secp256k1 x-only public key.
         ///
         /// - Parameter baseKey: Generated secp256k1 x-only public key.
-        fileprivate init(baseKey: XonlyKeyImplementation) {
+        init(baseKey: XonlyKeyImplementation) {
             self.baseKey = baseKey
         }
 
         /// Generates a secp256k1 x-only public key from a raw representation.
         ///
         /// - Parameter data: A data representation of the x-only public key.
-        public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0) {
-            self.baseKey = XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity)
+        /// - Parameter keyParity: The key parity as an `Int32`.
+        public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0, cache: [UInt8] = []) {
+            self.baseKey = XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity, cache: cache)
         }
 
         /// Determines if two x-only keys are equal.

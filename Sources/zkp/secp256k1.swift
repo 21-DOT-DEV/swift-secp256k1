@@ -158,9 +158,12 @@ extension secp256k1 {
     /// A key format representation of the backing public key
     @usableFromInline let format: secp256k1.Format
 
+    /// Backing cache for information about public key aggregation.
+    @usableFromInline let cache: [UInt8]
+
     /// Backing implementation for a public key object
     @usableFromInline var xonly: XonlyKeyImplementation {
-        XonlyKeyImplementation(xonlyBytes, keyParity: keyParity)
+        XonlyKeyImplementation(xonlyBytes, keyParity: keyParity, cache: cache)
     }
 
     /// A data representation of the backing public key
@@ -198,7 +201,8 @@ extension secp256k1 {
     ///   - format: an enum that represents the format of the public key
     @usableFromInline init<D: ContiguousBytes>(
         dataRepresentation data: D,
-        format: secp256k1.Format
+        format: secp256k1.Format,
+        cache: [UInt8] = []
     ) throws {
         var keyParity = Int32()
 
@@ -210,6 +214,7 @@ extension secp256k1 {
 
         self.bytes = data.bytes
         self.format = format
+        self.cache = cache.bytes
         self.keyParity = keyParity
     }
 
@@ -219,10 +224,12 @@ extension secp256k1 {
         _ bytes: [UInt8],
         xonly: [UInt8],
         keyParity: Int32,
-        format: secp256k1.Format
+        format: secp256k1.Format,
+        cache: [UInt8] = []
     ) {
         self.bytes = bytes
         self.format = format
+        self.cache = cache
         self.xonlyBytes = xonly
         self.keyParity = keyParity
     }
@@ -233,6 +240,7 @@ extension secp256k1 {
         let yCoord: [UInt8] = xonlyKey.keyParity.boolValue ? [3] : [2]
 
         self.format = .compressed
+        self.cache = []
         self.xonlyBytes = xonlyKey.bytes
         self.keyParity = xonlyKey.keyParity
         self.bytes = yCoord + xonlyKey.bytes
@@ -271,6 +279,7 @@ extension secp256k1 {
 
         self.keyParity = keyParity
         self.format = format
+        self.cache = []
         self.bytes = pubBytes
     }
 
@@ -307,6 +316,12 @@ extension secp256k1 {
     /// Implementation x-only public key object
     @usableFromInline let bytes: [UInt8]
 
+    /// Backing key parity object
+    @usableFromInline let keyParity: Int32
+
+    /// Backing cache for information about public key aggregation.
+    @usableFromInline let cache: [UInt8]
+
     /// A data representation of the backing x-only public key
     @usableFromInline var dataRepresentation: Data {
         Data(bytes)
@@ -319,27 +334,28 @@ extension secp256k1 {
         return xonlyKey
     }
 
-    /// Backing key parity object
-    @usableFromInline let keyParity: Int32
-
     /// Backing initialization that generates a x-only public key from a raw representation.
     /// - Parameter data: A data representation of the key.
     @usableFromInline init<D: ContiguousBytes>(
         dataRepresentation data: D,
-        keyParity: Int32
+        keyParity: Int32,
+        cache: [UInt8] = []
     ) {
         self.bytes = data.bytes
         self.keyParity = keyParity
+        self.cache = cache.bytes
     }
 
     /// Backing initialization that sets the public key from a x-only public key object.
     /// - Parameter bytes: a x-only public key in byte form
     @usableFromInline init(
         _ bytes: [UInt8],
-        keyParity: Int32
+        keyParity: Int32,
+        cache: [UInt8]
     ) {
         self.bytes = bytes
         self.keyParity = keyParity
+        self.cache = cache
     }
 
     /// Create a x-only public key from bytes representation.
