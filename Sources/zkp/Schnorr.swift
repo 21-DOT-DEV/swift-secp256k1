@@ -102,11 +102,6 @@ public extension secp256k1.Schnorr {
             baseKey.bytes
         }
 
-        /// The cache of information about public key aggregation.
-        var cache: Data {
-            Data(baseKey.cache)
-        }
-
         /// The key format representation of the public key.
         public var format: secp256k1.Format {
             baseKey.format
@@ -137,8 +132,7 @@ public extension secp256k1.Schnorr {
         public init(xonlyKey: XonlyKey) {
             let key = XonlyKeyImplementation(
                 dataRepresentation: xonlyKey.bytes,
-                keyParity: xonlyKey.parity ? 1 : 0,
-                cache: xonlyKey.cache.bytes
+                keyParity: xonlyKey.parity ? 1 : 0
             )
             self.baseKey = PublicKeyImplementation(xonlyKey: key)
         }
@@ -150,13 +144,11 @@ public extension secp256k1.Schnorr {
         /// - Throws: An error if the raw representation does not create a public key.
         public init<D: ContiguousBytes>(
             dataRepresentation data: D,
-            format: secp256k1.Format,
-            cache: [UInt8]
+            format: secp256k1.Format
         ) throws {
             self.baseKey = try PublicKeyImplementation(
                 dataRepresentation: data,
-                format: format,
-                cache: cache
+                format: format
             )
         }
     }
