@@ -12,7 +12,10 @@ import Foundation
 
 public extension secp256k1.MuSig {
     /// Represents an aggregated nonce for MuSig operations.
+    ///
+    /// This struct is used in the MuSig multi-signature scheme to handle nonce aggregation.
     struct Nonce: ContiguousBytes, Sequence {
+        /// The aggregated nonce data.
         let aggregatedNonce: Data
 
         /// Creates an aggregated nonce from multiple public nonces.
@@ -37,14 +40,34 @@ public extension secp256k1.MuSig {
             self.aggregatedNonce = Data(Swift.withUnsafeBytes(of: aggNonce) { Data($0) })
         }
 
+        /// Provides access to the raw bytes of the aggregated nonce.
+        ///
+        /// - Parameter body: A closure that takes an `UnsafeRawBufferPointer` and returns a value.
+        /// - Returns: The value returned by the closure.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
             return try aggregatedNonce.withUnsafeBytes(body)
         }
 
+        /// Returns an iterator over the bytes of the aggregated nonce.
+        ///
+        /// - Returns: An iterator for the aggregated nonce data.
         public func makeIterator() -> Data.Iterator {
             return aggregatedNonce.makeIterator()
         }
 
+        /// Generates a nonce pair (secret and public) for MuSig signing.
+        ///
+        /// This function implements the nonce generation process as described in BIP-327.
+        /// It is crucial to use a unique `sessionID` for each signing session to prevent nonce reuse.
+        ///
+        /// - Parameters:
+        ///   - sessionID: A 32-byte unique session identifier.
+        ///   - secretKey: The signer's secret key (optional).
+        ///   - publicKey: The signer's public key.
+        ///   - msg32: The 32-byte message to be signed.
+        ///   - extraInput32: Optional 32-byte extra input to customize the nonce (can be nil).
+        /// - Returns: A `NonceResult` containing the generated public and secret nonces.
+        /// - Throws: An error if nonce generation fails.
         public static func generate(
             sessionID: [UInt8],
             secretKey: secp256k1.Schnorr.PrivateKey?,
@@ -78,13 +101,20 @@ public extension secp256k1.MuSig {
         }
     }
 
+    /// Represents the result of nonce generation, containing both public and secret nonces.
     @frozen struct NonceResult: ~Copyable {
+        /// The public nonce.
         let pubnonce: secp256k1.Schnorr.Nonce
+        /// The secret nonce.
         let secnonce: secp256k1.Schnorr.SecureNonce
     }
 }
 
 public extension secp256k1.Schnorr {
+    /// Represents a secure nonce used for MuSig operations.
+    ///
+    /// This struct is used to handle secure nonces in the MuSig signing process.
+    /// It's crucial not to reuse nonces across different signing sessions to maintain security.
     struct SecureNonce: ~Copyable {
         let data: Data
 
@@ -92,72 +122,23 @@ public extension secp256k1.Schnorr {
             self.data = data
         }
     }
-    /// A value used once during a cryptographic operation and then discarded.
-    ///
-    /// Don't reuse the same nonce for multiple calls to signing APIs. It's critical
-    /// that nonces are unique per call to signing APIs in order to protect the
-    /// integrity of the signature.
+
+    /// Represents a public nonce used for MuSig operations.
     struct Nonce: ContiguousBytes, Sequence {
+        /// The public nonce data.
         let pubnonce: Data
 
-//        func secureNonce() -> SecureNonce {
-//            defer { secnonce = Data() }
-//            return SecureNonce(secnonce)
-//        }
-
-        /// Creates a new random nonce using secp256k1_musig_nonce_gen.
+        /// Provides access to the raw bytes of the public nonce.
         ///
-        /// - Parameters:
-        ///   - secretKey: The signer's 32-byte secret key.
-        ///   - publicKey: The signer's Schnorr public key.
-        ///   - msg32: The 32-byte message hash to be signed.
-        ///   - extraInput32: Optional 32-byte extra input to customize the nonce.
-        /// - Throws: An error if nonce generation fails.
-//        public convenience init(
-//            secretKey: secp256k1.Schnorr.PrivateKey?,
-//            publicKey: secp256k1.Schnorr.PublicKey,
-//            msg32: [UInt8],
-//            extraInput32: [UInt8]? = nil
-//        ) throws {
-//            let sessionID = SecureBytes(count: secp256k1.ByteLength.privateKey)
-//
-//            try self.init(
-//                sessionID: Array(sessionID),
-//                secretKey: secretKey,
-//                publicKey: publicKey,
-//                msg32: msg32,
-//                extraInput32: extraInput32
-//            )
-//        }
-
-        /// Creates a new random nonce using secp256k1_musig_nonce_gen.
-        ///
-        /// - Parameters:
-        ///   - sessionID: A unique 32-byte session ID.
-        ///   - secretKey: The signer's 32-byte secret key.
-        ///   - publicKey: The signer's Schnorr public key.
-        ///   - msg32: The 32-byte message hash to be signed.
-        ///   - extraInput32: Optional 32-byte extra input to customize the nonce.
-        /// - Throws: An error if nonce generation fails.
-//        public init(
-//            sessionID: [UInt8],
-//            secretKey: secp256k1.Schnorr.PrivateKey?,
-//            publicKey: secp256k1.Schnorr.PublicKey,
-//            msg32: [UInt8],
-//            extraInput32: [UInt8]? = nil
-//        ) throws {
-//
-//
-//            self.secnonce = SecureNonce(Swift.withUnsafeBytes(of: secnonce) { Data($0) })
-//            self.pubnonce = Data()
-//        }
-
-        /// Calls the given closure with a pointer to the underlying bytes of the public nonce.
+        /// - Parameter body: A closure that takes an `UnsafeRawBufferPointer` and returns a value.
+        /// - Returns: The value returned by the closure.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
             return try pubnonce.withUnsafeBytes(body)
         }
 
-        /// Returns an iterator over the elements of the public nonce.
+        /// Returns an iterator over the bytes of the public nonce.
+        ///
+        /// - Returns: An iterator for the public nonce data.
         public func makeIterator() -> Data.Iterator {
             return pubnonce.makeIterator()
         }

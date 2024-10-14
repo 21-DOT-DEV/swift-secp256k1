@@ -15,9 +15,9 @@ public extension secp256k1 {
     /// MuSig is a multi-signature scheme that allows multiple parties to sign a message using their own private keys,
     /// but only reveal their public keys. The aggregated public key is then used to verify the signature.
     ///
-    /// This implementation follows the MuSig algorithm as described in the BIP (https://github.com/bitcoin/bips/blob/26bb1d8/bip-0327.mediawiki)
+    /// This implementation follows the MuSig algorithm as described in BIP-327.
     enum MuSig {
-        /// The corresponding public key for the secp256k1 curve.
+        /// Represents a public key in the MuSig scheme.
         public struct PublicKey {
             /// Generated secp256k1 public key.
             private let baseKey: PublicKeyImplementation
@@ -61,7 +61,7 @@ public extension secp256k1 {
                 self.baseKey = baseKey
             }
 
-            /// Generates a secp256k1 public key from an x-only key.
+            /// Creates a MuSig public key from an x-only key.
             ///
             /// - Parameter xonlyKey: An x-only key object.
             public init(xonlyKey: XonlyKey) {
@@ -73,11 +73,13 @@ public extension secp256k1 {
                 self.baseKey = PublicKeyImplementation(xonlyKey: key)
             }
 
-            /// Generates a secp256k1 public key from a raw representation.
+            /// Creates a MuSig public key from raw data.
             ///
-            /// - Parameter data: A data representation of the key.
-            /// - Parameter format: The key format.
-            /// - Throws: An error if the raw representation does not create a public key.
+            /// - Parameters:
+            ///   - data: A data representation of the key.
+            ///   - format: The key format.
+            ///   - cache: The key aggregation cache.
+            /// - Throws: An error if the raw representation does not create a valid public key.
             public init<D: ContiguousBytes>(
                 dataRepresentation data: D,
                 format: secp256k1.Format,
@@ -91,7 +93,7 @@ public extension secp256k1 {
             }
         }
 
-        /// The corresponding x-only public key for the secp256k1 curve.
+        /// Represents an x-only public key in the MuSig scheme.
         public struct XonlyKey: Equatable {
             /// Generated secp256k1 x-only public key.
             private let baseKey: XonlyKeyImplementation
@@ -118,10 +120,12 @@ public extension secp256k1 {
                 self.baseKey = baseKey
             }
 
-            /// Generates a secp256k1 x-only public key from a raw representation.
+            /// Creates a MuSig x-only public key from raw data.
             ///
-            /// - Parameter data: A data representation of the x-only public key.
-            /// - Parameter keyParity: The key parity as an `Int32`.
+            /// - Parameters:
+            ///   - data: A data representation of the x-only public key.
+            ///   - keyParity: The key parity as an `Int32`.
+            ///   - cache: The key aggregation cache.
             public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0, cache: [UInt8] = []) {
                 self.baseKey = XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity, cache: cache)
             }
@@ -142,14 +146,13 @@ public extension secp256k1 {
 // MARK: - secp256k1 + MuSig
 
 extension secp256k1.MuSig {
-    /// Aggregates multiple Schnorr public keys into a single Schnorr public
-    /// key using the MuSig algorithm for multi-signature schemes. This function
-    /// combines the public keys and ensures the aggregated key is valid for use
-    /// in Schnorr signatures.
+    /// Aggregates multiple Schnorr public keys into a single Schnorr public key using the MuSig algorithm.
     ///
-    /// - Parameter pubkeys: An array of Schnorr public keys.
+    /// This function implements the key aggregation process as described in BIP-327.
+    ///
+    /// - Parameter pubkeys: An array of Schnorr public keys to aggregate.
     /// - Returns: The aggregated Schnorr public key.
-    /// - Throws: `secp256k1Error.underlyingCryptoError` if aggregation fails.
+    /// - Throws: An error if aggregation fails.
     static func aggregate(_ pubkeys: [secp256k1.Schnorr.PublicKey]) throws -> secp256k1.MuSig.PublicKey {
         let context = secp256k1.Context.rawRepresentation
         let format = secp256k1.Format.compressed
@@ -181,11 +184,15 @@ extension secp256k1.MuSig {
 }
 
 public extension secp256k1.MuSig.PublicKey {
-    /// Create a new `PublicKey` by adding tweak to the public key.
+    /// Creates a new `PublicKey` by adding a tweak to the public key.
+    ///
+    /// This function implements the tweaking process for MuSig public keys as described in BIP-327.
+    ///
     /// - Parameters:
-    ///   - tweak: the 32-byte tweak object
-    ///   - format: the format of the tweaked `PublicKey` object
-    /// - Returns: tweaked `PublicKey` object
+    ///   - tweak: The 32-byte tweak to apply.
+    ///   - format: The format of the tweaked `PublicKey` object.
+    /// - Returns: A new tweaked `PublicKey` object.
+    /// - Throws: An error if tweaking fails.
     func add(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
         let context = secp256k1.Context.rawRepresentation
         var pubKey = secp256k1_pubkey()
@@ -211,11 +218,13 @@ public extension secp256k1.MuSig.PublicKey {
 }
 
 public extension secp256k1.MuSig.XonlyKey {
-    /// Create a new `XonlyKey` by adding tweak to the x-only public key.
-    /// - Parameters:
-    ///   - tweak: the 32-byte tweak object
-    ///   - format: the format of the tweaked `XonlyKey` object
-    /// - Returns: tweaked `PublicKey` object
+    /// Creates a new `XonlyKey` by adding a tweak to the x-only public key.
+    ///
+    /// This function implements the tweaking process for MuSig x-only public keys as described in BIP-327.
+    ///
+    /// - Parameter tweak: The 32-byte tweak to apply.
+    /// - Returns: A new tweaked `XonlyKey` object.
+    /// - Throws: An error if tweaking fails.
     func add(_ tweak: [UInt8]) throws -> Self {
         let context = secp256k1.Context.rawRepresentation
         var pubKey = secp256k1_pubkey()
@@ -249,10 +258,12 @@ public extension secp256k1.Schnorr {
         ///  Returns the MuSig Session  in a fixed 133-byte format.
         public var session: Data
 
-        /// Initializes SchnorrSignature from the raw representation.
+        /// Creates a partial signature from raw data.
+        ///
         /// - Parameters:
-        ///     - dataRepresentation: A raw representation of the key as a collection of contiguous bytes.
-        /// - Throws: If there is a failure with the rawRepresentation count
+        ///   - dataRepresentation: The raw partial signature data.
+        ///   - session: The MuSig session data.
+        /// - Throws: An error if the data is invalid.
         public init<D: DataProtocol>(dataRepresentation: D, session: D) throws {
             guard dataRepresentation.count == secp256k1.ByteLength.signature else {
                 throw secp256k1Error.incorrectParameterSize
@@ -275,11 +286,10 @@ public extension secp256k1.Schnorr {
             self.session = session
         }
 
-        /// Invokes the given closure with a buffer pointer covering the raw bytes of the digest.
-        /// - Parameters:
-        ///     - body: A closure that takes a raw buffer pointer to the bytes of the digest and returns the digest.
-        /// - Throws: If there is a failure with underlying `withUnsafeBytes`
-        /// - Returns: The signature as returned from the body closure.
+        /// Provides access to the raw bytes of the partial signature.
+        ///
+        /// - Parameter body: A closure that takes an `UnsafeRawBufferPointer` and returns a value.
+        /// - Returns: The value returned by the closure.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
             try dataRepresentation.withUnsafeBytes(body)
         }
@@ -287,6 +297,16 @@ public extension secp256k1.Schnorr {
 }
 
 extension secp256k1.MuSig.PublicKey {
+    /// Verifies a partial signature against this public key.
+    ///
+    /// This function implements the partial signature verification process as described in BIP-327.
+    ///
+    /// - Parameters:
+    ///   - partialSignature: The partial signature to verify.
+    ///   - publicKey: The signer's public key.
+    ///   - nonce: The signer's public nonce.
+    ///   - digest: The message digest being signed.
+    /// - Returns: `true` if the partial signature is valid, `false` otherwise.
     public func isValidSignature<D: Digest>(
         _ partialSignature: secp256k1.Schnorr.PartialSignature,
         publicKey: secp256k1.Schnorr.PublicKey,
@@ -320,15 +340,18 @@ extension secp256k1.MuSig.PublicKey {
 }
 
 extension secp256k1.Schnorr.PrivateKey {
-    /// Generates a MuSig partial signature.
+    /// Generates a partial signature for MuSig.
+    ///
+    /// This function implements the partial signing process as described in BIP-327.
     ///
     /// - Parameters:
-    ///   - message: The message to sign.
-    ///   - nonce: The signer's secret nonce.
+    ///   - digest: The message digest to sign.
+    ///   - pubnonce: The signer's public nonce.
+    ///   - secureNonce: The signer's secret nonce.
     ///   - publicNonceAggregate: The aggregate of all signers' public nonces.
     ///   - publicKeyAggregate: The aggregate of all signers' public keys.
-    /// - Returns: The partial MuSig signature.
-    /// - Throws: If there is a failure producing the signature.
+    /// - Returns: A partial MuSig signature.
+    /// - Throws: An error if partial signature generation fails.
     public func partialSignature<D: Digest>(
         for digest: D,
         pubnonce: secp256k1.Schnorr.Nonce,
@@ -366,15 +389,18 @@ extension secp256k1.Schnorr.PrivateKey {
         )
     }
 
-    /// Generates a MuSig partial signature. SHA256 is used as the hash function.
+    /// Generates a partial signature for MuSig using SHA256 as the hash function.
+    ///
+    /// This is a convenience method that hashes the input data using SHA256 before signing.
     ///
     /// - Parameters:
     ///   - data: The data to sign.
-    ///   - nonce: The signer's secret nonce.
+    ///   - pubnonce: The signer's public nonce.
+    ///   - secureNonce: The signer's secret nonce.
     ///   - publicNonceAggregate: The aggregate of all signers' public nonces.
     ///   - publicKeyAggregate: The aggregate of all signers' public keys.
-    /// - Returns: The partial MuSig signature.
-    /// - Throws: If there is a failure producing the signature.
+    /// - Returns: A partial MuSig signature.
+    /// - Throws: An error if partial signature generation fails.
     public func partialSignature<D: DataProtocol>(
         for data: D,
         pubnonce: secp256k1.Schnorr.Nonce,
