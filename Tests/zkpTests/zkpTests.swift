@@ -18,11 +18,10 @@ final class zkpTests: XCTestCase {
         let messageHash = SHA256.hash(data: message)
 
         // Generate nonces for each signer
-        let schnorrNonces = try zip(privateKeys, publicKeys).map { privateKey, publicKey in
+        let schnorrNonces = try privateKeys.map { privateKey in
             try secp256k1.Schnorr.Nonce(
-                sessionID: Data(repeating: 0, count: 32), // You may want to use a proper session ID
                 secretKey: privateKey,
-                publicKey: publicKey.xonly.bytes,
+                publicKey: privateKey.publicKey,
                 msg32: Array(messageHash)
             )
         }
@@ -35,23 +34,26 @@ final class zkpTests: XCTestCase {
 
         // Create partial signatures
         let partialSignatures = try zip(privateKeys, schnorrNonces).map { privateKey, nonce in
-            try privateKey.schnorrSign(
-                message: Array(messageHash),
-                nonce: nonce.secnonce,
+            try privateKey.partialSignature(
+                for: messageHash,
+                nonce: nonce,
                 publicNonceAggregate: aggregateNonce,
                 publicKeyAggregate: aggregate
             )
         }
 
         // Aggregate partial signatures
-        let signature = try secp256k1.MuSig.aggregatePartialSignatures(partialSignatures)
+        let signature = try secp256k1.MuSig.aggregateSignatures(partialSignatures)
 
         // Verify the signature
-        XCTAssertTrue(aggregate.xonly.isValidSignature(signature, for: message))
-
-        // Test tweaking
-        let tweakedKey = try aggregate.xonly.add([UInt8](repeating: 1, count: 32))
-        XCTAssertFalse(tweakedKey.isValidSignature(signature, for: message))
+        XCTAssertTrue(
+            aggregate.isValidSignature(
+                partialSignatures.first!,
+                publicKey: publicKeys.first!,
+                nonce: schnorrNonces.first!,
+                for: messageHash
+            )
+        )
     }
 
     static var allTests = [

@@ -23,18 +23,14 @@ public extension secp256k1.MuSig {
             let context = secp256k1.Context.rawRepresentation
             var aggNonce = secp256k1_musig_aggnonce()
 
-            let pubnoncePtrs = pubnonces.map { pubnonce -> UnsafePointer<secp256k1_musig_pubnonce>? in
-                return pubnonce.withUnsafeBytes { ptr in
-                    ptr.bindMemory(to: secp256k1_musig_pubnonce.self).baseAddress
-                }
-            }
-
-            guard secp256k1_musig_nonce_agg(
-                context,
-                &aggNonce,
-                pubnoncePtrs,
-                pubnonces.count
-            ).boolValue else {
+            guard PointerArrayUtility.withUnsafePointerArray(
+                pubnonces.map {
+                    var pubnonce = secp256k1_musig_pubnonce()
+                    $0.copyToUnsafeMutableBytes(of: &pubnonce.data)
+                    return pubnonce
+                }, { pointers in
+                    secp256k1_musig_nonce_agg(context, &aggNonce, pointers, pointers.count).boolValue
+                }) else {
                 throw secp256k1Error.underlyingCryptoError
             }
 
@@ -64,6 +60,31 @@ public extension secp256k1.Schnorr {
         /// Creates a new random nonce using secp256k1_musig_nonce_gen.
         ///
         /// - Parameters:
+        ///   - secretKey: The signer's 32-byte secret key.
+        ///   - publicKey: The signer's Schnorr public key.
+        ///   - msg32: The 32-byte message hash to be signed.
+        ///   - extraInput32: Optional 32-byte extra input to customize the nonce.
+        /// - Throws: An error if nonce generation fails.
+        public init(
+            secretKey: secp256k1.Schnorr.PrivateKey?,
+            publicKey: secp256k1.Schnorr.PublicKey,
+            msg32: [UInt8],
+            extraInput32: [UInt8]? = nil
+        ) throws {
+            let sessionID = SecureBytes(count: secp256k1.ByteLength.privateKey)
+
+            try self.init(
+                sessionID: Array(sessionID),
+                secretKey: secretKey,
+                publicKey: publicKey,
+                msg32: msg32,
+                extraInput32: extraInput32
+            )
+        }
+
+        /// Creates a new random nonce using secp256k1_musig_nonce_gen.
+        ///
+        /// - Parameters:
         ///   - sessionID: A unique 32-byte session ID.
         ///   - secretKey: The signer's 32-byte secret key.
         ///   - publicKey: The signer's Schnorr public key.
@@ -80,9 +101,7 @@ public extension secp256k1.Schnorr {
             let context = secp256k1.Context.rawRepresentation
             var secnonce = secp256k1_musig_secnonce()
             var pubnonce = secp256k1_musig_pubnonce()
-            var pubkey = secp256k1_pubkey()
-
-            publicKey.dataRepresentation.copyToUnsafeMutableBytes(of: &pubkey.data)
+            var pubkey = publicKey.rawRepresentation
 
             guard secp256k1_musig_nonce_gen(
                 context,

@@ -70,7 +70,7 @@ public extension secp256k1.Schnorr {
         /// - Parameter format: The key format, default is .compressed.
         /// - Throws: An error if the private key cannot be generated.
         public init() throws {
-            self.baseKey = try PrivateKeyImplementation()
+            self.baseKey = try PrivateKeyImplementation(format: .uncompressed)
         }
 
         /// Creates a secp256k1 private key for signing from a data representation.
@@ -110,6 +110,11 @@ public extension secp256k1.Schnorr {
         /// A data representation of the public key.
         public var dataRepresentation: Data {
             baseKey.dataRepresentation
+        }
+
+        /// A raw representation of the public key.
+        public var rawRepresentation: secp256k1_pubkey {
+            baseKey.rawRepresentation
         }
 
         /// The associated x-only public key for verifying Schnorr signatures.

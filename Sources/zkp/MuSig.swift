@@ -157,15 +157,11 @@ extension secp256k1.MuSig {
         var aggPubkey = secp256k1_pubkey()
         var cache = secp256k1_musig_keyagg_cache()
         var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
-        var keys = pubkeys.map {
-            var newPubKey = secp256k1_pubkey()
-            $0.dataRepresentation.copyToUnsafeMutableBytes(of: &newPubKey.data)
-            let pointerKey: UnsafePointer<secp256k1_pubkey>? = withUnsafePointer(to: &newPubKey) { $0 }
-            return pointerKey
-        }
-        
-        guard secp256k1_musig_pubkey_agg(context, nil, nil, &cache, &keys, pubkeys.count).boolValue,
-              secp256k1_musig_pubkey_get(context, &aggPubkey, &cache).boolValue,
+
+        guard PointerArrayUtility.withUnsafePointerArray(pubkeys.map { $0.rawRepresentation }, { pointers in
+            secp256k1_pubkey_sort(context, &pointers, pointers.count).boolValue &&
+                secp256k1_musig_pubkey_agg(context, nil, nil, &cache, pointers, pointers.count).boolValue
+        }), secp256k1_musig_pubkey_get(context, &aggPubkey, &cache).boolValue,
               secp256k1_ec_pubkey_serialize(
                 context,
                 &pubBytes,
@@ -175,7 +171,7 @@ extension secp256k1.MuSig {
               ).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
-        
+
         return try secp256k1.MuSig.PublicKey(
             dataRepresentation: pubBytes,
             format: format,
@@ -271,7 +267,7 @@ public extension secp256k1.Schnorr {
         ///     - rawRepresentation: A raw representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
         init(_ dataRepresentation: Data, session: Data) throws {
-            guard dataRepresentation.count == secp256k1.ByteLength.signature else {
+            guard dataRepresentation.count == secp256k1.ByteLength.partialSignature else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
@@ -293,20 +289,24 @@ public extension secp256k1.Schnorr {
 extension secp256k1.MuSig.PublicKey {
     public func isValidSignature<D: Digest>(
         _ partialSignature: secp256k1.Schnorr.PartialSignature,
+        publicKey: secp256k1.Schnorr.PublicKey,
         nonce: secp256k1.Schnorr.Nonce,
         for digest: D
     ) -> Bool {
         let context = secp256k1.Context.rawRepresentation
         var partialSig = secp256k1_musig_partial_sig()
         var pubnonce = secp256k1_musig_pubnonce()
-        var publicKey = rawRepresentation
+        var publicKey = publicKey.rawRepresentation
         var cache = secp256k1_musig_keyagg_cache()
         var session = secp256k1_musig_session()
 
-        partialSignature.dataRepresentation.copyToUnsafeMutableBytes(of: &partialSig.data)
         nonce.pubnonce.copyToUnsafeMutableBytes(of: &pubnonce.data)
         keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
         partialSignature.session.copyToUnsafeMutableBytes(of: &session.data)
+
+        guard secp256k1_musig_partial_sig_parse(context, &partialSig, Array(partialSignature.dataRepresentation)).boolValue else {
+            return false
+        }
 
         return secp256k1_musig_partial_sig_verify(
             context,
@@ -342,26 +342,27 @@ extension secp256k1.Schnorr.PrivateKey {
         var cache = secp256k1_musig_keyagg_cache()
         var session = secp256k1_musig_session()
         var aggnonce = secp256k1_musig_aggnonce()
+        var partialSignature = [UInt8](repeating: 0, count: secp256k1.ByteLength.partialSignature)
+
+        guard secp256k1_keypair_create(context, &keypair, Array(dataRepresentation)).boolValue else {
+            throw secp256k1Error.underlyingCryptoError
+        }
 
         nonce.secnonce.copyToUnsafeMutableBytes(of: &secnonce.data)
         publicKeyAggregate.keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
         publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
-        guard secp256k1_keypair_create(context, &keypair, Array(dataRepresentation)).boolValue,
-            secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache, nil).boolValue,
-            secp256k1_musig_partial_sign(
-                context,
-                &signature,
-                &secnonce,
-                &keypair,
-                &cache,
-                &session
-            ).boolValue
+        guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache, nil).boolValue,
+            secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
+              secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
         else {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try secp256k1.Schnorr.PartialSignature(signature.dataValue, session: session.dataValue)
+        return try secp256k1.Schnorr.PartialSignature(
+            Data(bytes: &partialSignature, count: secp256k1.ByteLength.partialSignature),
+            session: session.dataValue
+        )
     }
 
     /// Generates a MuSig partial signature. SHA256 is used as the hash function.
@@ -452,7 +453,7 @@ extension secp256k1.MuSig {
     /// - Parameter partialSignatures: An array of partial signatures to aggregate.
     /// - Returns: The aggregated Schnorr signature.
     /// - Throws: If there is a failure aggregating the signatures.
-    public static func aggregateSignature(
+    public static func aggregateSignatures(
         _ partialSignatures: [secp256k1.Schnorr.PartialSignature]
     ) throws -> secp256k1.MuSig.AggregateSignature {
         let context = secp256k1.Context.rawRepresentation
@@ -461,20 +462,14 @@ extension secp256k1.MuSig {
 
         partialSignatures.first?.session.copyToUnsafeMutableBytes(of: &session.data)
 
-        let partialSignatures = partialSignatures.map {
-            var partialSig = secp256k1_musig_partial_sig()
-            $0.dataRepresentation.copyToUnsafeMutableBytes(of: &partialSig.data)
-            let pointerSig: UnsafePointer<secp256k1_musig_partial_sig>? = withUnsafePointer(to: &partialSig) { $0 }
-            return pointerSig
-        }
-
-        guard secp256k1_musig_partial_sig_agg(
-            context,
-            &signature,
-            &session,
-            partialSignatures,
-            partialSignatures.count
-        ).boolValue else {
+        guard PointerArrayUtility.withUnsafePointerArray(
+            partialSignatures.map {
+                var partialSig = secp256k1_musig_partial_sig()
+                secp256k1_musig_partial_sig_parse(context, &partialSig, Array($0.dataRepresentation))
+                return partialSig
+            }, { pointers in
+                secp256k1_musig_partial_sig_agg(context, &signature, &session, pointers, pointers.count).boolValue
+            }) else {
             throw secp256k1Error.underlyingCryptoError
         }
         
