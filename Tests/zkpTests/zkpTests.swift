@@ -18,39 +18,76 @@ final class zkpTests: XCTestCase {
         let messageHash = SHA256.hash(data: message)
 
         // Generate nonces for each signer
-        let schnorrNonces = try privateKeys.map { privateKey in
-            try secp256k1.Schnorr.Nonce(
-                secretKey: privateKey,
-                publicKey: privateKey.publicKey,
-                msg32: Array(messageHash)
-            )
-        }
+        let firstNonce = try secp256k1.MuSig.Nonce.generate(
+            sessionID: (0..<133).map { _ in UInt8.random(in: 0...255) },
+            secretKey: privateKeys[0],
+            publicKey: privateKeys[0].publicKey,
+            msg32: Array(messageHash)
+        )
+
+        let secondNonce = try secp256k1.MuSig.Nonce.generate(
+            sessionID: (0..<133).map { _ in UInt8.random(in: 0...255) },
+            secretKey: privateKeys[1],
+            publicKey: privateKeys[1].publicKey,
+            msg32: Array(messageHash)
+        )
+
+        let thirdNonce = try secp256k1.MuSig.Nonce.generate(
+            sessionID: (0..<133).map { _ in UInt8.random(in: 0...255) },
+            secretKey: privateKeys[2],
+            publicKey: privateKeys[2].publicKey,
+            msg32: Array(messageHash)
+        )
 
         // Extract public nonces
-        let publicNonces = schnorrNonces.map(\.pubnonce)
+        let publicNonces = [firstNonce.pubnonce, secondNonce.pubnonce, thirdNonce.pubnonce]
 
         // Aggregate public nonces
         let aggregateNonce = try secp256k1.MuSig.Nonce(aggregating: publicNonces)
 
         // Create partial signatures
-        let partialSignatures = try zip(privateKeys, schnorrNonces).map { privateKey, nonce in
-            try privateKey.partialSignature(
-                for: messageHash,
-                nonce: nonce,
-                publicNonceAggregate: aggregateNonce,
-                publicKeyAggregate: aggregate
-            )
-        }
+        let firstPartialSignature = try privateKeys[0].partialSignature(
+            for: messageHash,
+            pubnonce: firstNonce.pubnonce,
+            secureNonce: firstNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        let secondPartialSignature = try privateKeys[1].partialSignature(
+            for: messageHash,
+            pubnonce: secondNonce.pubnonce,
+            secureNonce: secondNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        let thirdPartialSignature = try privateKeys[2].partialSignature(
+            for: messageHash,
+            pubnonce: thirdNonce.pubnonce,
+            secureNonce: thirdNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+
+//        let forthPartialSignature = try privateKeys[1].partialSignature(
+//            for: messageHash,
+//            pubnonce: thirdNonce.pubnonce,
+//            secureNonce: thirdNonce.secnonce,
+//            publicNonceAggregate: aggregateNonce,
+//            publicKeyAggregate: aggregate
+//        )
 
         // Aggregate partial signatures
-        let signature = try secp256k1.MuSig.aggregateSignatures(partialSignatures)
+        _ = try secp256k1.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature, thirdPartialSignature])
 
         // Verify the signature
         XCTAssertTrue(
             aggregate.isValidSignature(
-                partialSignatures.first!,
+                firstPartialSignature,
                 publicKey: publicKeys.first!,
-                nonce: schnorrNonces.first!,
+                nonce: publicNonces.first!,
                 for: messageHash
             )
         )

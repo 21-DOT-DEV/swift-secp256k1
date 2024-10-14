@@ -331,7 +331,8 @@ extension secp256k1.Schnorr.PrivateKey {
     /// - Throws: If there is a failure producing the signature.
     public func partialSignature<D: Digest>(
         for digest: D,
-        nonce: secp256k1.Schnorr.Nonce,
+        pubnonce: secp256k1.Schnorr.Nonce,
+        secureNonce: consuming secp256k1.Schnorr.SecureNonce,
         publicNonceAggregate: secp256k1.MuSig.Nonce,
         publicKeyAggregate: secp256k1.MuSig.PublicKey
     ) throws -> secp256k1.Schnorr.PartialSignature {
@@ -348,7 +349,7 @@ extension secp256k1.Schnorr.PrivateKey {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        nonce.secnonce.copyToUnsafeMutableBytes(of: &secnonce.data)
+        secureNonce.data.copyToUnsafeMutableBytes(of: &secnonce.data)
         publicKeyAggregate.keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
         publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
@@ -376,13 +377,15 @@ extension secp256k1.Schnorr.PrivateKey {
     /// - Throws: If there is a failure producing the signature.
     public func partialSignature<D: DataProtocol>(
         for data: D,
-        nonce: secp256k1.Schnorr.Nonce,
+        pubnonce: secp256k1.Schnorr.Nonce,
+        secureNonce: consuming secp256k1.Schnorr.SecureNonce,
         publicNonceAggregate: secp256k1.MuSig.Nonce,
         publicKeyAggregate: secp256k1.MuSig.PublicKey
     ) throws -> secp256k1.Schnorr.PartialSignature {
         try partialSignature(
             for: SHA256.hash(data: data),
-            nonce: nonce,
+            pubnonce: pubnonce,
+            secureNonce: secureNonce,
             publicNonceAggregate: publicNonceAggregate,
             publicKeyAggregate: publicKeyAggregate
         )
