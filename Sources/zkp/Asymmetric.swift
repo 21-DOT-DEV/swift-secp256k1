@@ -101,6 +101,15 @@ public extension secp256k1 {
                 }
             }
 
+            /// Creates a secp256k1 private key for signing from a data representation.
+            ///
+            /// - Parameter data: A raw representation of the key.
+            /// - Parameter format: The key format, default is .compressed.
+            /// - Throws: An error if the raw representation does not create a private key for signing.
+            @available(macOS 13.3, *) public init(_ staticInt: UInt256, format: secp256k1.Format = .compressed) throws {
+                self.baseKey = try PrivateKeyImplementation(rawRepresentation: staticInt.rawValue, format: format)
+            }
+
             /// Determines if two private keys are equal.
             ///
             /// - Parameters:
