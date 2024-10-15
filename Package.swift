@@ -28,6 +28,7 @@ let package = Package(
                 .define("ENABLE_MODULE_ECDH"),
                 .define("ENABLE_MODULE_ELLSWIFT"),
                 .define("ENABLE_MODULE_EXTRAKEYS"),
+                .define("ENABLE_MODULE_MUSIG"),
                 .define("ENABLE_MODULE_RECOVERY"),
                 .define("ENABLE_MODULE_SCHNORRSIG")
             ]

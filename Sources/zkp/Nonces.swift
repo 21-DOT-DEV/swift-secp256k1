@@ -80,6 +80,7 @@ public extension secp256k1.MuSig {
             var pubnonce = secp256k1_musig_pubnonce()
             var pubkey = publicKey.rawRepresentation
 
+#if canImport(zkp_bindings)
             guard secp256k1_musig_nonce_gen(
                 context,
                 &secnonce,
@@ -93,6 +94,23 @@ public extension secp256k1.MuSig {
             ).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
             }
+#else
+            var mutableSessionID = sessionID
+
+            guard secp256k1_musig_nonce_gen(
+                context,
+                &secnonce,
+                &pubnonce,
+                &mutableSessionID,
+                Array(secretKey!.dataRepresentation),
+                &pubkey,
+                msg32,
+                nil,
+                extraInput32
+            ).boolValue else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+#endif
 
             return NonceResult(
                 pubnonce: secp256k1.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) }),

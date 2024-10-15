@@ -70,7 +70,7 @@ final class zkpTests: XCTestCase {
             publicKeyAggregate: aggregate
         )
 
-
+        // Expected error when uncommented
 //        let forthPartialSignature = try privateKeys[1].partialSignature(
 //            for: messageHash,
 //            pubnonce: thirdNonce.pubnonce,

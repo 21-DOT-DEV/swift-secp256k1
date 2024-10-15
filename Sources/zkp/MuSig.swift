@@ -9,7 +9,6 @@
 //
 
 import Foundation
-import zkp_bindings
 
 public extension secp256k1 {
     /// MuSig is a multi-signature scheme that allows multiple parties to sign a message using their own private keys,
@@ -162,8 +161,13 @@ extension secp256k1.MuSig {
         var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
         guard PointerArrayUtility.withUnsafePointerArray(pubkeys.map { $0.rawRepresentation }, { pointers in
+#if canImport(zkp_bindings)
             secp256k1_pubkey_sort(context, &pointers, pointers.count).boolValue &&
                 secp256k1_musig_pubkey_agg(context, nil, nil, &cache, pointers, pointers.count).boolValue
+#elseif canImport(secp256k1_bindings)
+            secp256k1_ec_pubkey_sort(context, &pointers, pointers.count).boolValue &&
+                secp256k1_musig_pubkey_agg(context, nil, &cache, pointers, pointers.count).boolValue
+#endif
         }), secp256k1_musig_pubkey_get(context, &aggPubkey, &cache).boolValue,
               secp256k1_ec_pubkey_serialize(
                 context,
@@ -376,12 +380,21 @@ extension secp256k1.Schnorr.PrivateKey {
         publicKeyAggregate.keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
         publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
+#if canImport(zkp_bindings)
         guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache, nil).boolValue,
-            secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
+              secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
               secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
         else {
             throw secp256k1Error.underlyingCryptoError
         }
+#else
+        guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache).boolValue,
+              secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
+              secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
+        else {
+            throw secp256k1Error.underlyingCryptoError
+        }
+#endif
 
         return try secp256k1.Schnorr.PartialSignature(
             Data(bytes: &partialSignature, count: secp256k1.ByteLength.partialSignature),
