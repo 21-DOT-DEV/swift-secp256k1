@@ -6,7 +6,7 @@
 
 import XCTest
 
-final class secp256k1Tests: XCTestCase {
+final class secp256k1Tests: XCTestCase, @unchecked Sendable {
     /// Uncompressed Key pair test
     func testUncompressedKeypairCreation() {
         // Initialize context
@@ -809,7 +809,7 @@ final class secp256k1Tests: XCTestCase {
         )
     }
 
-    static var allTests = [
+    static let allTests = [
         ("testUncompressedKeypairCreation", testUncompressedKeypairCreation),
         ("testCompressedKeypairCreation", testCompressedKeypairCreation),
         ("testECDHBindings", testECDHBindings),
