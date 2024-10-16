@@ -61,6 +61,33 @@ public extension secp256k1.MuSig {
         /// It is crucial to use a unique `sessionID` for each signing session to prevent nonce reuse.
         ///
         /// - Parameters:
+        ///   - secretKey: The signer's secret key (optional).
+        ///   - publicKey: The signer's public key.
+        ///   - msg32: The 32-byte message to be signed.
+        ///   - extraInput32: Optional 32-byte extra input to customize the nonce (can be nil).
+        /// - Returns: A `NonceResult` containing the generated public and secret nonces.
+        /// - Throws: An error if nonce generation fails.
+        public static func generate(
+            secretKey: secp256k1.Schnorr.PrivateKey?,
+            publicKey: secp256k1.Schnorr.PublicKey,
+            msg32: [UInt8],
+            extraInput32: [UInt8]? = nil
+        ) throws -> NonceResult {
+            try Self.generate(
+                sessionID: Array(SecureBytes(count: 133)),
+                secretKey: secretKey,
+                publicKey: publicKey,
+                msg32: msg32,
+                extraInput32: extraInput32
+            )
+        }
+
+        /// Generates a nonce pair (secret and public) for MuSig signing.
+        ///
+        /// This function implements the nonce generation process as described in BIP-327.
+        /// It is crucial to use a unique `sessionID` for each signing session to prevent nonce reuse.
+        ///
+        /// - Parameters:
         ///   - sessionID: A 32-byte unique session identifier.
         ///   - secretKey: The signer's secret key (optional).
         ///   - publicKey: The signer's public key.
@@ -73,7 +100,7 @@ public extension secp256k1.MuSig {
             secretKey: secp256k1.Schnorr.PrivateKey?,
             publicKey: secp256k1.Schnorr.PublicKey,
             msg32: [UInt8],
-            extraInput32: [UInt8]? = nil
+            extraInput32: [UInt8]?
         ) throws -> NonceResult {
             let context = secp256k1.Context.rawRepresentation
             var secnonce = secp256k1_musig_secnonce()

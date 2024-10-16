@@ -1,67 +1,77 @@
-[![Build Status](https://app.bitrise.io/app/18c18db60fc4fddf/status.svg?token=nczB4mTPCrlTfDQnXH_8Pw&branch=main)](https://app.bitrise.io/app/18c18db60fc4fddf) [![Build Status](https://app.bitrise.io/app/f1bbbdfeff08cd5c/status.svg?token=ONB3exCALsB-_ayi6KsXFQ&branch=main)](https://app.bitrise.io/app/f1bbbdfeff08cd5c) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2FGigaBitcoin%2Fsecp256k1.swift%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/GigaBitcoin/secp256k1.swift)
+[![Build Status](https://app.bitrise.io/app/18c18db60fc4fddf/status.svg?token=nczB4mTPCrlTfDQnXH_8Pw&branch=main)](https://app.bitrise.io/app/18c18db60fc4fddf) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F21-DOT-DEV%2Fswift-secp256k1%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/21-DOT-DEV/swift-secp256k1) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F21-DOT-DEV%2Fswift-secp256k1%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/21-DOT-DEV/swift-secp256k1)
 
-# 🔐 secp256k1.swift
-Swift package with elliptic curve public key cryptography, ECDSA, Schnorr Signatures for Bitcoin and C bindings from [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
+# 🔐 swift-secp256k1
 
+Swift package for elliptic curve public key cryptography, ECDSA, and Schnorr Signatures for Bitcoin, with C bindings from [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
 
-# Objectives
+## Objectives
 
-Long-term goals are:
- - Lightweight ECDSA & Schnorr Signatures functionality
- - Built for simple or advance usage with things like BIP340
- - Exposed C bindings to take full control of the secp256k1 implementation
- - Familiar API design by modeling after [Swift Crypto](https://github.com/apple/swift-crypto)
- - Automatic updates for Swift and libsecp256k1
- - Availability for Linux and Apple platform ecosystems
+- Provide lightweight ECDSA & Schnorr Signatures functionality
+- Support simple and advanced usage, including BIP-327 and BIP-340
+- Expose C bindings for full control of the secp256k1 implementation
+- Offer a familiar API design inspired by [Swift Crypto](https://github.com/apple/swift-crypto)
+- Maintain automatic updates for Swift and libsecp256k1
+- Ensure availability for Linux and Apple platform ecosystems
 
+## Installation
 
-# Getting Started
+This package uses Swift Package Manager. To add it to your project:
 
-This repository primarily uses Swift package manager as its build tool, so we recommend using that as well. Xcode comes with [built-in support](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app) for Swift packages. From the menu bar, goto: `File > Add Packages...` If you manage packages via a `Package.swift` file, simply add `secp256k1.swift` as a dependencies' clause in your Swift manifest:
+### Using Xcode
+
+1. Go to `File > Add Packages...`
+2. Enter the package URL: `https://github.com/21-DOT-DEV/swift-secp256k1`
+3. Select the desired version
+
+### Using Package.swift
+
+Add the following to your `Package.swift` file:
 
 ```swift
-.package(name: "secp256k1.swift", url: "https://github.com/GigaBitcoin/secp256k1.swift.git", exact: "0.15.0"),
+.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.18.0"),
 ```
 
-Include `secp256k1` as a dependency for your executable target:
+Then, include `secp256k1` as a dependency in your target:
 
 ```swift
 .target(name: "<target>", dependencies: [
-    .product(name: "secp256k1", package: "secp256k1.swift")
+    .product(name: "secp256k1", package: "swift-secp256k1")
 ]),
 ```
 
-Try in a [playground](spi-playgrounds://open?dependencies=GigaBitcoin/secp256k1.swift) using the [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground) or 🏟 [Arena](https://github.com/finestructure/arena)
+> [!WARNING]  
+> These APIs are not considered stable and may change with any update. Specify a version using `exact:` to avoid breaking changes.
+
+### Try it out
+
+Use [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground):
 
 ```swift
-arena GigaBitcoin/secp256k1.swift
+arena 21-DOT-DEV/swift-secp256k1
 ```
 
+## Usage Examples
 
-# Example Usage
-
-## ECDSA
-
+### ECDSA
 ```swift
 import secp256k1
 
-//  Private key
+// Private key
 let privateBytes = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
 let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateBytes)
 
-//  Public key
+// Public key
 print(String(bytes: privateKey.publicKey.rawRepresentation))
 
-// ECDSA
+// ECDSA signature
 let messageData = "We're all Satoshi.".data(using: .utf8)!
 let signature = try! privateKey.signature(for: messageData)
 
-//  DER signature
+// DER signature
 print(try! signature.derRepresentation.base64EncodedString())
 ```
 
-## Schnorr
-
+### Schnorr
 ```swift
 // Strict BIP340 mode is disabled by default for Schnorr signatures with variable length messages
 let privateKey = try! secp256k1.Schnorr.PrivateKey()
@@ -161,7 +171,63 @@ oUQDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMAcjHIrTDS6HEELgguOatmFBOp
 let privateKey = try! secp256k1.Signing.PrivateKey(pemRepresentation: privateKeyString)
 ```
 
+## MuSig2
 
-# Danger
-These APIs should not be considered stable and may change at any time.
+```swift
+// Initialize private keys for two signers
+let firstPrivateKey = try secp256k1.Schnorr.PrivateKey()
+let secondPrivateKey = try secp256k1.Schnorr.PrivateKey()
 
+// Aggregate the public keys using MuSig
+let aggregateKey = try secp256k1.MuSig.aggregate([firstPrivateKey.publicKey, secondPrivateKey.publicKey])
+
+// Message to be signed
+let message = "Vires in Numeris.".data(using: .utf8)!
+let messageHash = SHA256.hash(data: message)
+
+// Generate nonces for each signer
+let firstNonce = try secp256k1.MuSig.Nonce.generate(
+    secretKey: firstPrivateKey,
+    publicKey: firstPrivateKey.publicKey,
+    msg32: Array(messageHash)
+)
+
+let secondNonce = try secp256k1.MuSig.Nonce.generate(
+    secretKey: secondPrivateKey,
+    publicKey: secondPrivateKey.publicKey,
+    msg32: Array(messageHash)
+)
+
+// Aggregate nonces
+let aggregateNonce = try secp256k1.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+
+// Create partial signatures
+let firstPartialSignature = try firstPrivateKey.partialSignature(
+    for: messageHash,
+    pubnonce: firstNonce.pubnonce,
+    secureNonce: firstNonce.secnonce,
+    publicNonceAggregate: aggregateNonce,
+    publicKeyAggregate: aggregateKey
+)
+
+let secondPartialSignature = try secondPrivateKey.partialSignature(
+    for: messageHash,
+    pubnonce: secondNonce.pubnonce,
+    secureNonce: secondNonce.secnonce,
+    publicNonceAggregate: aggregateNonce,
+    publicKeyAggregate: aggregateKey
+)
+
+// Aggregate partial signatures into a full signature
+let aggregateSignature = try secp256k1.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
+
+// Verify the aggregate signature
+let isValid = aggregateKey.isValidSignature(
+    aggregateSignature,
+    publicKey: firstPublicKey,
+    nonce: firstNonce.pubnonce,
+    for: messageHash
+)
+
+print("Is valid MuSig signature: \(isValid)")
+```

@@ -735,21 +735,18 @@ final class secp256k1Tests: XCTestCase, @unchecked Sendable {
 
         // Generate nonces for each signer
         let firstNonce = try secp256k1.MuSig.Nonce.generate(
-            sessionID: (0..<133).map { _ in UInt8.random(in: 0...255) },
             secretKey: privateKeys[0],
             publicKey: privateKeys[0].publicKey,
             msg32: Array(messageHash)
         )
 
         let secondNonce = try secp256k1.MuSig.Nonce.generate(
-            sessionID: (0..<133).map { _ in UInt8.random(in: 0...255) },
             secretKey: privateKeys[1],
             publicKey: privateKeys[1].publicKey,
             msg32: Array(messageHash)
         )
 
         let thirdNonce = try secp256k1.MuSig.Nonce.generate(
-            sessionID: (0..<133).map { _ in UInt8.random(in: 0...255) },
             secretKey: privateKeys[2],
             publicKey: privateKeys[2].publicKey,
             msg32: Array(messageHash)
