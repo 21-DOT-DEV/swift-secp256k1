@@ -1,9 +1,9 @@
-// swift-tools-version:5.8
+// swift-tools-version: 6.0
 
 import PackageDescription
 
 let package = Package(
-    name: "secp256k1.swift",
+    name: "swift-secp256k1",
     products: [
         // WARNING: These APIs should not be considered stable and may change at any time.
         .library(name: "secp256k1", targets: ["secp256k1"]),
@@ -20,36 +20,16 @@ let package = Package(
         .target(name: "zkp", dependencies: ["zkp_bindings"]),
         .target(
             name: "secp256k1_bindings",
-            cSettings: [
-                // Basic config values that are universal and require no dependencies.
-                .define("ECMULT_GEN_PREC_BITS", to: "4"),
-                .define("ECMULT_WINDOW_SIZE", to: "15"),
-                // Enabling additional secp256k1 modules.
-                .define("ENABLE_MODULE_ECDH"),
-                .define("ENABLE_MODULE_ELLSWIFT"),
-                .define("ENABLE_MODULE_EXTRAKEYS"),
-                .define("ENABLE_MODULE_RECOVERY"),
-                .define("ENABLE_MODULE_SCHNORRSIG")
-            ]
+            cSettings: PackageDescription.CSetting.baseSettings
         ),
         .target(
             name: "zkp_bindings",
-            cSettings: [
-                // Basic config values that are universal and require no dependencies.
-                .define("ECMULT_GEN_PREC_BITS", to: "4"),
-                .define("ECMULT_WINDOW_SIZE", to: "15"),
-                // Enabling additional secp256k1-zkp modules.
+            cSettings: PackageDescription.CSetting.baseSettings + [
                 .define("ENABLE_MODULE_BPPP"),
-                .define("ENABLE_MODULE_ECDH"),
                 .define("ENABLE_MODULE_ECDSA_ADAPTOR"),
                 .define("ENABLE_MODULE_ECDSA_S2C"),
-                .define("ENABLE_MODULE_ELLSWIFT"),
-                .define("ENABLE_MODULE_EXTRAKEYS"),
                 .define("ENABLE_MODULE_GENERATOR"),
-                .define("ENABLE_MODULE_MUSIG"),
                 .define("ENABLE_MODULE_RANGEPROOF"),
-                .define("ENABLE_MODULE_RECOVERY"),
-                .define("ENABLE_MODULE_SCHNORRSIG"),
                 .define("ENABLE_MODULE_SCHNORRSIG_HALFAGG"),
                 .define("ENABLE_MODULE_SURJECTIONPROOF"),
                 .define("ENABLE_MODULE_WHITELIST"),
@@ -60,6 +40,21 @@ let package = Package(
         ),
         .testTarget(name: "zkpTests", dependencies: ["zkp"])
     ],
-    swiftLanguageVersions: [.v5],
+    swiftLanguageModes: [.v5],
     cLanguageStandard: .c89
 )
+
+extension PackageDescription.CSetting {
+    static let baseSettings: [Self] = [
+        // Basic config values that are universal and require no dependencies.
+        .define("ECMULT_GEN_PREC_BITS", to: "4"),
+        .define("ECMULT_WINDOW_SIZE", to: "15"),
+        // Enabling additional secp256k1 modules.
+        .define("ENABLE_MODULE_ECDH"),
+        .define("ENABLE_MODULE_ELLSWIFT"),
+        .define("ENABLE_MODULE_EXTRAKEYS"),
+        .define("ENABLE_MODULE_MUSIG"),
+        .define("ENABLE_MODULE_RECOVERY"),
+        .define("ENABLE_MODULE_SCHNORRSIG")
+    ]
+}

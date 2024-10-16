@@ -105,3 +105,32 @@ public extension String {
         }
     }
 }
+
+/// A utility class or struct to contain the static function
+struct PointerArrayUtility {
+    /// Executes a closure with an array of `UnsafePointer<T>?`.
+    ///
+    /// This method automatically manages memory allocation and deallocation
+    /// for each pointer.
+    ///
+    /// - Parameters:
+    ///   - collection: An array of `T` objects to be converted to `UnsafePointer<T>?`.
+    ///   - body: A closure that receives an array of `UnsafePointer<T>?` and returns a result of type `Result`.
+    /// - Returns: The result of the closure of type `Result`.
+    static func withUnsafePointerArray<T, Result>(
+        _ collection: [T],
+        _ body: (inout [UnsafePointer<T>?]) -> Result
+    ) -> Result {
+        var pointers: [UnsafePointer<T>?] = collection.map { item in
+            let pointer = UnsafeMutablePointer<T>.allocate(capacity: 1)
+            pointer.initialize(to: item)
+            return UnsafePointer(pointer)
+        }
+
+        defer {
+            pointers.forEach { $0?.deallocate() }
+        }
+
+        return body(&pointers)
+    }
+}
