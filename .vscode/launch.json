@@ -11,7 +11,7 @@
             "program": "/Applications/Xcode.app/Contents/Developer/usr/bin/xctest",
             "args": [".build/debug/swift-secp256k1PackageTests.xctest"],
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "swift: test"
+            "preLaunchTask": "swift: build"
         }
     ]
 }
