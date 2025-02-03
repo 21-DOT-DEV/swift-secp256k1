@@ -8,7 +8,7 @@ let project = Project(
     settings: .settings(
         configurations: [
             .debug(name: "Debug", xcconfig: "Resources/Project/Debug.xcconfig"),
-//            .debug(name: "Release", xcconfig: "Resources/Project/Release.xcconfig")
+            .debug(name: "Release", xcconfig: "Resources/Project/Release.xcconfig")
         ]
     ),
     targets: [
@@ -31,12 +31,9 @@ let project = Project(
                 .package(product: "libsecp256k1")
             ],
             settings: .settings(
-//                base: [
-//                    "SWIFT_VERSION": "5.0"
-//                ],
                 configurations: [
-                    .debug(name: "Debug", xcconfig: "Resources/P256K/Debug.xcconfig")
-//                    .release(name: "Release", xcconfig: "Resources/P256K/Release.xcconfig")
+                    .debug(name: "Debug", xcconfig: "Resources/P256K/Debug.xcconfig"),
+                    .release(name: "Release", xcconfig: "Resources/P256K/Release.xcconfig")
                 ]
             )
         )
