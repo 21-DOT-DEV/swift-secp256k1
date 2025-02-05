@@ -9,6 +9,7 @@
 //
 
 import Foundation
+@_implementationOnly import libsecp256k1
 
 public extension secp256k1.Signing.PrivateKey {
     /// Create a new `PrivateKey` by adding tweak to the secret key.
@@ -72,7 +73,7 @@ public extension secp256k1.Signing.PublicKey {
     /// - Returns: tweaked `PublicKey` object
     func add(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
         let context = secp256k1.Context.rawRepresentation
-        var pubKey = rawRepresentation
+        var pubKey = baseKey.rawRepresentation
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
@@ -91,7 +92,7 @@ public extension secp256k1.Signing.PublicKey {
     /// - Returns: tweaked `PublicKey` object
     func multiply(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
         let context = secp256k1.Context.rawRepresentation
-        var pubKey = rawRepresentation
+        var pubKey = baseKey.rawRepresentation
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
 

@@ -9,6 +9,7 @@
 //
 
 import Foundation
+@_implementationOnly import libsecp256k1
 
 public extension secp256k1.MuSig {
     /// Represents an aggregated nonce for MuSig operations.
@@ -105,7 +106,7 @@ public extension secp256k1.MuSig {
             let context = secp256k1.Context.rawRepresentation
             var secnonce = secp256k1_musig_secnonce()
             var pubnonce = secp256k1_musig_pubnonce()
-            var pubkey = publicKey.rawRepresentation
+            var pubkey = publicKey.baseKey.rawRepresentation
 
 #if canImport(zkp_bindings)
             guard secp256k1_musig_nonce_gen(

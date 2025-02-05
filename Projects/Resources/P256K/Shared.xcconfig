@@ -232,7 +232,7 @@ ENABLE_MODULE_VERIFIER = YES
 // and work with. Compatibility with these standards must be maintained for module
 // verification to succeed.
 
-MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = c89 gnu++20
+MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = gnu99 gnu++20
 
 
 // Module Verifier Supported Languages

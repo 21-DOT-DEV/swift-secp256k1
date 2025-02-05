@@ -8,6 +8,8 @@
 //  See the accompanying file LICENSE for information
 //
 
+@_implementationOnly import libsecp256k1
+
 /// A public extension that provides additional functionality to the `secp256k1` structure.
 ///
 /// This extension includes a nested structure, `Context`, which represents the context for `secp256k1` operations.

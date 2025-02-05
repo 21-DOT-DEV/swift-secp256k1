@@ -36,24 +36,32 @@ let project = Project(
                     .release(name: "Release", xcconfig: "Resources/P256K/Release.xcconfig")
                 ]
             )
+        ),
+        .target(
+            name: "XCFrameworkApp",
+            destinations: [.iPhone, .iPad, .mac, .appleWatch, .appleTv, .appleVision],
+            product: .app,
+            bundleId: "dev.21.XCFrameworkApp",
+            infoPlist: .extendingDefault(
+                with: [
+                    "UILaunchScreen": [
+                        "UIColorName": "",
+                        "UIImageName": "",
+                    ],
+                ]
+            ),
+            sources: ["Sources/XCFrameworkApp/**"],
+            resources: ["Resources/XCFrameworkApp/**"],
+            dependencies: [
+                .target(name: "P256K")
+            ],
+            settings: .settings(
+                configurations: [
+                    .debug(name: "Debug", xcconfig: "Resources/P256K/Debug.xcconfig"),
+                    .release(name: "Release", xcconfig: "Resources/P256K/Release.xcconfig")
+                ]
+            )
         )
-//        .target(
-//            name: "XCFrameworkApp",
-//            destinations: .iOS,
-//            product: .app,
-//            bundleId: "dev.21.XCFrameworkApp",
-//            infoPlist: .extendingDefault(
-//                with: [
-//                    "UILaunchScreen": [
-//                        "UIColorName": "",
-//                        "UIImageName": "",
-//                    ],
-//                ]
-//            ),
-//            sources: ["Sources/XCFrameworkApp/**"],
-//            resources: ["Resources/XCFrameworkApp/**"],
-//            dependencies: [.target(name: "secp256k1")]
-//        ),
 //        .target(
 //            name: "XCFrameworkTests",
 //            destinations: .iOS,

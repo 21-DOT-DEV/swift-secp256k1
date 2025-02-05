@@ -9,6 +9,7 @@
 //
 
 import Foundation
+@_implementationOnly import libsecp256k1
 
 // MARK: - secp256k1 + Recovery
 
@@ -62,14 +63,11 @@ public extension secp256k1 {
 
         /// A struct representing a secp256k1 public key for recovery purposes.
         public struct PublicKey {
+            /// Generated secp256k1 Public Key.
+            internal let baseKey: PublicKeyImplementation
+
             /// A data representation of the public key.
             public var dataRepresentation: Data { baseKey.dataRepresentation }
-
-            /// A raw representation of the public key.
-            public var rawRepresentation: secp256k1_pubkey { baseKey.rawRepresentation }
-
-            /// Generated secp256k1 Public Key.
-            private let baseKey: PublicKeyImplementation
 
             /// Initializes a secp256k1 public key using a data message and a recovery signature.
             /// - Parameters:

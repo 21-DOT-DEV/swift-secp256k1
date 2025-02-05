@@ -9,6 +9,7 @@
 //
 
 import Foundation
+@_implementationOnly import libsecp256k1
 
 /// An extension for ContiguousBytes providing a convenience property.
 public extension ContiguousBytes {
@@ -69,7 +70,7 @@ extension Int32 {
 }
 
 /// An extension for secp256k1_ecdsa_signature providing a convenience property.
-public extension secp256k1_ecdsa_signature {
+internal extension secp256k1_ecdsa_signature {
     /// A property that returns the Data representation of the `secp256k1_ecdsa_signature` object.
     var dataValue: Data {
         var mutableSig = self
@@ -78,7 +79,7 @@ public extension secp256k1_ecdsa_signature {
 }
 
 /// An extension for secp256k1_ecdsa_recoverable_signature providing a convenience property.
-public extension secp256k1_ecdsa_recoverable_signature {
+internal extension secp256k1_ecdsa_recoverable_signature {
     /// A property that returns the Data representation of the `secp256k1_ecdsa_recoverable_signature` object.
     var dataValue: Data {
         var mutableSig = self

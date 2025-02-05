@@ -9,6 +9,7 @@
 //
 
 import Foundation
+@_implementationOnly import libsecp256k1
 
 public extension secp256k1 {
     /// MuSig is a multi-signature scheme that allows multiple parties to sign a message using their own private keys,
@@ -19,7 +20,7 @@ public extension secp256k1 {
         /// Represents a public key in the MuSig scheme.
         public struct PublicKey {
             /// Generated secp256k1 public key.
-            private let baseKey: PublicKeyImplementation
+            internal let baseKey: PublicKeyImplementation
 
             /// The secp256k1 public key object.
             var bytes: [UInt8] {
@@ -39,11 +40,6 @@ public extension secp256k1 {
             /// A data representation of the public key.
             public var dataRepresentation: Data {
                 baseKey.dataRepresentation
-            }
-
-            /// A raw representation of the public key.
-            public var rawRepresentation: secp256k1_pubkey {
-                baseKey.rawRepresentation
             }
 
             /// The associated x-only public key for verifying Schnorr signatures.
@@ -160,7 +156,8 @@ extension secp256k1.MuSig {
         var cache = secp256k1_musig_keyagg_cache()
         var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-        guard PointerArrayUtility.withUnsafePointerArray(pubkeys.map { $0.rawRepresentation }, { pointers in
+        guard PointerArrayUtility
+            .withUnsafePointerArray(pubkeys.map { $0.baseKey.rawRepresentation }, { pointers in
 #if canImport(zkp_bindings)
             secp256k1_pubkey_sort(context, &pointers, pointers.count).boolValue &&
                 secp256k1_musig_pubkey_agg(context, nil, nil, &cache, pointers, pointers.count).boolValue
@@ -320,7 +317,7 @@ extension secp256k1.MuSig.PublicKey {
         let context = secp256k1.Context.rawRepresentation
         var partialSig = secp256k1_musig_partial_sig()
         var pubnonce = secp256k1_musig_pubnonce()
-        var publicKey = publicKey.rawRepresentation
+        var publicKey = publicKey.baseKey.rawRepresentation
         var cache = secp256k1_musig_keyagg_cache()
         var session = secp256k1_musig_session()
 
@@ -432,7 +429,7 @@ extension secp256k1.Schnorr.PrivateKey {
 }
 
 /// An extension for secp256k1_musig_partial_sig providing a convenience property.
-public extension secp256k1_musig_partial_sig {
+internal extension secp256k1_musig_partial_sig {
     /// A property that returns the Data representation of the `secp256k1_musig_partial_sig` object.
     var dataValue: Data {
         var mutableSig = self
@@ -441,7 +438,7 @@ public extension secp256k1_musig_partial_sig {
 }
 
 /// An extension for secp256k1_musig_session providing a convenience property.
-public extension secp256k1_musig_session {
+internal extension secp256k1_musig_session {
     var dataValue: Data {
         var mutableSession = self
         return Data(bytes: &mutableSession.data, count: MemoryLayout.size(ofValue: data))

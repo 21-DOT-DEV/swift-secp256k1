@@ -9,6 +9,7 @@
 //
 
 import Foundation
+@_implementationOnly import libsecp256k1
 
 public extension secp256k1.Signing.PublicKey {
     /// Create a new `PublicKey` by combining the current public key with an array of public keys.
@@ -23,7 +24,8 @@ public extension secp256k1.Signing.PublicKey {
         var combinedKey = secp256k1_pubkey()
         var combinedBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-        guard PointerArrayUtility.withUnsafePointerArray(allPubKeys.map { $0.rawRepresentation }, { pointers in
+        guard PointerArrayUtility
+            .withUnsafePointerArray(allPubKeys.map { $0.baseKey.rawRepresentation }, { pointers in
             secp256k1_ec_pubkey_combine(context, &combinedKey, pointers, pointers.count).boolValue
         }), secp256k1_ec_pubkey_serialize(context, &combinedBytes, &pubKeyLen, &combinedKey, format.rawValue).boolValue else {
             throw secp256k1Error.underlyingCryptoError
