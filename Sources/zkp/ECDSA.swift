@@ -9,6 +9,7 @@
 //
 
 import Foundation
+@_implementationOnly import libsecp256k1
 
 typealias NISTECDSASignature = DERSignature & DataSignature
 
@@ -207,7 +208,7 @@ extension secp256k1.Signing.PublicKey: DigestValidator {
     public func isValidSignature<D: Digest>(_ signature: secp256k1.Signing.ECDSASignature, for digest: D) -> Bool {
         let context = secp256k1.Context.rawRepresentation
         var ecdsaSignature = secp256k1_ecdsa_signature()
-        var publicKey = rawRepresentation
+        var publicKey = baseKey.rawRepresentation
 
         signature.dataRepresentation.copyToUnsafeMutableBytes(of: &ecdsaSignature.data)
 
