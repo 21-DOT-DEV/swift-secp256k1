@@ -115,7 +115,7 @@ public extension secp256k1 {
         /// The corresponding public key for the secp256k1 curve.
         public struct PublicKey {
             /// Generated secp256k1 public key.
-            private let baseKey: PublicKeyImplementation
+            internal let baseKey: PublicKeyImplementation
 
             /// The secp256k1 public key object.
             var bytes: [UInt8] {
@@ -125,11 +125,6 @@ public extension secp256k1 {
             /// A data representation of the public key.
             public var dataRepresentation: Data {
                 baseKey.dataRepresentation
-            }
-
-            /// A raw representation of the public key.
-            public var rawRepresentation: secp256k1_pubkey {
-                baseKey.rawRepresentation
             }
 
             /// The associated x-only public key for verifying Schnorr signatures.

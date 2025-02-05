@@ -9,6 +9,7 @@
 //
 
 import Foundation
+@_implementationOnly import libsecp256k1
 
 /// The SHA256 hashing algorithm.
 public enum SHA256 {

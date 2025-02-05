@@ -1,10 +1,14 @@
 import SwiftUI
+import P256K
 
 public struct ContentView: View {
     public init() {}
 
     public var body: some View {
-        Text("Hello, World!")
+        let privateKey = try! secp256k1.Signing.PrivateKey()
+        let stringKey = String(bytes: privateKey.dataRepresentation)
+
+        Text("KEY: \(stringKey)")
             .padding()
     }
 }

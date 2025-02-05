@@ -9,6 +9,7 @@
 //
 
 import Foundation
+@_implementationOnly import libsecp256k1
 
 // MARK: - secp256k1 + KeyAgreement
 
@@ -19,7 +20,7 @@ public extension secp256k1 {
         /// A public key for performing key agreement using the secp256k1 elliptic curve.
         public struct PublicKey /*: NISTECPublicKey */ {
             /// The underlying implementation of the secp256k1 public key.
-            let baseKey: PublicKeyImplementation
+            internal let baseKey: PublicKeyImplementation
 
             /// Creates a secp256k1 public key for key agreement from a collection of bytes.
             ///
@@ -48,9 +49,6 @@ public extension secp256k1 {
             /// A data representation of the public key.
             public var dataRepresentation: Data { baseKey.dataRepresentation }
 
-            /// A raw representation of the public key.
-            public var rawRepresentation: secp256k1_pubkey { baseKey.rawRepresentation }
-
             /// Implementation public key object.
             var bytes: [UInt8] { baseKey.bytes }
         }
@@ -62,9 +60,6 @@ public extension secp256k1 {
 
             /// A data representation of the backing x-only public key.
             public var dataRepresentation: Data { baseKey.dataRepresentation }
-
-            /// A raw representation of the backing x-only public key.
-            public var rawRepresentation: secp256k1_xonly_pubkey { baseKey.rawRepresentation }
 
             /// A boolean that will be set to true if the point encoded by xonly is the
             /// negation of the pubkey and set to false otherwise.
@@ -155,7 +150,7 @@ extension secp256k1.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
         format: secp256k1.Format = .compressed
     ) throws -> SharedSecret {
         let context = secp256k1.Context.rawRepresentation
-        var publicKey = publicKeyShare.rawRepresentation
+        var publicKey = publicKeyShare.baseKey.rawRepresentation
         var sharedSecret = [UInt8](repeating: 0, count: format.length)
         var data = [UInt8](repeating: format == .compressed ? 1 : 0, count: 1)
 
