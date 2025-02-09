@@ -9,7 +9,12 @@
 //
 
 import Foundation
+
+#if canImport(libsecp256k1_zkp)
+@_implementationOnly import libsecp256k1_zkp
+#elseif canImport(libsecp256k1)
 @_implementationOnly import libsecp256k1
+#endif
 
 public extension secp256k1.Signing.PrivateKey {
     /// Create a new `PrivateKey` by adding tweak to the secret key.

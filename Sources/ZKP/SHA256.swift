@@ -9,7 +9,12 @@
 //
 
 import Foundation
+
+#if canImport(libsecp256k1_zkp)
+@_implementationOnly import libsecp256k1_zkp
+#elseif canImport(libsecp256k1)
 @_implementationOnly import libsecp256k1
+#endif
 
 /// The SHA256 hashing algorithm.
 public enum SHA256 {

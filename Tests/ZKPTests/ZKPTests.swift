@@ -1,7 +1,7 @@
 import XCTest
-@testable import zkp
+@testable import ZKP
 
-final class zkpTests: XCTestCase {
+final class ZKPTests: XCTestCase {
     func testMusig() throws {
         // Test MuSig aggregate
         let privateKeys = [

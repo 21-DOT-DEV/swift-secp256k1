@@ -1,5 +1,13 @@
 import ProjectDescription
 
+let deploymentTargets = ProjectDescription.DeploymentTargets.multiplatform(
+    iOS: "18.0",
+    macOS: "15.0",
+    watchOS: "11.0",
+    tvOS: "18.0",
+    visionOS: "2.0"
+)
+
 let project = Project(
     name: "XCFramework",
     packages: [
@@ -17,14 +25,7 @@ let project = Project(
             destinations: [.iPhone, .iPad, .mac, .appleWatch, .appleTv, .appleVision],
             product: .staticFramework,
             bundleId: "dev.21.P256K",
-            deploymentTargets:
-                    .multiplatform(
-                        iOS: "18.0",
-                        macOS: "15.0",
-                        watchOS: "11.0",
-                        tvOS: "18.0",
-                        visionOS: "2.0"
-                    ),
+            deploymentTargets: deploymentTargets,
             sources: ["Sources/P256K/**"],
             resources: [],
             dependencies: [
@@ -38,48 +39,40 @@ let project = Project(
             )
         ),
         .target(
-            name: "XCFrameworkApp",
+            name: "P256KTests",
             destinations: [.iPhone, .iPad, .mac, .appleWatch, .appleTv, .appleVision],
+            product: .unitTests,
+            bundleId: "dev.21.P256KTests",
+            deploymentTargets: deploymentTargets,
+            sources: ["Sources/P256KTests/**"],
+            dependencies: [.target(name: "P256K")],
+            settings: .settings(
+                configurations: [
+                    .debug(name: "Debug", xcconfig: "Resources/P256KTests/Debug.xcconfig"),
+                    .release(name: "Release", xcconfig: "Resources/P256KTests/Release.xcconfig")
+                ]
+            )
+        ),
+        .target(
+            name: "XCFrameworkApp",
+            destinations: [.iPhone, .iPad, .mac, .appleTv, .appleVision],
             product: .app,
             bundleId: "dev.21.XCFrameworkApp",
-            infoPlist: .extendingDefault(
-                with: [
-                    "UILaunchScreen": [
-                        "UIColorName": "",
-                        "UIImageName": "",
-                    ],
-                ]
-            ),
             sources: ["Sources/XCFrameworkApp/**"],
-            resources: ["Resources/XCFrameworkApp/**"],
+            resources: [
+                "Resources/XCFrameworkApp/Assets.xcassets/**",
+                "Resources/XCFrameworkApp/Preview Content/**"
+            ],
+            entitlements: "Resources/XCFrameworkApp/XCFrameworkApp.entitlements",
             dependencies: [
                 .target(name: "P256K")
             ],
             settings: .settings(
                 configurations: [
-                    .debug(name: "Debug", xcconfig: "Resources/P256K/Debug.xcconfig"),
-                    .release(name: "Release", xcconfig: "Resources/P256K/Release.xcconfig")
+                    .debug(name: "Debug", xcconfig: "Resources/XCFrameworkApp/Debug.xcconfig"),
+                    .release(name: "Release", xcconfig: "Resources/XCFrameworkApp/Release.xcconfig")
                 ]
             )
         )
-//        .target(
-//            name: "XCFrameworkTests",
-//            destinations: .iOS,
-//            product: .unitTests,
-//            bundleId: "dev.21.XCFrameworkTests",
-//            infoPlist: nil,
-//            sources: ["Sources/XCFrameworkTests/**"],
-//            resources: ["Resources/XCFrameworkTests/**"],
-//            dependencies: [.target(name: "secp256k1")],
-//            settings: .settings(
-//                base: [
-//                    "SDKROOT": "auto"
-//                ],
-//                configurations: [
-//                    .debug(name: "Debug", xcconfig: "Resources/XCFrameworkTests/Debug.xcconfig"),
-//                    .release(name: "Release", xcconfig: "Resources/XCFrameworkTests/Release.xcconfig")
-//                ]
-//            )
-//        ),
     ]
 )

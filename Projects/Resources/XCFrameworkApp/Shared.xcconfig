@@ -60,7 +60,7 @@ CURRENT_PROJECT_VERSION = 1
 // Files and directories used only for development. Archive and install builds will
 // exclude this content.
 
-DEVELOPMENT_ASSET_PATHS = "XCFrameworkApp/Preview Content"
+DEVELOPMENT_ASSET_PATHS = "Resources/XCFrameworkApp/Preview Content"
 
 
 
@@ -269,7 +269,7 @@ SWIFT_VERSION = 5.0
 // * *6*: Mac Catalyst using "Optimize for Mac" Interface
 // * *7*: Apple Vision
 
-TARGETED_DEVICE_FAMILY = 1,2,7
+TARGETED_DEVICE_FAMILY = 1,2,3,6,7
 
 
 
