@@ -9,7 +9,12 @@
 //
 
 import Foundation
+
+#if canImport(libsecp256k1_zkp)
+@_implementationOnly import libsecp256k1_zkp
+#elseif canImport(libsecp256k1)
 @_implementationOnly import libsecp256k1
+#endif
 
 /// The secp256k1 Elliptic Curve.
 public enum secp256k1 {}

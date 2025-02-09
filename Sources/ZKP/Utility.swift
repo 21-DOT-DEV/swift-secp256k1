@@ -9,7 +9,12 @@
 //
 
 import Foundation
+
+#if canImport(libsecp256k1_zkp)
+@_implementationOnly import libsecp256k1_zkp
+#elseif canImport(libsecp256k1)
 @_implementationOnly import libsecp256k1
+#endif
 
 /// An extension for ContiguousBytes providing a convenience property.
 public extension ContiguousBytes {

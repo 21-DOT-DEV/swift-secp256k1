@@ -8,7 +8,11 @@
 //  See the accompanying file LICENSE for information
 //
 
+#if canImport(libsecp256k1_zkp)
+@_implementationOnly import libsecp256k1_zkp
+#elseif canImport(libsecp256k1)
 @_implementationOnly import libsecp256k1
+#endif
 
 /// A public extension that provides additional functionality to the `secp256k1` structure.
 ///
