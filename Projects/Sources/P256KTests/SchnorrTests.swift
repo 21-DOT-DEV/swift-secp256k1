@@ -1,0 +1,1 @@
+../../../Tests/ZKPTests/SchnorrTests.swift
