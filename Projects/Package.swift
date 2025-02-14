@@ -9,19 +9,6 @@ let package = Package(
     ],
     targets: [
         .testTarget(
-            name: "P256KTests",
-            dependencies: [
-                .product(name: "P256K", package: "swift-secp256k1")
-            ]
-        ),
-        .testTarget(
-            name: "libsecp256k1Tests",
-            dependencies: [
-                .product(name: "P256K", package: "swift-secp256k1"),
-                .product(name: "libsecp256k1", package: "swift-secp256k1")
-            ]
-        ),
-        .testTarget(
             name: "libsecp256k1zkpTests",
             dependencies: [
                 .product(name: "ZKP", package: "swift-secp256k1"),

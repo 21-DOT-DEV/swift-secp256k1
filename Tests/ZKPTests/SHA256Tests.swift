@@ -1,8 +1,11 @@
 //
 //  SHA256Tests.swift
-//  swift-secp256k1
+//  21-DOT-DEV/swift-secp256k1
 //
-//  Created by csjones on 2/10/25.
+//  Copyright (c) 2025 GigaBitcoin LLC
+//  Distributed under the MIT software license
+//
+//  See the accompanying file LICENSE for information
 //
 
 #if canImport(ZKP)

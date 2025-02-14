@@ -54,6 +54,21 @@ let project = Project(
             )
         ),
         .target(
+            name: "libsecp256k1Tests",
+            destinations: [.iPhone, .iPad, .mac, .appleWatch, .appleTv, .appleVision],
+            product: .unitTests,
+            bundleId: "dev.21.libsecp256k1Tests",
+            deploymentTargets: deploymentTargets,
+            sources: ["Sources/libsecp256k1Tests/**"],
+            dependencies: [.package(product: "libsecp256k1")],
+            settings: .settings(
+                configurations: [
+                    .debug(name: "Debug", xcconfig: "Resources/libsecp256k1Tests/Debug.xcconfig"),
+                    .release(name: "Release", xcconfig: "Resources/libsecp256k1Tests/Release.xcconfig")
+                ]
+            )
+        ),
+        .target(
             name: "XCFrameworkApp",
             destinations: [.iPhone, .iPad, .mac, .appleTv, .appleVision],
             product: .app,
