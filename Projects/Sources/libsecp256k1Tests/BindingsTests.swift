@@ -1,1 +1,1 @@
-../../Tests/libsecp256k1zkpTests/BindingsTests.swift
+../../../Tests/libsecp256k1zkpTests/BindingsTests.swift
