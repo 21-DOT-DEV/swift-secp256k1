@@ -1,1 +1,1 @@
-../zkp/Schnorr.swift
+../ZKP/Schnorr.swift

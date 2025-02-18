@@ -1,1 +1,1 @@
-../../../Sources/zkp/DH.swift
+../../../Sources/ZKP/DH.swift

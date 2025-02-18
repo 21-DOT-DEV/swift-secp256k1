@@ -1,1 +1,1 @@
-../../../Sources/zkp/ECDH.swift
+../../../Sources/ZKP/ECDH.swift

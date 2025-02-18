@@ -1,1 +1,1 @@
-../../../Sources/zkp/EdDSA.swift
+../../../Sources/ZKP/EdDSA.swift
