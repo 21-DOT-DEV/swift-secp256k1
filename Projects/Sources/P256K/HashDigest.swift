@@ -1,1 +1,1 @@
-../../../Sources/zkp/HashDigest.swift
+../../../Sources/ZKP/HashDigest.swift

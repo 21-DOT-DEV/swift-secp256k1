@@ -1,1 +1,1 @@
-../../../Sources/zkp/Schnorr.swift
+../../../Sources/ZKP/Schnorr.swift

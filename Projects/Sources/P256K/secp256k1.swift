@@ -1,1 +1,1 @@
-../../../Sources/zkp/secp256k1.swift
+../../../Sources/ZKP/secp256k1.swift

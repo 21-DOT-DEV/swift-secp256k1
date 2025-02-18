@@ -1,1 +1,1 @@
-../../zkp/ASN1/SEC1PrivateKey.swift
+../../ZKP/ASN1/SEC1PrivateKey.swift

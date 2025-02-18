@@ -1,1 +1,1 @@
-../../../Sources/zkp/MuSig.swift
+../../../Sources/ZKP/MuSig.swift

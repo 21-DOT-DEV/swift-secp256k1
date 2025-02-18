@@ -1,1 +1,1 @@
-../../../Sources/zkp/SHA256.swift
+../../../Sources/ZKP/SHA256.swift

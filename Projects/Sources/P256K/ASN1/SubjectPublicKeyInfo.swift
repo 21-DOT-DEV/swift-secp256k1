@@ -1,1 +1,1 @@
-../../../../Sources/zkp/ASN1/SubjectPublicKeyInfo.swift
+../../../../Sources/ZKP/ASN1/SubjectPublicKeyInfo.swift
