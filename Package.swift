@@ -41,6 +41,7 @@ let package = Package(
                 .headerSearchPath("../../Submodules/secp256k1-zkp/src")
             ]
         ),
+        .testTarget(name: "libsecp256k1zkpTests", dependencies: ["ZKP", "libsecp256k1_zkp"]),
         .testTarget(name: "ZKPTests", dependencies: ["ZKP"])
     ],
     swiftLanguageModes: [.v5],
