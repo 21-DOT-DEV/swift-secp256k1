@@ -1,1 +1,1 @@
-../zkp/EdDSA.swift
+../ZKP/EdDSA.swift

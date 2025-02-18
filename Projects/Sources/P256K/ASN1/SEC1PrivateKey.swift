@@ -1,1 +1,1 @@
-../../../../Sources/zkp/ASN1/SEC1PrivateKey.swift
+../../../../Sources/ZKP/ASN1/SEC1PrivateKey.swift

@@ -1,1 +1,1 @@
-../../../Sources/zkp/Errors.swift
+../../../Sources/ZKP/Errors.swift

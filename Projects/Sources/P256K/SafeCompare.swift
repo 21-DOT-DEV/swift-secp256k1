@@ -1,1 +1,1 @@
-../../../Sources/zkp/SafeCompare.swift
+../../../Sources/ZKP/SafeCompare.swift
