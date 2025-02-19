@@ -74,7 +74,7 @@ workflows:
     - PULL-PACKAGE-FILES
     steps:
     - script:
-        title: BUILD & TEST XCFRAMEWORK
+        title: BUILD & TEST P256K
         timeout: 360
         inputs:
         - content: |-
@@ -95,6 +95,52 @@ workflows:
             # 3. Run iOS tests:
             # Executes tests for 'XCFramework-Workspace' on the iOS platform using the Tuist setup from 'Projects/'.
             swift package --disable-sandbox tuist test XCFramework-Workspace -p Projects/ --platform ios
+    - script:
+        title: ARCHIVE & CREATE XCFRAMEWORK
+        timeout: 360
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            # fail if any commands fails; debug log
+            set -ex
+
+            # Define workspace and scheme
+            WORKSPACE='Projects/XCFramework.xcworkspace'
+            SCHEME='P256K'
+            CONFIGURATION='Release'
+            ARCHIVE_DIR='Archives'
+
+            # Platforms to archive
+            PLATFORMS=(
+              "iOS"
+              "macOS"
+              "watchOS"
+              "tvOS"
+              "visionOS"
+            )
+
+            # Loop over platforms and archive for each one
+            for PLATFORM in "${PLATFORMS[@]}"; do
+              echo "Archiving for $PLATFORM..."
+
+              # Run xcodebuild archive for each platform
+              xcodebuild archive \
+                -workspace "$WORKSPACE" \
+                -scheme "$SCHEME" \
+                -configuration "$CONFIGURATION" \
+                -destination "generic/platform=$PLATFORM" \
+                -archivePath "$ARCHIVE_DIR/P256K-$PLATFORM.xcarchive"
+
+              # Check if archive command was successful
+              if [ $? -eq 0 ]; then
+                echo "$PLATFORM archive created successfully."
+              else
+                echo "Failed to archive for $PLATFORM. Exiting."
+                exit 1
+              fi
+            done
+
+            echo "All archives completed successfully."
   PULL-PACKAGE-FILES:
     steps:
     - pull-intermediate-files:
