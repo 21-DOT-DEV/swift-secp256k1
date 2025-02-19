@@ -74,7 +74,7 @@ workflows:
     - PULL-PACKAGE-FILES
     steps:
     - script:
-        title: BUILD P256K
+        title: BUILD & TEST XCFRAMEWORK
         timeout: 360
         inputs:
         - content: |-
@@ -82,15 +82,19 @@ workflows:
             # fail if any commands fails; debug log
             set -ex
 
-            swift package --disable-sandbox tuist generate -p Projects/
-    - xcode-build-for-simulator:
-        inputs:
-        - project_path: ./Projects/XCFramework.xcworkspace
-        - scheme: P256K
-    - xcode-test:
-        inputs:
-        - project_path: ./Projects/XCFramework.xcworkspace
-        - scheme: XCFramework-Workspace
+            # Swift Package Manager commands with Tuist operations for CI/CD pipeline:
+
+            # 1. Generate Xcode project:
+            # The command generates an Xcode project using Tuist for the project configuration located in the 'Projects/' directory.
+            swift package --disable-sandbox tuist generate -p Projects/ && \
+
+            # 2. Build iOS target:
+            # Builds the 'P256K' target for the iOS platform using the Tuist project configuration from 'Projects/'.
+            swift package --disable-sandbox tuist build P256K -p Projects/ --platform ios && \
+
+            # 3. Run iOS tests:
+            # Executes tests for 'XCFramework-Workspace' on the iOS platform using the Tuist setup from 'Projects/'.
+            swift package --disable-sandbox tuist test XCFramework-Workspace -p Projects/ --platform ios
   PULL-PACKAGE-FILES:
     steps:
     - pull-intermediate-files:
