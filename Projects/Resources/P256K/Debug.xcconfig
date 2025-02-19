@@ -67,3 +67,14 @@ ENABLE_TESTABILITY = YES
 // If enabled, perform validation checks on the product as part of the build process.
 
 VALIDATE_PRODUCT =  NO
+
+//********************************************//
+//*               Deployment                 *//
+//********************************************//
+
+
+// Skip Install
+// 
+// If enabled, don't install built products even if deployment locations are active.
+
+SKIP_INSTALL = YES

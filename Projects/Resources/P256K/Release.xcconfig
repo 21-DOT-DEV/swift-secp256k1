@@ -70,6 +70,18 @@ VALIDATE_PRODUCT = YES
 
 
 //********************************************//
+//*               Deployment                 *//
+//********************************************//
+
+
+// Skip Install
+// 
+// If enabled, don't install built products even if deployment locations are active.
+
+SKIP_INSTALL = NO
+
+
+//********************************************//
 //*      Apple Clang - Code Generation       *//
 //********************************************//
 
