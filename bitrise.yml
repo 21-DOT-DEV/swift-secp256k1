@@ -4,34 +4,34 @@ default_step_lib_source: 'https://github.com/bitrise-io/bitrise-steplib.git'
 project_type: other
 meta:
   bitrise.io:
-    stack: osx-xcode-16.0.x
+    stack: osx-xcode-16.2.x
     machine_type_id: g2-m1.4core
 trigger_map:
 - push_branch: main
-  pipeline: PIPELINE-SECP256K1-ZKP
+  pipeline: PIPELINE-P256K-ZKP
 - pull_request_source_branch: '*'
-  pipeline: PIPELINE-SECP256K1-ZKP
+  pipeline: PIPELINE-P256K-ZKP
 pipelines:  
-  PIPELINE-SECP256K1-ZKP:
+  PIPELINE-P256K-ZKP:
     stages:
     - CLONE: {}
-    - SECP256K1: {}
+    - P256K: {}
     - ZKP: {}
 stages:
   CLONE:
     workflows:
-    - SECP256K1-SWIFT: {}
-  SECP256K1:
+    - SWIFT-SECP256K1: {}
+  P256K:
     workflows:
-    - BUILD-SECP256K1: {}
+    - BUILD-P256K: {}
   ZKP:
     workflows:
     - BUILD-ZKP: {}
 workflows:
-  SECP256K1-SWIFT:
+  SWIFT-SECP256K1:
     steps:
     - git-clone:
-        title: CLONE SECP256K1.SWIFT
+        title: CLONE SWIFT-SECP256K1
         timeout: 60
     - script:
         title: CHECK LINKS
@@ -46,7 +46,12 @@ workflows:
             # It uses the find command to follow symbolic links and checks if they are
             # broken with the test command. If a broken symbolic link is found, the
             # script fails with a non-zero status code.
-            find . -type d -name .build -prune -o -type l ! -exec test -e {} \; -print | grep -q . && exit 1 || exit 0
+            broken_links=$(find . -type d -name .build -prune -o -type l ! -exec test -e {} \; -print)
+            if [ -n "$broken_links" ]; then
+              echo "Broken symbolic links found:"
+              echo "$broken_links"
+              exit 1
+            fi
     - deploy-to-bitrise-io:
         inputs:
         - pipeline_intermediate_files: "$BITRISE_SOURCE_DIR:BITRISE_SOURCE_DIR"
@@ -64,22 +69,30 @@ workflows:
             set -ex
 
             swift test
-  BUILD-SECP256K1:
+  BUILD-P256K:
     before_run:
     - PULL-PACKAGE-FILES
     steps:
     - script:
-        title: BUILD SECP256K1
-        timeout: 180
+        title: BUILD P256K
+        timeout: 360
         inputs:
         - content: |-
             #!/usr/bin/env bash
             # fail if any commands fails; debug log
             set -ex
 
-            swift test --package-path Exhaustive/Package
+            swift package --disable-sandbox tuist generate -p Projects/
+    - xcode-build-for-simulator:
+        inputs:
+        - project_path: ./Projects/XCFramework.xcworkspace
+        - scheme: P256K
+    - xcode-test:
+        inputs:
+        - project_path: ./Projects/XCFramework.xcworkspace
+        - scheme: XCFramework-Workspace
   PULL-PACKAGE-FILES:
     steps:
     - pull-intermediate-files:
         inputs:
-        - artifact_sources: CLONE.SECP256K1-SWIFT
+        - artifact_sources: CLONE.SWIFT-SECP256K1
