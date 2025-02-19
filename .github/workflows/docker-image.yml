@@ -23,5 +23,3 @@ jobs:
         fi
     - name: Build the Docker zkp image
       run: docker build .
-    - name: Build the Docker secp256k1 image
-      run: docker build -f Exhaustive/Package/Dockerfile .
