@@ -35,7 +35,8 @@ let project = Project(
                 configurations: [
                     .debug(name: "Debug", xcconfig: "Resources/P256K/Debug.xcconfig"),
                     .release(name: "Release", xcconfig: "Resources/P256K/Release.xcconfig")
-                ]
+                ],
+                defaultSettings: .recommended(excluding: ["SKIP_INSTALL"])
             )
         ),
         .target(

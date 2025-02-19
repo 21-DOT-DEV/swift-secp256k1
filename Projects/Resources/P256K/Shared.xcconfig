@@ -41,12 +41,6 @@ ENABLE_USER_SCRIPT_SANDBOXING = YES
 //********************************************//
 
 
-// Skip Install
-// 
-// If enabled, don't install built products even if deployment locations are active.
-
-SKIP_INSTALL = YES
-
 // Targeted Device Families
 // 
 // Comma-separated list of integers corresponding to device families supported by this
