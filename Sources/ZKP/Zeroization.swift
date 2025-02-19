@@ -29,6 +29,12 @@
 //
 //===----------------------------------------------------------------------===//
 #if !(os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS))
+    #if canImport(libsecp256k1_zkp)
+    @_implementationOnly import libsecp256k1_zkp
+    #elseif canImport(libsecp256k1)
+    @_implementationOnly import libsecp256k1
+    #endif
+
     public typealias errno_t = CInt
 
     @discardableResult
