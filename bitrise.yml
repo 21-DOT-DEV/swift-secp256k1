@@ -113,9 +113,12 @@ workflows:
             # Platforms to archive
             PLATFORMS=(
               "iOS"
+              "iOS Simulator"
               "macOS"
-              "watchOS"
               "tvOS"
+              "tvOS Simulator"
+              "watchOS"
+              "watchOS Simulator"
             #  "visionOS"
             )
 
@@ -141,6 +144,23 @@ workflows:
             done
 
             echo "All archives completed successfully."
+
+            # Create an XCFramework to support multiple platforms and architectures
+            # Each -archive parameter specifies a path to a .xcarchive built for a different platform
+            # -framework specifies the framework within those archives to include in the XCFramework
+            # The -output parameter specifies the name and location of the XCFramework to be created
+            xcodebuild -create-xcframework
+              -archive Archives/P256K-iOS.xcarchive -framework P256K.framework
+              -archive Archives/P256K-iOS_Simulator.xcarchive -framework P256K.framework
+              -archive Archives/P256K-macOS.xcarchive -framework P256K.framework
+              -archive Archives/P256K-tvOS.xcarchive -framework P256K.framework
+              -archive Archives/P256K-tvOS_Simulator.xcarchive -framework P256K.framework
+              -archive Archives/P256K-watchOS.xcarchive -framework P256K.framework
+              -archive Archives/P256K-watchOS_Simulator.xcarchive -framework P256K.framework
+              -output P256K.xcframework
+    - deploy-to-bitrise-io:
+        inputs:
+        - deploy_path: "$BITRISE_SOURCE_DIR/P256K.xcframework"
   PULL-PACKAGE-FILES:
     steps:
     - pull-intermediate-files:
