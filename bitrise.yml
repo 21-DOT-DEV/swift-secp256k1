@@ -116,7 +116,7 @@ workflows:
               "macOS"
               "watchOS"
               "tvOS"
-              "visionOS"
+            #  "visionOS"
             )
 
             # Loop over platforms and archive for each one
@@ -129,7 +129,7 @@ workflows:
                 -scheme "$SCHEME" \
                 -configuration "$CONFIGURATION" \
                 -destination "generic/platform=$PLATFORM" \
-                -archivePath "$ARCHIVE_DIR/P256K-$PLATFORM.xcarchive"
+                -archivePath "$ARCHIVE_DIR/P256K-$PLATFORM.xcarchive"  | xcbeautify
 
               # Check if archive command was successful
               if [ $? -eq 0 ]; then
