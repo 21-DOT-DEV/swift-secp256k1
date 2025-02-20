@@ -20,14 +20,6 @@
 ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES
 
 
-// Build Libraries for Distribution
-// 
-// Ensures that your libraries are built for distribution. For Swift, this enables
-// support for library evolution and generation of a module interface file.
-
-BUILD_LIBRARY_FOR_DISTRIBUTION = YES
-
-
 // User Script Sandboxing
 // 
 // If enabled, the build system will sandbox user scripts to disallow undeclared
