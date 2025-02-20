@@ -32,11 +32,14 @@ let project = Project(
                 .package(product: "libsecp256k1")
             ],
             settings: .settings(
+                base: ["BUILD_LIBRARY_FOR_DISTRIBUTION": "YES"],
                 configurations: [
                     .debug(name: "Debug", xcconfig: "Resources/P256K/Debug.xcconfig"),
                     .release(name: "Release", xcconfig: "Resources/P256K/Release.xcconfig")
                 ],
-                defaultSettings: .recommended(excluding: ["SKIP_INSTALL"])
+                defaultSettings: .recommended(
+                    excluding: ["SKIP_INSTALL"]
+                )
             )
         ),
         .target(

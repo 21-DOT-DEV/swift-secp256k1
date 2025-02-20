@@ -5,7 +5,7 @@ project_type: other
 meta:
   bitrise.io:
     stack: osx-xcode-16.2.x
-    machine_type_id: g2-m1.4core
+    machine_type_id: g2.mac.medium
 trigger_map:
 - push_branch: main
   pipeline: PIPELINE-P256K-ZKP
@@ -86,7 +86,7 @@ workflows:
 
             # 1. Generate Xcode project:
             # The command generates an Xcode project using Tuist for the project configuration located in the 'Projects/' directory.
-            swift package --disable-sandbox tuist generate -p Projects/ && \
+            swift package --disable-sandbox tuist generate -p Projects/ --no-open && \
 
             # 2. Build iOS target:
             # Builds the 'P256K' target for the iOS platform using the Tuist project configuration from 'Projects/'.
@@ -97,7 +97,7 @@ workflows:
             swift package --disable-sandbox tuist test XCFramework-Workspace -p Projects/ --platform ios
     - script:
         title: ARCHIVE & CREATE XCFRAMEWORK
-        timeout: 360
+        timeout: 720
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -149,18 +149,19 @@ workflows:
             # Each -archive parameter specifies a path to a .xcarchive built for a different platform
             # -framework specifies the framework within those archives to include in the XCFramework
             # The -output parameter specifies the name and location of the XCFramework to be created
-            xcodebuild -create-xcframework
-              -archive Archives/P256K-iOS.xcarchive -framework P256K.framework
-              -archive Archives/P256K-iOS_Simulator.xcarchive -framework P256K.framework
-              -archive Archives/P256K-macOS.xcarchive -framework P256K.framework
-              -archive Archives/P256K-tvOS.xcarchive -framework P256K.framework
-              -archive Archives/P256K-tvOS_Simulator.xcarchive -framework P256K.framework
-              -archive Archives/P256K-watchOS.xcarchive -framework P256K.framework
-              -archive Archives/P256K-watchOS_Simulator.xcarchive -framework P256K.framework
+            xcodebuild -create-xcframework \
+              -archive "Archives/P256K-iOS.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-iOS Simulator.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-macOS.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-tvOS.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-tvOS Simulator.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-watchOS.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-watchOS Simulator.xcarchive" -framework P256K.framework \
               -output P256K.xcframework
     - deploy-to-bitrise-io:
         inputs:
         - deploy_path: "$BITRISE_SOURCE_DIR/P256K.xcframework"
+        - is_compress: true
   PULL-PACKAGE-FILES:
     steps:
     - pull-intermediate-files:
