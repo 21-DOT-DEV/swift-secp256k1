@@ -8,10 +8,14 @@ on:
 jobs:
   macos:
     name: Build XCFramework
-    runs-on: macos-latest
+    runs-on: macos-15
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Generate Xcode project
         run: swift package --disable-sandbox tuist generate -p Projects/ --no-open
       - name: Archive & Create XCFramework
@@ -75,4 +79,4 @@ jobs:
           7z a -tzip -mx=9 P256K.xcframework.zip P256K.xcframework
       - name: Upload XCFramework
         run: |
-            gh release upload ${{ github.ref_name }} P256K.xcframework.zip
+          gh release upload ${{ github.ref_name }} P256K.xcframework.zip
