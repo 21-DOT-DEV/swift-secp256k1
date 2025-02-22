@@ -87,6 +87,7 @@ let project = Project(
                 .target(name: "P256K")
             ],
             settings: .settings(
+                base: ["ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME": ""],
                 configurations: [
                     .debug(name: "Debug", xcconfig: "Resources/XCFrameworkApp/Debug.xcconfig"),
                     .release(name: "Release", xcconfig: "Resources/XCFrameworkApp/Release.xcconfig")
