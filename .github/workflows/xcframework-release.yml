@@ -8,10 +8,27 @@ on:
 jobs:
   macos:
     name: Build XCFramework
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      # - name: Install Swift 6.0.3
+      #   run: |
+      #     # Install Swift 6.0.3 - https://download.swift.org/swift-6.0.3-release/xcode/swift-6.0.3-RELEASE/swift-6.0.3-RELEASE-osx.pkg
+      #     SWIFT_VERSION=6.0.3
+      #     SWIFT_URL="https://download.swift.org/swift-$SWIFT_VERSION-release/xcode/swift-$SWIFT_VERSION-RELEASE/swift-$SWIFT_VERSION-RELEASE-osx.pkg"
+      #     curl -O $SWIFT_URL
+      #     sudo installer -pkg swift-$SWIFT_VERSION-RELEASE-osx.pkg -target /
+
+      #     # Update the PATH for all subsequent steps
+      #     echo "/Library/Developer/Toolchains/swift-$SWIFT_VERSION-RELEASE.xctoolchain/usr/bin" >> $GITHUB_PATH
+      - name: Verify Swift installation
+        run: |
+          echo "Swift version:"
+          which swift
+          swift --version
       - name: Generate Xcode project
         run: swift package --disable-sandbox tuist generate -p Projects/ --no-open
       - name: Archive & Create XCFramework
