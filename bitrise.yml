@@ -107,7 +107,7 @@ workflows:
             # Define workspace and scheme
             WORKSPACE='Projects/XCFramework.xcworkspace'
             SCHEME='P256K'
-            CONFIGURATION='Release'
+            CONFIGURATION='Debug'
             ARCHIVE_DIR='Archives'
 
             # Platforms to archive
@@ -132,7 +132,7 @@ workflows:
                 -scheme "$SCHEME" \
                 -configuration "$CONFIGURATION" \
                 -destination "generic/platform=$PLATFORM" \
-                -archivePath "$ARCHIVE_DIR/P256K-$PLATFORM.xcarchive"  | xcbeautify
+                -archivePath "$ARCHIVE_DIR/P256K-$PLATFORM.xcarchive" | xcbeautify
 
               # Check if archive command was successful
               if [ $? -eq 0 ]; then
@@ -162,6 +162,32 @@ workflows:
         inputs:
         - deploy_path: "$BITRISE_SOURCE_DIR/P256K.xcframework"
         - is_compress: true
+    - script:
+        title: TEST XCFRAMEWORK
+        timeout: 360
+        inputs:
+        - content: |-
+            #!/usr/bin/env bash
+            # fail if any commands fails; debug log
+            set -ex
+
+            # Comment out the existing target for "P256K" in the Package.swift file.
+            sed -i '' '/\.target(name: "P256K", dependencies: \["libsecp256k1"\]),/s/^/\/\//g' Package.swift
+
+            # Add the new target for "P256K" in the Package.swift file.
+            sed -i '' '/\.target(name: "P256K", dependencies: \["libsecp256k1"\]),/a\
+                .binaryTarget(\
+                    name: "P256K",\
+                    path: "./P256K.xcframework"\
+                ),\
+            ' Package.swift
+
+            # Update the dependency for the ZKPTests target to use the P256K binary target.
+            sed -i '' 's/\.testTarget(name: "ZKPTests", dependencies: \["ZKP"\])/\.testTarget(name: "ZKPTests", dependencies: \["P256K"\])/' Package.swift
+
+            # Run swift tests after modifying the Package.swift, allowing verification 
+            # of the setup with the newly integrated XCFramework.
+            swift test
   PULL-PACKAGE-FILES:
     steps:
     - pull-intermediate-files:
