@@ -14,8 +14,12 @@ jobs:
       with:
         submodules: recursive
     - name: Check symbolic links
-      run: find . -type d -name .build -prune -o -type l ! -exec test -e {} \; -print | grep -q . && exit 1 || exit 0
+      run: |
+        broken_links=$(find . -type d -name .build -prune -o -type l ! -exec test -e {} \; -print)
+        if [ -n "$broken_links" ]; then
+          echo "Broken symbolic links found:"
+          echo "$broken_links"
+          exit 1
+        fi
     - name: Build the Docker zkp image
       run: docker build .
-    - name: Build the Docker secp256k1 image
-      run: docker build -f Exhaustive/Package/Dockerfile .
