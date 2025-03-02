@@ -164,7 +164,7 @@ extension secp256k1.MuSig {
 #if canImport(zkp_bindings)
             secp256k1_pubkey_sort(context, &pointers, pointers.count).boolValue &&
                 secp256k1_musig_pubkey_agg(context, nil, nil, &cache, pointers, pointers.count).boolValue
-#elseif canImport(secp256k1_bindings)
+#elseif canImport(libsecp256k1)
             secp256k1_ec_pubkey_sort(context, &pointers, pointers.count).boolValue &&
                 secp256k1_musig_pubkey_agg(context, nil, &cache, pointers, pointers.count).boolValue
 #endif
@@ -514,7 +514,7 @@ extension secp256k1.MuSig {
             }) else {
             throw secp256k1Error.underlyingCryptoError
         }
-        
+
         return try secp256k1.MuSig.AggregateSignature(Data(signature))
     }
 }
