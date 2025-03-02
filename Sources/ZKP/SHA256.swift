@@ -43,7 +43,7 @@ public enum SHA256 {
     /// - Throws: An error if the tagged hash computation fails.
     /// - Returns: The computed digest.
     public static func taggedHash<D: DataProtocol>(tag: D, data: D) throws -> SHA256Digest {
-        let context = secp256k1.Context.rawRepresentation
+        let context = P256K.Context.rawRepresentation
         let tagBytes = Array(tag)
         let messageBytes = Array(data)
         var output = [UInt8](repeating: 0, count: Self.digestByteCount)

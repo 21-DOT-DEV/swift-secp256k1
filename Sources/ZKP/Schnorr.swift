@@ -16,7 +16,7 @@ import Foundation
 @_implementationOnly import libsecp256k1
 #endif
 
-public extension secp256k1 {
+public extension P256K {
     enum Schnorr {
         /// Fixed number of bytes for Schnorr signature
         ///
@@ -38,7 +38,7 @@ public extension secp256k1 {
 }
 
 /// An elliptic curve that enables secp256k1 signatures and key agreement.
-public extension secp256k1.Schnorr {
+public extension P256K.Schnorr {
     /// A representation of a secp256k1 private key used for signing.
     struct PrivateKey: Equatable {
         /// Generated secp256k1 Signing Key.
@@ -109,7 +109,7 @@ public extension secp256k1.Schnorr {
         }
 
         /// The key format representation of the public key.
-        public var format: secp256k1.Format {
+        public var format: P256K.Format {
             baseKey.format
         }
 
@@ -150,7 +150,7 @@ public extension secp256k1.Schnorr {
         /// - Throws: An error if the raw representation does not create a public key.
         public init<D: ContiguousBytes>(
             dataRepresentation data: D,
-            format: secp256k1.Format
+            format: P256K.Format
         ) throws {
             self.baseKey = try PublicKeyImplementation(
                 dataRepresentation: data,
@@ -209,7 +209,7 @@ public extension secp256k1.Schnorr {
 // MARK: - Schnorr Signatures
 
 /// A Schnorr (Schnorr Digital Signature Scheme) Signature
-public extension secp256k1.Schnorr {
+public extension P256K.Schnorr {
     struct SchnorrSignature: ContiguousBytes, DataSignature {
         /// Returns the raw signature in a fixed 64-byte format.
         public var dataRepresentation: Data
@@ -219,7 +219,7 @@ public extension secp256k1.Schnorr {
         ///     - dataRepresentation: A raw representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the rawRepresentation count
         public init<D: DataProtocol>(dataRepresentation: D) throws {
-            guard dataRepresentation.count == secp256k1.ByteLength.signature else {
+            guard dataRepresentation.count == P256K.ByteLength.signature else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
@@ -231,7 +231,7 @@ public extension secp256k1.Schnorr {
         ///     - rawRepresentation: A raw representation of the key as a collection of contiguous bytes.
         /// - Throws: If there is a failure with the dataRepresentation count
         init(_ dataRepresentation: Data) throws {
-            guard dataRepresentation.count == secp256k1.ByteLength.signature else {
+            guard dataRepresentation.count == P256K.ByteLength.signature else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
@@ -251,7 +251,7 @@ public extension secp256k1.Schnorr {
 
 // MARK: - secp256k1 + Schnorr
 
-extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
+extension P256K.Schnorr.PrivateKey: DigestSigner, Signer {
     /// Generates an Schnorr signature from a hash of a variable length data object
     ///
     /// This function uses SHA256 to create a hash of the variable length the data argument to ensure only 32-byte messages are signed.
@@ -263,8 +263,8 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
     ///     - data: The data object to hash and sign.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
-    public func signature<D: DataProtocol>(for data: D) throws -> secp256k1.Schnorr.SchnorrSignature {
-        try signature(for: data, auxiliaryRand: SecureBytes(count: secp256k1.ByteLength.dimension).bytes)
+    public func signature<D: DataProtocol>(for data: D) throws -> P256K.Schnorr.SchnorrSignature {
+        try signature(for: data, auxiliaryRand: SecureBytes(count: P256K.ByteLength.dimension).bytes)
     }
 
     /// Generates an Schnorr signature from the hash digest object
@@ -278,8 +278,8 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
     ///     - digest: The digest to sign.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
-    public func signature<D: Digest>(for digest: D) throws -> secp256k1.Schnorr.SchnorrSignature {
-        try signature(for: digest, auxiliaryRand: SecureBytes(count: secp256k1.ByteLength.dimension).bytes)
+    public func signature<D: Digest>(for digest: D) throws -> P256K.Schnorr.SchnorrSignature {
+        try signature(for: digest, auxiliaryRand: SecureBytes(count: P256K.ByteLength.dimension).bytes)
     }
 
     /// Generates an Schnorr signature from a hash of a variable length data object
@@ -294,7 +294,7 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
     ///     - auxiliaryRand: Auxiliary randomness.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
-    public func signature<D: DataProtocol>(for data: D, auxiliaryRand: [UInt8]) throws -> secp256k1.Schnorr.SchnorrSignature {
+    public func signature<D: DataProtocol>(for data: D, auxiliaryRand: [UInt8]) throws -> P256K.Schnorr.SchnorrSignature {
         try signature(for: SHA256.hash(data: data), auxiliaryRand: auxiliaryRand)
     }
 
@@ -310,7 +310,7 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
     ///     - auxiliaryRand: Auxiliary randomness; BIP340 requires 32-bytes.
     /// - Returns: The Schnorr Signature.
     /// - Throws: If there is a failure producing the signature.
-    public func signature<D: Digest>(for digest: D, auxiliaryRand: [UInt8]) throws -> secp256k1.Schnorr.SchnorrSignature {
+    public func signature<D: Digest>(for digest: D, auxiliaryRand: [UInt8]) throws -> P256K.Schnorr.SchnorrSignature {
         var hashDataBytes = Array(digest).bytes
         var randomBytes = auxiliaryRand
 
@@ -333,15 +333,15 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
         message: inout [UInt8],
         auxiliaryRand: UnsafeMutableRawPointer?,
         strict: Bool = false
-    ) throws -> secp256k1.Schnorr.SchnorrSignature {
-        guard strict == false || message.count == secp256k1.ByteLength.dimension else {
+    ) throws -> P256K.Schnorr.SchnorrSignature {
+        guard strict == false || message.count == P256K.ByteLength.dimension else {
             throw secp256k1Error.incorrectParameterSize
         }
 
-        let context = secp256k1.Context.rawRepresentation
-        let magic = secp256k1.Schnorr.magic
+        let context = P256K.Context.rawRepresentation
+        let magic = P256K.Schnorr.magic
         var keypair = secp256k1_keypair()
-        var signature = [UInt8](repeating: 0, count: secp256k1.ByteLength.signature)
+        var signature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
         var extraParams = secp256k1_schnorrsig_extraparams(magic: magic, noncefp: nil, ndata: auxiliaryRand)
 
         guard secp256k1_keypair_create(context, &keypair, Array(dataRepresentation)).boolValue,
@@ -356,13 +356,13 @@ extension secp256k1.Schnorr.PrivateKey: DigestSigner, Signer {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try secp256k1.Schnorr.SchnorrSignature(Data(bytes: signature, count: secp256k1.ByteLength.signature))
+        return try P256K.Schnorr.SchnorrSignature(Data(bytes: signature, count: P256K.ByteLength.signature))
     }
 }
 
 // MARK: - Schnorr + Validating Key
 
-extension secp256k1.Schnorr.XonlyKey: DigestValidator, DataValidator {
+extension P256K.Schnorr.XonlyKey: DigestValidator, DataValidator {
     /// Verifies a Schnorr signature with a variable length data object
     ///
     /// This function uses SHA256 to create a hash of the variable length the data argument to ensure only 32-byte messages are verified.
@@ -374,7 +374,7 @@ extension secp256k1.Schnorr.XonlyKey: DigestValidator, DataValidator {
     ///   - signature: The signature to verify
     ///   - data: The data that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
-    public func isValidSignature<D: DataProtocol>(_ signature: secp256k1.Schnorr.SchnorrSignature, for data: D) -> Bool {
+    public func isValidSignature<D: DataProtocol>(_ signature: P256K.Schnorr.SchnorrSignature, for data: D) -> Bool {
         isValidSignature(signature, for: SHA256.hash(data: data))
     }
 
@@ -389,7 +389,7 @@ extension secp256k1.Schnorr.XonlyKey: DigestValidator, DataValidator {
     ///   - signature: The signature to verify.
     ///   - digest: The digest that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
-    public func isValidSignature<D: Digest>(_ signature: secp256k1.Schnorr.SchnorrSignature, for digest: D) -> Bool {
+    public func isValidSignature<D: Digest>(_ signature: P256K.Schnorr.SchnorrSignature, for digest: D) -> Bool {
         var hashDataBytes = Array(digest).bytes
 
         return isValid(signature, for: &hashDataBytes)
@@ -405,8 +405,8 @@ extension secp256k1.Schnorr.XonlyKey: DigestValidator, DataValidator {
     ///   - signature: The signature to verify.
     ///   - message:  The message that was signed.
     /// - Returns: True if the signature is valid, false otherwise.
-    public func isValid(_ signature: secp256k1.Schnorr.SchnorrSignature, for message: inout [UInt8]) -> Bool {
-        let context = secp256k1.Context.rawRepresentation
+    public func isValid(_ signature: P256K.Schnorr.SchnorrSignature, for message: inout [UInt8]) -> Bool {
+        let context = P256K.Context.rawRepresentation
         var pubKey = secp256k1_xonly_pubkey()
 
         return secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&

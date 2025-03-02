@@ -26,7 +26,7 @@ struct RecoveryTestSuite {
         let expectedSignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVg=="
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Recovery.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey = try! P256K.Recovery.PrivateKey(dataRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
         let recoverySignature = try! privateKey.signature(for: messageData)
@@ -46,7 +46,7 @@ struct RecoveryTestSuite {
         let expectedRecoverySignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVgE="
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Recovery.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey = try! P256K.Recovery.PrivateKey(dataRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
         let recoverySignature = try! privateKey.signature(for: messageData)
@@ -54,7 +54,7 @@ struct RecoveryTestSuite {
         // Verify the recovery signature matches the expected output
         #expect(recoverySignature.dataRepresentation.base64EncodedString() == expectedRecoverySignature)
 
-        let publicKey = try! secp256k1.Recovery.PublicKey(messageData, signature: recoverySignature)
+        let publicKey = try! P256K.Recovery.PublicKey(messageData, signature: recoverySignature)
 
         // Verify the recovered public key matches the expected public key
         #expect(publicKey.dataRepresentation == privateKey.publicKey.dataRepresentation)

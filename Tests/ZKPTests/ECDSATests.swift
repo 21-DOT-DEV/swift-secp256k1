@@ -25,7 +25,7 @@ struct ECDSATestSuite {
         let expectedSignature = "rPnhleCU8vQOthm5h4gX/5UbmxH6w3zw1ykAmLvvtXT4YGKBoiMaP8eBBF8upN8IaTYmO7+o0Vyhf+cODD1uVg=="
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
         let signature = try! privateKey.signature(for: messageData)
@@ -39,7 +39,7 @@ struct ECDSATestSuite {
     func verifyingTest() {
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
         let signature = try! privateKey.signature(for: messageData)
@@ -55,10 +55,10 @@ struct ECDSATestSuite {
             options: .ignoreUnknownCharacters)!
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
-        let signature = try! secp256k1.Signing.ECDSASignature(derRepresentation: expectedDerSignature)
+        let signature = try! P256K.Signing.ECDSASignature(derRepresentation: expectedDerSignature)
 
         // Convert XCTAssertTrue to #expect
         #expect(privateKey.publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)))
@@ -67,14 +67,14 @@ struct ECDSATestSuite {
     @Test("Verify invalid raw signature initialization throws correct error")
     func testInvalidRawSignature() {
         #expect(throws: secp256k1Error.incorrectParameterSize) {
-            _ = try secp256k1.Signing.ECDSASignature(dataRepresentation: Data())
+            _ = try P256K.Signing.ECDSASignature(dataRepresentation: Data())
         }
     }
 
     @Test("Verify invalid DER signature initialization throws correct error")
     func testInvalidDerSignature() {
         #expect(throws: secp256k1Error.underlyingCryptoError) {
-            _ = try secp256k1.Signing.ECDSASignature(derRepresentation: Data())
+            _ = try P256K.Signing.ECDSASignature(derRepresentation: Data())
         }
     }
 
@@ -89,7 +89,7 @@ struct ECDSATestSuite {
         """
 
         let expectedDerSignature = "MEQCIC8k5whKPsPg7XtWTInvhGL4iEU6lP6yPdpEXXZ2mOhFAiAZ3Po9tEDV8mQ8LDzwF0nhPmAn9VLYG8bkuY6PKruZNQ=="
-        let privateKey = try! secp256k1.Signing.PrivateKey(pemRepresentation: privateKeyString)
+        let privateKey = try! P256K.Signing.PrivateKey(pemRepresentation: privateKeyString)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
         let signature = try! privateKey.signature(for: messageData)
@@ -111,8 +111,8 @@ struct ECDSATestSuite {
         let expectedDerSignature = Data(base64Encoded: expectedSignature, options: .ignoreUnknownCharacters)!
 
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
-        let signature = try! secp256k1.Signing.ECDSASignature(derRepresentation: expectedDerSignature)
-        let publicKey = try! secp256k1.Signing.PublicKey(pemRepresentation: publicKeyString)
+        let signature = try! P256K.Signing.ECDSASignature(derRepresentation: expectedDerSignature)
+        let publicKey = try! P256K.Signing.PublicKey(pemRepresentation: publicKeyString)
 
         #expect(publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)), "Signature validation failed")
     }

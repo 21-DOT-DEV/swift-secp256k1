@@ -16,14 +16,14 @@ import Foundation
 @_implementationOnly import libsecp256k1
 #endif
 
-public extension secp256k1.Signing.PublicKey {
+public extension P256K.Signing.PublicKey {
     /// Create a new `PublicKey` by combining the current public key with an array of public keys.
     /// - Parameters:
     ///   - pubkeys: the array of public key objects to be combined with
     ///   - format: the format of the combined `PublicKey` object
     /// - Returns: combined `PublicKey` object
-    func combine(_ pubkeys: [Self], format: secp256k1.Format = .compressed) throws -> Self {
-        let context = secp256k1.Context.rawRepresentation
+    func combine(_ pubkeys: [Self], format: P256K.Format = .compressed) throws -> Self {
+        let context = P256K.Context.rawRepresentation
         let allPubKeys = [self] + pubkeys
         var pubKeyLen = format.length
         var combinedKey = secp256k1_pubkey()

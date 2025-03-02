@@ -22,7 +22,7 @@ struct TaprootTestSuite {
     @Test("Test Taproot Derivation")
     func testTaprootDerivation() {
         let privateKeyBytes = try! "41F41D69260DF4CF277826A9B65A3717E4EEDDBEEDF637F212CA096576479361".bytes
-        let privateKey = try! secp256k1.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey = try! P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
         let internalKeyBytes = try! "cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115".bytes
         let internalKey = privateKey.xonly
 
@@ -52,7 +52,7 @@ struct TaprootTestSuite {
         let array = withUnsafeBytes(of: &value) { Array($0).prefix(numberOfBytes) }
 
         let aliceBytes = try! "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90".bytes
-        let alice = try! secp256k1.Signing.PrivateKey(dataRepresentation: aliceBytes)
+        let alice = try! P256K.Signing.PrivateKey(dataRepresentation: aliceBytes)
         let aliceScript = Data([UInt8(array.count)] + array) +
         OP_CHECKSEQUENCEVERIFY +
         OP_DROP +
@@ -68,7 +68,7 @@ struct TaprootTestSuite {
         #expect(String(bytes: Array(aliceLeafHash).bytes) == aliceExpectedLeafHash, "Alice's leaf hash mismatch")
 
         let bobBytes = try! "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9".bytes
-        let bob = try! secp256k1.Signing.PrivateKey(dataRepresentation: bobBytes)
+        let bob = try! P256K.Signing.PrivateKey(dataRepresentation: bobBytes)
         let preimageBytes = try! "6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333".bytes
         let bobScript = OP_SHA256 +
         Data([UInt8(preimageBytes.count)] + preimageBytes.bytes) +

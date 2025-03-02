@@ -24,7 +24,7 @@ struct TweakTestSuite {
         let expectedPublicKey = "023521df7b94248ffdf0d37f738a4792cc3932b6b1b89ef71cddde8251383b26e7"
         let expectedTweakedPrivateKey = "5f0da318c6e02f653a789950e55756ade9f194e1ec228d7f368de1bd821322b6"
         let privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
         let tweak = SHA256.hash(data: expectedPrivateKey.data(using: .utf8)!)
 
         // Tweak the private key

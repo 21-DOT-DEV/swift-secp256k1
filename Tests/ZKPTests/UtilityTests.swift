@@ -23,15 +23,15 @@ struct UtilityTestSuite {
     func testKeypairSafeCompare() {
         let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
         var privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey0 = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
-        let privateKey1 = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey0 = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey1 = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
 
         // Verify the keys match
         #expect(privateKey0 == privateKey1)
 
         let expectedFailingPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888dd"
         privateKeyBytes = try! expectedFailingPrivateKey.bytes
-        let privateKey2 = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey2 = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
 
         #expect(privateKey0 != privateKey2)
     }
