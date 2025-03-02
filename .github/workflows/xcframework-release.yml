@@ -1,0 +1,78 @@
+
+
+
+name: XCFramework Release
+on:
+  release:
+    types: [published]
+jobs:
+  macos:
+    name: Build XCFramework
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Generate Xcode project
+        run: swift package --disable-sandbox tuist generate -p Projects/ --no-open
+      - name: Archive & Create XCFramework
+        run: |
+            # Define workspace and scheme
+            WORKSPACE='Projects/XCFramework.xcworkspace'
+            SCHEME='P256K'
+            CONFIGURATION='Release'
+            ARCHIVE_DIR='Archives'
+
+            # Platforms to archive
+            PLATFORMS=(
+              "iOS"
+              "iOS Simulator"
+              "macOS"
+              "tvOS"
+              "tvOS Simulator"
+              "watchOS"
+              "watchOS Simulator"
+              "visionOS"
+            )
+
+            # Loop over platforms and archive for each one
+            for PLATFORM in "${PLATFORMS[@]}"; do
+              echo "Archiving for $PLATFORM..."
+
+              # Run xcodebuild archive for each platform
+              xcodebuild archive \
+                -workspace "$WORKSPACE" \
+                -scheme "$SCHEME" \
+                -configuration "$CONFIGURATION" \
+                -destination "generic/platform=$PLATFORM" \
+                -archivePath "$ARCHIVE_DIR/P256K-$PLATFORM.xcarchive"
+
+              # Check if archive command was successful
+              if [ $? -eq 0 ]; then
+                echo "$PLATFORM archive created successfully."
+              else
+                echo "Failed to archive for $PLATFORM. Exiting."
+                exit 1
+              fi
+            done
+
+            echo "All archives completed successfully."
+
+            # Create an XCFramework to support multiple platforms and architectures
+            # Each -archive parameter specifies a path to a .xcarchive built for a different platform
+            # -framework specifies the framework within those archives to include in the XCFramework
+            # The -output parameter specifies the name and location of the XCFramework to be created
+            xcodebuild -create-xcframework \
+              -archive "Archives/P256K-iOS.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-iOS Simulator.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-macOS.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-tvOS.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-tvOS Simulator.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-watchOS.xcarchive" -framework P256K.framework \
+              -archive "Archives/P256K-watchOS Simulator.xcarchive" -framework P256K.framework \
+              -output P256K.xcframework
+      - name: 7z XCFramework
+        run: |
+          7z a -tzip -mx=9 P256K.xcframework.zip P256K.xcframework
+      - name: Upload XCFramework
+        run: |
+            gh release upload ${{ github.ref_name }} P256K.xcframework.zip
