@@ -58,10 +58,10 @@ import secp256k1
 
 // Private key
 let privateBytes = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
-let privateKey = try! secp256k1.Signing.PrivateKey(rawRepresentation: privateBytes)
+let privateKey = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateBytes)
 
 // Public key
-print(String(bytes: privateKey.publicKey.rawRepresentation))
+print(String(bytes: privateKey.publicKey.dataRepresentation))
 
 // ECDSA signature
 let messageData = "We're all Satoshi.".data(using: .utf8)!
