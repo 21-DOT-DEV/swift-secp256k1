@@ -149,9 +149,9 @@ public extension secp256k1.MuSig {
     /// Represents the result of nonce generation, containing both public and secret nonces.
     @frozen struct NonceResult: ~Copyable {
         /// The public nonce.
-        let pubnonce: secp256k1.Schnorr.Nonce
+        public let pubnonce: secp256k1.Schnorr.Nonce
         /// The secret nonce.
-        let secnonce: secp256k1.Schnorr.SecureNonce
+        public let secnonce: secp256k1.Schnorr.SecureNonce
     }
 }
 
