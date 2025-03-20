@@ -114,20 +114,27 @@ let symmetricKey = SHA256.hash(data: sharedSecret.bytes)
 let privateSign1 = try! secp256k1.Signing.PrivateKey()
 let privateSign2 = try! secp256k1.Signing.PrivateKey()
 
-let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateSign1.rawRepresentation)
-let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey(rawRepresentation: privateSign2.rawRepresentation)
+let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey(dataRepresentation: privateSign1.dataRepresentation)
+let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey(dataRepresentation: privateSign2.dataRepresentation)
+
+let publicKey1 = try! secp256k1.KeyAgreement.PublicKey(dataRepresentation: privateKey1.publicKey.dataRepresentation)
 
 let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
-let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey)
+let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: publicKey1)
 
-let sharedSecretSign1 = try! secp256k1.Signing.PrivateKey(rawRepresentation: sharedSecret1.bytes)
-let sharedSecretSign2 = try! secp256k1.Signing.PrivateKey(rawRepresentation: sharedSecret2.bytes)
+let symmetricKey1 = SHA256.hash(data: sharedSecret1.bytes)
+let symmetricKey2 = SHA256.hash(data: sharedSecret2.bytes)
 
-// Payable Silent Payment public key
-let xonlyTweak2 = try! sharedSecretSign2.publicKey.xonly.add(privateSign1.publicKey.xonly.bytes)
+let sharedSecretSign1 = try! secp256k1.Signing.PrivateKey(dataRepresentation: symmetricKey1.bytes)
+let sharedSecretSign2 = try! secp256k1.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
 
 // Spendable Silent Payment private key
 let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xonly.bytes)
+let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
+
+let schnorrPrivate = try! secp256k1.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)
+// Payable Silent Payment public key
+let xonlyTweak2 = try! schnorrPrivate.xonly.add(privateSign1.publicKey.xonly.bytes)
 ```
 
 ## Recovery
