@@ -223,8 +223,8 @@ let aggregateSignature = try secp256k1.MuSig.aggregateSignatures([firstPartialSi
 
 // Verify the aggregate signature
 let isValid = aggregateKey.isValidSignature(
-    aggregateSignature,
-    publicKey: firstPublicKey,
+    firstPartialSignature,
+    publicKey: firstPrivateKey.publicKey,
     nonce: firstNonce.pubnonce,
     for: messageHash
 )
