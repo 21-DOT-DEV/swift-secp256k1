@@ -219,6 +219,10 @@ public extension secp256k1 {
             }
             
             public func toFormat(_ format: secp256k1.Format) throws -> Self {
+                // If the format is already the desired one, return same key
+                if self.format == format {
+                    return self
+                }
                 
                 let context = secp256k1.Context.rawRepresentation
                 var pubKey = rawRepresentation
