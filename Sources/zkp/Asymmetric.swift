@@ -217,6 +217,24 @@ public extension secp256k1 {
                     throw CryptoKitError.incorrectParameterSize
                 }
             }
+            
+            public func toFormat(_ format: secp256k1.Format) throws -> Self {
+                // If the format is already the desired one, return same key
+                if self.format == format {
+                    return self
+                }
+                
+                let context = secp256k1.Context.rawRepresentation
+                var pubKey = rawRepresentation
+                var pubKeyLen = format.length
+                var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
+                
+                guard secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+                    throw secp256k1Error.underlyingCryptoError
+                }
+                
+                return try Self(dataRepresentation: pubKeyBytes, format: format)
+            }
         }
 
         /// The corresponding x-only public key for the secp256k1 curve.
