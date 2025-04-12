@@ -64,6 +64,9 @@ extension secp256k1 {
         /// Number of bytes in a secp256k1 signature.
         @inlinable
         static var partialSignature: Int { 36 }
+        
+        @inlinable
+        static var uncompressedPublicKey: Int { 65 }
     }
 }
 

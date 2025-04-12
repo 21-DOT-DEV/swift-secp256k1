@@ -151,6 +151,24 @@ public extension secp256k1 {
                     return try Self(dataRepresentation: negatedKey.dataRepresentation, format: negatedKey.format)
                 }
             }
+            
+            /// Returns a public key in uncompressed 65 byte form
+            var uncompressedRepresentation: Data {
+                let context = secp256k1.Context.rawRepresentation
+                var pubKey = rawRepresentation
+                var pubKeyLen = ByteLength.uncompressedPublicKey
+                var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
+
+                _ = secp256k1_ec_pubkey_serialize(
+                    context,
+                    &pubKeyBytes,
+                    &pubKeyLen,
+                    &pubKey,
+                    UInt32(SECP256K1_EC_UNCOMPRESSED)
+                )
+
+                return Data(pubKeyBytes)
+            }
 
             /// Generates a secp256k1 public key.
             ///
@@ -216,24 +234,6 @@ public extension secp256k1 {
                 default:
                     throw CryptoKitError.incorrectParameterSize
                 }
-            }
-            
-            public func toFormat(_ format: secp256k1.Format) throws -> Self {
-                // If the format is already the desired one, return same key
-                if self.format == format {
-                    return self
-                }
-                
-                let context = secp256k1.Context.rawRepresentation
-                var pubKey = rawRepresentation
-                var pubKeyLen = format.length
-                var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
-                
-                guard secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
-                    throw secp256k1Error.underlyingCryptoError
-                }
-                
-                return try Self(dataRepresentation: pubKeyBytes, format: format)
             }
         }
 
