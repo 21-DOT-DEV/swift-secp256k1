@@ -153,7 +153,7 @@ public extension secp256k1 {
             }
             
             /// Returns a public key in uncompressed 65 byte form
-            var uncompressedRepresentation: Data {
+            public var uncompressedRepresentation: Data {
                 let context = secp256k1.Context.rawRepresentation
                 var pubKey = rawRepresentation
                 var pubKeyLen = ByteLength.uncompressedPublicKey
