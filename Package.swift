@@ -7,8 +7,9 @@ let package = Package(
     products: [
         // WARNING: These APIs should not be considered stable and may change at any time.
         .library(name: "libsecp256k1", targets: ["libsecp256k1"]),
+        .library(name: "libsecp256k1_zkp", targets: ["libsecp256k1_zkp"]),
         .library(name: "P256K", targets: ["P256K"]),
-        .library(name: "zkp", targets: ["zkp"])
+        .library(name: "ZKP", targets: ["ZKP"])
     ],
     dependencies: [
         // Dependencies used for package development
@@ -19,13 +20,13 @@ let package = Package(
     ],
     targets: [
         .target(name: "P256K", dependencies: ["libsecp256k1"]),
-        .target(name: "zkp", dependencies: ["zkp_bindings"]),
+        .target(name: "ZKP", dependencies: ["libsecp256k1_zkp"]),
         .target(
             name: "libsecp256k1",
             cSettings: PackageDescription.CSetting.baseSettings
         ),
         .target(
-            name: "zkp_bindings",
+            name: "libsecp256k1_zkp",
             cSettings: PackageDescription.CSetting.baseSettings + [
                 .define("ENABLE_MODULE_BPPP"),
                 .define("ENABLE_MODULE_ECDSA_ADAPTOR"),
@@ -40,7 +41,7 @@ let package = Package(
                 .headerSearchPath("../../Submodules/secp256k1-zkp/src")
             ]
         ),
-        .testTarget(name: "zkpTests", dependencies: ["zkp"])
+        .testTarget(name: "ZKPTests", dependencies: ["ZKP"])
     ],
     swiftLanguageModes: [.v5],
     cLanguageStandard: .c89

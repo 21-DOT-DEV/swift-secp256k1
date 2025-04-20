@@ -9,7 +9,12 @@
 //
 
 import Foundation
+
+#if canImport(libsecp256k1_zkp)
+@_implementationOnly import libsecp256k1_zkp
+#elseif canImport(libsecp256k1)
 @_implementationOnly import libsecp256k1
+#endif
 
 public extension secp256k1 {
     /// MuSig is a multi-signature scheme that allows multiple parties to sign a message using their own private keys,
@@ -158,7 +163,7 @@ extension secp256k1.MuSig {
 
         guard PointerArrayUtility
             .withUnsafePointerArray(pubkeys.map { $0.baseKey.rawRepresentation }, { pointers in
-#if canImport(zkp_bindings)
+#if canImport(libsecp256k1_zkp)
             secp256k1_pubkey_sort(context, &pointers, pointers.count).boolValue &&
                 secp256k1_musig_pubkey_agg(context, nil, nil, &cache, pointers, pointers.count).boolValue
 #elseif canImport(libsecp256k1)
@@ -377,14 +382,14 @@ extension secp256k1.Schnorr.PrivateKey {
         publicKeyAggregate.keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
         publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
-#if canImport(zkp_bindings)
+#if canImport(libsecp256k1_zkp)
         guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache, nil).boolValue,
               secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
               secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
         else {
             throw secp256k1Error.underlyingCryptoError
         }
-#else
+#elseif canImport(libsecp256k1)
         guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache).boolValue,
               secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
               secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
