@@ -16,7 +16,7 @@ import Foundation
 @_implementationOnly import libsecp256k1
 #endif
 
-public extension secp256k1.MuSig {
+public extension P256K.MuSig {
     /// Represents an aggregated nonce for MuSig operations.
     ///
     /// This struct is used in the MuSig multi-signature scheme to handle nonce aggregation.
@@ -28,8 +28,8 @@ public extension secp256k1.MuSig {
         ///
         /// - Parameter pubnonces: An array of public nonces to aggregate.
         /// - Throws: An error if nonce aggregation fails.
-        public init(aggregating pubnonces: [secp256k1.Schnorr.Nonce]) throws {
-            let context = secp256k1.Context.rawRepresentation
+        public init(aggregating pubnonces: [P256K.Schnorr.Nonce]) throws {
+            let context = P256K.Context.rawRepresentation
             var aggNonce = secp256k1_musig_aggnonce()
 
             guard PointerArrayUtility.withUnsafePointerArray(
@@ -74,8 +74,8 @@ public extension secp256k1.MuSig {
         /// - Returns: A `NonceResult` containing the generated public and secret nonces.
         /// - Throws: An error if nonce generation fails.
         public static func generate(
-            secretKey: secp256k1.Schnorr.PrivateKey?,
-            publicKey: secp256k1.Schnorr.PublicKey,
+            secretKey: P256K.Schnorr.PrivateKey?,
+            publicKey: P256K.Schnorr.PublicKey,
             msg32: [UInt8],
             extraInput32: [UInt8]? = nil
         ) throws -> NonceResult {
@@ -103,12 +103,12 @@ public extension secp256k1.MuSig {
         /// - Throws: An error if nonce generation fails.
         public static func generate(
             sessionID: [UInt8],
-            secretKey: secp256k1.Schnorr.PrivateKey?,
-            publicKey: secp256k1.Schnorr.PublicKey,
+            secretKey: P256K.Schnorr.PrivateKey?,
+            publicKey: P256K.Schnorr.PublicKey,
             msg32: [UInt8],
             extraInput32: [UInt8]?
         ) throws -> NonceResult {
-            let context = secp256k1.Context.rawRepresentation
+            let context = P256K.Context.rawRepresentation
             var secnonce = secp256k1_musig_secnonce()
             var pubnonce = secp256k1_musig_pubnonce()
             var pubkey = publicKey.baseKey.rawRepresentation
@@ -146,8 +146,8 @@ public extension secp256k1.MuSig {
 #endif
 
             return NonceResult(
-                pubnonce: secp256k1.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) }),
-                secnonce: secp256k1.Schnorr.SecureNonce(Swift.withUnsafeBytes(of: secnonce) { Data($0) })
+                pubnonce: P256K.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) }),
+                secnonce: P256K.Schnorr.SecureNonce(Swift.withUnsafeBytes(of: secnonce) { Data($0) })
             )
         }
     }
@@ -155,13 +155,13 @@ public extension secp256k1.MuSig {
     /// Represents the result of nonce generation, containing both public and secret nonces.
     @frozen struct NonceResult: ~Copyable {
         /// The public nonce.
-        public let pubnonce: secp256k1.Schnorr.Nonce
+        public let pubnonce: P256K.Schnorr.Nonce
         /// The secret nonce.
-        public let secnonce: secp256k1.Schnorr.SecureNonce
+        public let secnonce: P256K.Schnorr.SecureNonce
     }
 }
 
-public extension secp256k1.Schnorr {
+public extension P256K.Schnorr {
     /// Represents a secure nonce used for MuSig operations.
     ///
     /// This struct is used to handle secure nonces in the MuSig signing process.

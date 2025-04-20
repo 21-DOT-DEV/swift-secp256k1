@@ -23,7 +23,7 @@
 /// A constructed context can safely be used from multiple threads simultaneously, but API calls that take a non-const
 /// pointer to a context need exclusive access to it. In particular this is the case for `secp256k1_context_destroy`,
 /// `secp256k1_context_preallocated_destroy`, and `secp256k1_context_randomize`.
-public extension secp256k1 {
+public extension P256K {
     /// A structure that represents the context flags for `secp256k1` operations.
     ///
     /// This structure conforms to the `OptionSet` protocol, allowing you to combine different context flags.
@@ -34,7 +34,7 @@ public extension secp256k1 {
     /// memory for the context.
     struct Context: OptionSet {
         /// The raw representation of `secp256k1.Context`
-        public static let rawRepresentation = try! secp256k1.Context.create()
+        public static let rawRepresentation = try! P256K.Context.create()
 
         /// The raw value of the context flags.
         public let rawValue: UInt32
@@ -63,7 +63,7 @@ public extension secp256k1 {
         /// the `Context` structure. The method throws an error if the context creation or randomization fails. If the
         /// context creation is successful, the method returns an opaque pointer to the created context.
         public static func create(_ context: Self = .none) throws -> OpaquePointer {
-            var randomBytes = SecureBytes(count: secp256k1.ByteLength.privateKey).bytes
+            var randomBytes = SecureBytes(count: P256K.ByteLength.privateKey).bytes
             guard let context = secp256k1_context_create(context.rawValue),
                   secp256k1_context_randomize(context, &randomBytes).boolValue else {
                 throw secp256k1Error.underlyingCryptoError

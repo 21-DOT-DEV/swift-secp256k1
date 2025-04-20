@@ -23,32 +23,32 @@ struct MuSigTestSuite {
     func testMusig() {
         // Test MuSig aggregate
         let privateKeys = [
-            try! secp256k1.Schnorr.PrivateKey(),
-            try! secp256k1.Schnorr.PrivateKey(),
-            try! secp256k1.Schnorr.PrivateKey()
+            try! P256K.Schnorr.PrivateKey(),
+            try! P256K.Schnorr.PrivateKey(),
+            try! P256K.Schnorr.PrivateKey()
         ]
 
         let publicKeys = privateKeys.map(\.publicKey)
-        let aggregate = try! secp256k1.MuSig.aggregate(publicKeys)
+        let aggregate = try! P256K.MuSig.aggregate(publicKeys)
 
         // Create a message to sign
         let message = "Hello, MuSig!".data(using: .utf8)!
         let messageHash = SHA256.hash(data: message)
 
         // Generate nonces for each signer
-        let firstNonce = try! secp256k1.MuSig.Nonce.generate(
+        let firstNonce = try! P256K.MuSig.Nonce.generate(
             secretKey: privateKeys[0],
             publicKey: privateKeys[0].publicKey,
             msg32: Array(messageHash)
         )
 
-        let secondNonce = try! secp256k1.MuSig.Nonce.generate(
+        let secondNonce = try! P256K.MuSig.Nonce.generate(
             secretKey: privateKeys[1],
             publicKey: privateKeys[1].publicKey,
             msg32: Array(messageHash)
         )
 
-        let thirdNonce = try! secp256k1.MuSig.Nonce.generate(
+        let thirdNonce = try! P256K.MuSig.Nonce.generate(
             secretKey: privateKeys[2],
             publicKey: privateKeys[2].publicKey,
             msg32: Array(messageHash)
@@ -58,7 +58,7 @@ struct MuSigTestSuite {
         let publicNonces = [firstNonce.pubnonce, secondNonce.pubnonce, thirdNonce.pubnonce]
 
         // Aggregate public nonces
-        let aggregateNonce = try! secp256k1.MuSig.Nonce(aggregating: publicNonces)
+        let aggregateNonce = try! P256K.MuSig.Nonce(aggregating: publicNonces)
 
         // Create partial signatures
         let firstPartialSignature = try! privateKeys[0].partialSignature(
@@ -95,7 +95,7 @@ struct MuSigTestSuite {
 //        )
 
         // Aggregate partial signatures
-        _ = try! secp256k1.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature, thirdPartialSignature])
+        _ = try! P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature, thirdPartialSignature])
 
         // Verify the signature
         #expect(aggregate.isValidSignature(firstPartialSignature, publicKey: publicKeys.first!, nonce: publicNonces.first!, for: messageHash), "MuSig signature verification failed.")

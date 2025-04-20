@@ -11,7 +11,7 @@
 import Foundation
 
 /// An elliptic curve that enables secp256k1 signatures and key agreement.
-public extension secp256k1 {
+public extension P256K {
     /// A mechanism used to create or verify a cryptographic signature using the secp256k1
     /// elliptic curve digital signature algorithm (ECDSA).
     enum Signing {
@@ -49,7 +49,7 @@ public extension secp256k1 {
             ///
             /// - Parameter format: The key format, default is .compressed.
             /// - Throws: An error if the private key cannot be generated.
-            public init(format: secp256k1.Format = .compressed) throws {
+            public init(format: P256K.Format = .compressed) throws {
                 self.baseKey = try PrivateKeyImplementation(format: format)
             }
 
@@ -58,7 +58,7 @@ public extension secp256k1 {
             /// - Parameter data: A data representation of the key.
             /// - Parameter format: The key format, default is .compressed.
             /// - Throws: An error if the raw representation does not create a private key for signing.
-            public init<D: ContiguousBytes>(dataRepresentation data: D, format: secp256k1.Format = .compressed) throws {
+            public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format = .compressed) throws {
                 self.baseKey = try PrivateKeyImplementation(dataRepresentation: data, format: format)
             }
 
@@ -135,7 +135,7 @@ public extension secp256k1 {
             }
 
             /// The key format representation of the public key.
-            public var format: secp256k1.Format {
+            public var format: P256K.Format {
                 baseKey.format
             }
 
@@ -188,7 +188,7 @@ public extension secp256k1 {
             /// - Parameter data: A data representation of the key.
             /// - Parameter format: The key format.
             /// - Throws: An error if the data representation does not create a public key.
-            public init<D: ContiguousBytes>(dataRepresentation data: D, format: secp256k1.Format) throws {
+            public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format) throws {
                 self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
             }
 
@@ -223,7 +223,7 @@ public extension secp256k1 {
                 let length = x963Representation.withUnsafeBytes { $0.count }
 
                 switch length {
-                case (2 * secp256k1.ByteLength.dimension) + 1:
+                case (2 * P256K.ByteLength.dimension) + 1:
                     self.baseKey = try PublicKeyImplementation(dataRepresentation: x963Representation, format: .uncompressed)
 
                 default:

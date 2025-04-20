@@ -16,12 +16,12 @@ import Foundation
 @_implementationOnly import libsecp256k1
 #endif
 
-public extension secp256k1.Signing.PrivateKey {
+public extension P256K.Signing.PrivateKey {
     /// Create a new `PrivateKey` by adding tweak to the secret key.
     /// - Parameter tweak: the 32-byte tweak object
     /// - Returns: tweaked `PrivateKey` object
     func add(_ tweak: [UInt8]) throws -> Self {
-        let context = secp256k1.Context.rawRepresentation
+        let context = P256K.Context.rawRepresentation
         var privateBytes = key.bytes
 
         guard secp256k1_ec_seckey_tweak_add(context, &privateBytes, tweak).boolValue,
@@ -38,9 +38,9 @@ public extension secp256k1.Signing.PrivateKey {
     /// - Parameter tweak: the 32-byte tweak object
     /// - Returns: tweaked `PrivateKey` object
     func add(xonly tweak: [UInt8]) throws -> Self {
-        let context = secp256k1.Context.rawRepresentation
+        let context = P256K.Context.rawRepresentation
         var keypair = secp256k1_keypair()
-        var privateBytes = [UInt8](repeating: 0, count: secp256k1.ByteLength.privateKey)
+        var privateBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
         var xonly = secp256k1_xonly_pubkey()
         var keyParity = Int32()
 
@@ -58,7 +58,7 @@ public extension secp256k1.Signing.PrivateKey {
     /// - Parameter tweak: the 32-byte tweak object
     /// - Returns: tweaked `PrivateKey` object
     func multiply(_ tweak: [UInt8]) throws -> Self {
-        let context = secp256k1.Context.rawRepresentation
+        let context = P256K.Context.rawRepresentation
         var privateBytes = key.bytes
 
         guard secp256k1_ec_seckey_tweak_mul(context, &privateBytes, tweak).boolValue,
@@ -70,14 +70,14 @@ public extension secp256k1.Signing.PrivateKey {
     }
 }
 
-public extension secp256k1.Signing.PublicKey {
+public extension P256K.Signing.PublicKey {
     /// Create a new `PublicKey` by adding tweak to the public key.
     /// - Parameters:
     ///   - tweak: the 32-byte tweak object
     ///   - format: the format of the tweaked `PublicKey` object
     /// - Returns: tweaked `PublicKey` object
-    func add(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
-        let context = secp256k1.Context.rawRepresentation
+    func add(_ tweak: [UInt8], format: P256K.Format = .compressed) throws -> Self {
+        let context = P256K.Context.rawRepresentation
         var pubKey = baseKey.rawRepresentation
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
@@ -95,8 +95,8 @@ public extension secp256k1.Signing.PublicKey {
     ///   - tweak: the 32-byte tweak object
     ///   - format: the format of the tweaked `PublicKey` object
     /// - Returns: tweaked `PublicKey` object
-    func multiply(_ tweak: [UInt8], format: secp256k1.Format = .compressed) throws -> Self {
-        let context = secp256k1.Context.rawRepresentation
+    func multiply(_ tweak: [UInt8], format: P256K.Format = .compressed) throws -> Self {
+        let context = P256K.Context.rawRepresentation
         var pubKey = baseKey.rawRepresentation
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
@@ -110,18 +110,18 @@ public extension secp256k1.Signing.PublicKey {
     }
 }
 
-public extension secp256k1.Schnorr.XonlyKey {
+public extension P256K.Schnorr.XonlyKey {
     /// Create a new `XonlyKey` by adding tweak to the x-only public key.
     /// - Parameters:
     ///   - tweak: the 32-byte tweak object
     ///   - format: the format of the tweaked `XonlyKey` object
     /// - Returns: tweaked `PublicKey` object
     func add(_ tweak: [UInt8]) throws -> Self {
-        let context = secp256k1.Context.rawRepresentation
+        let context = P256K.Context.rawRepresentation
         var pubKey = secp256k1_pubkey()
         var inXonlyPubKey = secp256k1_xonly_pubkey()
         var outXonlyPubKey = secp256k1_xonly_pubkey()
-        var xonlyBytes = [UInt8](repeating: 0, count: secp256k1.ByteLength.dimension)
+        var xonlyBytes = [UInt8](repeating: 0, count: P256K.ByteLength.dimension)
         var keyParity = Int32()
 
         guard secp256k1_xonly_pubkey_parse(context, &inXonlyPubKey, bytes).boolValue,

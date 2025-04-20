@@ -5,7 +5,7 @@ public struct ContentView: View {
     public init() {}
 
     public var body: some View {
-        let privateKey = try! secp256k1.Signing.PrivateKey()
+        let privateKey = try! P256K.Signing.PrivateKey()
         let stringKey = String(bytes: privateKey.dataRepresentation)
 
         Text("KEY: \(stringKey)")

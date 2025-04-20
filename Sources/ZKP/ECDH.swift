@@ -19,7 +19,7 @@ import Foundation
 // MARK: - secp256k1 + KeyAgreement
 
 /// An elliptic curve that enables secp256k1 signatures and key agreement.
-public extension secp256k1 {
+public extension P256K {
     /// A namespace for key agreement functionality using the secp256k1 elliptic curve.
     enum KeyAgreement {
         /// A public key for performing key agreement using the secp256k1 elliptic curve.
@@ -33,7 +33,7 @@ public extension secp256k1 {
             ///   - data: A data representation of the public key as a collection of contiguous bytes.
             ///   - format: The format of the public key object.
             /// - Throws: An error if the raw representation does not create a public key.
-            public init<D: ContiguousBytes>(dataRepresentation data: D, format: secp256k1.Format = .compressed) throws {
+            public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format = .compressed) throws {
                 self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
             }
 
@@ -47,7 +47,7 @@ public extension secp256k1 {
             /// The associated x-only public key for verifying Schnorr signatures.
             ///
             /// - Returns: The associated x-only public key.
-            public var xonly: secp256k1.KeyAgreement.XonlyKey {
+            public var xonly: P256K.KeyAgreement.XonlyKey {
                 XonlyKey(baseKey: baseKey.xonly)
             }
 
@@ -87,7 +87,7 @@ public extension secp256k1 {
             ///
             /// - Parameter format: The format of the secp256k1 key (default is .compressed).
             /// - Throws: An error is thrown when the key generation fails.
-            public init(format: secp256k1.Format = .compressed) throws {
+            public init(format: P256K.Format = .compressed) throws {
                 self.baseKey = try PrivateKeyImplementation(format: format)
             }
 
@@ -97,7 +97,7 @@ public extension secp256k1 {
             ///   - data: A raw representation of the key.
             ///   - format: The format of the secp256k1 key (default is .compressed).
             /// - Throws: An error is thrown when the raw representation does not create a private key for key agreement.
-            public init<D: ContiguousBytes>(dataRepresentation data: D, format: secp256k1.Format = .compressed) throws {
+            public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format = .compressed) throws {
                 self.baseKey = try PrivateKeyImplementation(dataRepresentation: data, format: format)
             }
 
@@ -109,7 +109,7 @@ public extension secp256k1 {
             }
 
             /// The associated public key for verifying signatures done with this private key.
-            public var publicKey: secp256k1.KeyAgreement.PublicKey {
+            public var publicKey: P256K.KeyAgreement.PublicKey {
                 PublicKey(baseKey: baseKey.publicKey)
             }
 
@@ -125,7 +125,7 @@ public extension secp256k1 {
 // MARK: - secp256k1 + DH
 
 /// An extension to the `secp256k1.KeyAgreement.PrivateKey` conforming to the `DiffieHellmanKeyAgreement` protocol.
-extension secp256k1.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
+extension P256K.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
     /// A pointer to a function that hashes an EC point to obtain an ECDH secret.
     public typealias HashFunctionType = @convention(c) (
         UnsafeMutablePointer<UInt8>?,
@@ -139,7 +139,7 @@ extension secp256k1.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
     /// - Parameter publicKeyShare: The public key to perform the ECDH with.
     /// - Returns: Returns a shared secret.
     /// - Throws: An error occurred while computing the shared secret.
-    func sharedSecretFromKeyAgreement(with publicKeyShare: secp256k1.KeyAgreement.PublicKey) throws -> SharedSecret {
+    func sharedSecretFromKeyAgreement(with publicKeyShare: P256K.KeyAgreement.PublicKey) throws -> SharedSecret {
         try sharedSecretFromKeyAgreement(with: publicKeyShare, format: .compressed)
     }
 
@@ -151,10 +151,10 @@ extension secp256k1.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
     /// - Returns: Returns a shared secret.
     /// - Throws: An error occurred while computing the shared secret.
     public func sharedSecretFromKeyAgreement(
-        with publicKeyShare: secp256k1.KeyAgreement.PublicKey,
-        format: secp256k1.Format = .compressed
+        with publicKeyShare: P256K.KeyAgreement.PublicKey,
+        format: P256K.Format = .compressed
     ) throws -> SharedSecret {
-        let context = secp256k1.Context.rawRepresentation
+        let context = P256K.Context.rawRepresentation
         var publicKey = publicKeyShare.baseKey.rawRepresentation
         var sharedSecret = [UInt8](repeating: 0, count: format.length)
         var data = [UInt8](repeating: format == .compressed ? 1 : 0, count: 1)
@@ -173,15 +173,15 @@ extension secp256k1.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
         { output, x32, y32, data in
             guard let output, let x32, let y32, let compressed = data?.load(as: Bool.self) else { return 0 }
 
-            let lastByte = y32.advanced(by: secp256k1.ByteLength.dimension - 1).pointee
+            let lastByte = y32.advanced(by: P256K.ByteLength.dimension - 1).pointee
             let version: UInt8 = compressed ? (lastByte & 0x01) | 0x02 : 0x04
 
             output.update(repeating: version, count: 1)
-            output.advanced(by: 1).update(from: x32, count: secp256k1.ByteLength.dimension)
+            output.advanced(by: 1).update(from: x32, count: P256K.ByteLength.dimension)
 
             if compressed == false {
-                output.advanced(by: secp256k1.ByteLength.dimension + 1)
-                    .update(from: y32, count: secp256k1.ByteLength.dimension)
+                output.advanced(by: P256K.ByteLength.dimension + 1)
+                    .update(from: y32, count: P256K.ByteLength.dimension)
             }
 
             return 1

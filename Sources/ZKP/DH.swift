@@ -53,7 +53,7 @@ public struct SharedSecret: ContiguousBytes {
     var ss: SecureBytes
 
     // An enum that represents the format of the shared secret
-    let format: secp256k1.Format
+    let format: P256K.Format
 
     public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
         try ss.withUnsafeBytes(body)

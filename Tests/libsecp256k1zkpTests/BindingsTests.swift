@@ -162,9 +162,9 @@ struct BindingsTestSuite {
     /// Key Agreement Hash Function Test
     @Test("Key Agreement Hash Function Test")
     func keyAgreementHashFunction() {
-        let context = secp256k1.Context.rawRepresentation
-        let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey()
-        let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey()
+        let context = P256K.Context.rawRepresentation
+        let privateKey1 = try! P256K.KeyAgreement.PrivateKey()
+        let privateKey2 = try! P256K.KeyAgreement.PrivateKey()
 
         var pub = secp256k1_pubkey()
         let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
@@ -205,7 +205,7 @@ struct BindingsTestSuite {
 
         // Combine the two public keys
         #expect(secp256k1_ec_pubkey_combine(context, &combinedKey, pubKeys, 2) == 1, "Failed to combine public keys.")
-        #expect(secp256k1_ec_pubkey_serialize(context, &combinedKeyBytes, &pubKeyLen, &combinedKey, secp256k1.Format.compressed.rawValue) == 1, "Failed to serialize the combined public key.")
+        #expect(secp256k1_ec_pubkey_serialize(context, &combinedKeyBytes, &pubKeyLen, &combinedKey, P256K.Format.compressed.rawValue) == 1, "Failed to serialize the combined public key.")
 
         // Define the expected combined key
         let expectedCombinedKey = try! "03d6a3a9d62c7650fcac18f9ee68c7a004ebad71b7581b683062213ad9f37ddb28".bytes
