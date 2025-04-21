@@ -36,14 +36,28 @@
 # file options
 --swiftversion 5
 --exclude .build
---exclude Submodules
+--exclude Exhaustive/**/secp256k1Tests.swift
+--exclude Exhaustive/**/XCTestManifests.swift
+--exclude Sources/**/ArraySliceBigint.swift
+--exclude Sources/**/ASN1.swift
+--exclude Sources/**/ASN1BitString.swift
+--exclude Sources/**/ASN1Boolean.swift
+--exclude Sources/**/ASN1Identifier.swift
+--exclude Sources/**/ASN1Integer.swift
+--exclude Sources/**/ASN1Null.swift
+--exclude Sources/**/ASN1OctetString.swift
+--exclude Sources/**/ASN1Strings.swift
 --exclude Sources/**/Digest.swift
+--exclude Sources/**/ECDSASignature.swift
+--exclude Sources/**/GeneralizedTime.swift
+--exclude Sources/**/ObjectIdentifier.swift
+--exclude Sources/**/PEMDocument.swift
+--exclude Sources/**/PKCS8PrivateKey.swift
 --exclude Sources/**/PrettyBytes.swift
 --exclude Sources/**/RNG_boring.swift
 --exclude Sources/**/SecureBytes.swift
 --exclude Sources/**/Signature.swift
---exclude Exhaustive/**/secp256k1Tests.swift
---exclude Exhaustive/**/XCTestManifests.swift
+--exclude Submodules
 
 # rules
 # --disable elseOnSameLine,semicolons

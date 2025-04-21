@@ -9,15 +9,14 @@
 //
 
 #if canImport(ZKP)
-@testable import ZKP
+    @testable import ZKP
 #else
-@testable import P256K
+    @testable import P256K
 #endif
 
 import Testing
 
 struct SHA256TestSuite {
-
     @Test("SHA256 test")
     func sha256Test() {
         let expectedHashDigest = "f08a78cbbaee082b052ae0708f32fa1e50c5c421aa772ba5dbb406a2ea6be342"

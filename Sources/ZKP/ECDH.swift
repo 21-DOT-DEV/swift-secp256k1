@@ -11,9 +11,9 @@
 import Foundation
 
 #if canImport(libsecp256k1_zkp)
-@_implementationOnly import libsecp256k1_zkp
+    @_implementationOnly import libsecp256k1_zkp
 #elseif canImport(libsecp256k1)
-@_implementationOnly import libsecp256k1
+    @_implementationOnly import libsecp256k1
 #endif
 
 // MARK: - secp256k1 + KeyAgreement
@@ -25,7 +25,7 @@ public extension P256K {
         /// A public key for performing key agreement using the secp256k1 elliptic curve.
         public struct PublicKey /*: NISTECPublicKey */ {
             /// The underlying implementation of the secp256k1 public key.
-            internal let baseKey: PublicKeyImplementation
+            let baseKey: PublicKeyImplementation
 
             /// Creates a secp256k1 public key for key agreement from a collection of bytes.
             ///

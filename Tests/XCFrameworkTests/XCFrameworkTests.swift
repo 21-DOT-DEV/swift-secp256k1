@@ -12,7 +12,6 @@ import P256K
 import Testing
 
 struct XCFrameworkTestSuite {
-
     @Test("Compressed Key pair test with raw data")
     func compressedKeypairImplementationWithRaw() {
         let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"

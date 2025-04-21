@@ -9,16 +9,15 @@
 //
 
 #if canImport(ZKP)
-@testable import ZKP
+    @testable import ZKP
 #else
-@testable import P256K
+    @testable import P256K
 #endif
 
 import Foundation
 import Testing
 
 struct ECDHTestSuite {
-
     @Test("Test Key Agreement")
     func testKeyAgreement() {
         let privateString1 = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
@@ -65,13 +64,11 @@ struct ECDHTestSuite {
 
         #expect(
             sharedSecretSign2.publicKey.xonly.parity
-            ? privateTweak1.publicKey.dataRepresentation != publicTweak2.dataRepresentation
-            : privateTweak1.publicKey.dataRepresentation == publicTweak2.dataRepresentation,
+                ? privateTweak1.publicKey.dataRepresentation != publicTweak2.dataRepresentation
+                : privateTweak1.publicKey.dataRepresentation == publicTweak2.dataRepresentation,
             "Tweak addition expectation mismatch based on parity"
         )
 
         #expect(privateTweak1.publicKey.xonly.bytes == xonlyTweak2.bytes, "Xonly tweaks do not match")
     }
-
 }
-

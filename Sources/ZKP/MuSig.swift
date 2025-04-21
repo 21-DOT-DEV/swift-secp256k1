@@ -11,9 +11,9 @@
 import Foundation
 
 #if canImport(libsecp256k1_zkp)
-@_implementationOnly import libsecp256k1_zkp
+    @_implementationOnly import libsecp256k1_zkp
 #elseif canImport(libsecp256k1)
-@_implementationOnly import libsecp256k1
+    @_implementationOnly import libsecp256k1
 #endif
 
 public extension P256K {
@@ -25,7 +25,7 @@ public extension P256K {
         /// Represents a public key in the MuSig scheme.
         public struct PublicKey {
             /// Generated secp256k1 public key.
-            internal let baseKey: PublicKeyImplementation
+            let baseKey: PublicKeyImplementation
 
             /// The secp256k1 public key object.
             var bytes: [UInt8] {
@@ -145,7 +145,7 @@ public extension P256K {
 
 // MARK: - secp256k1 + MuSig
 
-extension P256K.MuSig {
+public extension P256K.MuSig {
     /// Aggregates multiple Schnorr public keys into a single Schnorr public key using the MuSig algorithm.
     ///
     /// This function implements the key aggregation process as described in BIP-327.
@@ -153,7 +153,7 @@ extension P256K.MuSig {
     /// - Parameter pubkeys: An array of Schnorr public keys to aggregate.
     /// - Returns: The aggregated Schnorr public key.
     /// - Throws: An error if aggregation fails.
-    public static func aggregate(_ pubkeys: [P256K.Schnorr.PublicKey]) throws -> P256K.MuSig.PublicKey {
+    static func aggregate(_ pubkeys: [P256K.Schnorr.PublicKey]) throws -> P256K.MuSig.PublicKey {
         let context = P256K.Context.rawRepresentation
         let format = P256K.Format.compressed
         var pubKeyLen = format.length
@@ -163,21 +163,21 @@ extension P256K.MuSig {
 
         guard PointerArrayUtility
             .withUnsafePointerArray(pubkeys.map { $0.baseKey.rawRepresentation }, { pointers in
-#if canImport(libsecp256k1_zkp)
-            secp256k1_pubkey_sort(context, &pointers, pointers.count).boolValue &&
-                secp256k1_musig_pubkey_agg(context, nil, nil, &cache, pointers, pointers.count).boolValue
-#elseif canImport(libsecp256k1)
-            secp256k1_ec_pubkey_sort(context, &pointers, pointers.count).boolValue &&
-                secp256k1_musig_pubkey_agg(context, nil, &cache, pointers, pointers.count).boolValue
-#endif
-        }), secp256k1_musig_pubkey_get(context, &aggPubkey, &cache).boolValue,
-              secp256k1_ec_pubkey_serialize(
+                #if canImport(libsecp256k1_zkp)
+                    secp256k1_pubkey_sort(context, &pointers, pointers.count).boolValue &&
+                        secp256k1_musig_pubkey_agg(context, nil, nil, &cache, pointers, pointers.count).boolValue
+                #elseif canImport(libsecp256k1)
+                    secp256k1_ec_pubkey_sort(context, &pointers, pointers.count).boolValue &&
+                        secp256k1_musig_pubkey_agg(context, nil, &cache, pointers, pointers.count).boolValue
+                #endif
+            }), secp256k1_musig_pubkey_get(context, &aggPubkey, &cache).boolValue,
+            secp256k1_ec_pubkey_serialize(
                 context,
                 &pubBytes,
                 &pubKeyLen,
                 &aggPubkey,
                 format.rawValue
-              ).boolValue else {
+            ).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
@@ -206,7 +206,7 @@ public extension P256K.MuSig.PublicKey {
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-        self.keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
+        keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
 
         guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, pubKeyLen).boolValue,
               secp256k1_musig_pubkey_ec_tweak_add(context, &pubKey, &cache, tweak).boolValue,
@@ -238,7 +238,7 @@ public extension P256K.MuSig.XonlyKey {
         var outXonlyPubKey = secp256k1_xonly_pubkey()
         var xonlyBytes = [UInt8](repeating: 0, count: P256K.Schnorr.xonlyByteCount)
         var keyParity = Int32()
-        
+
         self.cache.copyToUnsafeMutableBytes(of: &cache.data)
 
         guard secp256k1_musig_pubkey_xonly_tweak_add(context, &pubKey, &cache, tweak).boolValue,
@@ -302,7 +302,7 @@ public extension P256K.Schnorr {
     }
 }
 
-extension P256K.MuSig.PublicKey {
+public extension P256K.MuSig.PublicKey {
     /// Verifies a partial signature against this public key.
     ///
     /// This function implements the partial signature verification process as described in BIP-327.
@@ -313,7 +313,7 @@ extension P256K.MuSig.PublicKey {
     ///   - nonce: The signer's public nonce.
     ///   - digest: The message digest being signed.
     /// - Returns: `true` if the partial signature is valid, `false` otherwise.
-    public func isValidSignature<D: Digest>(
+    func isValidSignature<D: Digest>(
         _ partialSignature: P256K.Schnorr.PartialSignature,
         publicKey: P256K.Schnorr.PublicKey,
         nonce: P256K.Schnorr.Nonce,
@@ -345,7 +345,7 @@ extension P256K.MuSig.PublicKey {
     }
 }
 
-extension P256K.Schnorr.PrivateKey {
+public extension P256K.Schnorr.PrivateKey {
     /// Generates a partial signature for MuSig.
     ///
     /// This function implements the partial signing process as described in BIP-327.
@@ -358,7 +358,7 @@ extension P256K.Schnorr.PrivateKey {
     ///   - publicKeyAggregate: The aggregate of all signers' public keys.
     /// - Returns: A partial MuSig signature.
     /// - Throws: An error if partial signature generation fails.
-    public func partialSignature<D: Digest>(
+    func partialSignature<D: Digest>(
         for digest: D,
         pubnonce: P256K.Schnorr.Nonce,
         secureNonce: consuming P256K.Schnorr.SecureNonce,
@@ -382,21 +382,21 @@ extension P256K.Schnorr.PrivateKey {
         publicKeyAggregate.keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
         publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
-#if canImport(libsecp256k1_zkp)
-        guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache, nil).boolValue,
-              secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
-              secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
-        else {
-            throw secp256k1Error.underlyingCryptoError
-        }
-#elseif canImport(libsecp256k1)
-        guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache).boolValue,
-              secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
-              secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
-        else {
-            throw secp256k1Error.underlyingCryptoError
-        }
-#endif
+        #if canImport(libsecp256k1_zkp)
+            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache, nil).boolValue,
+                  secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
+                  secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
+            else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+        #elseif canImport(libsecp256k1)
+            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache).boolValue,
+                  secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
+                  secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
+            else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+        #endif
 
         return try P256K.Schnorr.PartialSignature(
             Data(bytes: &partialSignature, count: P256K.ByteLength.partialSignature),
@@ -416,7 +416,7 @@ extension P256K.Schnorr.PrivateKey {
     ///   - publicKeyAggregate: The aggregate of all signers' public keys.
     /// - Returns: A partial MuSig signature.
     /// - Throws: An error if partial signature generation fails.
-    public func partialSignature<D: DataProtocol>(
+    func partialSignature<D: DataProtocol>(
         for data: D,
         pubnonce: P256K.Schnorr.Nonce,
         secureNonce: consuming P256K.Schnorr.SecureNonce,
@@ -434,7 +434,7 @@ extension P256K.Schnorr.PrivateKey {
 }
 
 /// An extension for secp256k1_musig_partial_sig providing a convenience property.
-internal extension secp256k1_musig_partial_sig {
+extension secp256k1_musig_partial_sig {
     /// A property that returns the Data representation of the `secp256k1_musig_partial_sig` object.
     var dataValue: Data {
         var mutableSig = self
@@ -443,7 +443,7 @@ internal extension secp256k1_musig_partial_sig {
 }
 
 /// An extension for secp256k1_musig_session providing a convenience property.
-internal extension secp256k1_musig_session {
+extension secp256k1_musig_session {
     var dataValue: Data {
         var mutableSession = self
         return Data(bytes: &mutableSession.data, count: MemoryLayout.size(ofValue: data))
@@ -491,13 +491,13 @@ public extension P256K.MuSig {
     }
 }
 
-extension P256K.MuSig {
+public extension P256K.MuSig {
     /// Aggregates partial signatures into a complete signature.
     ///
     /// - Parameter partialSignatures: An array of partial signatures to aggregate.
     /// - Returns: The aggregated Schnorr signature.
     /// - Throws: If there is a failure aggregating the signatures.
-    public static func aggregateSignatures(
+    static func aggregateSignatures(
         _ partialSignatures: [P256K.Schnorr.PartialSignature]
     ) throws -> P256K.MuSig.AggregateSignature {
         let context = P256K.Context.rawRepresentation
@@ -513,7 +513,8 @@ extension P256K.MuSig {
                 return partialSig
             }, { pointers in
                 secp256k1_musig_partial_sig_agg(context, &signature, &session, pointers, pointers.count).boolValue
-            }) else {
+            }
+        ) else {
             throw secp256k1Error.underlyingCryptoError
         }
 

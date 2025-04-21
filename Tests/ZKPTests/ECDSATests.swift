@@ -1,5 +1,5 @@
 //
-//  ECDSATest.swift
+//  ECDSATests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
 //  Copyright (c) 2025 GigaBitcoin LLC
@@ -9,16 +9,15 @@
 //
 
 #if canImport(ZKP)
-@testable import ZKP
+    @testable import ZKP
 #else
-@testable import P256K
+    @testable import P256K
 #endif
 
 import Foundation
 import Testing
 
 struct ECDSATestSuite {
-
     @Test("Signing test with expected signature verification")
     func signingECDSA() {
         let expectedDerSignature = "MEQCIHS177uYACnX8HzD+hGbG5X/F4iHuRm2DvTylOCV4fmsAiBWbj0MDud/oVzRqL87JjZpCN+kLl8Egcc/GiOigWJg+A=="
@@ -52,7 +51,8 @@ struct ECDSATestSuite {
     func verifyingDER() {
         let expectedDerSignature = Data(
             base64Encoded: "MEQCIHS177uYACnX8HzD+hGbG5X/F4iHuRm2DvTylOCV4fmsAiBWbj0MDud/oVzRqL87JjZpCN+kLl8Egcc/GiOigWJg+A==",
-            options: .ignoreUnknownCharacters)!
+            options: .ignoreUnknownCharacters
+        )!
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.bytes
         let privateKey = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
@@ -116,5 +116,4 @@ struct ECDSATestSuite {
 
         #expect(publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)), "Signature validation failed")
     }
-
 }

@@ -9,16 +9,15 @@
 //
 
 #if canImport(ZKP)
-@testable import ZKP
+    @testable import ZKP
 #else
-@testable import P256K
+    @testable import P256K
 #endif
 
 import Foundation
 import Testing
 
 struct TaprootTestSuite {
-
     @Test("Test Taproot Derivation")
     func testTaprootDerivation() {
         let privateKeyBytes = try! "41F41D69260DF4CF277826A9B65A3717E4EEDDBEEDF637F212CA096576479361".bytes
@@ -54,10 +53,10 @@ struct TaprootTestSuite {
         let aliceBytes = try! "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90".bytes
         let alice = try! P256K.Signing.PrivateKey(dataRepresentation: aliceBytes)
         let aliceScript = Data([UInt8(array.count)] + array) +
-        OP_CHECKSEQUENCEVERIFY +
-        OP_DROP +
-        Data([UInt8(alice.publicKey.xonly.bytes.count)] + alice.publicKey.xonly.bytes) +
-        OP_CHECKSIG
+            OP_CHECKSEQUENCEVERIFY +
+            OP_DROP +
+            Data([UInt8(alice.publicKey.xonly.bytes.count)] + alice.publicKey.xonly.bytes) +
+            OP_CHECKSIG
         let aliceLeafHash = try! SHA256.taggedHash(
             tag: "TapLeaf".data(using: .utf8)!,
             data: Data([0xC0]) + aliceScript.compactSizePrefix
@@ -71,10 +70,10 @@ struct TaprootTestSuite {
         let bob = try! P256K.Signing.PrivateKey(dataRepresentation: bobBytes)
         let preimageBytes = try! "6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333".bytes
         let bobScript = OP_SHA256 +
-        Data([UInt8(preimageBytes.count)] + preimageBytes.bytes) +
-        OP_EQUALVERIFY +
-        Data([UInt8(bob.publicKey.xonly.bytes.count)] + bob.publicKey.xonly.bytes) +
-        OP_CHECKSIG
+            Data([UInt8(preimageBytes.count)] + preimageBytes.bytes) +
+            OP_EQUALVERIFY +
+            Data([UInt8(bob.publicKey.xonly.bytes.count)] + bob.publicKey.xonly.bytes) +
+            OP_CHECKSIG
         let bobLeafHash = try! SHA256.taggedHash(
             tag: "TapLeaf".data(using: .utf8)!,
             data: Data([0xC0]) + bobScript.compactSizePrefix
@@ -102,5 +101,4 @@ struct TaprootTestSuite {
 
         #expect(String(bytes: Array(merkleRoot).bytes) == expectedMerkleRoot, "Merkle root mismatch")
     }
-
 }

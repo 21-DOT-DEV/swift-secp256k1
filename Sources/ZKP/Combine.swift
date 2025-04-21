@@ -11,9 +11,9 @@
 import Foundation
 
 #if canImport(libsecp256k1_zkp)
-@_implementationOnly import libsecp256k1_zkp
+    @_implementationOnly import libsecp256k1_zkp
 #elseif canImport(libsecp256k1)
-@_implementationOnly import libsecp256k1
+    @_implementationOnly import libsecp256k1
 #endif
 
 public extension P256K.Signing.PublicKey {
@@ -31,8 +31,8 @@ public extension P256K.Signing.PublicKey {
 
         guard PointerArrayUtility
             .withUnsafePointerArray(allPubKeys.map { $0.baseKey.rawRepresentation }, { pointers in
-            secp256k1_ec_pubkey_combine(context, &combinedKey, pointers, pointers.count).boolValue
-        }), secp256k1_ec_pubkey_serialize(context, &combinedBytes, &pubKeyLen, &combinedKey, format.rawValue).boolValue else {
+                secp256k1_ec_pubkey_combine(context, &combinedKey, pointers, pointers.count).boolValue
+            }), secp256k1_ec_pubkey_serialize(context, &combinedBytes, &pubKeyLen, &combinedKey, format.rawValue).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 

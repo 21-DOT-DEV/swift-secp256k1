@@ -10,6 +10,12 @@
 
 import Foundation
 
+#if canImport(libsecp256k1_zkp)
+    @_implementationOnly import libsecp256k1_zkp
+#elseif canImport(libsecp256k1)
+    @_implementationOnly import libsecp256k1
+#endif
+
 /// An elliptic curve that enables secp256k1 signatures and key agreement.
 public extension P256K {
     /// A mechanism used to create or verify a cryptographic signature using the secp256k1
@@ -73,6 +79,7 @@ public extension P256K {
                 case "EC PRIVATE KEY":
                     let parsed = try ASN1.SEC1PrivateKey(asn1Encoded: Array(pem.derBytes))
                     self = try .init(dataRepresentation: parsed.privateKey)
+
                 case "PRIVATE KEY":
                     let parsed = try ASN1.PKCS8PrivateKey(asn1Encoded: Array(pem.derBytes))
                     self = try .init(dataRepresentation: parsed.privateKey.privateKey)
@@ -115,7 +122,7 @@ public extension P256K {
         /// The corresponding public key for the secp256k1 curve.
         public struct PublicKey {
             /// Generated secp256k1 public key.
-            internal let baseKey: PublicKeyImplementation
+            let baseKey: PublicKeyImplementation
 
             /// The secp256k1 public key object.
             var bytes: [UInt8] {
@@ -146,11 +153,11 @@ public extension P256K {
                     return try Self(dataRepresentation: negatedKey.dataRepresentation, format: negatedKey.format)
                 }
             }
-            
+
             /// Returns a public key in uncompressed 65 byte form
             public var uncompressedRepresentation: Data {
-                let context = secp256k1.Context.rawRepresentation
-                var pubKey = rawRepresentation
+                let context = P256K.Context.rawRepresentation
+                var pubKey = baseKey.rawRepresentation
                 var pubKeyLen = ByteLength.uncompressedPublicKey
                 var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
 

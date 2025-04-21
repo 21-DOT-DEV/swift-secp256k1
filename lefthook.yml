@@ -3,7 +3,7 @@ pre-push:
     1_test_secp256k1:
       run: swift test
     2_build_zkp:
-      run: swift build --target zkp
+      run: swift build --target ZKP
 
 pre-commit:
   commands:

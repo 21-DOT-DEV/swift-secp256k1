@@ -9,16 +9,15 @@
 //
 
 #if canImport(ZKP)
-@testable import ZKP
+    @testable import ZKP
 #else
-@testable import P256K
+    @testable import P256K
 #endif
 
 import Foundation
 import Testing
 
 struct UtilityTestSuite {
-
     @Test("Verify keypair equality checks work correctly")
     func testKeypairSafeCompare() {
         let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
@@ -44,7 +43,7 @@ struct UtilityTestSuite {
 
         let set0 = Set(array)
 
-        array = [UInt8](repeating: 1, count: Int.random(in: 10...100_000))
+        array = [UInt8](repeating: 1, count: Int.random(in: 10...100000))
 
         #expect(array.count > 9)
 

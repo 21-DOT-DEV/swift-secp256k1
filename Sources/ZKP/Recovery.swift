@@ -11,9 +11,9 @@
 import Foundation
 
 #if canImport(libsecp256k1_zkp)
-@_implementationOnly import libsecp256k1_zkp
+    @_implementationOnly import libsecp256k1_zkp
 #elseif canImport(libsecp256k1)
-@_implementationOnly import libsecp256k1
+    @_implementationOnly import libsecp256k1
 #endif
 
 // MARK: - secp256k1 + Recovery
@@ -69,7 +69,7 @@ public extension P256K {
         /// A struct representing a secp256k1 public key for recovery purposes.
         public struct PublicKey {
             /// Generated secp256k1 Public Key.
-            internal let baseKey: PublicKeyImplementation
+            let baseKey: PublicKeyImplementation
 
             /// A data representation of the public key.
             public var dataRepresentation: Data { baseKey.dataRepresentation }

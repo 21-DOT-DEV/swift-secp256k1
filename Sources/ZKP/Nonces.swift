@@ -11,9 +11,9 @@
 import Foundation
 
 #if canImport(libsecp256k1_zkp)
-@_implementationOnly import libsecp256k1_zkp
+    @_implementationOnly import libsecp256k1_zkp
 #elseif canImport(libsecp256k1)
-@_implementationOnly import libsecp256k1
+    @_implementationOnly import libsecp256k1
 #endif
 
 public extension P256K.MuSig {
@@ -39,7 +39,8 @@ public extension P256K.MuSig {
                     return pubnonce
                 }, { pointers in
                     secp256k1_musig_nonce_agg(context, &aggNonce, pointers, pointers.count).boolValue
-                }) else {
+                }
+            ) else {
                 throw secp256k1Error.underlyingCryptoError
             }
 
@@ -51,14 +52,14 @@ public extension P256K.MuSig {
         /// - Parameter body: A closure that takes an `UnsafeRawBufferPointer` and returns a value.
         /// - Returns: The value returned by the closure.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-            return try aggregatedNonce.withUnsafeBytes(body)
+            try aggregatedNonce.withUnsafeBytes(body)
         }
 
         /// Returns an iterator over the bytes of the aggregated nonce.
         ///
         /// - Returns: An iterator for the aggregated nonce data.
         public func makeIterator() -> Data.Iterator {
-            return aggregatedNonce.makeIterator()
+            aggregatedNonce.makeIterator()
         }
 
         /// Generates a nonce pair (secret and public) for MuSig signing.
@@ -79,7 +80,7 @@ public extension P256K.MuSig {
             msg32: [UInt8],
             extraInput32: [UInt8]? = nil
         ) throws -> NonceResult {
-            try Self.generate(
+            try generate(
                 sessionID: Array(SecureBytes(count: 133)),
                 secretKey: secretKey,
                 publicKey: publicKey,
@@ -113,37 +114,37 @@ public extension P256K.MuSig {
             var pubnonce = secp256k1_musig_pubnonce()
             var pubkey = publicKey.baseKey.rawRepresentation
 
-#if canImport(zkp_bindings)
-            guard secp256k1_musig_nonce_gen(
-                context,
-                &secnonce,
-                &pubnonce,
-                sessionID,
-                Array(secretKey!.dataRepresentation),
-                &pubkey,
-                msg32,
-                nil,
-                extraInput32
-            ).boolValue else {
-                throw secp256k1Error.underlyingCryptoError
-            }
-#else
-            var mutableSessionID = sessionID
+            #if canImport(zkp_bindings)
+                guard secp256k1_musig_nonce_gen(
+                    context,
+                    &secnonce,
+                    &pubnonce,
+                    sessionID,
+                    Array(secretKey!.dataRepresentation),
+                    &pubkey,
+                    msg32,
+                    nil,
+                    extraInput32
+                ).boolValue else {
+                    throw secp256k1Error.underlyingCryptoError
+                }
+            #else
+                var mutableSessionID = sessionID
 
-            guard secp256k1_musig_nonce_gen(
-                context,
-                &secnonce,
-                &pubnonce,
-                &mutableSessionID,
-                Array(secretKey!.dataRepresentation),
-                &pubkey,
-                msg32,
-                nil,
-                extraInput32
-            ).boolValue else {
-                throw secp256k1Error.underlyingCryptoError
-            }
-#endif
+                guard secp256k1_musig_nonce_gen(
+                    context,
+                    &secnonce,
+                    &pubnonce,
+                    &mutableSessionID,
+                    Array(secretKey!.dataRepresentation),
+                    &pubkey,
+                    msg32,
+                    nil,
+                    extraInput32
+                ).boolValue else {
+                    throw secp256k1Error.underlyingCryptoError
+                }
+            #endif
 
             return NonceResult(
                 pubnonce: P256K.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) }),
@@ -184,14 +185,14 @@ public extension P256K.Schnorr {
         /// - Parameter body: A closure that takes an `UnsafeRawBufferPointer` and returns a value.
         /// - Returns: The value returned by the closure.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-            return try pubnonce.withUnsafeBytes(body)
+            try pubnonce.withUnsafeBytes(body)
         }
 
         /// Returns an iterator over the bytes of the public nonce.
         ///
         /// - Returns: An iterator for the public nonce data.
         public func makeIterator() -> Data.Iterator {
-            return pubnonce.makeIterator()
+            pubnonce.makeIterator()
         }
     }
 }

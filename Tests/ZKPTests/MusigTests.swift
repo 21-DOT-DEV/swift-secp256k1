@@ -9,16 +9,15 @@
 //
 
 #if canImport(ZKP)
-@testable import ZKP
+    @testable import ZKP
 #else
-@testable import P256K
+    @testable import P256K
 #endif
 
 import Foundation
 import Testing
 
 struct MuSigTestSuite {
-
     @Test("MuSig Signing and Verification")
     func testMusig() {
         // Test MuSig aggregate

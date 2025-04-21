@@ -11,9 +11,9 @@
 import Foundation
 
 #if canImport(libsecp256k1_zkp)
-@_implementationOnly import libsecp256k1_zkp
+    @_implementationOnly import libsecp256k1_zkp
 #elseif canImport(libsecp256k1)
-@_implementationOnly import libsecp256k1
+    @_implementationOnly import libsecp256k1
 #endif
 
 /// An extension for ContiguousBytes providing a convenience property.
@@ -75,7 +75,7 @@ extension Int32 {
 }
 
 /// An extension for secp256k1_ecdsa_signature providing a convenience property.
-internal extension secp256k1_ecdsa_signature {
+extension secp256k1_ecdsa_signature {
     /// A property that returns the Data representation of the `secp256k1_ecdsa_signature` object.
     var dataValue: Data {
         var mutableSig = self
@@ -84,7 +84,7 @@ internal extension secp256k1_ecdsa_signature {
 }
 
 /// An extension for secp256k1_ecdsa_recoverable_signature providing a convenience property.
-internal extension secp256k1_ecdsa_recoverable_signature {
+extension secp256k1_ecdsa_recoverable_signature {
     /// A property that returns the Data representation of the `secp256k1_ecdsa_recoverable_signature` object.
     var dataValue: Data {
         var mutableSig = self
@@ -113,7 +113,7 @@ public extension String {
 }
 
 /// A utility class or struct to contain the static function
-struct PointerArrayUtility {
+enum PointerArrayUtility {
     /// Executes a closure with an array of `UnsafePointer<T>?`.
     ///
     /// This method automatically manages memory allocation and deallocation

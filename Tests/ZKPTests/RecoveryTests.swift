@@ -9,16 +9,15 @@
 //
 
 #if canImport(ZKP)
-@testable import ZKP
+    @testable import ZKP
 #else
-@testable import P256K
+    @testable import P256K
 #endif
 
-import XCTest
 import Testing
+import XCTest
 
 struct RecoveryTestSuite {
-
     @Test("Recovery signing test with expected recovery signature verification")
     func recoverySigningTest() {
         let expectedDerSignature = "MEQCIHS177uYACnX8HzD+hGbG5X/F4iHuRm2DvTylOCV4fmsAiBWbj0MDud/oVzRqL87JjZpCN+kLl8Egcc/GiOigWJg+A=="
@@ -59,5 +58,4 @@ struct RecoveryTestSuite {
         // Verify the recovered public key matches the expected public key
         #expect(publicKey.dataRepresentation == privateKey.publicKey.dataRepresentation)
     }
-
 }

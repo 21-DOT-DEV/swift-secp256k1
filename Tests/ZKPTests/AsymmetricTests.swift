@@ -9,15 +9,14 @@
 //
 
 #if canImport(ZKP)
-@testable import ZKP
+    @testable import ZKP
 #else
-@testable import P256K
+    @testable import P256K
 #endif
 
 import Testing
 
 struct AsymmetricTestSuite {
-
     @Test("Compressed Key pair test with raw data")
     func compressedKeypairImplementationWithRaw() {
         let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
@@ -103,6 +102,16 @@ struct AsymmetricTestSuite {
         #expect(combinedPublicKey.dataRepresentation.bytes == expectedCombinedKey, "Combined public key does not match the expected value.")
     }
 
+    @Test("Uncompressed Public Key Test")
+    func testKeyFormatConversion() {
+        let pubkey = try! P256K.Signing.PublicKey(
+            dataRepresentation: "02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2".bytes,
+            format: .compressed
+        )
+        let uncompressed = pubkey.uncompressedRepresentation
+        #expect(String(bytes: uncompressed.bytes) == "04a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba270b2031fef3acf8e13ea7a395e375491bdc37be1cd79e073d82bfd5ba8d35d68")
+    }
+
     @Test("Private Key PEM Test")
     func testPrivateKeyPEM() {
         let privateKeyString = """
@@ -134,5 +143,4 @@ struct AsymmetricTestSuite {
 
         #expect(privateKey.publicKey.dataRepresentation == publicKey.dataRepresentation, "Public key PEM data representation does not match the expected value.")
     }
-
 }

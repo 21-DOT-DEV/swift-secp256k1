@@ -9,15 +9,14 @@
 //
 
 #if canImport(ZKP)
-@testable import ZKP
+    @testable import ZKP
 #else
-@testable import P256K
+    @testable import P256K
 #endif
 
 import Testing
 
 struct TweakTestSuite {
-
     @Test("Verify private key tweak addition produces expected result")
     func testPrivateKeyTweakAdd() {
         let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
@@ -35,5 +34,4 @@ struct TweakTestSuite {
         // Verify original public key remains correct
         #expect(expectedPublicKey == String(bytes: privateKey.publicKey.dataRepresentation))
     }
-
 }

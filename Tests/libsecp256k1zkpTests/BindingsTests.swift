@@ -6,17 +6,16 @@
 //
 
 #if canImport(libsecp256k1_zkp)
-@testable import ZKP
-@testable import libsecp256k1_zkp
+    @testable import libsecp256k1_zkp
+    @testable import ZKP
 #else
-@testable import P256K
-@testable import libsecp256k1
+    @testable import libsecp256k1
+    @testable import P256K
 #endif
 
 import Testing
 
 struct BindingsTestSuite {
-
     /// Uncompressed Key pair test
     @Test("Uncompressed Key pair creation bindings")
     func uncompressedKeypairCreationBindings() {

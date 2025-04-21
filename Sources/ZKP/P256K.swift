@@ -11,9 +11,9 @@
 import Foundation
 
 #if canImport(libsecp256k1_zkp)
-@_implementationOnly import libsecp256k1_zkp
+    @_implementationOnly import libsecp256k1_zkp
 #elseif canImport(libsecp256k1)
-@_implementationOnly import libsecp256k1
+    @_implementationOnly import libsecp256k1
 #endif
 
 /// The secp256k1 Elliptic Curve.
@@ -70,7 +70,7 @@ extension P256K {
         /// Number of bytes in a secp256k1 signature.
         @inlinable
         static var partialSignature: Int { 36 }
-        
+
         @inlinable
         static var uncompressedPublicKey: Int { 65 }
     }

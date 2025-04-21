@@ -1,14 +1,39 @@
 # By default, SwiftLint uses a set of sensible default rules you can adjust:
 disabled_rules: # rule identifiers turned on by default to exclude from running
   - comment_spacing
+  # Opt-in rules that we're not using
+  - accessibility_label_for_image
+  - accessibility_trait_for_button
+  - async_without_await
+  - comma_inheritance
+  - contrasted_opening_brace
+  - direct_return
+  - final_test_case
+  - local_doc_comment
+  - no_empty_block
+  - no_magic_numbers
+  - non_overridable_class_declaration
+  - number_separator
+  - one_declaration_per_file
+  - period_spacing
+  - prefer_key_path
+  - private_swiftui_state
+  - redundant_self_in_closure
+  - return_value_from_void_function
+  - self_binding
+  - shorthand_argument
+  - shorthand_optional_binding
+  - sorted_enum_cases
+  - superfluous_else
+  - typesafe_array_init
+  - unhandled_throwing_task
+  - unused_parameter
 opt_in_rules: # some rules are turned off by default, so you need to opt-in
   - empty_count # Find all the available rules by running: `swiftlint rules`
   - anonymous_argument_in_multiline_closure
-  - anyobject_protocol
   - array_init
   - attributes
   - balanced_xctest_lifecycle
-  - capture_variable
   - closure_body_length
   - closure_end_indentation
   - closure_spacing
@@ -72,7 +97,6 @@ opt_in_rules: # some rules are turned off by default, so you need to opt-in
   - no_grouping_extension
   - nslocalizedstring_key
   - nslocalizedstring_require_bundle
-  - number_separator
   - object_literal
   - operator_usage_whitespace
   - optional_enum_case_matching
@@ -113,8 +137,6 @@ opt_in_rules: # some rules are turned off by default, so you need to opt-in
   - unneeded_parentheses_in_closure_argument
   - unowned_variable_capture
   - untyped_error_in_catch
-  - unused_declaration
-  - unused_import
   - vertical_parameter_alignment_on_call
   - vertical_whitespace_between_cases
   - vertical_whitespace_closing_braces
@@ -138,8 +160,10 @@ excluded: # paths to ignore during linting. Takes precedence over `included`.
   - Sources/**/ASN1Boolean.swift
   - Sources/**/ASN1Identifier.swift
   - Sources/**/ASN1Integer.swift
+  - Sources/**/ASN1Null.swift
   - Sources/**/ASN1OctetString.swift
   - Sources/**/ASN1Strings.swift
+  - Sources/**/ObjectIdentifier.swift
   - Sources/**/Digest.swift
   - Sources/**/ECDSASignature.swift
   - Sources/**/GeneralizedTime.swift
@@ -151,8 +175,14 @@ excluded: # paths to ignore during linting. Takes precedence over `included`.
   - Sources/**/Signature.swift
   - Exhaustive/**/secp256k1Tests.swift
   - Exhaustive/**/XCTestManifests.swift
-analyzer_rules: # Rules run by `swiftlint analyze`
+  - Sources/P256K/**/*
+
+# Rules run by `swiftlint analyze` - these should only appear here, not in opt_in_rules
+analyzer_rules:
+  - capture_variable
   - explicit_self
+  - unused_declaration
+  - unused_import
 
 # configurable rules can be customized from this configuration file
 # binary rules can set their severity level

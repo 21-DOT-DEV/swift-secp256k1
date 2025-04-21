@@ -11,9 +11,9 @@
 import Foundation
 
 #if canImport(libsecp256k1_zkp)
-@_implementationOnly import libsecp256k1_zkp
+    @_implementationOnly import libsecp256k1_zkp
 #elseif canImport(libsecp256k1)
-@_implementationOnly import libsecp256k1
+    @_implementationOnly import libsecp256k1
 #endif
 
 public extension P256K {
@@ -97,11 +97,11 @@ public extension P256K.Schnorr {
             lhs.baseKey.key == rhs.baseKey.key
         }
     }
-        
+
     /// The corresponding public key for the secp256k1 curve.
     struct PublicKey {
         /// Generated secp256k1 public key.
-        internal let baseKey: PublicKeyImplementation
+        let baseKey: PublicKeyImplementation
 
         /// The secp256k1 public key object.
         var bytes: [UInt8] {
