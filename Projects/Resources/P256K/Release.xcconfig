@@ -80,6 +80,13 @@ VALIDATE_PRODUCT = YES
 
 SKIP_INSTALL = NO
 
+// Build Library for Distribution
+// 
+// Enables Swift's Library Evolution mode, which generates .swiftinterface files.
+// This allows clients to use the library even when compiled with different Swift versions.
+
+BUILD_LIBRARY_FOR_DISTRIBUTION = YES
+
 
 //********************************************//
 //*      Apple Clang - Code Generation       *//

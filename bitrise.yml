@@ -158,6 +158,31 @@ workflows:
               -archive "Archives/P256K-watchOS.xcarchive" -framework P256K.framework \
               -archive "Archives/P256K-watchOS Simulator.xcarchive" -framework P256K.framework \
               -output P256K.xcframework
+
+            # Workaround for Swift issue SR-14195/GitHub #56573:
+            # When a module has the same name as a type it contains (P256K in this case),
+            # Swift generates invalid module interfaces with incorrect type qualifications.
+            # This leads to imports failing with errors like:
+            # "TypeName is not a member type of class ModuleName.ModuleName"
+            #
+            # This script fixes generated .swiftinterface files by:
+            # 1. Removing double-qualification of the P256K type
+            # 2. Fixing references to other types that don't need module qualification
+            # See: https://github.com/swiftlang/swift/issues/56573
+            find P256K.xcframework -name '*.swiftinterface' -print0 \
+              | xargs -0 sed -i '' \
+                  -e 's/extension P256K\.P256K/extension P256K/g' \
+                  -e 's/P256K\.P256K\./P256K\./g' \
+                  -e 's/[[:<:]]P256K\.secp256k1Error[[:>:]]/secp256k1Error/g' \
+                  -e 's/[[:<:]]P256K\.Digest[[:>:]]/Digest/g' \
+                  -e 's/[[:<:]]P256K\.CryptoKitError[[:>:]]/CryptoKitError/g' \
+                  -e 's/[[:<:]]P256K\.CryptoKitASN1Error[[:>:]]/CryptoKitASN1Error/g' \
+                  -e 's/[[:<:]]P256K\.SHA256Digest[[:>:]]/SHA256Digest/g' \
+                  -e 's/[[:<:]]P256K\.XonlyKeyImplementation[[:>:]]/XonlyKeyImplementation/g' \
+                  -e 's/[[:<:]]P256K\.HashDigest[[:>:]]/HashDigest/g' \
+                  -e 's/[[:<:]]P256K\.SharedSecret[[:>:]]/SharedSecret/g' \
+                  -e 's/[[:<:]]P256K\.PublicKeyImplementation[[:>:]]/PublicKeyImplementation/g' \
+                  -e 's/[[:<:]]P256K\.PrivateKeyImplementation[[:>:]]/PrivateKeyImplementation/g'
     - deploy-to-bitrise-io:
         inputs:
         - deploy_path: "$BITRISE_SOURCE_DIR/P256K.xcframework"
