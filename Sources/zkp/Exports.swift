@@ -11,5 +11,5 @@
 #if canImport(zkp_bindings)
     @_exported import zkp_bindings
 #else
-    @_exported import secp256k1_bindings
+    @_exported import libsecp256k1
 #endif
