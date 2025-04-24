@@ -26,7 +26,7 @@ This package uses Swift Package Manager. To add it to your project:
 2. Enter the package URL: `https://github.com/21-DOT-DEV/swift-secp256k1`
 3. Select the desired version
 
-### Using Package.swift
+### Using Package.swift (Recommended)
 
 Add the following to your `Package.swift` file:
 
@@ -49,22 +49,6 @@ Add the following to your `Podfile`:
 ```ruby
 pod 'swift-secp256k1', '0.20.0'
 ```
-
-
-### Swift versions
-
-The most recent versions of swift-secp256k1 support Swift 6.0 and newer. The minimum Swift version supported by swift-secp256k1 releases are detailed below:
-
-swift-secp256k1   | Minimum Swift Version
-------------------|----------------------
-`2.0.0 ..< 2.1.0` | 5.2
-`2.1.0 ..< 2.2.0` | 5.4
-`2.2.0 ..< 2.4.2` | 5.5
-`2.4.2 ..< 3.1.0` | 5.6
-`3.1.0 ..< 3.3.0` | 5.7
-`3.3.0 ..< 3.8.0` | 5.8
-`3.8.0 ...`       | 5.9
-`0.20.0 ...`      | 6.0
 
 ### Try it out
 
