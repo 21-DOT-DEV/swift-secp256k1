@@ -1,6 +1,3 @@
-
-
-
 name: XCFramework Release
 on:
   release:
@@ -35,7 +32,8 @@ jobs:
               "tvOS Simulator"
               "watchOS"
               "watchOS Simulator"
-              "visionOS"
+            # "visionOS"
+            # "XR Simulator"
             )
 
             # Loop over platforms and archive for each one
@@ -101,7 +99,10 @@ jobs:
                   -e 's/[[:<:]]P256K\.PrivateKeyImplementation[[:>:]]/PrivateKeyImplementation/g'
       - name: 7z XCFramework
         run: |
-          7z a -tzip -mx=9 P256K.xcframework.zip P256K.xcframework
+          # Copy COPYING file to current directory to avoid including folder structure
+          cp "Submodules/secp256k1/COPYING" "COPYING-libsecp256k1"
+          # Create zip with maximum compression including license files alongside the XCFramework
+          7z a -tzip -mx=9 P256K.xcframework.zip P256K.xcframework LICENSE "COPYING-libsecp256k1"
       - name: Upload XCFramework
         run: |
           gh release upload ${{ github.ref_name }} P256K.xcframework.zip

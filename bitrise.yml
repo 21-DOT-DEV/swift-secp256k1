@@ -119,7 +119,8 @@ workflows:
               "tvOS Simulator"
               "watchOS"
               "watchOS Simulator"
-            #  "visionOS"
+            # "visionOS"
+            # "XR Simulator"
             )
 
             # Loop over platforms and archive for each one

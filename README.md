@@ -17,6 +17,9 @@ Swift package for elliptic curve public key cryptography, ECDSA, and Schnorr Sig
 
 This package uses Swift Package Manager. To add it to your project:
 
+> [!WARNING]  
+> These APIs are not considered stable and may change with any update. Specify a version using `exact:` to avoid breaking changes.
+
 ### Using Xcode
 
 1. Go to `File > Add Packages...`
@@ -28,10 +31,10 @@ This package uses Swift Package Manager. To add it to your project:
 Add the following to your `Package.swift` file:
 
 ```swift
-.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.19.0"),
+.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.20.0"),
 ```
 
-Then, include `secp256k1` as a dependency in your target:
+Then, include `P256K` as a dependency in your target:
 
 ```swift
 .target(name: "<target>", dependencies: [
@@ -39,8 +42,29 @@ Then, include `secp256k1` as a dependency in your target:
 ]),
 ```
 
-> [!WARNING]  
-> These APIs are not considered stable and may change with any update. Specify a version using `exact:` to avoid breaking changes.
+### Using CocoaPods
+
+Add the following to your `Podfile`:
+
+```ruby
+pod 'swift-secp256k1', '0.20.0'
+```
+
+
+### Swift versions
+
+The most recent versions of swift-secp256k1 support Swift 6.0 and newer. The minimum Swift version supported by swift-secp256k1 releases are detailed below:
+
+swift-secp256k1   | Minimum Swift Version
+------------------|----------------------
+`2.0.0 ..< 2.1.0` | 5.2
+`2.1.0 ..< 2.2.0` | 5.4
+`2.2.0 ..< 2.4.2` | 5.5
+`2.4.2 ..< 3.1.0` | 5.6
+`3.1.0 ..< 3.3.0` | 5.7
+`3.3.0 ..< 3.8.0` | 5.8
+`3.8.0 ...`       | 5.9
+`0.20.0 ...`      | 6.0
 
 ### Try it out
 
@@ -84,7 +108,7 @@ var messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9
 let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 ```
 
-## Tweak
+### Tweak
 
 ```swift
 let privateKey = try! P256K.Signing.PrivateKey()
@@ -95,7 +119,7 @@ let tweakedPrivateKey = try! privateKey.add(tweak)
 let tweakedPublicKeyKey = try! privateKey.publicKey.add(tweak)
 ```
 
-## Elliptic Curve Diffie Hellman
+### Elliptic Curve Diffie Hellman
 
 ```swift
 let privateKey = try! P256K.KeyAgreement.PrivateKey()
@@ -108,7 +132,7 @@ let sharedSecret = try! privateKey.sharedSecretFromKeyAgreement(with: publicKey,
 let symmetricKey = SHA256.hash(data: sharedSecret.bytes)
 ```
 
-## Silent Payments Scheme
+### Silent Payments Scheme
 
 ```swift
 let privateSign1 = try! P256K.Signing.PrivateKey()
@@ -135,7 +159,7 @@ let schnorrPrivate = try! P256K.Schnorr.PrivateKey(dataRepresentation: sharedSec
 let xonlyTweak2 = try! schnorrPrivate.xonly.add(privateSign1.publicKey.xonly.bytes)
 ```
 
-## Recovery
+### Recovery
 
 ```swift
 let privateKey = try! P256K.Recovery.PrivateKey()
@@ -151,7 +175,7 @@ let publicKey = try! P256K.Recovery.PublicKey(messageData, signature: recoverySi
 let signature = try! recoverySignature.normalize
 ```
 
-## Combine Public Keys
+### Combine Public Keys
 
 ```swift
 let privateKey = try! P256K.Signing.PrivateKey()
@@ -161,7 +185,7 @@ let publicKey = try! P256K.Signing.PrivateKey().public
 publicKey.combine([privateKey.publicKey], format: .uncompressed)
 ```
 
-## PEM Key Format
+### PEM Key Format
 
 ```swift
 let privateKeyString = """
@@ -176,7 +200,7 @@ oUQDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMAcjHIrTDS6HEELgguOatmFBOp
 let privateKey = try! P256K.Signing.PrivateKey(pemRepresentation: privateKeyString)
 ```
 
-## MuSig2
+### MuSig2
 
 ```swift
 // Initialize private keys for two signers
