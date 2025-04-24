@@ -8,7 +8,7 @@ Swift package for elliptic curve public key cryptography, ECDSA, and Schnorr Sig
 
 - Provide lightweight ECDSA & Schnorr Signatures functionality
 - Support simple and advanced usage, including BIP-327 and BIP-340
-- Expose C bindings for full control of the secp256k1 implementation
+- Expose libsecp256k1 bindings for full control of the implementation
 - Offer a familiar API design inspired by [Swift Crypto](https://github.com/apple/swift-crypto)
 - Maintain automatic updates for Swift and libsecp256k1
 - Ensure availability for Linux and Apple platform ecosystems
@@ -17,30 +17,38 @@ Swift package for elliptic curve public key cryptography, ECDSA, and Schnorr Sig
 
 This package uses Swift Package Manager. To add it to your project:
 
+> [!WARNING]  
+> These APIs are not considered stable and may change with any update. Specify a version using `exact:` to avoid breaking changes.
+
 ### Using Xcode
 
 1. Go to `File > Add Packages...`
 2. Enter the package URL: `https://github.com/21-DOT-DEV/swift-secp256k1`
 3. Select the desired version
 
-### Using Package.swift
+### Using Package.swift (Recommended)
 
 Add the following to your `Package.swift` file:
 
 ```swift
-.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.18.0"),
+.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.20.0"),
 ```
 
-Then, include `secp256k1` as a dependency in your target:
+Then, include `P256K` as a dependency in your target:
 
 ```swift
 .target(name: "<target>", dependencies: [
-    .product(name: "secp256k1", package: "swift-secp256k1")
+    .product(name: "P256K", package: "swift-secp256k1")
 ]),
 ```
 
-> [!WARNING]  
-> These APIs are not considered stable and may change with any update. Specify a version using `exact:` to avoid breaking changes.
+### Using CocoaPods
+
+Add the following to your `Podfile`:
+
+```ruby
+pod 'swift-secp256k1', '0.20.0'
+```
 
 ### Try it out
 
@@ -54,11 +62,11 @@ arena 21-DOT-DEV/swift-secp256k1
 
 ### ECDSA
 ```swift
-import secp256k1
+import P256K
 
 // Private key
 let privateBytes = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
-let privateKey = try! secp256k1.Signing.PrivateKey(dataRepresentation: privateBytes)
+let privateKey = try! P256K.Signing.PrivateKey(dataRepresentation: privateBytes)
 
 // Public key
 print(String(bytes: privateKey.publicKey.dataRepresentation))
@@ -74,7 +82,7 @@ print(try! signature.derRepresentation.base64EncodedString())
 ### Schnorr
 ```swift
 // Strict BIP340 mode is disabled by default for Schnorr signatures with variable length messages
-let privateKey = try! secp256k1.Schnorr.PrivateKey()
+let privateKey = try! P256K.Schnorr.PrivateKey()
 
 // Extra params for custom signing
 var auxRand = try! "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906".bytes
@@ -84,10 +92,10 @@ var messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9
 let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 ```
 
-## Tweak
+### Tweak
 
 ```swift
-let privateKey = try! secp256k1.Signing.PrivateKey()
+let privateKey = try! P256K.Signing.PrivateKey()
 
 // Adding a tweak to the private key and public key
 let tweak = try! "5f0da318c6e02f653a789950e55756ade9f194e1ec228d7f368de1bd821322b6".bytes
@@ -95,11 +103,11 @@ let tweakedPrivateKey = try! privateKey.add(tweak)
 let tweakedPublicKeyKey = try! privateKey.publicKey.add(tweak)
 ```
 
-## Elliptic Curve Diffie Hellman
+### Elliptic Curve Diffie Hellman
 
 ```swift
-let privateKey = try! secp256k1.KeyAgreement.PrivateKey()
-let publicKey = try! secp256k1.KeyAgreement.PrivateKey().publicKey
+let privateKey = try! P256K.KeyAgreement.PrivateKey()
+let publicKey = try! P256K.KeyAgreement.PrivateKey().publicKey
 
 // Create a compressed shared secret with a private key from only a public key
 let sharedSecret = try! privateKey.sharedSecretFromKeyAgreement(with: publicKey, format: .compressed)
@@ -108,16 +116,14 @@ let sharedSecret = try! privateKey.sharedSecretFromKeyAgreement(with: publicKey,
 let symmetricKey = SHA256.hash(data: sharedSecret.bytes)
 ```
 
-## Silent Payments Scheme
+### Silent Payments Scheme
 
 ```swift
-let privateSign1 = try! secp256k1.Signing.PrivateKey()
-let privateSign2 = try! secp256k1.Signing.PrivateKey()
+let privateSign1 = try! P256K.Signing.PrivateKey()
+let privateSign2 = try! P256K.Signing.PrivateKey()
 
-let privateKey1 = try! secp256k1.KeyAgreement.PrivateKey(dataRepresentation: privateSign1.dataRepresentation)
-let privateKey2 = try! secp256k1.KeyAgreement.PrivateKey(dataRepresentation: privateSign2.dataRepresentation)
-
-let publicKey1 = try! secp256k1.KeyAgreement.PublicKey(dataRepresentation: privateKey1.publicKey.dataRepresentation)
+let privateKey1 = try! P256K.KeyAgreement.PrivateKey(dataRepresentation: privateSign1.dataRepresentation)
+let privateKey2 = try! P256K.KeyAgreement.PrivateKey(dataRepresentation: privateSign2.dataRepresentation)
 
 let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
 let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: publicKey1)
@@ -125,45 +131,45 @@ let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: publicKe
 let symmetricKey1 = SHA256.hash(data: sharedSecret1.bytes)
 let symmetricKey2 = SHA256.hash(data: sharedSecret2.bytes)
 
-let sharedSecretSign1 = try! secp256k1.Signing.PrivateKey(dataRepresentation: symmetricKey1.bytes)
-let sharedSecretSign2 = try! secp256k1.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
+let sharedSecretSign1 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey1.bytes)
+let sharedSecretSign2 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
 
 // Spendable Silent Payment private key
 let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xonly.bytes)
 let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
 
-let schnorrPrivate = try! secp256k1.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)
+let schnorrPrivate = try! P256K.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)
 // Payable Silent Payment public key
 let xonlyTweak2 = try! schnorrPrivate.xonly.add(privateSign1.publicKey.xonly.bytes)
 ```
 
-## Recovery
+### Recovery
 
 ```swift
-let privateKey = try! secp256k1.Recovery.PrivateKey()
+let privateKey = try! P256K.Recovery.PrivateKey()
 let messageData = "We're all Satoshi.".data(using: .utf8)!
 
 // Create a recoverable ECDSA signature
 let recoverySignature = try! privateKey.signature(for: messageData)
 
 // Recover an ECDSA public key from a signature
-let publicKey = try! secp256k1.Recovery.PublicKey(messageData, signature: recoverySignature)
+let publicKey = try! P256K.Recovery.PublicKey(messageData, signature: recoverySignature)
 
 // Convert a recoverable signature into a normal signature
 let signature = try! recoverySignature.normalize
 ```
 
-## Combine Public Keys
+### Combine Public Keys
 
 ```swift
-let privateKey = try! secp256k1.Signing.PrivateKey()
-let publicKey = try! secp256k1.Signing.PrivateKey().public
+let privateKey = try! P256K.Signing.PrivateKey()
+let publicKey = try! P256K.Signing.PrivateKey().public
 
 // The Combine API arguments are an array of PublicKey objects and an optional format 
 publicKey.combine([privateKey.publicKey], format: .uncompressed)
 ```
 
-## PEM Key Format
+### PEM Key Format
 
 ```swift
 let privateKeyString = """
@@ -175,38 +181,38 @@ oUQDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMAcjHIrTDS6HEELgguOatmFBOp
 """
 
 // Import keys generated from OpenSSL
-let privateKey = try! secp256k1.Signing.PrivateKey(pemRepresentation: privateKeyString)
+let privateKey = try! P256K.Signing.PrivateKey(pemRepresentation: privateKeyString)
 ```
 
-## MuSig2
+### MuSig2
 
 ```swift
 // Initialize private keys for two signers
-let firstPrivateKey = try secp256k1.Schnorr.PrivateKey()
-let secondPrivateKey = try secp256k1.Schnorr.PrivateKey()
+let firstPrivateKey = try P256K.Schnorr.PrivateKey()
+let secondPrivateKey = try P256K.Schnorr.PrivateKey()
 
 // Aggregate the public keys using MuSig
-let aggregateKey = try secp256k1.MuSig.aggregate([firstPrivateKey.publicKey, secondPrivateKey.publicKey])
+let aggregateKey = try P256K.MuSig.aggregate([firstPrivateKey.publicKey, secondPrivateKey.publicKey])
 
 // Message to be signed
 let message = "Vires in Numeris.".data(using: .utf8)!
 let messageHash = SHA256.hash(data: message)
 
 // Generate nonces for each signer
-let firstNonce = try secp256k1.MuSig.Nonce.generate(
+let firstNonce = try P256K.MuSig.Nonce.generate(
     secretKey: firstPrivateKey,
     publicKey: firstPrivateKey.publicKey,
     msg32: Array(messageHash)
 )
 
-let secondNonce = try secp256k1.MuSig.Nonce.generate(
+let secondNonce = try P256K.MuSig.Nonce.generate(
     secretKey: secondPrivateKey,
     publicKey: secondPrivateKey.publicKey,
     msg32: Array(messageHash)
 )
 
 // Aggregate nonces
-let aggregateNonce = try secp256k1.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
 
 // Create partial signatures
 let firstPartialSignature = try firstPrivateKey.partialSignature(
@@ -226,7 +232,7 @@ let secondPartialSignature = try secondPrivateKey.partialSignature(
 )
 
 // Aggregate partial signatures into a full signature
-let aggregateSignature = try secp256k1.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
+let aggregateSignature = try P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
 
 // Verify the aggregate signature
 let isValid = aggregateKey.isValidSignature(

@@ -6,24 +6,27 @@ let package = Package(
     name: "swift-secp256k1",
     products: [
         // WARNING: These APIs should not be considered stable and may change at any time.
-        .library(name: "secp256k1", targets: ["secp256k1"]),
-        .library(name: "zkp", targets: ["zkp"])
+        .library(name: "libsecp256k1", targets: ["libsecp256k1"]),
+        .library(name: "libsecp256k1_zkp", targets: ["libsecp256k1_zkp"]),
+        .library(name: "P256K", targets: ["P256K"]),
+        .library(name: "ZKP", targets: ["ZKP"])
     ],
     dependencies: [
         // Dependencies used for package development
         .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "1.11.11"),
+        .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.48.1"),
         .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.55.5"),
         .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.59.1")
     ],
     targets: [
-        .target(name: "secp256k1", dependencies: ["secp256k1_bindings"]),
-        .target(name: "zkp", dependencies: ["zkp_bindings"]),
+        .target(name: "P256K", dependencies: ["libsecp256k1"]),
+        .target(name: "ZKP", dependencies: ["libsecp256k1_zkp"]),
         .target(
-            name: "secp256k1_bindings",
+            name: "libsecp256k1",
             cSettings: PackageDescription.CSetting.baseSettings
         ),
         .target(
-            name: "zkp_bindings",
+            name: "libsecp256k1_zkp",
             cSettings: PackageDescription.CSetting.baseSettings + [
                 .define("ENABLE_MODULE_BPPP"),
                 .define("ENABLE_MODULE_ECDSA_ADAPTOR"),
@@ -38,7 +41,8 @@ let package = Package(
                 .headerSearchPath("../../Submodules/secp256k1-zkp/src")
             ]
         ),
-        .testTarget(name: "zkpTests", dependencies: ["zkp"])
+        .testTarget(name: "libsecp256k1zkpTests", dependencies: ["ZKP", "libsecp256k1_zkp"]),
+        .testTarget(name: "ZKPTests", dependencies: ["ZKP"])
     ],
     swiftLanguageModes: [.v5],
     cLanguageStandard: .c89
