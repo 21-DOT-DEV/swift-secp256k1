@@ -106,3 +106,25 @@ jobs:
       - name: Upload XCFramework
         run: |
           gh release upload ${{ github.ref_name }} P256K.xcframework.zip
+      - name: Deploy to Cocoapods
+        run: |
+          # Install Cocoapods
+          gem install cocoapods
+
+          # Get the current release tag name (version) from GitHub
+          # This ensures the podspec uses the same version as the GitHub release
+          export POD_VERSION=$(gh release list -R 21-DOT-DEV/swift-secp256k1 -L 1 --json tagName --jq '.[0].tagName')
+          
+          # Calculate SHA256 checksum of the XCFramework zip file
+          # CocoaPods requires this hash for security verification when downloading the binary
+          export XCFRAMEWORK_SHA=$(shasum -a 256 P256K.xcframework.zip | awk '{print $1}')
+          
+          # Validate the podspec using the environment variables set above
+          # This checks that the podspec is valid before attempting to publish
+          pod spec lint Projects/swift-secp256k1.podspec
+          
+          # Push the podspec to the CocoaPods Trunk service
+          # This publishes the new version of the pod to the CocoaPods registry
+          pod trunk push Projects/swift-secp256k1.podspec
+        env:
+          COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
