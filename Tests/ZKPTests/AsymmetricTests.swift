@@ -143,4 +143,24 @@ struct AsymmetricTestSuite {
 
         #expect(privateKey.publicKey.dataRepresentation == publicKey.dataRepresentation, "Public key PEM data representation does not match the expected value.")
     }
+
+    @Test("Test UInt256")
+    @available(macOS 13.3, *)
+    func testUInt256() {
+        let expectedPrivateKey: UInt256 = 0x7DA1_2CC3_9BB4_189A_C72D_34FC_2225_DF5C_F36A_AACD_CAC7_E5A4_3963_299B_C8D8_88ED
+        let expectedPrivateKey2: UInt256 = 0x1BB5_FC86_3773_7549_414D_7F1B_82A5_C12D_234B_56DB_AC17_5E14_0F63_046A_EBA8_DF87
+        let expectedPublicKey = "023521df7b94248ffdf0d37f738a4792cc3932b6b1b89ef71cddde8251383b26e7"
+        let combinedPrivateKey = expectedPrivateKey + expectedPrivateKey2
+
+        let privateKey = try! P256K.Signing.PrivateKey(expectedPrivateKey)
+        let privateKey2 = try! P256K.Signing.PrivateKey(expectedPrivateKey2)
+        let privateKey3 = try! P256K.Signing.PrivateKey(combinedPrivateKey)
+
+        let combinedPublicKey = try! privateKey.publicKey.combine([privateKey2.publicKey])
+
+        // Verify the keys matches the expected keys output
+        #expect(expectedPrivateKey == UInt256(rawValue: privateKey.dataRepresentation))
+        #expect(expectedPublicKey == String(bytes: privateKey.publicKey.dataRepresentation))
+        #expect(combinedPublicKey.dataRepresentation == privateKey3.publicKey.dataRepresentation)
+    }
 }

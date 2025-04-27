@@ -183,7 +183,14 @@ workflows:
                   -e 's/[[:<:]]P256K\.HashDigest[[:>:]]/HashDigest/g' \
                   -e 's/[[:<:]]P256K\.SharedSecret[[:>:]]/SharedSecret/g' \
                   -e 's/[[:<:]]P256K\.PublicKeyImplementation[[:>:]]/PublicKeyImplementation/g' \
-                  -e 's/[[:<:]]P256K\.PrivateKeyImplementation[[:>:]]/PrivateKeyImplementation/g'
+                  -e 's/[[:<:]]P256K\.PrivateKeyImplementation[[:>:]]/PrivateKeyImplementation/g' \
+                  -e 's/[[:<:]]P256K\.UInt256[[:>:]]/UInt256/g' \
+                  -e 's/[[:<:]]P256K\.Int256[[:>:]]/Int256/g' \
+                  -e 's/[[:<:]]P256K\.UInt128[[:>:]]/UInt128/g' \
+                  -e 's/[[:<:]]P256K\.Int128[[:>:]]/Int128/g' \
+                  -e 's/[[:<:]]P256K\.SIMDWordsInteger[[:>:]]/SIMDWordsInteger/g' \
+                  -e 's/[[:<:]]P256K\.SIMDWrapper[[:>:]]/SIMDWrapper/g' \
+                  -e 's/[[:<:]]P256K\.Vector[[:>:]]/Vector/g'
     - deploy-to-bitrise-io:
         inputs:
         - deploy_path: "$BITRISE_SOURCE_DIR/P256K.xcframework"
