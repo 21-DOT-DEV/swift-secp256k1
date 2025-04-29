@@ -145,7 +145,7 @@ struct AsymmetricTestSuite {
     }
 
     @Test("Test UInt256")
-    @available(macOS 13.3, *)
+    @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
     func testUInt256() {
         let expectedPrivateKey: UInt256 = 0x7DA1_2CC3_9BB4_189A_C72D_34FC_2225_DF5C_F36A_AACD_CAC7_E5A4_3963_299B_C8D8_88ED
         let expectedPrivateKey2: UInt256 = 0x1BB5_FC86_3773_7549_414D_7F1B_82A5_C12D_234B_56DB_AC17_5E14_0F63_046A_EBA8_DF87
