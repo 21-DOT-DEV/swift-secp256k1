@@ -95,7 +95,7 @@ public extension SIMDWordsInteger {
     /// exactly.
     ///
     /// - Parameter source: An immutable arbitrary-precision signed integer.
-    @available(macOS 13.3, *)
+    @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
     init?(exactly source: StaticBigInt) {
         if source.signum() == 0 {
             self = .zero
@@ -114,7 +114,7 @@ public extension SIMDWordsInteger {
     /// truncating or sign extending its binary representation to fit this type.
     ///
     /// - Parameter source: An immutable arbitrary-precision signed integer.
-    @available(macOS 13.3, *)
+    @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
     init(truncatingIfNeeded source: StaticBigInt) {
         var vector = Vector.zero
         for index in vector.indices {
@@ -401,7 +401,7 @@ public extension SIMDWordsInteger {
 //===----------------------------------------------------------------------===//
 
 public extension SIMDWordsInteger {
-    @available(macOS 13.3, *)
+    @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
     init(integerLiteral source: StaticBigInt) {
         self = Self(exactly: source) ?? {
             preconditionFailure("integer overflow: '\(source)' as '\(Self.self)'")
@@ -813,7 +813,7 @@ private extension SIMDWrapper where Element == UInt {
 
 /// A 128-bit signed integer, stored as a SIMD vector of words.
 
-@frozen @available(macOS 13.3, *)
+@frozen @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 public struct Int128: SIMDWordsInteger, SignedInteger {
     public typealias Magnitude = UInt128
 
@@ -837,11 +837,11 @@ public struct Int128: SIMDWordsInteger, SignedInteger {
 
 /// A 128-bit unsigned integer, stored as a SIMD vector of words.
 
-@frozen @available(macOS 13.3, *)
+@frozen @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 public struct UInt128: SIMDWordsInteger, UnsignedInteger {
     public typealias Magnitude = Self
 
-    @available(macOS 13.3, *)
+    @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
     public typealias Stride = Int128
 
     #if arch(i386) || arch(arm) || arch(arm64_32) || arch(wasm32) || arch(powerpc)
@@ -868,7 +868,7 @@ public struct UInt128: SIMDWordsInteger, UnsignedInteger {
 
 /// A 256-bit signed integer, stored as a SIMD vector of words.
 
-@frozen @available(macOS 13.3, *)
+@frozen @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 public struct Int256: SIMDWordsInteger, SignedInteger {
     public typealias Magnitude = UInt256
 
@@ -892,7 +892,7 @@ public struct Int256: SIMDWordsInteger, SignedInteger {
 
 /// A 256-bit unsigned integer, stored as a SIMD vector of words.
 
-@frozen @available(macOS 13.3, *)
+@frozen @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 public struct UInt256: SIMDWordsInteger, UnsignedInteger {
     public typealias Magnitude = Self
 
@@ -914,7 +914,7 @@ public struct UInt256: SIMDWordsInteger, UnsignedInteger {
     }
 }
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension UInt256.Vector: Sequence {
     public func makeIterator() -> Iterator {
         Iterator(self)
@@ -941,7 +941,7 @@ extension UInt256.Vector: Sequence {
     }
 }
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension UInt256: RawRepresentable {
     public typealias RawValue = Data
 

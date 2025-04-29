@@ -113,7 +113,8 @@ public extension P256K {
             /// - Parameter data: A raw representation of the key.
             /// - Parameter format: The key format, default is .compressed.
             /// - Throws: An error if the raw representation does not create a private key for signing.
-            @available(macOS 13.3, *) public init(_ staticInt: UInt256, format: P256K.Format = .compressed) throws {
+            @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
+            public init(_ staticInt: UInt256, format: P256K.Format = .compressed) throws {
                 self.baseKey = try PrivateKeyImplementation(dataRepresentation: staticInt.rawValue, format: format)
             }
 

@@ -126,7 +126,7 @@ final class SIMDWordsIntegerTests: Base {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testAddition<T: FixedWidthInteger>(_: T.Type) {
         expectEqual(T.zero, T.zero + T.zero)
@@ -233,7 +233,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testBitCounting<T: FixedWidthInteger>(_: T.Type) {
         typealias Element = (
@@ -289,7 +289,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testBitShifting<T: FixedWidthInteger>(_: T.Type) {
         expectEqual(T.min, T.min &<< T.zero)
@@ -376,7 +376,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testBitTwiddling<T: FixedWidthInteger>(_: T.Type) {
         expectEqual(T.max, ~.min)
@@ -411,7 +411,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testByteSwapping<T: FixedWidthInteger>(_: T.Type) {
         typealias Element = (lhs: T, rhs: T)
@@ -467,7 +467,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testMultiplication<T: FixedWidthInteger>(_: T.Type) {
         let identity: T = 1
@@ -566,7 +566,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testReflection<T: FixedWidthInteger>(_: T.Type) {
         typealias Element = (actual: T, expected: String)
@@ -611,7 +611,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testSemantics<T: FixedWidthInteger>(_: T.Type) {
         typealias Element = (value: T, distance: T.Stride)
@@ -690,7 +690,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testSubtraction<T: FixedWidthInteger>(_: T.Type) {
         expectEqual(T.zero, T.zero - T.zero)
@@ -793,7 +793,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testTypeProperties() {
         expectEqual(128, Int128.bitWidth)
@@ -813,7 +813,7 @@ extension SIMDWordsIntegerTests {
 
 //===----------------------------------------------------------------------===//
 
-@available(macOS 13.3, *)
+@available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 extension SIMDWordsIntegerTests {
     func testWords<T: FixedWidthInteger>(_: T.Type) {
         if T.isSigned {
