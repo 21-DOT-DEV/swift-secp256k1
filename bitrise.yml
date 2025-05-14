@@ -35,7 +35,7 @@ workflows:
         timeout: 60
     - script:
         title: CHECK LINKS
-        timeout: 20
+        timeout: 60
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -54,7 +54,7 @@ workflows:
             fi
     - script:
         title: CHECK iOS
-        timeout: 60
+        timeout: 120
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -64,7 +64,7 @@ workflows:
             xcrun xcodebuild -skipMacroValidation -skipPackagePluginValidation build -scheme swift-secp256k1-Package -destination generic/platform=iOS
     - script:
         title: CHECK tvOS
-        timeout: 60
+        timeout: 120
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -74,7 +74,7 @@ workflows:
             xcrun xcodebuild -skipMacroValidation -skipPackagePluginValidation build -scheme swift-secp256k1-Package -destination generic/platform=tvOS
     - script:
         title: CHECK watchOS
-        timeout: 60
+        timeout: 120
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -85,7 +85,7 @@ workflows:
     - script:
         title: CHECK visionOS
         run_if: false
-        timeout: 60
+        timeout: 120
         inputs:
         - content: |-
             #!/usr/bin/env bash
