@@ -31,7 +31,7 @@ This package uses Swift Package Manager. To add it to your project:
 Add the following to your `Package.swift` file:
 
 ```swift
-.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.20.0"),
+.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.21.1"),
 ```
 
 Then, include `P256K` as a dependency in your target:
@@ -47,7 +47,7 @@ Then, include `P256K` as a dependency in your target:
 Add the following to your `Podfile`:
 
 ```ruby
-pod 'swift-secp256k1', '0.20.0'
+pod 'swift-secp256k1', '0.21.1'
 ```
 
 ### Try it out
