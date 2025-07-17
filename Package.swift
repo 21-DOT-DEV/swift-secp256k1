@@ -15,7 +15,7 @@ let package = Package(
         // Dependencies used for package development
         .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "1.12.2"),
         .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.55.6"),
-        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.57.0"),
+        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.57.2"),
         .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.59.1")
     ],
     targets: [
