@@ -19,7 +19,7 @@ import Testing
 
 struct UtilityTestSuite {
     @Test("Verify keypair equality checks work correctly")
-    func testKeypairSafeCompare() {
+    func keypairSafeCompare() {
         let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
         var privateKeyBytes = try! expectedPrivateKey.bytes
         let privateKey0 = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
@@ -36,7 +36,7 @@ struct UtilityTestSuite {
     }
 
     @Test("Verify memory zeroization works correctly")
-    func testZeroization() {
+    func zeroization() {
         var array: [UInt8] = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
         memset_s(&array, array.capacity, 0, array.capacity)
