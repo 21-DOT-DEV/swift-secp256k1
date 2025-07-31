@@ -65,21 +65,21 @@ struct ECDSATestSuite {
     }
 
     @Test("Verify invalid raw signature initialization throws correct error")
-    func testInvalidRawSignature() {
+    func invalidRawSignature() {
         #expect(throws: secp256k1Error.incorrectParameterSize) {
             _ = try P256K.Signing.ECDSASignature(dataRepresentation: Data())
         }
     }
 
     @Test("Verify invalid DER signature initialization throws correct error")
-    func testInvalidDerSignature() {
+    func invalidDerSignature() {
         #expect(throws: secp256k1Error.underlyingCryptoError) {
             _ = try P256K.Signing.ECDSASignature(derRepresentation: Data())
         }
     }
 
     @Test("Signing with PEM representation")
-    func testSigningPEM() {
+    func signingPEM() {
         let privateKeyString = """
         -----BEGIN EC PRIVATE KEY-----
         MHQCAQEEIBXwHPDpec6b07GeLbnwetT0dvWzp0nV3MR+4pPKXIc7oAcGBSuBBAAK
@@ -99,7 +99,7 @@ struct ECDSATestSuite {
     }
 
     @Test("Verifying with PEM representation")
-    func testVerifyingPEM() {
+    func verifyingPEM() {
         let publicKeyString = """
         -----BEGIN PUBLIC KEY-----
         MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMA

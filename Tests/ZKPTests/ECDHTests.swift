@@ -19,7 +19,7 @@ import Testing
 
 struct ECDHTestSuite {
     @Test("Test Key Agreement")
-    func testKeyAgreement() {
+    func keyAgreement() {
         let privateString1 = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
         let privateString2 = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
 
@@ -36,7 +36,7 @@ struct ECDHTestSuite {
     }
 
     @Test("Test Key Agreement Public Key Tweak Addition")
-    func testKeyAgreementPublicKeyTweakAdd() {
+    func keyAgreementPublicKeyTweakAdd() {
         let privateSign1 = try! P256K.Signing.PrivateKey()
         let privateSign2 = try! P256K.Signing.PrivateKey()
 
@@ -53,10 +53,10 @@ struct ECDHTestSuite {
         let symmetricKey1 = SHA256.hash(data: sharedSecret1.bytes)
         let symmetricKey2 = SHA256.hash(data: sharedSecret2.bytes)
 
-        let sharedSecretSign1 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey1.bytes)
+        let sharedSecretSign1 = try! P256K.Schnorr.PrivateKey(dataRepresentation: symmetricKey1.bytes)
         let sharedSecretSign2 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
 
-        let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xonly.bytes)
+        let privateTweak1 = try! sharedSecretSign1.add(privateSign1.publicKey.xonly.bytes)
         let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
 
         let schnorrPrivate = try! P256K.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)
