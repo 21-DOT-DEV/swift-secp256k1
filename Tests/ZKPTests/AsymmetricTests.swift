@@ -34,21 +34,21 @@ struct AsymmetricTestSuite {
     }
 
     @Test("Verify compressed public key characteristics")
-    func testCompressedPublicKey() {
+    func compressedPublicKey() {
         let privateKey = try! P256K.Signing.PrivateKey()
         #expect(privateKey.publicKey.format == .compressed, "PublicKey format should be compressed")
         #expect(privateKey.publicKey.dataRepresentation.count == P256K.Format.compressed.length, "PublicKey length mismatch for compressed format")
     }
 
     @Test("Verify uncompressed public key characteristics")
-    func testUncompressedPublicKey() {
+    func uncompressedPublicKey() {
         let privateKey = try! P256K.Signing.PrivateKey(format: .uncompressed)
         #expect(privateKey.publicKey.format == .uncompressed, "PublicKey format should be uncompressed")
         #expect(privateKey.publicKey.dataRepresentation.count == P256K.Format.uncompressed.length, "PublicKey length mismatch for uncompressed format")
     }
 
     @Test("Verify uncompressed public key with specific bytes")
-    func testUncompressedPublicKeyWithKey() {
+    func uncompressedPublicKeyWithKey() {
         let privateBytes = try! "703d3b63e84421e59f9359f8b27c25365df9d85b6b1566e3168412fa599c12f4".bytes
         let privateKey = try! P256K.Signing.PrivateKey(dataRepresentation: privateBytes, format: .uncompressed)
         #expect(privateKey.publicKey.format == .uncompressed, "PublicKey format should be uncompressed")
@@ -62,7 +62,7 @@ struct AsymmetricTestSuite {
     }
 
     @Test("Verify invalid private key bytes throw appropriate error")
-    func testInvalidPrivateKeyBytes() {
+    func invalidPrivateKeyBytes() {
         let expectedPrivateKey = "55f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         #expect(throws: (any Error).self) {
             _ = try expectedPrivateKey.bytes
@@ -70,7 +70,7 @@ struct AsymmetricTestSuite {
     }
 
     @Test("Verify initialization with invalid private key length throws appropriate error")
-    func testInvalidPrivateKeyLength() {
+    func invalidPrivateKeyLength() {
         let expectedPrivateKey = "555f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try! expectedPrivateKey.bytes
 
@@ -80,7 +80,7 @@ struct AsymmetricTestSuite {
     }
 
     @Test("Test conversion of xonly public key to full public key")
-    func testXonlyToPublicKey() {
+    func xonlyToPublicKey() {
         let privateKey = try! P256K.Signing.PrivateKey()
         let publicKey = P256K.Signing.PublicKey(xonlyKey: privateKey.publicKey.xonly)
 
@@ -88,7 +88,7 @@ struct AsymmetricTestSuite {
     }
 
     @Test("Public Key Combination Test")
-    func testPubkeyCombine() {
+    func pubkeyCombine() {
         let publicKeyBytes1 = try! "021b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014".bytes
         let publicKeyBytes2 = try! "0260303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752".bytes
 
@@ -103,7 +103,7 @@ struct AsymmetricTestSuite {
     }
 
     @Test("Uncompressed Public Key Test")
-    func testKeyFormatConversion() {
+    func keyFormatConversion() {
         let pubkey = try! P256K.Signing.PublicKey(
             dataRepresentation: "02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2".bytes,
             format: .compressed
@@ -113,7 +113,7 @@ struct AsymmetricTestSuite {
     }
 
     @Test("Private Key PEM Test")
-    func testPrivateKeyPEM() {
+    func privateKeyPEM() {
         let privateKeyString = """
         -----BEGIN EC PRIVATE KEY-----
         MHQCAQEEIBXwHPDpec6b07GeLbnwetT0dvWzp0nV3MR+4pPKXIc7oAcGBSuBBAAK
@@ -129,7 +129,7 @@ struct AsymmetricTestSuite {
     }
 
     @Test("Public Key PEM Test")
-    func testPublicKeyPEM() {
+    func publicKeyPEM() {
         let publicKeyString = """
         -----BEGIN PUBLIC KEY-----
         MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMA
@@ -146,7 +146,7 @@ struct AsymmetricTestSuite {
 
     @Test("Test UInt256")
     @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
-    func testUInt256() {
+    func uInt256() {
         let expectedPrivateKey: UInt256 = 0x7DA1_2CC3_9BB4_189A_C72D_34FC_2225_DF5C_F36A_AACD_CAC7_E5A4_3963_299B_C8D8_88ED
         let expectedPrivateKey2: UInt256 = 0x1BB5_FC86_3773_7549_414D_7F1B_82A5_C12D_234B_56DB_AC17_5E14_0F63_046A_EBA8_DF87
         let expectedPublicKey = "023521df7b94248ffdf0d37f738a4792cc3932b6b1b89ef71cddde8251383b26e7"

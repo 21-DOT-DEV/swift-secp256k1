@@ -18,7 +18,7 @@ import Testing
 
 struct TweakTestSuite {
     @Test("Verify private key tweak addition produces expected result")
-    func testPrivateKeyTweakAdd() {
+    func privateKeyTweakAdd() {
         let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
         let expectedPublicKey = "023521df7b94248ffdf0d37f738a4792cc3932b6b1b89ef71cddde8251383b26e7"
         let expectedTweakedPrivateKey = "5f0da318c6e02f653a789950e55756ade9f194e1ec228d7f368de1bd821322b6"
