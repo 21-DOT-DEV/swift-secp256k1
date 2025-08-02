@@ -44,6 +44,11 @@ public extension P256K.Schnorr {
         /// Generated secp256k1 Signing Key.
         private let baseKey: PrivateKeyImplementation
 
+        /// The secp256k1 private key object.
+        var key: SecureBytes {
+            baseKey.key
+        }
+
         /// The associated public key for verifying signatures created with this private key.
         ///
         /// - Returns: The associated public key.
@@ -251,22 +256,7 @@ public extension P256K.Schnorr {
 
 // MARK: - secp256k1 + Schnorr
 
-extension P256K.Schnorr.PrivateKey: DigestSigner, Signer {
-    /// Generates an Schnorr signature from a hash of a variable length data object
-    ///
-    /// This function uses SHA256 to create a hash of the variable length the data argument to ensure only 32-byte messages are signed.
-    /// Strictly does _not_ follow BIP340. Read ``secp256k1_schnorrsig_sign`` documentation for more info.
-    ///
-    /// [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h#L95L118)
-    ///
-    /// - Parameters:
-    ///     - data: The data object to hash and sign.
-    /// - Returns: The Schnorr Signature.
-    /// - Throws: If there is a failure producing the signature.
-    public func signature<D: DataProtocol>(for data: D) throws -> P256K.Schnorr.SchnorrSignature {
-        try signature(for: data, auxiliaryRand: SecureBytes(count: P256K.ByteLength.dimension).bytes)
-    }
-
+extension P256K.Schnorr.PrivateKey: DigestSigner {
     /// Generates an Schnorr signature from the hash digest object
     ///
     /// This function is used when a hash digest has been created before invoking.
@@ -280,22 +270,6 @@ extension P256K.Schnorr.PrivateKey: DigestSigner, Signer {
     /// - Throws: If there is a failure producing the signature.
     public func signature<D: Digest>(for digest: D) throws -> P256K.Schnorr.SchnorrSignature {
         try signature(for: digest, auxiliaryRand: SecureBytes(count: P256K.ByteLength.dimension).bytes)
-    }
-
-    /// Generates an Schnorr signature from a hash of a variable length data object
-    ///
-    /// This function uses SHA256 to create a hash of the variable length the data argument to ensure only 32-byte messages are signed.
-    /// Strictly does _not_ follow BIP340. Read ``secp256k1_schnorrsig_sign`` documentation for more info.
-    ///
-    /// [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h#L95L118)
-    ///
-    /// - Parameters:
-    ///     - data: The data object to hash and sign.
-    ///     - auxiliaryRand: Auxiliary randomness.
-    /// - Returns: The Schnorr Signature.
-    /// - Throws: If there is a failure producing the signature.
-    public func signature<D: DataProtocol>(for data: D, auxiliaryRand: [UInt8]) throws -> P256K.Schnorr.SchnorrSignature {
-        try signature(for: SHA256.hash(data: data), auxiliaryRand: auxiliaryRand)
     }
 
     /// Generates an Schnorr signature from the hash digest object
@@ -362,22 +336,7 @@ extension P256K.Schnorr.PrivateKey: DigestSigner, Signer {
 
 // MARK: - Schnorr + Validating Key
 
-extension P256K.Schnorr.XonlyKey: DigestValidator, DataValidator {
-    /// Verifies a Schnorr signature with a variable length data object
-    ///
-    /// This function uses SHA256 to create a hash of the variable length the data argument to ensure only 32-byte messages are verified.
-    /// Strictly does _not_ follow BIP340. Read ``secp256k1_schnorrsig_sign`` documentation for more info.
-    ///
-    /// [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h#L95L118)
-    ///
-    /// - Parameters:
-    ///   - signature: The signature to verify
-    ///   - data: The data that was signed.
-    /// - Returns: True if the signature is valid, false otherwise.
-    public func isValidSignature<D: DataProtocol>(_ signature: P256K.Schnorr.SchnorrSignature, for data: D) -> Bool {
-        isValidSignature(signature, for: SHA256.hash(data: data))
-    }
-
+extension P256K.Schnorr.XonlyKey: DigestValidator {
     /// Verifies a Schnorr signature with a digest
     ///
     /// This function is used when a hash digest has been created before invoking.
