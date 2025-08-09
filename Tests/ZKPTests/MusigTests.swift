@@ -19,7 +19,7 @@ import Testing
 
 struct MuSigTestSuite {
     @Test("MuSig Signing and Verification")
-    func testMusig() {
+    func musig() {
         // Test MuSig aggregate
         let privateKeys = [
             try! P256K.Schnorr.PrivateKey(),
@@ -65,7 +65,7 @@ struct MuSigTestSuite {
             pubnonce: firstNonce.pubnonce,
             secureNonce: firstNonce.secnonce,
             publicNonceAggregate: aggregateNonce,
-            publicKeyAggregate: aggregate
+            xonlyKeyAggregate: aggregate.xonly
         )
 
         let secondPartialSignature = try! privateKeys[1].partialSignature(
