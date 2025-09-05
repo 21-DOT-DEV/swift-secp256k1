@@ -363,7 +363,7 @@ public extension P256K.Schnorr.PrivateKey {
         pubnonce: P256K.Schnorr.Nonce,
         secureNonce: consuming P256K.Schnorr.SecureNonce,
         publicNonceAggregate: P256K.MuSig.Nonce,
-        publicKeyAggregate: P256K.MuSig.PublicKey
+        xonlyKeyAggregate: P256K.MuSig.XonlyKey
     ) throws -> P256K.Schnorr.PartialSignature {
         let context = P256K.Context.rawRepresentation
         var signature = secp256k1_musig_partial_sig()
@@ -379,7 +379,7 @@ public extension P256K.Schnorr.PrivateKey {
         }
 
         secureNonce.data.copyToUnsafeMutableBytes(of: &secnonce.data)
-        publicKeyAggregate.keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
+        xonlyKeyAggregate.cache.copyToUnsafeMutableBytes(of: &cache.data)
         publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
         #if canImport(libsecp256k1_zkp)
@@ -406,7 +406,7 @@ public extension P256K.Schnorr.PrivateKey {
 
     /// Generates a partial signature for MuSig using SHA256 as the hash function.
     ///
-    /// This is a convenience method that hashes the input data using SHA256 before signing.
+    /// This is a convenience method that extracts the xonlyKeyAggregate from the public key aggregate.
     ///
     /// - Parameters:
     ///   - data: The data to sign.
@@ -416,19 +416,19 @@ public extension P256K.Schnorr.PrivateKey {
     ///   - publicKeyAggregate: The aggregate of all signers' public keys.
     /// - Returns: A partial MuSig signature.
     /// - Throws: An error if partial signature generation fails.
-    func partialSignature<D: DataProtocol>(
-        for data: D,
+    func partialSignature<D: Digest>(
+        for digest: D,
         pubnonce: P256K.Schnorr.Nonce,
         secureNonce: consuming P256K.Schnorr.SecureNonce,
         publicNonceAggregate: P256K.MuSig.Nonce,
         publicKeyAggregate: P256K.MuSig.PublicKey
     ) throws -> P256K.Schnorr.PartialSignature {
         try partialSignature(
-            for: SHA256.hash(data: data),
+            for: digest,
             pubnonce: pubnonce,
             secureNonce: secureNonce,
             publicNonceAggregate: publicNonceAggregate,
-            publicKeyAggregate: publicKeyAggregate
+            xonlyKeyAggregate: publicKeyAggregate.xonly
         )
     }
 }
