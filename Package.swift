@@ -16,7 +16,7 @@ let package = Package(
         .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "1.12.4"),
         .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.67.1"),
         .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.57.2"),
-        .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.60.0")
+        .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.61.0")
     ],
     targets: [
         .target(name: "P256K", dependencies: ["libsecp256k1"]),
