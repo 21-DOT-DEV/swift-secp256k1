@@ -19,7 +19,7 @@ import Testing
 
 struct TaprootTestSuite {
     @Test("Test Taproot Derivation")
-    func testTaprootDerivation() {
+    func taprootDerivation() {
         let privateKeyBytes = try! "41F41D69260DF4CF277826A9B65A3717E4EEDDBEEDF637F212CA096576479361".bytes
         let privateKey = try! P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
         let internalKeyBytes = try! "cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115".bytes
@@ -39,7 +39,7 @@ struct TaprootTestSuite {
     }
 
     @Test("Test Tapscript execution and hash verification")
-    func testTapscript() {
+    func tapscript() {
         let OP_CHECKSEQUENCEVERIFY = Data([0xB2])
         let OP_DROP = Data([0x75])
         let OP_CHECKSIG = Data([0xAC])
