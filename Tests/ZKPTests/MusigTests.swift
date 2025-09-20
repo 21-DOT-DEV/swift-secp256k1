@@ -19,7 +19,7 @@ import Testing
 
 struct MuSigTestSuite {
     @Test("MuSig Signing and Verification")
-    func testMusig() {
+    func musig() {
         // Test MuSig aggregate
         let privateKeys = [
             try! P256K.Schnorr.PrivateKey(),

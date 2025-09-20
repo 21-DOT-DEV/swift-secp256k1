@@ -51,6 +51,11 @@ public extension P256K {
                 XonlyKey(baseKey: baseKey.xonly)
             }
 
+            /// Returns a public key in uncompressed 65 byte form
+            public var uncompressedRepresentation: Data {
+                baseKey.uncompressedRepresentation
+            }
+
             /// A data representation of the public key.
             public var dataRepresentation: Data { baseKey.dataRepresentation }
 
