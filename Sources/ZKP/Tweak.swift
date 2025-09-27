@@ -32,12 +32,29 @@ public extension P256K.Signing.PrivateKey {
         return try Self(dataRepresentation: privateBytes)
     }
 
-    /// Create a new `PrivateKey` by adding tweak to the secret key. When tweaking x-only keys,
-    /// the implicit negations are handled when odd Y coordinates are reached.
+    /// Create a new `PrivateKey` by multiplying tweak to the secret key.
+    /// - Parameter tweak: the 32-byte tweak object
+    /// - Returns: tweaked `PrivateKey` object
+    func multiply(_ tweak: [UInt8]) throws -> Self {
+        let context = P256K.Context.rawRepresentation
+        var privateBytes = key.bytes
+
+        guard secp256k1_ec_seckey_tweak_mul(context, &privateBytes, tweak).boolValue,
+              secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
+            throw secp256k1Error.underlyingCryptoError
+        }
+
+        return try Self(dataRepresentation: privateBytes)
+    }
+}
+
+public extension P256K.Schnorr.PrivateKey {
+    /// Create a new `PrivateKey` by adding tweak to the secret key. When tweaking keys,  implicit
+    /// negations are handled when odd Y coordinates are reached.
     /// [REF](https://github.com/bitcoin-core/secp256k1/issues/1021#issuecomment-983021759)
     /// - Parameter tweak: the 32-byte tweak object
     /// - Returns: tweaked `PrivateKey` object
-    func add(xonly tweak: [UInt8]) throws -> Self {
+    func add(_ tweak: [UInt8]) throws -> Self {
         let context = P256K.Context.rawRepresentation
         var keypair = secp256k1_keypair()
         var privateBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
@@ -48,21 +65,6 @@ public extension P256K.Signing.PrivateKey {
               secp256k1_keypair_xonly_tweak_add(context, &keypair, tweak).boolValue,
               secp256k1_keypair_sec(context, &privateBytes, &keypair).boolValue,
               secp256k1_keypair_xonly_pub(context, &xonly, &keyParity, &keypair).boolValue else {
-            throw secp256k1Error.underlyingCryptoError
-        }
-
-        return try Self(dataRepresentation: privateBytes)
-    }
-
-    /// Create a new `PrivateKey` by multiplying tweak to the secret key.
-    /// - Parameter tweak: the 32-byte tweak object
-    /// - Returns: tweaked `PrivateKey` object
-    func multiply(_ tweak: [UInt8]) throws -> Self {
-        let context = P256K.Context.rawRepresentation
-        var privateBytes = key.bytes
-
-        guard secp256k1_ec_seckey_tweak_mul(context, &privateBytes, tweak).boolValue,
-              secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
 
