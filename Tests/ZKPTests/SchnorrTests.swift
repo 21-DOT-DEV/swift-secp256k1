@@ -74,7 +74,7 @@ struct SchnorrTestSuite {
     }
 
     @Test("Test Schnorr Negating")
-    func testSchnorrNegating() {
+    func schnorrNegating() {
         let privateBytes = try! "56baa476b36a5b1548279f5bf57b82db39e594aee7912cde30977b8e80e6edca".bytes
         let negatedBytes = try! "a9455b894c95a4eab7d860a40a847d2380c94837c7b7735d8f3ae2fe4f4f5377".bytes
 
