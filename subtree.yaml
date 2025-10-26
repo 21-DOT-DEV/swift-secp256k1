@@ -1,1 +1,54 @@
-subtrees: []
+subtrees:
+- name: secp256k1
+  remote: https://github.com/bitcoin-core/secp256k1
+  prefix: Vendors/secp256k1
+  branch: v0.7.0
+  squash: true
+  commit: bf4f0bc877e4d6771e48611cc9e66ab9db576bac
+  copies:
+    - from: include/*.h
+      to: Sources/libsecp256k1/include/
+    - from: src/*.h
+      to: Sources/libsecp256k1/src/
+      exclude:
+        - src/bench*
+        - src/test*
+    - from: src/*.c
+      to: Sources/libsecp256k1/src/
+      exclude:
+        - src/bench*
+        - src/test*
+        - src/ctime_tests.c
+        - src/precompute_ecmult.c
+        - src/precompute_ecmult_gen.c
+    - from: src/modules/ecdh/*.h
+      to: Sources/libsecp256k1/src/modules/ecdh/
+      exclude:
+        - src/modules/ecdh/bench*
+        - src/modules/ecdh/test*
+    - from: src/modules/ellswift/*.h
+      to: Sources/libsecp256k1/src/modules/ellswift/
+      exclude:
+        - src/modules/ellswift/bench*
+        - src/modules/ellswift/test*
+    - from: src/modules/extrakeys/*.h
+      to: Sources/libsecp256k1/src/modules/extrakeys/
+      exclude:
+        - src/modules/extrakeys/bench*
+        - src/modules/extrakeys/test*
+    - from: src/modules/musig/*.h
+      to: Sources/libsecp256k1/src/modules/musig/
+      exclude:
+        - src/modules/musig/bench*
+        - src/modules/musig/test*
+        - src/modules/musig/vectors.h
+    - from: src/modules/recovery/*.h
+      to: Sources/libsecp256k1/src/modules/recovery/
+      exclude:
+        - src/modules/recovery/bench*
+        - src/modules/recovery/test*
+    - from: src/modules/schnorrsig/*.h
+      to: Sources/libsecp256k1/src/modules/schnorrsig/
+      exclude:
+        - src/modules/schnorrsig/bench*
+        - src/modules/schnorrsig/test*
