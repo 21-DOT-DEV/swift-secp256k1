@@ -16,3 +16,9 @@ subtrees:
     - '**/precompute_ecmult*'
     - '**/wycheproof/**'
     - '**/musig/vectors.h'
+- name: secp256k1-zkp
+  remote: https://github.com/BlockstreamResearch/secp256k1-zkp
+  prefix: Vendors/secp256k1-zkp
+  commit: 6f0c3e65e4ed5de6e72011a8edbd3e571c7ca1a8
+  branch: master
+  squash: true
