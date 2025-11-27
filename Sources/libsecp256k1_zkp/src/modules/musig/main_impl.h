@@ -1,1 +1,14 @@
-../../../../../Submodules/secp256k1-zkp/src/modules/musig/main_impl.h
+/**********************************************************************
+ * Copyright (c) 2018 Andrew Poelstra, Jonas Nick                     *
+ * Distributed under the MIT software license, see the accompanying   *
+ * file COPYING or http://www.opensource.org/licenses/mit-license.php.*
+ **********************************************************************/
+
+#ifndef SECP256K1_MODULE_MUSIG_MAIN_H
+#define SECP256K1_MODULE_MUSIG_MAIN_H
+
+#include "keyagg_impl.h"
+#include "session_impl.h"
+#include "adaptor_impl.h"
+
+#endif
