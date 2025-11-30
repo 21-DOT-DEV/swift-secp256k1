@@ -77,7 +77,7 @@
                 // of nodes 0 or 1. In my view this is too clever by half, but the ITU.T didn't ask for my opinion when they were coming up with this
                 // scheme, likely because I was in middle school at the time.
                 var subcomponents = [UInt]()
-                while content.count > 0 {
+                while !content.isEmpty {
                     try subcomponents.append(content.readOIDSubidentifier())
                 }
 
@@ -170,7 +170,7 @@
         }
 
         enum AlgorithmIdentifier {
-            static let idEcPublicKey: ASN1.ASN1ObjectIdentifier = [1, 2, 840, 10_045, 2, 1]
+            static let idEcPublicKey: ASN1.ASN1ObjectIdentifier = [1, 2, 840, 10045, 2, 1]
         }
 
         enum NameAttributes {
@@ -189,8 +189,8 @@
             static let countryName: ASN1.ASN1ObjectIdentifier = [2, 5, 4, 6]
             static let serialNumber: ASN1.ASN1ObjectIdentifier = [2, 5, 4, 5]
             static let pseudonym: ASN1.ASN1ObjectIdentifier = [2, 5, 4, 65]
-            static let domainComponent: ASN1.ASN1ObjectIdentifier = [0, 9, 2_342, 19_200_300, 100, 1, 25]
-            static let emailAddress: ASN1.ASN1ObjectIdentifier = [1, 2, 840, 113_549, 1, 9, 1]
+            static let domainComponent: ASN1.ASN1ObjectIdentifier = [0, 9, 2342, 19200300, 100, 1, 25]
+            static let emailAddress: ASN1.ASN1ObjectIdentifier = [1, 2, 840, 113549, 1, 9, 1]
         }
     }
 

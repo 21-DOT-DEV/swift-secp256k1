@@ -154,28 +154,12 @@ included: # paths to include during linting. `--path` is ignored if present.
   - Sources
   - Tests
 excluded: # paths to ignore during linting. Takes precedence over `included`.
-  - Sources/**/ArraySliceBigint.swift
-  - Sources/**/ASN1.swift
-  - Sources/**/ASN1BitString.swift
-  - Sources/**/ASN1Boolean.swift
-  - Sources/**/ASN1Identifier.swift
-  - Sources/**/ASN1Integer.swift
-  - Sources/**/ASN1Null.swift
-  - Sources/**/ASN1OctetString.swift
-  - Sources/**/ASN1Strings.swift
-  - Sources/**/ObjectIdentifier.swift
-  - Sources/**/Digest.swift
-  - Sources/**/ECDSASignature.swift
-  - Sources/**/GeneralizedTime.swift
-  - Sources/**/PEMDocument.swift
-  - Sources/**/PKCS8PrivateKey.swift
-  - Sources/**/PrettyBytes.swift
-  - Sources/**/RNG_boring.swift
-  - Sources/**/SecureBytes.swift
-  - Sources/**/Signature.swift
+  - .build
   - Exhaustive/**/secp256k1Tests.swift
   - Exhaustive/**/XCTestManifests.swift
-  - Sources/P256K/**/*
+  - '**/swift-crypto/**'
+  - Sources/P256K
+  - Vendors
 
 # Rules run by `swiftlint analyze` - these should only appear here, not in opt_in_rules
 analyzer_rules:
