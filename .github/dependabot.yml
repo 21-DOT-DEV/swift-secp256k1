@@ -5,13 +5,6 @@
 
 version: 2
 updates:
-- package-ecosystem: gitsubmodule
-  directory: "/"
-  schedule:
-    interval: daily
-  open-pull-requests-limit: 10
-  reviewers:
-  - csjones
 - package-ecosystem: docker
   directory: "/"
   schedule:
