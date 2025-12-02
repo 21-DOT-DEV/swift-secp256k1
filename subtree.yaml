@@ -14,3 +14,9 @@ subtrees:
     - '**/{wycheproof,test_vectors}/**'
     - '**/*tests*'
     - '**/musig/vectors.h'
+- name: secp256k1-zkp
+  remote: https://github.com/BlockstreamResearch/secp256k1-zkp
+  prefix: Vendor/secp256k1-zkp
+  commit: a703924661377254492a639bbec02001b7d8c719
+  branch: master
+  squash: true
