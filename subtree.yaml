@@ -6,3 +6,11 @@ subtrees:
   commit: fb04f3327a266913b12e81b80fdabb5f251a7f0f
   tag: v0.7.0
   squash: true
+  extractions:
+  - from: '{include,src}/**/*.{c,h}'
+    to: Sources/libsecp256k1/
+    exclude:
+    - '**/{bench,test,precompute_ecmult}*'
+    - '**/{wycheproof,test_vectors}/**'
+    - '**/*tests*'
+    - '**/musig/vectors.h'
