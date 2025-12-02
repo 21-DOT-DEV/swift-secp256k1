@@ -9,20 +9,16 @@
 *.h text diff=c
 
 # Upstream C library in Sources should be marked as vendored
-# This keeps language stats focused on your Swift wrapper code
 Sources/libsecp256k1/src/**         linguist-vendored
 Sources/libsecp256k1/include/**     linguist-vendored
 Sources/libsecp256k1_zkp/src/**     linguist-vendored
 Sources/libsecp256k1_zkp/include/** linguist-vendored
 
-# Custom utility files (not vendored - these are ours)
+# Custom utility files (not vendored)
 Sources/libsecp256k1/src/Utility.c          linguist-vendored=false
 Sources/libsecp256k1/include/Utility.h      linguist-vendored=false
 Sources/libsecp256k1_zkp/src/Utility.c      linguist-vendored=false
 Sources/libsecp256k1_zkp/include/Utility.h  linguist-vendored=false
-
-# Export-ignore: Exclude from archives (git archive, GitHub ZIP downloads)
-# This optimizes download size for users consuming the package via SPM
 
 # Vendor/development directories
 Vendor/**                   export-ignore linguist-vendored
@@ -50,5 +46,5 @@ subtree.yaml                export-ignore
 # Package lockfile (not needed for library consumers)
 Package.resolved            export-ignore linguist-generated
 
-# Community files (keeping README.md and LICENSE)
+# Community files
 CODE_OF_CONDUCT.md          export-ignore
