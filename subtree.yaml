@@ -20,3 +20,11 @@ subtrees:
   commit: a703924661377254492a639bbec02001b7d8c719
   branch: master
   squash: true
+  extractions:
+  - from: '{include,src}/**/*.{c,h}'
+    to: Sources/libsecp256k1_zkp/
+    exclude:
+    - '**/{bench,test,precompute_ecmult}*'
+    - '**/{wycheproof,test_vectors}/**'
+    - '**/*tests*'
+    - '**/musig/vectors.h'
