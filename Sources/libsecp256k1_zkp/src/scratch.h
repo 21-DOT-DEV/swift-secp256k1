@@ -1,1 +1,0 @@
-../../../Submodules/secp256k1-zkp/src/scratch.h
