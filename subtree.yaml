@@ -1,2 +1,8 @@
 # Managed by subtree CLI - https://github.com/21-DOT-DEV/subtree
-subtrees: []
+subtrees:
+- name: secp256k1
+  remote: https://github.com/bitcoin-core/secp256k1
+  prefix: Vendor/secp256k1
+  commit: fb04f3327a266913b12e81b80fdabb5f251a7f0f
+  tag: v0.7.0
+  squash: true
