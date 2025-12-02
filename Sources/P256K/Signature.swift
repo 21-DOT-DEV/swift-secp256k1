@@ -1,1 +1,0 @@
-../../Submodules/swift-crypto/Sources/Crypto/Signatures/Signature.swift

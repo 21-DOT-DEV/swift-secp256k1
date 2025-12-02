@@ -1,0 +1,47 @@
+# Managed by subtree CLI - https://github.com/21-DOT-DEV/subtree
+subtrees:
+- name: secp256k1
+  remote: https://github.com/bitcoin-core/secp256k1
+  prefix: Vendor/secp256k1
+  commit: fb04f3327a266913b12e81b80fdabb5f251a7f0f
+  tag: v0.7.0
+  squash: true
+  extractions:
+  - from: '{include,src}/**/*.{c,h}'
+    to: Sources/libsecp256k1/
+    exclude:
+    - '**/{bench,test,precompute_ecmult}*'
+    - '**/{wycheproof,test_vectors}/**'
+    - '**/*tests*'
+    - '**/musig/vectors.h'
+- name: secp256k1-zkp
+  remote: https://github.com/BlockstreamResearch/secp256k1-zkp
+  prefix: Vendor/secp256k1-zkp
+  commit: a703924661377254492a639bbec02001b7d8c719
+  branch: master
+  squash: true
+  extractions:
+  - from: '{include,src}/**/*.{c,h}'
+    to: Sources/libsecp256k1_zkp/
+    exclude:
+    - '**/{bench,test,precompute_ecmult}*'
+    - '**/{wycheproof,test_vectors}/**'
+    - '**/*tests*'
+    - '**/musig/vectors.h'
+- name: swift-crypto
+  remote: https://github.com/apple/swift-crypto
+  prefix: Vendor/swift-crypto
+  commit: c5c0783df3234f09f880335f6a8f6d3a1b0232e1
+  tag: 3.11.1
+  squash: true
+  extractions:
+  - from:
+    - 'Sources/Crypto/{CryptoKitErrors,Digests/Digest,Signatures/Signature}.swift'
+    - 'Sources/Crypto/Util/{PrettyBytes,SecureBytes,BoringSSL/RNG_boring}.swift'
+    - 'Sources/Crypto/ASN1/**/*.swift'
+    to:
+    - 'Projects/Sources/P256K/swift-crypto/'
+    - 'Sources/P256K/swift-crypto/'
+    - 'Sources/ZKP/swift-crypto/'
+    exclude:
+    - '**/{ObjectIdentifier,SEC1PrivateKey,SubjectPublicKeyInfo}*'
