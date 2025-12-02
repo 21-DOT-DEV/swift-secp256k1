@@ -28,3 +28,9 @@ subtrees:
     - '**/{wycheproof,test_vectors}/**'
     - '**/*tests*'
     - '**/musig/vectors.h'
+- name: swift-crypto
+  remote: https://github.com/apple/swift-crypto
+  prefix: Vendor/swift-crypto
+  commit: c5c0783df3234f09f880335f6a8f6d3a1b0232e1
+  tag: 3.11.1
+  squash: true
