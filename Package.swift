@@ -36,10 +36,7 @@ let package = Package(
                 .define("ENABLE_MODULE_RANGEPROOF"),
                 .define("ENABLE_MODULE_SCHNORRSIG_HALFAGG"),
                 .define("ENABLE_MODULE_SURJECTIONPROOF"),
-                .define("ENABLE_MODULE_WHITELIST"),
-                // Some modules need additional header search paths
-                .headerSearchPath("../../Submodules/secp256k1-zkp"),
-                .headerSearchPath("../../Submodules/secp256k1-zkp/src")
+                .define("ENABLE_MODULE_WHITELIST")
             ]
         ),
         .testTarget(name: "libsecp256k1zkpTests", dependencies: ["ZKP", "libsecp256k1_zkp"]),
