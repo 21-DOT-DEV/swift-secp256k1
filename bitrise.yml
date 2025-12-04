@@ -4,7 +4,7 @@ default_step_lib_source: 'https://github.com/bitrise-io/bitrise-steplib.git'
 project_type: other
 meta:
   bitrise.io:
-    stack: osx-xcode-16.2.x
+    stack: osx-xcode-16.4.x
     machine_type_id: g2.mac.medium
 trigger_map:
 - push_branch: main
