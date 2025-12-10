@@ -1,5 +1,5 @@
 # Use an official Swift runtime image
-FROM swift:6.1.3
+FROM swift:6.2.2
 
 # Copies the root directory of the repository into the image's filesystem at `/LinuxTests`
 ADD . /LinuxTests
