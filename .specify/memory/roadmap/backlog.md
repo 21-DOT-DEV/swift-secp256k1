@@ -109,6 +109,27 @@ Primitives from the long-term table not yet scheduled.
 
 ---
 
+## Platform Support
+
+### Windows Build Support
+
+**Purpose**: Enable Windows builds without symlink requirements  
+**Related Feature**: 001-spm-shared-code-plugin  
+**Status**: Deferred — placeholder `#if os(Windows)` in Plugin.swift  
+**Priority**: Low (Windows is not a primary Swift platform)
+
+**Notes**:
+- Current implementation uses POSIX `find + cp` (not available on Windows)
+- Windows alternative: `robocopy /E` or `xcopy /E /I`
+- Requires Windows CI runner in GitHub Actions
+- SharedSourcesPlugin needs Windows-specific implementation
+
+**Acceptance Criteria**:
+- `swift build` succeeds on Windows without symlink errors
+- Windows CI job passes in GitHub Actions
+
+---
+
 ## Scope Decisions Pending
 
 Items where scope (in-repo vs separate package) is undecided:

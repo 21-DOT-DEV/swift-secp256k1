@@ -1,1 +1,0 @@
-../../../Tests/ZKPTests/ECDHTests.swift

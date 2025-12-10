@@ -40,8 +40,6 @@ subtrees:
     - 'Sources/Crypto/Util/{PrettyBytes,SecureBytes,BoringSSL/RNG_boring}.swift'
     - 'Sources/Crypto/ASN1/**/*.swift'
     to:
-    - 'Projects/Sources/P256K/swift-crypto/'
-    - 'Sources/P256K/swift-crypto/'
-    - 'Sources/ZKP/swift-crypto/'
+    - 'Sources/Shared/swift-crypto/'
     exclude:
     - '**/{ObjectIdentifier,SEC1PrivateKey,SubjectPublicKeyInfo}*'

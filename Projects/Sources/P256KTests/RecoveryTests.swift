@@ -1,1 +1,0 @@
-../../../Tests/ZKPTests/RecoveryTests.swift

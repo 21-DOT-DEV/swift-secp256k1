@@ -1,0 +1,31 @@
+# Swift build artifacts
+.build/
+DerivedData/
+*.swiftpm/
+Packages/
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+
+# Tuist
+Projects/.build/
+Projects/Derived/
+
+# IDE
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Git
+.git/
+
+# Specs (not needed for tests)
+specs/
+.specify/
+
+# Other
+*.log
