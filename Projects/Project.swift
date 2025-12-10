@@ -26,7 +26,7 @@ let project = Project(
             product: .staticFramework,
             bundleId: "dev.21.P256K",
             deploymentTargets: deploymentTargets,
-            sources: ["Sources/P256K/**"],
+            sources: ["Sources/P256K/**", "Sources/Shared/**"],
             resources: [],
             dependencies: [
                 .package(product: "libsecp256k1")

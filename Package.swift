@@ -20,8 +20,25 @@ let package = Package(
         .package(url: "https://github.com/21-DOT-DEV/swift-plugin-subtree.git", exact: "0.0.5")
     ],
     targets: [
-        .target(name: "P256K", dependencies: ["libsecp256k1"]),
-        .target(name: "ZKP", dependencies: ["libsecp256k1_zkp"]),
+        // MARK: - Build Plugins
+
+        .plugin(
+            name: "SharedSourcesPlugin",
+            capability: .buildTool()
+        ),
+
+        // MARK: - Main Targets
+
+        .target(
+            name: "P256K",
+            dependencies: ["libsecp256k1"],
+            plugins: ["SharedSourcesPlugin"]
+        ),
+        .target(
+            name: "ZKP",
+            dependencies: ["libsecp256k1_zkp"],
+            plugins: ["SharedSourcesPlugin"]
+        ),
         .target(
             name: "libsecp256k1",
             cSettings: PackageDescription.CSetting.baseSettings
