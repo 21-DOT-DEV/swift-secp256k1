@@ -5,15 +5,18 @@
 
 ## Summary
 
-Create an SPM `BuildToolPlugin` that copies files from `Sources/Shared/` into each target's build directory before compilation, eliminating the need for symlinks. The plugin uses system `rsync` command (via `/usr/bin/env`) for file operations on macOS and Linux. Windows support is deferred with a placeholder. Migration includes removing existing symlinks and updating Tuist configuration.
+Create an SPM `BuildToolPlugin` that copies files from `Sources/Shared/` into each target's build directory before compilation, eliminating the need for symlinks. The plugin uses `find + cp` to flatten all `.swift` files (including nested subdirectories like `swift-crypto/`) into a single output directory. Windows support is deferred with a placeholder.
 
-> **Revision 2025-12-08**: Simplified from custom executable to rsync due to SPM limitation
+> **Revision 2025-12-08**: Simplified from custom executable to system commands due to SPM limitation
 > (prebuild plugins cannot use executables built from the same package).
+>
+> **Revision 2025-12-09**: Changed from `rsync` to `find + cp` for Docker/Linux compatibility.
+> Plugin now flattens all `.swift` files because SPM doesn't recursively include subdirectories from plugin output.
 
 ## Technical Context
 
 **Language/Version**: Swift 5.9+ (required for stable `prebuildCommand` support)  
-**Primary Dependencies**: System `rsync` command (standard on macOS/Linux)  
+**Primary Dependencies**: POSIX `find` and `cp` commands (standard on macOS/Linux)  
 **Storage**: N/A (build-time file operations only)  
 **Testing**: Manual verification via `swift build` (no custom code to unit test)  
 **Target Platform**: macOS, Linux (Windows deferred)  
@@ -36,7 +39,7 @@ Create an SPM `BuildToolPlugin` that copies files from `Sources/Shared/` into ea
 | **VI. Cross-Platform CI** | PASS | Plugin designed for macOS, Linux, Windows |
 | **VII. Open Source Excellence** | PASS | Simplifies codebase; improves discoverability |
 
-**Zero-Dependency Check**: PASS — Plugin uses system `rsync` command, no Swift dependencies added.
+**Zero-Dependency Check**: PASS — Plugin uses POSIX `find` and `cp` commands, no Swift dependencies added.
 
 ## Project Structure
 
@@ -55,54 +58,37 @@ specs/001-spm-shared-code-plugin/
 ### Source Code (repository root)
 
 ```text
-# Plugin implementation (simplified - uses rsync)
+# Plugin implementation (simplified - uses find + cp for flattening)
 Plugins/
 └── SharedSourcesPlugin/
-    └── Plugin.swift              # BuildToolPlugin using rsync via /usr/bin/env
+    └── Plugin.swift              # BuildToolPlugin using find + cp via /bin/sh
 
 # Shared sources (new directory)
 Sources/
 ├── Shared/                       # NEW: Canonical location for shared code
-│   ├── Asymmetric.swift
-│   ├── Combine.swift
-│   ├── Context.swift
-│   ├── DH.swift
-│   ├── ECDH.swift
-│   ├── ECDSA.swift
-│   ├── EdDSA.swift
-│   ├── Errors.swift
-│   ├── HashDigest.swift
-│   ├── MuSig.swift
-│   ├── Nonces.swift
-│   ├── P256K.swift
-│   ├── Recovery.swift
-│   ├── SafeCompare.swift
-│   ├── Schnorr.swift
-│   ├── SHA256.swift
-│   ├── Tweak.swift
-│   ├── UInt256.swift
-│   ├── Utility.swift
-│   └── Zeroization.swift
-├── P256K/                        # Target-specific code only (symlinks removed)
-│   ├── ASN1/
-│   └── swift-crypto/
+│   ├── *.swift                  # 20 core shared files
+│   ├── README.md                 # Documentation
+│   └── swift-crypto/             # Dependency files (extracted via subtree.yaml)
+│       └── Sources/Crypto/...    # 23 swift-crypto files
+├── P256K/                        # Target-specific code only
+│   └── Placeholder.swift
 └── ZKP/                          # Target-specific code only
+    └── Placeholder.swift
 
 # Tuist project (updated)
 Projects/
 ├── Project.swift                 # Updated: sources include Shared/
 └── Sources/
-    ├── Shared -> ../../Sources/Shared  # NEW: Directory symlink (macOS-only)
-    └── P256K/                    # File symlinks removed
-        ├── ASN1/
-        └── swift-crypto/
+    ├── Shared -> ../../Sources/Shared      # Directory symlink (macOS-only)
+    ├── P256KTests -> ../../Tests/ZKPTests  # Directory symlink
+    └── libsecp256k1Tests -> ...            # Directory symlink
 
 # Tests (no plugin-specific tests - using system rsync)
 Tests/
 └── (existing tests verify shared code compiles correctly)
 ```
 
-**Structure Decision**: Plugin lives in `Plugins/SharedSourcesPlugin/` following SPM convention. Shared sources move to `Sources/Shared/`. Plugin uses system `rsync` for file copying. Tuist uses a single directory symlink rather than 20 file symlinks.
+**Structure Decision**: Plugin lives in `Plugins/SharedSourcesPlugin/` following SPM convention. Shared sources (20 core + 23 swift-crypto) are in `Sources/Shared/`. Plugin flattens all `.swift` files via `find + cp`. Tuist uses 3 directory symlinks (consolidated from 20+ file symlinks).
 
 ## Planning Decisions
 
@@ -110,7 +96,7 @@ Tests/
 
 | Question | Decision | Rationale |
 |----------|----------|-----------|
-| Plugin complexity | Minimal using system `rsync` | SPM prebuild cannot use built executables; rsync is robust and available |
+| Plugin complexity | Minimal using `find + cp` | SPM prebuild cannot use built executables; find/cp are POSIX standard |
 | Testing strategy | Manual `swift build` verification | No custom code to test; rsync is battle-tested |
 | Migration execution | Atomic in feature branch | Ensures repository never in inconsistent state; easier to review/revert |
 

@@ -163,12 +163,56 @@ let package = Package(
 
 ---
 
+## SPM BuildToolPlugin Constraints (Discovered 2025-12-08/09)
+
+**Critical limitations discovered during implementation:**
+
+### 1. No Source-Built Executables
+
+Prebuild plugins **cannot** invoke executables built from the same package.
+
+```
+error: a prebuild command cannot use executables built from source
+```
+
+**Workaround**: Use system commands (`/bin/sh`, `/bin/cp`, `find`) instead of custom Swift executables.
+
+### 2. No Recursive Subdirectory Inclusion
+
+SPM only includes files **directly** in `outputFilesDirectory`, not nested subdirectories. Files in subdirectories like `swift-crypto/Sources/Crypto/` are ignored.
+
+**Workaround**: Flatten all `.swift` files into a single directory using `find -exec cp`.
+
+### 3. System Command Availability
+
+Docker images (e.g., `swift:6.1.3`) may lack common tools like `rsync`.
+
+**Workaround**: Prefer POSIX standard commands (`find`, `cp`, `sh`) that are guaranteed to be available.
+
+### 4. Final Implementation Pattern
+
+```swift
+// Use find + cp to flatten all .swift files
+.prebuildCommand(
+    displayName: "Copy shared sources to \(target.name)",
+    executable: URL(filePath: "/bin/sh"),
+    arguments: [
+        "-c",
+        "find '\(shared.path())' -name '*.swift' -exec cp {} '\(output.path())/' \\;"
+    ],
+    outputFilesDirectory: output
+)
+```
+
+---
+
 ## Summary
 
-| Topic | Decision |
-|-------|----------|
-| Plugin API | `BuildToolPlugin` with `prebuildCommand` |
-| File operations | Pure Swift `FileManager` (cross-platform) |
-| Conflict detection | Pre-scan and fail-fast with descriptive error |
-| Incremental builds | Rely on SPM caching; copy all files |
-| Architecture | Plugin target + executable target for file operations |
+| Topic | Decision | Revision |
+|-------|----------|----------|
+| Plugin API | `BuildToolPlugin` with `prebuildCommand` | ✓ Unchanged |
+| File operations | ~~Pure Swift FileManager~~ → POSIX `find + cp` | Revised: SPM can't use source-built executables |
+| Conflict detection | ~~Pre-scan~~ → Compiler catches duplicates | Revised: Simpler approach |
+| Incremental builds | Rely on SPM caching; copy all files | ✓ Unchanged |
+| Architecture | ~~Plugin + executable~~ → Plugin only | Revised: No custom executable needed |
+| Flattening | Flatten all .swift files | New: Required for nested subdirectories |

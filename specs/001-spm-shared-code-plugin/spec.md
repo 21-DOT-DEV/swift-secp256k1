@@ -23,6 +23,14 @@
 - **Impact**: Removed custom executable, tests, and conflict detection (compiler catches duplicates)
 - **Windows**: Deferred — placeholder `#if os(Windows)` added for future implementation
 
+### Revision 2025-12-09: Flattening and swift-crypto Consolidation
+
+- **Issue**: SPM doesn't recursively include subdirectories from plugin output directory
+- **Solution**: Plugin uses `find + cp` to flatten all `.swift` files into a single output directory
+- **Rationale**: Flattening enables simpler SPM integration; 43 files (20 core + 23 swift-crypto) compile correctly
+- **swift-crypto**: Consolidated extraction from 3 locations → `Sources/Shared/swift-crypto/` only (see `subtree.yaml`)
+- **Symlinks**: Reduced from 20+ file symlinks → 3 directory symlinks in `Projects/` for Tuist compatibility
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Build Shared Code Across Targets (Priority: P1)
@@ -98,7 +106,7 @@ As a maintainer, I want the shared code plugin to work with the existing Tuist c
 
 1. **Given** a directory symlink exists at `Projects/Sources/Shared/` pointing to `Sources/Shared/`, **When** I run `tuist generate` in `Projects/`, **Then** the generated Xcode project includes shared code in the P256K target.
 2. **Given** I build an XCFramework, **When** the build completes, **Then** shared code is compiled into the framework (not exposed as separate module).
-3. **Given** the migration is complete, **When** I list `Projects/Sources/P256K/`, **Then** no file symlinks exist (only the `ASN1/` and `swift-crypto/` subdirectories remain).
+3. **Given** the migration is complete, **When** I list `Projects/Sources/`, **Then** only 3 directory symlinks exist (`Shared/`, `P256KTests/`, `libsecp256k1Tests/`).
 
 ---
 
@@ -138,7 +146,7 @@ As a maintainer, I want the shared code plugin to work with the existing Tuist c
 
 - **SC-001**: All 20 currently-symlinked files compile successfully in both targets from `Sources/Shared/`.
 - **SC-002**: Repository contains zero file symlinks in `Sources/` after migration.
-- **SC-002a**: `Projects/Sources/P256K/` contains zero file symlinks after migration (only 1 directory symlink at `Projects/Sources/Shared/`).
+- **SC-002a**: `Projects/` contains only 3 directory symlinks after migration (`Shared/`, `P256KTests/`, `libsecp256k1Tests/`), consolidated from 20+ file symlinks.
 - **SC-003**: Build succeeds on Windows without symlink-related errors.
 - **SC-004**: Build time impact is less than 5% compared to current symlink approach.
 - **SC-005**: New contributor can build the project on first clone without additional setup steps.

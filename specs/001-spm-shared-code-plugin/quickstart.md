@@ -5,7 +5,7 @@
 
 ## Overview
 
-The SharedSourcesPlugin automatically copies files from `Sources/Shared/` into both P256K and ZKP targets at build time, eliminating the need for symlinks.
+The SharedSourcesPlugin automatically flattens all `.swift` files from `Sources/Shared/` (including subdirectories) into both P256K and ZKP targets at build time, eliminating the need for symlinks.
 
 ## For Library Users
 
@@ -28,14 +28,11 @@ No additional setup required — no symlinks to create or special permissions ne
 
 ```
 Sources/
-├── Shared/           # Shared code (compiled into BOTH targets)
-│   ├── Asymmetric.swift
-│   ├── ECDSA.swift
-│   └── ...
-├── P256K/            # P256K-specific code only
-│   ├── ASN1/
-│   └── swift-crypto/
-└── ZKP/              # ZKP-specific code only
+├── Shared/               # Shared code (compiled into BOTH targets)
+│   ├── *.swift           # 20 core shared files
+│   └── swift-crypto/     # 23 dependency files (auto-extracted)
+├── P256K/                # P256K-specific code only
+└── ZKP/                  # ZKP-specific code only
 ```
 
 **Rule of thumb**:
@@ -87,9 +84,11 @@ note: previous definition is here
 ### How the Plugin Works
 
 1. SPM invokes `SharedSourcesPlugin` before compiling each target
-2. Plugin copies all files from `Sources/Shared/` to a build directory
+2. Plugin uses `find + cp` to flatten all `.swift` files from `Sources/Shared/` into a build directory
 3. SPM includes that build directory in the target's sources
-4. Compiler sees shared files as part of each target
+4. Compiler sees all 43 shared files as part of each target
+
+> **Why flattening?** SPM doesn't recursively include subdirectories from plugin output, so the plugin flattens the directory structure.
 
 ### Plugin Location
 
@@ -101,10 +100,12 @@ Plugins/
 
 ### Tuist/Projects Configuration
 
-Tuist uses a directory symlink (macOS-only):
+Tuist uses 3 directory symlinks (macOS-only, consolidated from 20+ file symlinks):
 
 ```
 Projects/Sources/Shared -> ../../Sources/Shared
+Projects/Sources/P256KTests -> ../../Tests/ZKPTests
+Projects/Sources/libsecp256k1Tests -> ../../Tests/libsecp256k1zkpTests
 ```
 
 The `Project.swift` includes this in the P256K target sources:
@@ -138,7 +139,7 @@ Plugin output files are in:
 ## Frequently Asked Questions
 
 **Q: Do I need to do anything special on Windows?**  
-A: Windows support is currently deferred. The plugin uses system `rsync` which is available on macOS and Linux. A Windows-compatible implementation is planned.
+A: Windows support is currently deferred. The plugin uses POSIX `find` and `cp` commands available on macOS and Linux. A Windows-compatible implementation (robocopy/xcopy) is planned.
 
 **Q: Can I use `#if canImport` in shared files?**  
 A: Yes. The existing patterns like `#if canImport(libsecp256k1_zkp)` continue to work.
@@ -147,4 +148,4 @@ A: Yes. The existing patterns like `#if canImport(libsecp256k1_zkp)` continue to
 A: The plugin handles this gracefully — build proceeds with no shared files.
 
 **Q: Does this affect build performance?**  
-A: Negligible impact (< 5%). File copying via `rsync` is fast for 20 files.
+A: Negligible impact (< 5%). File copying via `find + cp` is fast for 43 files.
