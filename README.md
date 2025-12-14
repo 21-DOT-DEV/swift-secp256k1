@@ -58,6 +58,17 @@ Use [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground):
 arena 21-DOT-DEV/swift-secp256k1
 ```
 
+## Swift Versions
+
+| swift-secp256k1       | Minimum Swift Version | Minimum Xcode Version |
+|-----------------------|-----------------------|-----------------------|
+| `0.1.0 ..< 0.4.0`     | 5.0                   | 10.2                  |
+| `0.4.0 ..< 0.5.0`     | 5.1                   | 11.0                  |
+| `0.5.0 ..< 0.8.0`     | 5.5                   | 13.0                  |
+| `0.8.0 ..< 0.14.0`    | 5.6                   | 13.3                  |
+| `0.14.0 ..< 0.18.0`   | 5.8                   | 14.3                  |
+| `0.18.0 ...`          | 6.0                   | 16.0                  |
+
 ## Usage Examples
 
 ### ECDSA
