@@ -1,7 +1,7 @@
 # swift-secp256k1 Product Roadmap
 
 **Version**: v1.0.0  
-**Last Updated**: 2025-12-12  
+**Last Updated**: 2025-12-14  
 **Constitution**: [constitution.md](constitution.md)
 
 ---
@@ -28,7 +28,7 @@ Build the most reliable, secure, and developer-friendly Swift wrapper for secp25
 
 | Item | Description | Status |
 |------|-------------|--------|
-| **Swift Version Compatibility Table** | Document minimum Swift version requirements for all releases in README.md (similar to swift-crypto). Test stable releases using swiftly with binary search across Swift 5.7–6.0. Group consecutive releases with identical requirements into ranges. | 🔜 Planned |
+| **Swift Version Compatibility Table** | Document minimum Swift version requirements for all releases in README.md (similar to swift-crypto). Extracted swift-tools-version from Package.swift for each release. Grouped consecutive releases with identical requirements into ranges. Includes Xcode version column. | ✅ Complete |
 
 ---
 
@@ -93,3 +93,4 @@ Phase 0 (SPM Plugin) ──► Phase 1 (Testing) ──► Phase 2 (CI/Quality)
 |---------|------|-------------|-------------|
 | v1.0.0 | 2025-12-03 | Initial | Initial roadmap with 8 phases + backlog |
 | v1.1.0 | 2025-12-12 | Added | High Priority Items section with Swift Version Compatibility Table |
+| v1.2.0 | 2025-12-14 | Completed | Swift Version Compatibility Table implemented in README.md |

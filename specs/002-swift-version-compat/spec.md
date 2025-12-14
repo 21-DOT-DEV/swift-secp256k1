@@ -108,6 +108,22 @@ A maintainer runs a one-time local script to determine minimum Swift version req
 - **SC-004**: Binary search reduces build attempts to ≤3 per release (vs. 5 for linear search)
 - **SC-005**: Zero manual intervention required for ongoing table maintenance after initial bootstrap
 
+## Implementation Notes
+
+### Approach Pivot (2025-12-13)
+
+Original plan used binary search with build-testing to determine minimum Swift version. This failed because older Swift toolchains (5.2-5.5) cannot compile against modern macOS SDKs, producing false negatives.
+
+**Final approach**: Extract `swift-tools-version` from each release's `Package.swift`. This is the authoritative source that SPM enforces—no build testing required.
+
+### Phase 4 Skipped
+
+CI workflow automation was specified but deliberately skipped after evaluating industry best practices:
+- swift-tools-version is set manually by maintainer when releasing
+- Manual README update takes ~10 seconds vs hours of CI maintenance  
+- swift-crypto and other major packages use manual updates
+- Automated PRs create review overhead for minimal benefit
+
 ## Assumptions
 
 - Swift toolchains 5.7 through 6.0 are available in GitHub Actions runners

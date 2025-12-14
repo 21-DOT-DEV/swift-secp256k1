@@ -389,3 +389,4 @@ This constitution consolidates principles from the provided sources:
 - No "Roll Your Own Crypto" → Principle II
 - Data Portability & Interop → Principle IV
 - Graceful Failure & Error Types → Principle IV
+- Swift Compatibility Discovery → Principle V (use swift-tools-version as authoritative source, avoid build-testing)

@@ -28,6 +28,9 @@ Projects/**                 export-ignore
 .github/**                  export-ignore
 .vscode/**                  export-ignore
 .swiftpm/**                 export-ignore
+.specify/**                 export-ignore
+.windsurf/**                export-ignore
+specs/**                    export-ignore
 
 # CI/CD and tooling configs
 bitrise.yml                 export-ignore
