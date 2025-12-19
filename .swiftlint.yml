@@ -154,7 +154,8 @@ included: # paths to include during linting. `--path` is ignored if present.
   - Sources
   - Tests
 excluded: # paths to ignore during linting. Takes precedence over `included`.
-  - .build
+  - '**/.build/**'
+  - '**/Derived/**'
   - Exhaustive/**/secp256k1Tests.swift
   - Exhaustive/**/XCTestManifests.swift
   - '**/swift-crypto/**'

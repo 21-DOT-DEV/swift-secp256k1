@@ -1,7 +1,7 @@
 //
-// Release.xcconfig
+// Debug.xcconfig
 //
-// Native secp256k1 C test runner - Release configuration
+// SchnorrVectorTests - Debug configuration
 //
 
 #include "Shared.xcconfig"

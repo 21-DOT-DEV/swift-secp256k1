@@ -35,7 +35,8 @@
 
 # file options
 --swiftversion 5
---exclude .build
+--exclude "**/.build/**"
+--exclude "**/Derived/**"
 --exclude Exhaustive/**/secp256k1Tests.swift
 --exclude Exhaustive/**/XCTestManifests.swift
 --exclude "**/swift-crypto/**/*"

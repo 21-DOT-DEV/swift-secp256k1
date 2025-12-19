@@ -1,7 +1,7 @@
 //
 // Release.xcconfig
 //
-// Native secp256k1 C test runner - Release configuration
+// CVETests - Release configuration
 //
 
 #include "Shared.xcconfig"

@@ -10,8 +10,8 @@ pre-commit:
     1_swiftformat:
       glob: "*.{swift}"
       run: swift package --build-path .build/swiftformat --disable-sandbox plugin --allow-writing-to-package-directory swiftformat --config .swiftformat {staged_files}
+      stage_fixed: true
     2_swiftlint:
       glob: "*.{swift}"
       run: swift run --build-path .build/swiftlint swiftlint --autocorrect --strict --no-cache
-    3_git:
-      run: git add .
+      stage_fixed: true
