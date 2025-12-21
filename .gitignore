@@ -25,6 +25,13 @@ DerivedData/
 ## Obj-C/Swift specific
 *.hmap
 
+## Swift build artifacts
+*.d
+*.dia
+*.swiftdeps
+*.swiftmodule
+*.swiftsourceinfo
+
 ## App packaging
 *.ipa
 *.dSYM.zip
@@ -91,3 +98,6 @@ fastlane/test_output
 # https://github.com/johnno1962/injectionforxcode
 
 iOSInjectionProject/
+
+# Tuist
+**/Derived/*

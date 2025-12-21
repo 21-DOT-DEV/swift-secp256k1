@@ -521,3 +521,48 @@ public extension P256K.MuSig {
         return try P256K.MuSig.AggregateSignature(Data(signature))
     }
 }
+
+// MARK: - MuSig XonlyKey Signature Verification
+
+public extension P256K.MuSig.XonlyKey {
+    /// Verifies a MuSig aggregate signature with a digest.
+    ///
+    /// This function is used when a hash digest has been created before invoking.
+    /// Enables BIP-340 signatures assuming the hash digest used the `Tagged Hashes` scheme as defined in the proposal.
+    ///
+    /// [BIP-340 Design](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#design)
+    ///
+    /// - Parameters:
+    ///   - signature: The aggregate signature to verify.
+    ///   - digest: The digest that was signed.
+    /// - Returns: True if the signature is valid, false otherwise.
+    func isValidSignature<D: Digest>(_ signature: P256K.MuSig.AggregateSignature, for digest: D) -> Bool {
+        var hashDataBytes = Array(digest).bytes
+
+        return isValid(signature, for: &hashDataBytes)
+    }
+
+    /// Verifies a MuSig aggregate signature with a variable length message.
+    ///
+    /// This function provides flexibility for verifying a MuSig aggregate signature without assumptions about message format.
+    ///
+    /// [secp256k1_schnorrsig_verify](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h#L149L158)
+    ///
+    /// - Parameters:
+    ///   - signature: The aggregate signature to verify.
+    ///   - message: The message that was signed.
+    /// - Returns: True if the signature is valid, false otherwise.
+    func isValid(_ signature: P256K.MuSig.AggregateSignature, for message: inout [UInt8]) -> Bool {
+        let context = P256K.Context.rawRepresentation
+        var pubKey = secp256k1_xonly_pubkey()
+
+        return secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
+            secp256k1_schnorrsig_verify(
+                context,
+                signature.dataRepresentation.bytes,
+                message,
+                message.count,
+                &pubKey
+            ).boolValue
+    }
+}

@@ -1,0 +1,10 @@
+// Configuration settings file format documentation can be found at:
+// https://help.apple.com/xcode/#/dev745c5c974
+
+// SecurityTests Debug Configuration
+
+// Swift settings
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG
+
+// Enable testability
+ENABLE_TESTABILITY = YES

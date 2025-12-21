@@ -1,0 +1,11 @@
+//
+// Release.xcconfig
+//
+// MuSig2VectorTests - Release configuration
+//
+
+#include "Shared.xcconfig"
+
+//********************************************//
+//* Currently no build settings in this file *//
+//********************************************//

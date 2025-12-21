@@ -1,0 +1,11 @@
+//
+// Debug.xcconfig
+//
+// SchnorrVectorTests - Debug configuration
+//
+
+#include "Shared.xcconfig"
+
+//********************************************//
+//* Currently no build settings in this file *//
+//********************************************//

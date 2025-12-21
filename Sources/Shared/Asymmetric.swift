@@ -235,11 +235,14 @@ public extension P256K {
             ///
             /// - Parameters:
             ///   - x963Representation: An ANSI x9.63 representation of the key.
+            ///     Accepts both compressed (33 bytes) and uncompressed (65 bytes) formats.
             public init<Bytes: ContiguousBytes>(x963Representation: Bytes) throws {
-                // Before we do anything, we validate that the x963 representation has the right number of bytes.
                 let length = x963Representation.withUnsafeBytes { $0.count }
 
                 switch length {
+                case P256K.ByteLength.dimension + 1:
+                    self.baseKey = try PublicKeyImplementation(dataRepresentation: x963Representation, format: .compressed)
+
                 case (2 * P256K.ByteLength.dimension) + 1:
                     self.baseKey = try PublicKeyImplementation(dataRepresentation: x963Representation, format: .uncompressed)
 
