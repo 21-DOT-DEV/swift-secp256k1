@@ -1,0 +1,57 @@
+//
+// Shared.xcconfig
+//
+// MuSig2VectorTests - BIP-0327 MuSig2 test vectors
+//
+
+// Code Signing Style
+
+CODE_SIGN_STYLE = Automatic
+
+
+
+// Current Project Version
+
+CURRENT_PROJECT_VERSION = 1
+
+
+
+// Generate Info.plist File
+
+GENERATE_INFOPLIST_FILE = YES
+
+
+
+// Marketing Version
+
+MARKETING_VERSION = 1.0
+
+
+
+// Product Bundle Identifier
+
+PRODUCT_BUNDLE_IDENTIFIER = dev.21.MuSig2VectorTests
+
+
+
+// Product Name
+
+PRODUCT_NAME = $(TARGET_NAME)
+
+
+
+// Use Compiler to Extract Swift Strings
+
+SWIFT_EMIT_LOC_STRINGS = NO
+
+
+
+// Swift Language Version
+
+SWIFT_VERSION = 5.0
+
+
+
+// Targeted Device Families
+
+TARGETED_DEVICE_FAMILY = 1,2

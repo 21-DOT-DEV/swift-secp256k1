@@ -5,7 +5,7 @@
 
 ## Summary
 
-Establish a robust testing infrastructure under `Projects/` with four dedicated test targets (SchnorrVectorTests, WycheproofTests, CVETests, NativeSecp256k1Tests) to validate cryptographic correctness against official test vectors and known vulnerabilities. Test vectors loaded as bundle resources with verbose diagnostic assertions.
+Establish a robust testing infrastructure under `Projects/` with five dedicated test targets (SchnorrVectorTests, WycheproofTests, SecurityTests, NativeSecp256k1Tests, MuSig2VectorTests) to validate cryptographic correctness against official test vectors and known vulnerability classes. Test vectors loaded as bundle resources with verbose diagnostic assertions.
 
 ## Technical Context
 
@@ -17,13 +17,13 @@ Establish a robust testing infrastructure under `Projects/` with four dedicated 
 **Project Type**: Test infrastructure (extends existing Projects/ structure)  
 **Performance Goals**: Each test target completes within 60 seconds on CI  
 **Constraints**: Zero runtime dependencies; test utilities shared via source inclusion  
-**Scale/Scope**: ~15 BIP-340 vectors, ~1000 Wycheproof vectors, CVE regression suite, native C test binary
+**Scale/Scope**: ~19 BIP-340 vectors, ~1000 Wycheproof vectors, ~23 security regression tests, native C test binary, ~50 BIP-0327 MuSig2 vectors
 
 **Research Resolved** (see [research.md](./research.md)):
 - ✅ Native C tests: Tuist commandLineTool (primary) → Package.swift fallback; minimal spike in Setup phase
 - ✅ BIP-340 conversion: Simple script (Python/Swift) to convert CSV→JSON; one-time task
 - ✅ Wycheproof schema: Swift Codable models defined in [data-model.md](./data-model.md)
-- ✅ CVE enumeration: 10+ CVEs identified from Wycheproof data (see research.md Section 4)
+- ✅ Vulnerability classes: 7 classes identified covering 23 concrete tests (see tasks.md Phase 5)
 
 ## Constitution Check
 
@@ -62,28 +62,46 @@ specs/003-test-architecture/
 Projects/
 ├── Project.swift                    # Tuist manifest (add new targets here)
 ├── Sources/
-│   ├── TestShared/                  # NEW: Shared test utilities
+│   ├── TestShared/                  # Shared test utilities
 │   │   ├── TestVectorAssertions.swift
 │   │   └── TestVectorLoader.swift
 │   │   # NOTE: Hex utilities reused from Sources/Shared/swift-crypto/.../PrettyBytes.swift
-│   ├── SchnorrVectorTests/          # NEW: BIP-340 test target sources
+│   ├── SchnorrVectorTests/          # BIP-340 test target sources ✅
 │   │   └── SchnorrVectorTests.swift
-│   ├── WycheproofTests/             # NEW: Wycheproof test target sources
+│   ├── WycheproofTests/             # Wycheproof test target sources ✅
 │   │   ├── ECDHWycheproofTests.swift
 │   │   └── ECDSAWycheproofTests.swift
-│   ├── CVETests/                    # NEW: CVE regression test sources
-│   │   └── CVETests.swift
-│   └── NativeSecp256k1Tests/        # NEW: Native C test wrapper (if Tuist approach)
-│       └── NativeTestRunner.swift
+│   ├── SecurityTests/               # Security regression test sources
+│   │   ├── PointValidationTests.swift
+│   │   ├── ScalarValidationTests.swift
+│   │   ├── SignatureMalleabilityTests.swift
+│   │   ├── ZeroSignatureTests.swift
+│   │   ├── DEREncodingTests.swift
+│   │   ├── NonceSecurityTests.swift
+│   │   └── InvalidCurveTests.swift
+│   ├── libsecp256k1Tests/           # Native C test sources ✅
+│   │   └── tests.c (via subtree)
+│   └── MuSig2VectorTests/           # NEW: BIP-0327 MuSig2 test sources
+│       ├── BIP327Vector.swift       # Codable models for all vector types
+│       └── MuSig2VectorTests.swift
 ├── Resources/
-│   ├── SchnorrVectorTests/          # NEW: BIP-340 JSON vectors
+│   ├── SchnorrVectorTests/          # BIP-340 JSON vectors ✅
 │   │   └── bip340-vectors.json
-│   ├── WycheproofTests/             # NEW: Wycheproof JSON vectors (via subtree)
+│   ├── WycheproofTests/             # Wycheproof JSON vectors (via subtree) ✅
 │   │   ├── ecdh_secp256k1_test.json
 │   │   └── ecdsa_secp256k1_sha256_bitcoin_test.json
-│   ├── CVETests/                    # NEW: xcconfig only (no JSON vectors - tests are code-defined)
+│   ├── SecurityTests/               # xcconfig only (no JSON vectors - tests are code-defined)
 │   │   ├── Debug.xcconfig
 │   │   └── Release.xcconfig
+│   ├── MuSig2VectorTests/           # NEW: BIP-0327 MuSig2 JSON vectors
+│   │   ├── key_agg_vectors.json
+│   │   ├── key_sort_vectors.json
+│   │   ├── nonce_gen_vectors.json
+│   │   ├── nonce_agg_vectors.json
+│   │   ├── sign_verify_vectors.json
+│   │   ├── sig_agg_vectors.json
+│   │   ├── det_sign_vectors.json
+│   │   └── tweak_vectors.json
 │   └── [other existing resources]
 └── [existing targets: P256K, P256KTests, libsecp256k1Tests, XCFrameworkApp]
 

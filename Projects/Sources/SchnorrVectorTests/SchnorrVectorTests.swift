@@ -1,45 +1,60 @@
+//
+//  SchnorrVectorTests.swift
+//  21-DOT-DEV/swift-secp256k1
+//
+//  Copyright (c) 2025 21-DOT-DEV
+//  Distributed under the MIT software license
+//
+//  See the accompanying file LICENSE for information
+//
+
 import Foundation
 import P256K
-import XCTest
+import Testing
 
-final class SchnorrVectorTests: XCTestCase {
-    private var vectors: [BIP340Vector] = []
+/// BIP-340 Schnorr signature test vectors
+@Suite("BIP-340 Schnorr Signatures")
+struct SchnorrVectorTests {
+    /// Loaded test vectors
+    let vectors: [BIP340Vector]
 
-    override func setUp() async throws {
-        try await super.setUp()
-        vectors = try loadBIP340Vectors()
+    init() throws {
+        let loader = TestVectorLoader<BIP340TestVectors>(bundle: Bundle.module)
+        let container = try loader.load(from: "bip340-vectors")
+        self.vectors = container.vectors
     }
 
-    func testAllBIP340Vectors() throws {
-        XCTAssertFalse(vectors.isEmpty, "No BIP-340 vectors loaded")
+    @Test("All BIP-340 vectors pass verification")
+    func allBIP340Vectors() throws {
+        #expect(!vectors.isEmpty, "No BIP-340 vectors loaded")
 
         for vector in vectors {
             let result = verifyVector(vector)
-            XCTAssertEqual(
-                result,
-                vector.verificationResult,
+            #expect(
+                result == vector.verificationResult,
                 "Vector \(vector.index) failed: expected \(vector.verificationResult), got \(result). \(vector.comment ?? "")"
             )
         }
     }
 
-    func testVerificationOnlyVectors() throws {
+    @Test("Verification-only vectors pass")
+    func verificationOnlyVectors() throws {
         let verificationOnlyVectors = vectors.filter { $0.secretKey == nil }
-        XCTAssertFalse(verificationOnlyVectors.isEmpty, "No verification-only vectors found")
+        #expect(!verificationOnlyVectors.isEmpty, "No verification-only vectors found")
 
         for vector in verificationOnlyVectors {
             let result = verifyVector(vector)
-            XCTAssertEqual(
-                result,
-                vector.verificationResult,
+            #expect(
+                result == vector.verificationResult,
                 "Verification-only vector \(vector.index) failed: \(vector.comment ?? "")"
             )
         }
     }
 
-    func testSigningVectors() throws {
+    @Test("Signing vectors produce correct signatures")
+    func signingVectors() throws {
         let signingVectors = vectors.filter { $0.secretKey != nil && $0.verificationResult == true }
-        XCTAssertFalse(signingVectors.isEmpty, "No signing vectors found")
+        #expect(!signingVectors.isEmpty, "No signing vectors found")
 
         for vector in signingVectors {
             guard let secretKeyHex = vector.secretKey,
@@ -47,43 +62,25 @@ final class SchnorrVectorTests: XCTestCase {
                 continue
             }
 
-            do {
-                let privateKeyBytes = try secretKeyHex.bytes
-                let privateKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
+            let privateKeyBytes = try secretKeyHex.bytes
+            let privateKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
 
-                var messageArray: [UInt8] = vector.message.isEmpty ? [] : try vector.message.bytes
-                var auxRandArray = try auxRandHex.bytes
+            var messageArray: [UInt8] = vector.message.isEmpty ? [] : try vector.message.bytes
+            var auxRandArray = try auxRandHex.bytes
 
-                let signature = try privateKey.signature(
-                    message: &messageArray,
-                    auxiliaryRand: &auxRandArray
-                )
+            let signature = try privateKey.signature(
+                message: &messageArray,
+                auxiliaryRand: &auxRandArray
+            )
 
-                XCTAssertEqual(
-                    String(bytes: signature.dataRepresentation.bytes).uppercased(),
-                    vector.signature.uppercased(),
-                    "Signing vector \(vector.index) produced wrong signature"
-                )
-            } catch {
-                XCTFail("Signing vector \(vector.index) threw error: \(error)")
-            }
+            #expect(
+                String(bytes: signature.dataRepresentation.bytes).uppercased() == vector.signature.uppercased(),
+                "Signing vector \(vector.index) produced wrong signature"
+            )
         }
     }
 
     // MARK: - Private Helpers
-
-    private func loadBIP340Vectors() throws -> [BIP340Vector] {
-        guard let url = Bundle(for: type(of: self)).url(
-            forResource: "bip340-vectors",
-            withExtension: "json"
-        ) else {
-            throw TestVectorError.fileNotFound(filename: "bip340-vectors")
-        }
-
-        let data = try Data(contentsOf: url)
-        let container = try JSONDecoder().decode(BIP340TestVectors.self, from: data)
-        return container.vectors
-    }
 
     private func verifyVector(_ vector: BIP340Vector) -> Bool {
         do {

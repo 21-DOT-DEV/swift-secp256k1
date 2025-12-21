@@ -311,7 +311,280 @@ struct ECDSABitcoinTestVector: Codable {
 
 ---
 
-## 4. Entity Relationships
+## 4. BIP-0327 MuSig2 Test Vectors
+
+### JSON Schemas
+
+**Files**: `Projects/Resources/MuSig2VectorTests/*.json`
+
+BIP-0327 defines 8 vector files for MuSig2 testing. Key schemas below:
+
+#### Key Aggregation Vectors (`key_agg_vectors.json`)
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KeyAggVectors",
+  "type": "object",
+  "required": ["pubkeys", "valid_test_cases", "error_test_cases"],
+  "properties": {
+    "pubkeys": { "type": "array", "items": { "type": "string" } },
+    "tweaks": { "type": "array", "items": { "type": "string" } },
+    "valid_test_cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key_indices", "expected"],
+        "properties": {
+          "key_indices": { "type": "array", "items": { "type": "integer" } },
+          "expected": { "type": "string" }
+        }
+      }
+    },
+    "error_test_cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key_indices", "error"],
+        "properties": {
+          "key_indices": { "type": "array", "items": { "type": "integer" } },
+          "tweak_indices": { "type": "array", "items": { "type": "integer" } },
+          "is_xonly": { "type": "array", "items": { "type": "boolean" } },
+          "error": { "type": "object" },
+          "comment": { "type": "string" }
+        }
+      }
+    }
+  }
+}
+```
+
+#### Sign/Verify Vectors (`sign_verify_vectors.json`)
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SignVerifyVectors",
+  "type": "object",
+  "required": ["sk", "pubkeys", "secnonces", "pnonces", "aggnonces", "msgs", "valid_test_cases", "sign_error_test_cases", "verify_fail_test_cases", "verify_error_test_cases"],
+  "properties": {
+    "sk": { "type": "string" },
+    "pubkeys": { "type": "array", "items": { "type": "string" } },
+    "secnonces": { "type": "array", "items": { "type": "string" } },
+    "pnonces": { "type": "array", "items": { "type": "string" } },
+    "aggnonces": { "type": "array", "items": { "type": "string" } },
+    "msgs": { "type": "array", "items": { "type": "string" } }
+  }
+}
+```
+
+### Swift Codable Models
+
+```swift
+// MARK: - Key Aggregation
+
+/// BIP-0327 Key Aggregation test vectors
+struct KeyAggVectors: Codable {
+    let pubkeys: [String]
+    let tweaks: [String]?
+    let valid_test_cases: [KeyAggValidCase]
+    let error_test_cases: [KeyAggErrorCase]
+}
+
+struct KeyAggValidCase: Codable {
+    let key_indices: [Int]
+    let expected: String
+}
+
+struct KeyAggErrorCase: Codable {
+    let key_indices: [Int]
+    let tweak_indices: [Int]?
+    let is_xonly: [Bool]?
+    let error: KeyAggError
+    let comment: String?
+}
+
+struct KeyAggError: Codable {
+    let type: String
+    let signer: Int?
+    let contrib: String?
+    let message: String?
+}
+
+// MARK: - Nonce Aggregation
+
+/// BIP-0327 Nonce Aggregation test vectors
+struct NonceAggVectors: Codable {
+    let pnonces: [String]
+    let valid_test_cases: [NonceAggValidCase]
+    let error_test_cases: [NonceAggErrorCase]
+}
+
+struct NonceAggValidCase: Codable {
+    let pnonce_indices: [Int]
+    let expected: String
+}
+
+struct NonceAggErrorCase: Codable {
+    let pnonce_indices: [Int]
+    let error: NonceAggError
+    let comment: String?
+}
+
+struct NonceAggError: Codable {
+    let type: String
+    let signer: Int?
+    let contrib: String?
+}
+
+// MARK: - Signature Aggregation
+
+/// BIP-0327 Signature Aggregation test vectors
+struct SigAggVectors: Codable {
+    let pubkeys: [String]
+    let pnonces: [String]
+    let tweaks: [String]
+    let psigs: [String]
+    let msg: String
+    let valid_test_cases: [SigAggValidCase]
+    let error_test_cases: [SigAggErrorCase]?
+}
+
+struct SigAggValidCase: Codable {
+    let aggnonce: String
+    let nonce_indices: [Int]
+    let key_indices: [Int]
+    let tweak_indices: [Int]
+    let is_xonly: [Bool]
+    let psig_indices: [Int]
+    let expected: String
+}
+
+struct SigAggErrorCase: Codable {
+    let aggnonce: String
+    let nonce_indices: [Int]
+    let key_indices: [Int]
+    let tweak_indices: [Int]
+    let is_xonly: [Bool]
+    let psig_indices: [Int]
+    let error: SigAggError
+    let comment: String?
+}
+
+struct SigAggError: Codable {
+    let type: String
+    let signer: Int?
+    let contrib: String?
+}
+
+// MARK: - Sign/Verify
+
+/// BIP-0327 Sign/Verify test vectors
+struct SignVerifyVectors: Codable {
+    let sk: String
+    let pubkeys: [String]
+    let secnonces: [String]
+    let pnonces: [String]
+    let aggnonces: [String]
+    let msgs: [String]
+    let valid_test_cases: [SignVerifyValidCase]
+    let sign_error_test_cases: [SignErrorCase]
+    let verify_fail_test_cases: [VerifyFailCase]
+    let verify_error_test_cases: [VerifyErrorCase]
+}
+
+struct SignVerifyValidCase: Codable {
+    let key_indices: [Int]
+    let nonce_indices: [Int]
+    let aggnonce_index: Int
+    let msg_index: Int
+    let signer_index: Int
+    let expected: String
+}
+
+struct SignErrorCase: Codable {
+    let key_indices: [Int]
+    let aggnonce_index: Int
+    let msg_index: Int
+    let secnonce_index: Int
+    let error: SignError
+    let comment: String?
+}
+
+struct SignError: Codable {
+    let type: String
+    let message: String?
+}
+
+struct VerifyFailCase: Codable {
+    let sig: String
+    let key_indices: [Int]
+    let nonce_indices: [Int]
+    let msg_index: Int
+    let signer_index: Int
+    let comment: String?
+}
+
+struct VerifyErrorCase: Codable {
+    let sig: String
+    let key_indices: [Int]
+    let nonce_indices: [Int]
+    let msg_index: Int
+    let signer_index: Int
+    let error: VerifyError
+    let comment: String?
+}
+
+struct VerifyError: Codable {
+    let type: String
+    let signer: Int?
+    let contrib: String?
+}
+
+// MARK: - Tweak
+
+/// BIP-0327 Tweak test vectors
+struct TweakVectors: Codable {
+    let sk: String
+    let pubkeys: [String]
+    let secnonce: String
+    let pnonces: [String]
+    let aggnonce: String
+    let tweaks: [String]
+    let msg: String
+    let valid_test_cases: [TweakValidCase]
+    let error_test_cases: [TweakErrorCase]?
+}
+
+struct TweakValidCase: Codable {
+    let key_indices: [Int]
+    let nonce_indices: [Int]
+    let tweak_indices: [Int]
+    let is_xonly: [Bool]
+    let signer_index: Int
+    let expected: String
+    let comment: String?
+}
+
+struct TweakErrorCase: Codable {
+    let key_indices: [Int]
+    let nonce_indices: [Int]
+    let tweak_indices: [Int]
+    let is_xonly: [Bool]
+    let signer_index: Int
+    let error: TweakError
+    let comment: String?
+}
+
+struct TweakError: Codable {
+    let type: String
+    let message: String?
+}
+```
+
+---
+
+## 5. Entity Relationships
 
 ```
 BIP340TestVectors
@@ -330,11 +603,18 @@ WycheproofECDSABitcoin
         ├── publicKey: ECDSAPublicKey
         └── tests: [ECDSABitcoinTestVector]
                 └── Fields: tcId, comment, flags, msg, sig, result
+
+BIP327MuSig2 (8 vector files)
+├── KeyAggVectors: pubkeys, tweaks, valid_test_cases, error_test_cases
+├── NonceAggVectors: pnonces, valid_test_cases, error_test_cases
+├── SigAggVectors: pubkeys, pnonces, tweaks, psigs, msg, valid_test_cases
+├── SignVerifyVectors: sk, pubkeys, secnonces, pnonces, aggnonces, msgs, test_cases
+└── TweakVectors: sk, pubkeys, secnonce, pnonces, aggnonce, tweaks, msg, test_cases
 ```
 
 ---
 
-## 5. Validation Rules
+## 6. Validation Rules
 
 | Entity | Rule |
 |--------|------|
@@ -346,7 +626,7 @@ WycheproofECDSABitcoin
 
 ---
 
-## 6. State Transitions
+## 7. State Transitions
 
 Test vectors are **immutable** after loading. No state transitions apply.
 

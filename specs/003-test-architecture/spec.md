@@ -46,22 +46,23 @@ As a library maintainer, I want to validate ECDSA and ECDH implementations again
 
 ---
 
-### User Story 3 - Run CVE Regression Tests (Priority: P3)
+### User Story 3 - Run Security Regression Tests (Priority: P3)
 
-As a library maintainer, I want to run tests for known secp256k1 CVEs so that I can ensure the library is not vulnerable to historical attacks.
+As a library maintainer, I want to run tests for known cryptographic vulnerability classes so that I can ensure the library correctly rejects attack patterns across all operations.
 
-**Why this priority**: CVE tests provide regression coverage for known vulnerabilities. Important for security assurance but vectors are fewer and more stable than BIP-340/Wycheproof.
+**Why this priority**: Security tests provide regression coverage for known vulnerability classes (point validation, signature malleability, invalid curve attacks, etc.). Important for security assurance but tests are code-defined rather than vector-driven.
 
-**Independent Test**: Can be fully tested by running `tuist test CVETests` and delivers documented proof of vulnerability mitigation.
+**Independent Test**: Can be fully tested by running `tuist test SecurityTests` and delivers documented proof of vulnerability class mitigation.
 
 **Acceptance Scenarios**:
 
-1. **Given** the CVETests target exists with test cases for documented CVEs, **When** I run the test target, **Then** all CVE mitigations are validated.
+1. **Given** the SecurityTests target exists with test cases for documented vulnerability classes, **When** I run the test target, **Then** all security mitigations are validated.
 2. **Given** a twisted curve attack input (invalid curve point), **When** ECDH is attempted, **Then** the library rejects the input.
+3. **Given** a high-s ECDSA signature, **When** verification is attempted, **Then** the library rejects as non-canonical.
 
 ---
 
-### User Story 4 - Run Native secp256k1 C Tests (Priority: P4)
+### User Story 4 - Run Native secp256k1 C Tests (Priority: P4) ✅ COMPLETE
 
 As a library maintainer, I want to run the native libsecp256k1 C test suite so that I can validate the vendored C library functions correctly on all platforms.
 
@@ -69,10 +70,28 @@ As a library maintainer, I want to run the native libsecp256k1 C test suite so t
 
 **Independent Test**: Can be fully tested by running the native test executable and delivers confidence in the vendored C library build.
 
+**Status**: Complete — `libsecp256k1Tests` commandLineTool builds and runs successfully (16 tests pass).
+
 **Acceptance Scenarios**:
 
-1. **Given** the native secp256k1 tests are built as a command-line tool, **When** I execute it, **Then** all native tests pass.
-2. **Given** the test runs on a new platform, **When** native tests complete, **Then** platform-specific issues are identified.
+1. **Given** the native secp256k1 tests are built as a command-line tool, **When** I execute it, **Then** all native tests pass. ✅
+2. **Given** the test runs on a new platform, **When** native tests complete, **Then** platform-specific issues are identified. ✅
+
+---
+
+### User Story 5 - Run MuSig2 Test Vectors (Priority: P2)
+
+As a library maintainer, I want to validate MuSig2 multi-signature implementation against official BIP-0327 test vectors so that I can ensure the multi-signature protocol functions correctly.
+
+**Why this priority**: MuSig2 is a critical multi-signature protocol for Bitcoin. BIP-0327 vectors are the authoritative source for correctness validation. High-value test coverage for an advanced feature.
+
+**Independent Test**: Can be fully tested by running `tuist test MuSig2VectorTests` and delivers confidence that key aggregation, nonce handling, signing, and verification match the Bitcoin specification.
+
+**Acceptance Scenarios**:
+
+1. **Given** the MuSig2VectorTests target exists with BIP-0327 JSON vectors loaded, **When** I run the test target, **Then** all official test vectors pass with clear diagnostic output on any failure.
+2. **Given** a vector with invalid key aggregation inputs, **When** aggregation is attempted, **Then** the test confirms rejection and reports expected vs actual values.
+3. **Given** nonce generation and aggregation vectors, **When** the operations are performed, **Then** the computed values match the expected outputs.
 
 ---
 
@@ -87,17 +106,19 @@ As a library maintainer, I want to run the native libsecp256k1 C test suite so t
 
 ### Functional Requirements
 
-- **FR-001**: Projects/Project.swift MUST define a `SchnorrVectorTests` unit test target for BIP-340 vectors
-- **FR-002**: Projects/Project.swift MUST define a `WycheproofTests` unit test target for ECDSA/ECDH edge cases
-- **FR-003**: Projects/Project.swift MUST define a `CVETests` unit test target for security vulnerability regression
-- **FR-004**: Native secp256k1 C tests MUST be runnable via Tuist commandLineTool target (primary) or dedicated Package.swift under Projects/ (fallback)
+- **FR-001**: Projects/Project.swift MUST define a `SchnorrVectorTests` unit test target for BIP-340 vectors ✅
+- **FR-002**: Projects/Project.swift MUST define a `WycheproofTests` unit test target for ECDSA/ECDH edge cases ✅
+- **FR-003**: Projects/Project.swift MUST define a `SecurityTests` unit test target for security vulnerability class regression
+- **FR-004**: Native secp256k1 C tests MUST be runnable via Tuist commandLineTool target (primary) or dedicated Package.swift under Projects/ (fallback) ✅
 - **FR-005**: All new test targets MUST support all platforms (iPhone, iPad, Mac, Apple Watch, Apple TV, Apple Vision)
-- **FR-006**: Test vector JSON files MUST be loaded as bundle resources from `Projects/Resources/[TargetName]/`
-- **FR-007**: `subtree.yaml` MUST be updated to extract Wycheproof JSON files from `Vendor/secp256k1/src/wycheproof/` to `Projects/Resources/WycheproofTests/`
-- **FR-008**: Test failures MUST provide verbose diagnostic output including hex dumps and field-level breakdowns
-- **FR-009**: A shared `TestVectorAssertions.swift` utility MUST be located in `Projects/Sources/TestShared/` and included in each test target's sources, providing custom assertion helpers for cryptographic comparisons
-- **FR-010**: Each test target MUST have corresponding xcconfig files in `Projects/Resources/[TargetName]/`
-- **FR-011**: Test vector loaders MUST filter unsupported vectors at load time based on feature flags, with documented skip reasons for each excluded category
+- **FR-006**: Test vector JSON files MUST be loaded as bundle resources from `Projects/Resources/[TargetName]/` ✅
+- **FR-007**: `subtree.yaml` MUST be updated to extract Wycheproof JSON files from `Vendor/secp256k1/src/wycheproof/` to `Projects/Resources/WycheproofTests/` ✅
+- **FR-008**: Test failures MUST provide verbose diagnostic output including hex dumps and field-level breakdowns ✅
+- **FR-009**: A shared `TestVectorAssertions.swift` utility MUST be located in `Projects/Sources/TestShared/` and included in each test target's sources, providing custom assertion helpers for cryptographic comparisons ✅
+- **FR-010**: Each test target MUST have corresponding xcconfig files in `Projects/Resources/[TargetName]/` ✅
+- **FR-011**: Test vector loaders MUST filter unsupported vectors at load time based on feature flags, with documented skip reasons for each excluded category ✅
+- **FR-012**: Projects/Project.swift MUST define a `MuSig2VectorTests` unit test target for BIP-0327 MuSig2 vectors
+- **FR-013**: BIP-0327 test vector JSON files MUST be downloaded to `Projects/Resources/MuSig2VectorTests/`
 
 ### Key Entities
 
@@ -110,14 +131,15 @@ As a library maintainer, I want to run the native libsecp256k1 C test suite so t
 
 ### Measurable Outcomes
 
-- **SC-001**: All four test targets (SchnorrVectorTests, WycheproofTests, CVETests, NativeSecp256k1Tests) are defined in Projects/Project.swift and generate successfully via `tuist generate`
-- **SC-002**: BIP-340 test vectors achieve 100% pass rate when run via `tuist test SchnorrVectorTests`
-- **SC-003**: Wycheproof vectors achieve 100% pass rate for applicable ECDH and ECDSA Bitcoin tests
-- **SC-004**: CVE test coverage includes all documented secp256k1 vulnerabilities including twisted curve attack
-- **SC-005**: Native secp256k1 tests pass on all supported platforms
-- **SC-006**: Test failure output provides sufficient diagnostic detail to identify the failing vector, expected value, and actual value without additional debugging
+- **SC-001**: All five test targets (SchnorrVectorTests, WycheproofTests, SecurityTests, NativeSecp256k1Tests, MuSig2VectorTests) are defined in Projects/Project.swift and generate successfully via `tuist generate`
+- **SC-002**: BIP-340 test vectors achieve 100% pass rate when run via `tuist test SchnorrVectorTests` ✅
+- **SC-003**: Wycheproof vectors achieve 100% pass rate for applicable ECDH and ECDSA Bitcoin tests ✅
+- **SC-004**: Security test coverage validates all documented vulnerability classes (point validation, scalar validation, signature malleability, zero signatures, DER encoding, nonce security, invalid curve attacks)
+- **SC-005**: Native secp256k1 tests pass on all supported platforms ✅
+- **SC-006**: Test failure output provides sufficient diagnostic detail to identify the failing vector, expected value, and actual value without additional debugging ✅
 - **SC-007**: Test targets run successfully on all platform destinations defined in Projects/Project.swift
 - **SC-008**: Each test target completes execution within 60 seconds on CI runners
+- **SC-009**: BIP-0327 MuSig2 test vectors achieve 100% pass rate for key aggregation, nonce handling, signing, and verification tests
 
 ## Assumptions
 

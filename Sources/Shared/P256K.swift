@@ -253,7 +253,7 @@ extension P256K {
         let yCoord: [UInt8] = xonlyKey.keyParity.boolValue ? [3] : [2]
 
         self.format = .compressed
-        self.cache = []
+        self.cache = xonlyKey.cache
         self.xonlyBytes = xonlyKey.bytes
         self.keyParity = xonlyKey.keyParity
         self.bytes = yCoord + xonlyKey.bytes

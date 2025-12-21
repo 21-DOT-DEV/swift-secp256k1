@@ -56,6 +56,36 @@ public extension P256K {
 
             /// Implementation public key object.
             var bytes: [UInt8] { baseKey.bytes }
+
+            /// Creates a secp256k1 public key for key agreement from a Distinguished Encoding Rules (DER) encoded representation.
+            ///
+            /// - Parameters:
+            ///   - derRepresentation: A DER-encoded representation of the key.
+            public init<Bytes: RandomAccessCollection>(derRepresentation: Bytes) throws where Bytes.Element == UInt8 {
+                let bytes = Array(derRepresentation)
+                let parsed = try ASN1.SubjectPublicKeyInfo(asn1Encoded: bytes)
+                self = try .init(x963Representation: parsed.key)
+            }
+
+            /// Creates a secp256k1 public key for key agreement from an ANSI x9.63 representation.
+            ///
+            /// - Parameters:
+            ///   - x963Representation: An ANSI x9.63 representation of the key.
+            ///     Accepts both compressed (33 bytes) and uncompressed (65 bytes) formats.
+            public init<Bytes: ContiguousBytes>(x963Representation: Bytes) throws {
+                let length = x963Representation.withUnsafeBytes { $0.count }
+
+                switch length {
+                case P256K.ByteLength.dimension + 1:
+                    self.baseKey = try PublicKeyImplementation(dataRepresentation: x963Representation, format: .compressed)
+
+                case (2 * P256K.ByteLength.dimension) + 1:
+                    self.baseKey = try PublicKeyImplementation(dataRepresentation: x963Representation, format: .uncompressed)
+
+                default:
+                    throw CryptoKitError.incorrectParameterSize
+                }
+            }
         }
 
         /// A secp256k1 x-only public key for key agreement.
