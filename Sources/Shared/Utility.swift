@@ -26,11 +26,6 @@ public extension ContiguousBytes {
 
 /// An extension for Data providing convenience properties and functions.
 public extension Data {
-    /// A property that returns an array of UInt8 bytes.
-    @inlinable var bytes: [UInt8] {
-        withUnsafeBytes { bytesPtr in Array(bytesPtr) }
-    }
-
     /// Copies data to unsafe mutable bytes of a given value.
     /// - Parameter value: The inout value to copy the data to.
     func copyToUnsafeMutableBytes<T>(of value: inout T) {
