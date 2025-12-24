@@ -53,10 +53,10 @@ struct ECDHTestSuite {
         let symmetricKey1 = SHA256.hash(data: sharedSecret1.bytes)
         let symmetricKey2 = SHA256.hash(data: sharedSecret2.bytes)
 
-        let sharedSecretSign1 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey1.bytes)
+        let sharedSecretSign1 = try! P256K.Schnorr.PrivateKey(dataRepresentation: symmetricKey1.bytes)
         let sharedSecretSign2 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
 
-        let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xonly.bytes)
+        let privateTweak1 = try! sharedSecretSign1.add(privateSign1.publicKey.xonly.bytes)
         let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
 
         let schnorrPrivate = try! P256K.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)

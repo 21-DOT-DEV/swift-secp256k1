@@ -166,20 +166,7 @@ public extension P256K {
 
             /// Returns a public key in uncompressed 65 byte form
             public var uncompressedRepresentation: Data {
-                let context = P256K.Context.rawRepresentation
-                var pubKey = baseKey.rawRepresentation
-                var pubKeyLen = ByteLength.uncompressedPublicKey
-                var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
-
-                _ = secp256k1_ec_pubkey_serialize(
-                    context,
-                    &pubKeyBytes,
-                    &pubKeyLen,
-                    &pubKey,
-                    UInt32(SECP256K1_EC_UNCOMPRESSED)
-                )
-
-                return Data(pubKeyBytes)
+                baseKey.uncompressedRepresentation
             }
 
             /// Generates a secp256k1 public key.

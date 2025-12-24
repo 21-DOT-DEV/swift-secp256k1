@@ -149,8 +149,8 @@ struct ZeroSignatureTests {
         let publicKey = privateKey.xonly
         let message = "valid test message".data(using: .utf8)!
 
-        let signature = try privateKey.signature(for: message)
-        let isValid = publicKey.isValidSignature(signature, for: message)
+        let signature = try privateKey.signature(for: SHA256.hash(data: message))
+        let isValid = publicKey.isValidSignature(signature, for: SHA256.hash(data: message))
 
         #expect(isValid, "Valid Schnorr signature should verify")
     }

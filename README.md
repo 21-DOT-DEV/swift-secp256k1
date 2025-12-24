@@ -146,7 +146,7 @@ let sharedSecretSign1 = try! P256K.Signing.PrivateKey(dataRepresentation: symmet
 let sharedSecretSign2 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
 
 // Spendable Silent Payment private key
-let privateTweak1 = try! sharedSecretSign1.add(xonly: privateSign1.publicKey.xonly.bytes)
+let privateTweak1 = try! sharedSecretSign1.add(privateSign1.publicKey.xonly.bytes)
 let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
 
 let schnorrPrivate = try! P256K.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)

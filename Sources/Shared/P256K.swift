@@ -184,6 +184,24 @@ extension P256K {
         Data(bytes)
     }
 
+    /// A data representation of the backing public key
+    var uncompressedRepresentation: Data {
+        let context = P256K.Context.rawRepresentation
+        var pubKey = rawRepresentation
+        var pubKeyLen = P256K.ByteLength.uncompressedPublicKey
+        var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
+
+        _ = secp256k1_ec_pubkey_serialize(
+            context,
+            &pubKeyBytes,
+            &pubKeyLen,
+            &pubKey,
+            P256K.Format.uncompressed.rawValue
+        )
+
+        return Data(pubKeyBytes)
+    }
+
     /// A raw representation of the backing public key
     var rawRepresentation: secp256k1_pubkey {
         var pubKey = secp256k1_pubkey()
