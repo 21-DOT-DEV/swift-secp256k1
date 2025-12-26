@@ -1,0 +1,64 @@
+name: Apple Platforms
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ios:
+    name: iOS
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build for iOS
+        run: |
+          xcrun xcodebuild \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            build \
+            -scheme swift-secp256k1-Package \
+            -destination generic/platform=iOS
+
+  tvos:
+    name: tvOS
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build for tvOS
+        run: |
+          xcrun xcodebuild \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            build \
+            -scheme swift-secp256k1-Package \
+            -destination generic/platform=tvOS
+
+  watchos:
+    name: watchOS
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build for watchOS
+        run: |
+          xcrun xcodebuild \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            build \
+            -scheme swift-secp256k1-Package \
+            -destination generic/platform=watchOS
+
+  visionos:
+    name: visionOS
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build for visionOS
+        run: |
+          xcrun xcodebuild \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            build \
+            -scheme swift-secp256k1-Package \
+            -destination generic/platform=visionOS
