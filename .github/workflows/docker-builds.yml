@@ -1,0 +1,45 @@
+name: Docker Builds
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build and test
+        run: docker build .
+
+  wasm:
+    name: WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build for WebAssembly
+        run: |
+          docker run --pull=always --rm -v "$PWD:/workspace" -w /workspace \
+            registry.gitlab.com/finestructure/spi-images:wasm-6.1-latest \
+            swift build \
+              --swift-sdk wasm32-unknown-wasi \
+              -Xswiftc -Xfrontend -Xswiftc -stats-output-dir -Xswiftc -Xfrontend -Xswiftc .stats \
+              -Xswiftc -strict-concurrency=complete \
+              -Xswiftc -enable-upcoming-feature -Xswiftc StrictConcurrency \
+              -Xswiftc -enable-upcoming-feature -Xswiftc DisableOutwardActorInference \
+              -Xswiftc -enable-upcoming-feature -Xswiftc GlobalActorIsolatedTypesUsability \
+              -Xswiftc -enable-upcoming-feature -Xswiftc InferSendableFromCaptures
+
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build for Android
+        run: |
+          docker run --pull=always --rm -v "$PWD:/workspace" -w /workspace \
+            registry.gitlab.com/finestructure/spi-images:android-6.2-latest \
+            swift build --swift-sdk aarch64-unknown-linux-android28

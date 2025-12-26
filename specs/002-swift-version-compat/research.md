@@ -82,8 +82,6 @@
 From `docker-image.yml`:
 ```yaml
 - uses: actions/checkout@v6
-  with:
-    submodules: recursive
 ```
 
 Patterns to follow:

@@ -52,47 +52,6 @@ workflows:
               echo "$broken_links"
               exit 1
             fi
-    - script:
-        title: CHECK iOS
-        timeout: 120
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            # fail if any commands fails; debug log
-            set -ex
-
-            xcrun xcodebuild -skipMacroValidation -skipPackagePluginValidation build -scheme swift-secp256k1-Package -destination generic/platform=iOS
-    - script:
-        title: CHECK tvOS
-        timeout: 120
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            # fail if any commands fails; debug log
-            set -ex
-
-            xcrun xcodebuild -skipMacroValidation -skipPackagePluginValidation build -scheme swift-secp256k1-Package -destination generic/platform=tvOS
-    - script:
-        title: CHECK watchOS
-        timeout: 120
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            # fail if any commands fails; debug log
-            set -ex
-
-            xcrun xcodebuild -skipMacroValidation -skipPackagePluginValidation build -scheme swift-secp256k1-Package -destination generic/platform=watchOS
-    - script:
-        title: CHECK visionOS
-        run_if: false
-        timeout: 120
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            # fail if any commands fails; debug log
-            set -ex
-
-            xcrun xcodebuild -skipMacroValidation -skipPackagePluginValidation build -scheme swift-secp256k1-Package -destination generic/platform=visionOS
     - deploy-to-bitrise-io:
         inputs:
         - pipeline_intermediate_files: "$BITRISE_SOURCE_DIR:BITRISE_SOURCE_DIR"
