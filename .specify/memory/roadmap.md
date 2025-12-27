@@ -1,7 +1,7 @@
 # swift-secp256k1 Product Roadmap
 
-**Version**: v1.0.0  
-**Last Updated**: 2025-12-14  
+**Version**: v1.3.0  
+**Last Updated**: 2025-12-26  
 **Constitution**: [constitution.md](constitution.md)
 
 ---
@@ -29,6 +29,8 @@ Build the most reliable, secure, and developer-friendly Swift wrapper for secp25
 | Item | Description | Status |
 |------|-------------|--------|
 | **Swift Version Compatibility Table** | Document minimum Swift version requirements for all releases in README.md (similar to swift-crypto). Extracted swift-tools-version from Package.swift for each release. Grouped consecutive releases with identical requirements into ranges. Includes Xcode version column. | ✅ Complete |
+| **swift-crypto 4.2.0 Update** | Update vendored swift-crypto via subtree plugin from 3.11.1 to 4.2.0. Resolve breaking availability attribute changes in `Sources/Shared/` on case-by-case basis (e.g., `UInt256.swift` retains current attributes due to `StaticBigInt` dependency). | 🔜 Planned |
+| **UInt256 SecurityTests** | Add security test vectors for `UInt256`/`SIMDWordsInteger` to `Projects/Sources/SecurityTests/`. Cover: overflow detection, boundary correctness, power-of-two multiply paths, Codable parsing hardening. Use swift-testing framework with `*ReportingOverflow` pattern. | 🔜 Planned |
 
 ---
 
@@ -36,8 +38,8 @@ Build the most reliable, secure, and developer-friendly Swift wrapper for secp25
 
 | Phase | Name | Status | File |
 |-------|------|--------|------|
-| **0** | Tooling Foundation | 🔜 Planned | [phase-0-tooling-foundation.md](roadmap/phase-0-tooling-foundation.md) |
-| **1** | Testing Foundation | 🔜 Planned | [phase-1-testing-foundation.md](roadmap/phase-1-testing-foundation.md) |
+| **0** | Tooling Foundation | ✅ Complete | [phase-0-tooling-foundation.md](roadmap/phase-0-tooling-foundation.md) |
+| **1** | Testing Foundation | ✅ Complete | [phase-1-testing-foundation.md](roadmap/phase-1-testing-foundation.md) |
 | **2** | CI & Quality Gates | 🔜 Planned | [phase-2-ci-quality-gates.md](roadmap/phase-2-ci-quality-gates.md) |
 | **3** | Documentation & DX | 🔜 Planned | [phase-3-documentation-dx.md](roadmap/phase-3-documentation-dx.md) |
 | **4** | Bitcoin Utility Primitives | 🔜 Planned | [phase-4-bitcoin-utility-primitives.md](roadmap/phase-4-bitcoin-utility-primitives.md) |
@@ -94,3 +96,4 @@ Phase 0 (SPM Plugin) ──► Phase 1 (Testing) ──► Phase 2 (CI/Quality)
 | v1.0.0 | 2025-12-03 | Initial | Initial roadmap with 8 phases + backlog |
 | v1.1.0 | 2025-12-12 | Added | High Priority Items section with Swift Version Compatibility Table |
 | v1.2.0 | 2025-12-14 | Completed | Swift Version Compatibility Table implemented in README.md |
+| v1.3.0 | 2025-12-26 | Updated | Phase 0 & 1 marked complete; added swift-crypto 4.2.0 update and UInt256 SecurityTests as high-priority items |
