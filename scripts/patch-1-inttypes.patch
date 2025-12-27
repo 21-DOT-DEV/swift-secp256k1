@@ -1,0 +1,25 @@
+diff --git a/Sources/CCryptoBoringSSL/crypto/x509/t_x509.cc b/Sources/CCryptoBoringSSL/crypto/x509/t_x509.cc
+index d2a1ddc8..6f8be6c2 100644
+--- a/Sources/CCryptoBoringSSL/crypto/x509/t_x509.cc
++++ b/Sources/CCryptoBoringSSL/crypto/x509/t_x509.cc
+@@ -13,6 +13,7 @@
+ // limitations under the License.
+ 
+ #include <assert.h>
++#include <inttypes.h>  // for PRIu64 and friends
+ 
+ #include <CCryptoBoringSSL_asn1.h>
+ #include <CCryptoBoringSSL_bio.h>
+diff --git a/Sources/CCryptoBoringSSL/include/CCryptoBoringSSL_bn.h b/Sources/CCryptoBoringSSL/include/CCryptoBoringSSL_bn.h
+index 5eadecad..b5a16586 100644
+--- a/Sources/CCryptoBoringSSL/include/CCryptoBoringSSL_bn.h
++++ b/Sources/CCryptoBoringSSL/include/CCryptoBoringSSL_bn.h
+@@ -18,7 +18,6 @@
+ 
+ #include "CCryptoBoringSSL_base.h"   // IWYU pragma: export
+ 
+-#include <inttypes.h>  // for PRIu64 and friends
+ #include <stdio.h>  // for FILE*
+ 
+ #if defined(__cplusplus)
+
