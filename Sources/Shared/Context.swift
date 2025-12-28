@@ -23,6 +23,7 @@
 /// A constructed context can safely be used from multiple threads simultaneously, but API calls that take a non-const
 /// pointer to a context need exclusive access to it. In particular this is the case for `secp256k1_context_destroy`,
 /// `secp256k1_context_preallocated_destroy`, and `secp256k1_context_randomize`.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K {
     /// A structure that represents the context flags for `secp256k1` operations.
     ///

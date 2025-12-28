@@ -19,6 +19,7 @@ import Foundation
 // MARK: - secp256k1 + Recovery
 
 /// An extension for secp256k1 with a nested Recovery enum.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K {
     enum Recovery {
         /// A representation of a secp256k1 private key used for signing.
@@ -114,6 +115,7 @@ public extension P256K {
 }
 
 /// An ECDSA (Elliptic Curve Digital Signature Algorithm) Recovery Signature
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Recovery {
     /// Recovery Signature
     struct ECDSACompactSignature {
@@ -229,6 +231,7 @@ public extension P256K.Recovery {
 
 // MARK: - secp256k1 + Recovery
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Recovery.PrivateKey: DigestSigner {
     public typealias Signature = P256K.Recovery.ECDSASignature
 
@@ -256,6 +259,7 @@ extension P256K.Recovery.PrivateKey: DigestSigner {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Recovery.PrivateKey: Signer {
     /// Generates a recoverable ECDSA signature. SHA256 is used as the hash function.
     ///

@@ -28,12 +28,21 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-#if (os(macOS) || os(iOS) || os(watchOS) || os(tvOS)) && CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
+#if CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
     @_exported import CryptoKit
 #else
-    import Foundation
+    #if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+        import SwiftSystem
+    #else
+        #if canImport(FoundationEssentials)
+            import FoundationEssentials
+        #else
+            import Foundation
+        #endif
+    #endif
 
     /// A constant-time comparison function for any two collections of bytes.
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     func safeCompare<LHS: ContiguousBytes, RHS: ContiguousBytes>(_ lhs: LHS, _ rhs: RHS) -> Bool {
         let lBytes = lhs.bytes
         let rBytes = rhs.bytes

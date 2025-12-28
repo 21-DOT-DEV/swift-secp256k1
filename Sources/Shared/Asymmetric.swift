@@ -17,12 +17,13 @@ import Foundation
 #endif
 
 /// An elliptic curve that enables secp256k1 signatures and key agreement.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K {
     /// A mechanism used to create or verify a cryptographic signature using the secp256k1
     /// elliptic curve digital signature algorithm (ECDSA).
-    enum Signing {
+    enum Signing: Sendable {
         /// A representation of a secp256k1 private key used for signing.
-        public struct PrivateKey: Equatable {
+        public struct PrivateKey: Equatable, Sendable {
             /// Generated secp256k1 Signing Key.
             private let baseKey: PrivateKeyImplementation
 
@@ -130,7 +131,7 @@ public extension P256K {
         }
 
         /// The corresponding public key for the secp256k1 curve.
-        public struct PublicKey {
+        public struct PublicKey: Sendable {
             /// Generated secp256k1 public key.
             let baseKey: PublicKeyImplementation
 
@@ -240,7 +241,7 @@ public extension P256K {
         }
 
         /// The corresponding x-only public key for the secp256k1 curve.
-        public struct XonlyKey {
+        public struct XonlyKey: Sendable {
             /// Generated secp256k1 x-only public key.
             private let baseKey: XonlyKeyImplementation
 

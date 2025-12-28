@@ -88,6 +88,7 @@ extension secp256k1_ecdsa_recoverable_signature {
 }
 
 /// An extension for String providing convenience initializers and properties for working with bytes.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension String {
     /// Initializes a String from a byte array using the `hexString` property from the `BytesUtil.swift` DataProtocol extension.
     /// - Parameter bytes: A byte array to initialize the String.

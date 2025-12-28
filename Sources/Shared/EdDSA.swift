@@ -33,11 +33,13 @@
 #else
     import Foundation
 
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     protocol DigestValidator {
         associatedtype Signature
         func isValidSignature<D: Digest>(_ signature: Signature, for digest: D) -> Bool
     }
 
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     protocol DataValidator {
         associatedtype Signature
         func isValidSignature<D: DataProtocol>(_ signature: Signature, for signedData: D) -> Bool

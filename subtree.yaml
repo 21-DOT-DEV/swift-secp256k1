@@ -34,3 +34,13 @@ subtrees:
   commit: 6f70fa9eab24c1fd982af18c281c4525d05e3095
   tag: 4.2.0
   squash: true
+  extractions:
+  - from:
+    - 'Sources/Crypto/{CryptoKitErrors,Digests/Digest,Signatures/Signature}.swift'
+    - 'Sources/Crypto/Util/{PrettyBytes,SecureBytes,BoringSSL/RNG_boring}.swift'
+    - 'Sources/Crypto/ASN1/**/*.swift'
+    to:
+    - 'Sources/Shared/swift-crypto/'
+    exclude:
+    - '**/{ObjectIdentifier,SEC1PrivateKey,SubjectPublicKeyInfo}*'
+

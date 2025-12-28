@@ -28,17 +28,20 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-#if !(os(macOS) || os(iOS) || os(watchOS) || os(tvOS) || os(visionOS))
+#if !canImport(Darwin)
     #if canImport(libsecp256k1_zkp)
         @_implementationOnly import libsecp256k1_zkp
     #elseif canImport(libsecp256k1)
         @_implementationOnly import libsecp256k1
     #endif
 
-    public typealias errno_t = CInt
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    typealias errno_t = CInt
 
+    // This is a Swift wrapper for the libc function that does not exist on Linux. We shim it via a call to secp256k1_swift_memczero.
+    // We have the same syntax, but mostly ignore it.
     @discardableResult
-    public func memset_s(_ s: UnsafeMutableRawPointer!, _ smax: Int, _ byte: CInt, _ n: Int) -> errno_t {
+    func memset_s(_ s: UnsafeMutableRawPointer!, _ smax: Int, _ byte: CInt, _ n: Int) -> errno_t {
         assert(smax == n, "memset_s invariant not met")
         assert(byte == 0, "memset_s used to not zero anything")
         secp256k1_swift_memczero(s, smax, 1)

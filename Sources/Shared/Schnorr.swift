@@ -16,6 +16,7 @@ import Foundation
     @_implementationOnly import libsecp256k1
 #endif
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K {
     enum Schnorr {
         /// Fixed number of bytes for Schnorr signature
@@ -38,6 +39,7 @@ public extension P256K {
 }
 
 /// An elliptic curve that enables secp256k1 signatures and key agreement.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Schnorr {
     /// A representation of a secp256k1 private key used for signing.
     struct PrivateKey: Equatable {
@@ -214,6 +216,7 @@ public extension P256K.Schnorr {
 // MARK: - Schnorr Signatures
 
 /// A Schnorr (Schnorr Digital Signature Scheme) Signature
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Schnorr {
     struct SchnorrSignature: ContiguousBytes, DataSignature {
         /// Returns the raw signature in a fixed 64-byte format.
@@ -256,6 +259,7 @@ public extension P256K.Schnorr {
 
 // MARK: - secp256k1 + Schnorr
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Schnorr.PrivateKey: DigestSigner {
     /// Generates an Schnorr signature from the hash digest object
     ///
@@ -336,6 +340,7 @@ extension P256K.Schnorr.PrivateKey: DigestSigner {
 
 // MARK: - Schnorr + Validating Key
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Schnorr.XonlyKey: DigestValidator {
     /// Verifies a Schnorr signature with a digest
     ///

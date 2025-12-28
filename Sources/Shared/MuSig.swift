@@ -16,6 +16,7 @@ import Foundation
     @_implementationOnly import libsecp256k1
 #endif
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K {
     /// MuSig is a multi-signature scheme that allows multiple parties to sign a message using their own private keys,
     /// but only reveal their public keys. The aggregated public key is then used to verify the signature.
@@ -145,6 +146,7 @@ public extension P256K {
 
 // MARK: - secp256k1 + MuSig
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.MuSig {
     /// Aggregates multiple Schnorr public keys into a single Schnorr public key using the MuSig algorithm.
     ///
@@ -189,6 +191,7 @@ public extension P256K.MuSig {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.MuSig.PublicKey {
     /// Creates a new `PublicKey` by adding a tweak to the public key.
     ///
@@ -223,6 +226,7 @@ public extension P256K.MuSig.PublicKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.MuSig.XonlyKey {
     /// Creates a new `XonlyKey` by adding a tweak to the x-only public key.
     ///
@@ -257,6 +261,7 @@ public extension P256K.MuSig.XonlyKey {
 }
 
 /// A Schnorr (Schnorr Digital Signature Scheme) Signature
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Schnorr {
     struct PartialSignature: ContiguousBytes {
         /// Returns the raw signature in a fixed 64-byte format.
@@ -302,6 +307,7 @@ public extension P256K.Schnorr {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.MuSig.PublicKey {
     /// Verifies a partial signature against this public key.
     ///
@@ -345,6 +351,7 @@ public extension P256K.MuSig.PublicKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Schnorr.PrivateKey {
     /// Generates a partial signature for MuSig.
     ///
@@ -451,6 +458,7 @@ extension secp256k1_musig_session {
 }
 
 /// A Schnorr (Schnorr Digital Signature Scheme) Signature
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.MuSig {
     struct AggregateSignature: ContiguousBytes, DataSignature {
         /// Returns the raw signature in a fixed 64-byte format.
@@ -491,6 +499,7 @@ public extension P256K.MuSig {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.MuSig {
     /// Aggregates partial signatures into a complete signature.
     ///
@@ -524,6 +533,7 @@ public extension P256K.MuSig {
 
 // MARK: - MuSig XonlyKey Signature Verification
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.MuSig.XonlyKey {
     /// Verifies a MuSig aggregate signature with a digest.
     ///
