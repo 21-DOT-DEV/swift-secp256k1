@@ -159,7 +159,7 @@ excluded: # paths to ignore during linting. Takes precedence over `included`.
   - Exhaustive/**/secp256k1Tests.swift
   - Exhaustive/**/XCTestManifests.swift
   - '**/swift-crypto/**'
-  - Vendor
+  - Vendor/**
 
 # Rules run by `swiftlint analyze` - these should only appear here, not in opt_in_rules
 analyzer_rules:
