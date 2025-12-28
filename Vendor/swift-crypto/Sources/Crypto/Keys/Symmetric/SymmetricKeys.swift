@@ -14,7 +14,16 @@
 #if CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
 @_exported import CryptoKit
 #else
-import Foundation
+
+#if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+import SwiftSystem
+#else
+#if canImport(FoundationEssentials)
+public import FoundationEssentials
+#else
+public import Foundation
+#endif
+#endif
 
 /// The sizes that a symmetric cryptographic key can take.
 ///
@@ -23,7 +32,8 @@ import Foundation
 /// standard key sizes, like ``bits128``, ``bits192``, or ``bits256``. When you
 /// need a key with a non-standard length, use the ``init(bitCount:)``
 /// initializer to create a `SymmetricKeySize` instance with a custom bit count.
-public struct SymmetricKeySize {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+public struct SymmetricKeySize: Sendable {
     /// The number of bits in the key.
     public let bitCount: Int
 
@@ -63,7 +73,8 @@ public struct SymmetricKeySize {
 /// symmetric key to compute a message authentication code like ``HMAC``, or to
 /// open and close a sealed box (``ChaChaPoly/SealedBox`` or
 /// ``AES/GCM/SealedBox``) using a cipher like ``ChaChaPoly`` or ``AES``.
-public struct SymmetricKey: ContiguousBytes {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+public struct SymmetricKey: ContiguousBytes, Sendable {
     let sb: SecureBytes
 
     /// Invokes the given closure with a buffer pointer covering the raw bytes
@@ -74,9 +85,15 @@ public struct SymmetricKey: ContiguousBytes {
     /// key and returns the key.
     ///
     /// - Returns: The key, as returned from the body closure.
+    #if hasFeature(Embedded)
+    public func withUnsafeBytes<R, E: Error>(_ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
+        return try sb.withUnsafeBytes(body)
+    }
+    #else
     public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
         return try sb.withUnsafeBytes(body)
     }
+    #endif
 
     /// Creates a key from the given data.
     ///
@@ -97,9 +114,15 @@ public struct SymmetricKey: ContiguousBytes {
         self.init(key: SecureBytes(count: Int(size.bitCount / 8)))
     }
 
+    #if hasFeature(Embedded)
+    internal init<E: Error>(unsafeUninitializedCapacity: Int, initializingWith callback: (inout UnsafeMutableRawBufferPointer, inout Int) throws(E) -> Void) throws(E) {
+        self.init(key: try SecureBytes(unsafeUninitializedCapacity: unsafeUninitializedCapacity, initializingWith: callback))
+    }
+    #else
     internal init(unsafeUninitializedCapacity: Int, initializingWith callback: (inout UnsafeMutableRawBufferPointer, inout Int) throws -> Void) rethrows {
         self.init(key: try SecureBytes(unsafeUninitializedCapacity: unsafeUninitializedCapacity, initializingWith: callback))
     }
+    #endif
 
     // Fast-path alias for cases whe know we have a SecureBytes object.
     internal init(data: SecureBytes) {
@@ -122,6 +145,7 @@ public struct SymmetricKey: ContiguousBytes {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension SymmetricKey: Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
         return safeCompare(lhs, rhs)

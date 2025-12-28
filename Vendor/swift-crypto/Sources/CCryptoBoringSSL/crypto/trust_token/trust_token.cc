@@ -1,29 +1,32 @@
-/* Copyright 2019 The BoringSSL Authors
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright 2019 The BoringSSL Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <CCryptoBoringSSL_trust_token.h>
+
+#include <iterator>
 
 #include <CCryptoBoringSSL_bytestring.h>
 #include <CCryptoBoringSSL_err.h>
 #include <CCryptoBoringSSL_evp.h>
 #include <CCryptoBoringSSL_mem.h>
-#include <CCryptoBoringSSL_sha.h>
-#include <CCryptoBoringSSL_trust_token.h>
+#include <CCryptoBoringSSL_sha2.h>
 
 #include "internal.h"
 
 
 // The Trust Token API is described in
-// https://github.com/WICG/trust-token-api/blob/master/README.md and provides a
+// https://github.com/WICG/trust-token-api/blob/main/README.md and provides a
 // protocol for issuing and redeeming tokens built on top of the PMBTokens
 // construction.
 
@@ -226,7 +229,7 @@ void TRUST_TOKEN_CLIENT_free(TRUST_TOKEN_CLIENT *ctx) {
 
 int TRUST_TOKEN_CLIENT_add_key(TRUST_TOKEN_CLIENT *ctx, size_t *out_key_index,
                                const uint8_t *key, size_t key_len) {
-  if (ctx->num_keys == OPENSSL_ARRAY_SIZE(ctx->keys) ||
+  if (ctx->num_keys == std::size(ctx->keys) ||
       ctx->num_keys >= ctx->method->max_keys) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_TOO_MANY_KEYS);
     return 0;
@@ -462,7 +465,7 @@ void TRUST_TOKEN_ISSUER_free(TRUST_TOKEN_ISSUER *ctx) {
 
 int TRUST_TOKEN_ISSUER_add_key(TRUST_TOKEN_ISSUER *ctx, const uint8_t *key,
                                size_t key_len) {
-  if (ctx->num_keys == OPENSSL_ARRAY_SIZE(ctx->keys) ||
+  if (ctx->num_keys == std::size(ctx->keys) ||
       ctx->num_keys >= ctx->method->max_keys) {
     OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_TOO_MANY_KEYS);
     return 0;

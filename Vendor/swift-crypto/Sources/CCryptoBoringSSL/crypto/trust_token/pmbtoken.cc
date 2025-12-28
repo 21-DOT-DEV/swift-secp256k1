@@ -1,16 +1,16 @@
-/* Copyright 2020 The BoringSSL Authors
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright 2020 The BoringSSL Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <CCryptoBoringSSL_trust_token.h>
 
@@ -21,9 +21,9 @@
 #include <CCryptoBoringSSL_mem.h>
 #include <CCryptoBoringSSL_nid.h>
 #include <CCryptoBoringSSL_rand.h>
-#include <CCryptoBoringSSL_sha.h>
+#include <CCryptoBoringSSL_sha2.h>
 
-#include "../ec_extra/internal.h"
+#include "../ec/internal.h"
 #include "../fipsmodule/bn/internal.h"
 #include "../fipsmodule/ec/internal.h"
 
@@ -196,13 +196,13 @@ static int pmbtoken_compute_keys(const PMBTOKEN_METHOD *method,
 
   const EC_SCALAR *scalars[] = {x0, y0, x1, y1, xs, ys};
   size_t scalar_len = BN_num_bytes(EC_GROUP_get0_order(group));
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(scalars); i++) {
+  for (const EC_SCALAR *scalar : scalars) {
     uint8_t *buf;
     if (!CBB_add_space(out_private, &buf, scalar_len)) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_BUFFER_TOO_SMALL);
       return 0;
     }
-    ec_scalar_to_bytes(group, buf, &scalar_len, scalars[i]);
+    ec_scalar_to_bytes(group, buf, &scalar_len, scalar);
   }
 
   EC_AFFINE pub_affine[3];
@@ -287,10 +287,9 @@ static int pmbtoken_issuer_key_from_bytes(const PMBTOKEN_METHOD *method,
   size_t scalar_len = BN_num_bytes(EC_GROUP_get0_order(group));
   EC_SCALAR *scalars[] = {&key->x0, &key->y0, &key->x1,
                           &key->y1, &key->xs, &key->ys};
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(scalars); i++) {
+  for (EC_SCALAR *scalar : scalars) {
     if (!CBS_get_bytes(&cbs, &tmp, scalar_len) ||
-        !ec_scalar_from_bytes(group, scalars[i], CBS_data(&tmp),
-                              CBS_len(&tmp))) {
+        !ec_scalar_from_bytes(group, scalar, CBS_data(&tmp), CBS_len(&tmp))) {
       OPENSSL_PUT_ERROR(TRUST_TOKEN, TRUST_TOKEN_R_DECODE_FAILURE);
       return 0;
     }

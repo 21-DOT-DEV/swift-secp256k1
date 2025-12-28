@@ -16,12 +16,18 @@
 #else
 @_implementationOnly import CCryptoBoringSSL
 @_implementationOnly import CCryptoBoringSSLShims
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
 import Foundation
+#endif
 
 // For signing and verifying, we use BoringSSL's Ed25519, not the X25519 stuff.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Curve25519.Signing {
     @usableFromInline
-    struct OpenSSLCurve25519PrivateKeyImpl {
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    struct OpenSSLCurve25519PrivateKeyImpl: Sendable {
         var _privateKey: SecureBytes
         @usableFromInline var _publicKey: [UInt8]
 
@@ -92,7 +98,8 @@ extension Curve25519.Signing {
     }
 
     @usableFromInline
-    struct OpenSSLCurve25519PublicKeyImpl {
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    struct OpenSSLCurve25519PublicKeyImpl: Sendable {
         @usableFromInline
         var keyBytes: [UInt8]
 

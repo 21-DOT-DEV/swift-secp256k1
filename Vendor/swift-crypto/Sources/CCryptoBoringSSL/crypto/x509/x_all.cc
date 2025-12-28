@@ -1,82 +1,49 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <CCryptoBoringSSL_x509.h>
 
 #include <limits.h>
 
 #include <CCryptoBoringSSL_asn1.h>
+#include <CCryptoBoringSSL_bytestring.h>
 #include <CCryptoBoringSSL_digest.h>
 #include <CCryptoBoringSSL_dsa.h>
 #include <CCryptoBoringSSL_evp.h>
 #include <CCryptoBoringSSL_mem.h>
 #include <CCryptoBoringSSL_rsa.h>
+#include <CCryptoBoringSSL_span.h>
 #include <CCryptoBoringSSL_stack.h>
 
 #include "../asn1/internal.h"
+#include "../internal.h"
 #include "internal.h"
 
 
 int X509_verify(X509 *x509, EVP_PKEY *pkey) {
-  if (X509_ALGOR_cmp(x509->sig_alg, x509->cert_info->signature)) {
+  if (X509_ALGOR_cmp(&x509->sig_alg, &x509->tbs_sig_alg)) {
     OPENSSL_PUT_ERROR(X509, X509_R_SIGNATURE_ALGORITHM_MISMATCH);
     return 0;
   }
-  return ASN1_item_verify(ASN1_ITEM_rptr(X509_CINF), x509->sig_alg,
-                          x509->signature, x509->cert_info, pkey);
+  // This uses the cached TBSCertificate encoding, if any.
+  bssl::ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 128) || !x509_marshal_tbs_cert(cbb.get(), x509)) {
+    return 0;
+  }
+  return x509_verify_signature(
+      &x509->sig_alg, &x509->signature,
+      bssl::Span(CBB_data(cbb.get()), CBB_len(cbb.get())), pkey);
 }
 
 int X509_REQ_verify(X509_REQ *req, EVP_PKEY *pkey) {
@@ -85,21 +52,41 @@ int X509_REQ_verify(X509_REQ *req, EVP_PKEY *pkey) {
 }
 
 int X509_sign(X509 *x, EVP_PKEY *pkey, const EVP_MD *md) {
-  asn1_encoding_clear(&x->cert_info->enc);
-  return (ASN1_item_sign(ASN1_ITEM_rptr(X509_CINF), x->cert_info->signature,
-                         x->sig_alg, x->signature, x->cert_info, pkey, md));
+  bssl::ScopedEVP_MD_CTX ctx;
+  if (!EVP_DigestSignInit(ctx.get(), nullptr, md, nullptr, pkey)) {
+    return 0;
+  }
+  return X509_sign_ctx(x, ctx.get());
 }
 
 int X509_sign_ctx(X509 *x, EVP_MD_CTX *ctx) {
-  asn1_encoding_clear(&x->cert_info->enc);
-  return ASN1_item_sign_ctx(ASN1_ITEM_rptr(X509_CINF), x->cert_info->signature,
-                            x->sig_alg, x->signature, x->cert_info, ctx);
+  // Historically, this function called |EVP_MD_CTX_cleanup| on return. Some
+  // callers rely on this to avoid memory leaks.
+  bssl::Cleanup cleanup = [&] { EVP_MD_CTX_cleanup(ctx); };
+
+  // Fill in the two copies of AlgorithmIdentifier. Note one of these modifies
+  // the TBSCertificate.
+  if (!x509_digest_sign_algorithm(ctx, &x->tbs_sig_alg) ||
+      !x509_digest_sign_algorithm(ctx, &x->sig_alg)) {
+    return 0;
+  }
+
+  // Discard the cached encoding. (We just modified it.)
+  CRYPTO_BUFFER_free(x->buf);
+  x->buf = nullptr;
+
+  bssl::ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 128) || !x509_marshal_tbs_cert(cbb.get(), x)) {
+    return 0;
+  }
+  return x509_sign_to_bit_string(
+      ctx, &x->signature, bssl::Span(CBB_data(cbb.get()), CBB_len(cbb.get())));
 }
 
 int X509_REQ_sign(X509_REQ *x, EVP_PKEY *pkey, const EVP_MD *md) {
   asn1_encoding_clear(&x->req_info->enc);
-  return (ASN1_item_sign(ASN1_ITEM_rptr(X509_REQ_INFO), x->sig_alg, NULL,
-                         x->signature, x->req_info, pkey, md));
+  return ASN1_item_sign(ASN1_ITEM_rptr(X509_REQ_INFO), x->sig_alg, NULL,
+                        x->signature, x->req_info, pkey, md);
 }
 
 int X509_REQ_sign_ctx(X509_REQ *x, EVP_MD_CTX *ctx) {
@@ -110,8 +97,8 @@ int X509_REQ_sign_ctx(X509_REQ *x, EVP_MD_CTX *ctx) {
 
 int X509_CRL_sign(X509_CRL *x, EVP_PKEY *pkey, const EVP_MD *md) {
   asn1_encoding_clear(&x->crl->enc);
-  return (ASN1_item_sign(ASN1_ITEM_rptr(X509_CRL_INFO), x->crl->sig_alg,
-                         x->sig_alg, x->signature, x->crl, pkey, md));
+  return ASN1_item_sign(ASN1_ITEM_rptr(X509_CRL_INFO), x->crl->sig_alg,
+                        x->sig_alg, x->signature, x->crl, pkey, md);
 }
 
 int X509_CRL_sign_ctx(X509_CRL *x, EVP_MD_CTX *ctx) {
@@ -121,13 +108,13 @@ int X509_CRL_sign_ctx(X509_CRL *x, EVP_MD_CTX *ctx) {
 }
 
 int NETSCAPE_SPKI_sign(NETSCAPE_SPKI *x, EVP_PKEY *pkey, const EVP_MD *md) {
-  return (ASN1_item_sign(ASN1_ITEM_rptr(NETSCAPE_SPKAC), x->sig_algor, NULL,
-                         x->signature, x->spkac, pkey, md));
+  return ASN1_item_sign(ASN1_ITEM_rptr(NETSCAPE_SPKAC), x->sig_algor, NULL,
+                        x->signature, x->spkac, pkey, md);
 }
 
 int NETSCAPE_SPKI_verify(NETSCAPE_SPKI *spki, EVP_PKEY *pkey) {
-  return (ASN1_item_verify(ASN1_ITEM_rptr(NETSCAPE_SPKAC), spki->sig_algor,
-                           spki->signature, spki->spkac, pkey));
+  return ASN1_item_verify(ASN1_ITEM_rptr(NETSCAPE_SPKAC), spki->sig_algor,
+                          spki->signature, spki->spkac, pkey);
 }
 
 X509_CRL *d2i_X509_CRL_fp(FILE *fp, X509_CRL **crl) {

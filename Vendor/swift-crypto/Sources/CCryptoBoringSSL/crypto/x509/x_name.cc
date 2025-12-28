@@ -1,58 +1,16 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <ctype.h>
 #include <string.h>
@@ -80,15 +38,6 @@ DEFINE_STACK_OF(STACK_OF_X509_NAME_ENTRY)
 
 #define X509_NAME_MAX (1024 * 1024)
 
-static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
-                            long len, const ASN1_ITEM *it, int opt,
-                            ASN1_TLC *ctx);
-
-static int x509_name_ex_i2d(ASN1_VALUE **val, unsigned char **out,
-                            const ASN1_ITEM *it);
-static int x509_name_ex_new(ASN1_VALUE **val, const ASN1_ITEM *it);
-static void x509_name_ex_free(ASN1_VALUE **val, const ASN1_ITEM *it);
-
 static int x509_name_encode(X509_NAME *a);
 static int x509_name_canon(X509_NAME *a);
 static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in);
@@ -97,7 +46,7 @@ static int i2d_name_canon(STACK_OF(STACK_OF_X509_NAME_ENTRY) *intname,
 
 ASN1_SEQUENCE(X509_NAME_ENTRY) = {
     ASN1_SIMPLE(X509_NAME_ENTRY, object, ASN1_OBJECT),
-    ASN1_SIMPLE(X509_NAME_ENTRY, value, ASN1_PRINTABLE),
+    ASN1_SIMPLE(X509_NAME_ENTRY, value, ASN1_ANY_AS_STRING),
 } ASN1_SEQUENCE_END(X509_NAME_ENTRY)
 
 IMPLEMENT_ASN1_ALLOC_FUNCTIONS(X509_NAME_ENTRY)
@@ -119,19 +68,8 @@ ASN1_ITEM_TEMPLATE_END(X509_NAME_INTERNAL)
 // representing the ASN1. Unfortunately X509_NAME uses a completely different
 // form and caches encodings so we have to process the internal form and
 // convert to the external form.
-
-static const ASN1_EXTERN_FUNCS x509_name_ff = {
-    x509_name_ex_new,
-    x509_name_ex_free,
-    x509_name_ex_d2i,
-    x509_name_ex_i2d,
-};
-
-IMPLEMENT_EXTERN_ASN1(X509_NAME, V_ASN1_SEQUENCE, x509_name_ff)
-
-IMPLEMENT_ASN1_FUNCTIONS(X509_NAME)
-
-IMPLEMENT_ASN1_DUP_FUNCTION(X509_NAME)
+//
+// TODO(crbug.com/42290417): Rewrite all this with |CBS| and |CBB|.
 
 static int x509_name_ex_new(ASN1_VALUE **val, const ASN1_ITEM *it) {
   X509_NAME *ret = NULL;
@@ -185,29 +123,37 @@ static void local_sk_X509_NAME_ENTRY_pop_free(STACK_OF(X509_NAME_ENTRY) *ne) {
   sk_X509_NAME_ENTRY_pop_free(ne, X509_NAME_ENTRY_free);
 }
 
-static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
-                            long len, const ASN1_ITEM *it, int opt,
-                            ASN1_TLC *ctx) {
-  const unsigned char *p = *in, *q;
+static int x509_name_ex_parse(ASN1_VALUE **val, CBS *cbs, const ASN1_ITEM *it,
+                              int opt) {
+  if (opt && !CBS_peek_asn1_tag(cbs, CBS_ASN1_SEQUENCE)) {
+    return 1;
+  }
+
+  CBS elem;
+  if (!CBS_get_asn1_element(cbs, &elem, CBS_ASN1_SEQUENCE) ||
+      // Bound the size of an X509_NAME we are willing to parse.
+      CBS_len(&elem) > X509_NAME_MAX) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_DECODE_ERROR);
+    return 0;
+  }
+
+  // TODO(crbug.com/42290417): Rewrite the parser and canonicalization code with
+  // CBS and CBB. For now this calls into the original two-layer d2i code.
+  long len = static_cast<long>(CBS_len(&elem));
+  const unsigned char *p = CBS_data(&elem), *q;
   STACK_OF(STACK_OF_X509_NAME_ENTRY) *intname = NULL;
   X509_NAME *nm = NULL;
   size_t i, j;
-  int ret;
   STACK_OF(X509_NAME_ENTRY) *entries;
   X509_NAME_ENTRY *entry;
-  // Bound the size of an X509_NAME we are willing to parse.
-  if (len > X509_NAME_MAX) {
-    len = X509_NAME_MAX;
-  }
   q = p;
 
   // Get internal representation of Name
   ASN1_VALUE *intname_val = NULL;
-  ret = ASN1_item_ex_d2i(&intname_val, &p, len,
-                         ASN1_ITEM_rptr(X509_NAME_INTERNAL), /*tag=*/-1,
-                         /*aclass=*/0, opt, /*buf=*/NULL);
-  if (ret <= 0) {
-    return ret;
+  if (ASN1_item_ex_d2i(&intname_val, &p, len,
+                       ASN1_ITEM_rptr(X509_NAME_INTERNAL), /*tag=*/-1,
+                       /*aclass=*/0, /*opt=*/0) <= 0) {
+    return 0;
   }
   intname = (STACK_OF(STACK_OF_X509_NAME_ENTRY) *)intname_val;
 
@@ -237,15 +183,13 @@ static int x509_name_ex_d2i(ASN1_VALUE **val, const unsigned char **in,
       (void)sk_X509_NAME_ENTRY_set(entries, j, NULL);
     }
   }
-  ret = x509_name_canon(nm);
-  if (!ret) {
+  if (!x509_name_canon(nm)) {
     goto err;
   }
   sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname, local_sk_X509_NAME_ENTRY_free);
   nm->modified = 0;
   *val = (ASN1_VALUE *)nm;
-  *in = p;
-  return ret;
+  return 1;
 err:
   X509_NAME_free(nm);
   sk_STACK_OF_X509_NAME_ENTRY_pop_free(intname,
@@ -267,6 +211,12 @@ static int x509_name_ex_i2d(ASN1_VALUE **val, unsigned char **out,
   }
   return ret;
 }
+
+static const ASN1_EXTERN_FUNCS x509_name_ff = {
+    x509_name_ex_new, x509_name_ex_free, x509_name_ex_parse, x509_name_ex_i2d};
+IMPLEMENT_EXTERN_ASN1(X509_NAME, x509_name_ff)
+IMPLEMENT_ASN1_FUNCTIONS(X509_NAME)
+IMPLEMENT_ASN1_DUP_FUNCTION(X509_NAME)
 
 static int x509_name_encode(X509_NAME *a) {
   int len;
@@ -531,4 +481,13 @@ int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **out_der,
     *out_der_len = nm->bytes->length;
   }
   return 1;
+}
+
+int x509_marshal_name(CBB *out, X509_NAME *in) {
+  int len = i2d_X509_NAME(in, nullptr);
+  if (len <= 0) {
+    return 0;
+  }
+  uint8_t *ptr;
+  return CBB_add_space(out, &ptr, len) && i2d_X509_NAME(in, &ptr) == len;
 }

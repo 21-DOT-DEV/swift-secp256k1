@@ -1,58 +1,16 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <CCryptoBoringSSL_asn1.h>
 #include <CCryptoBoringSSL_digest.h>
@@ -60,11 +18,15 @@
 #include <CCryptoBoringSSL_evp.h>
 #include <CCryptoBoringSSL_mem.h>
 #include <CCryptoBoringSSL_obj.h>
+#include <CCryptoBoringSSL_span.h>
 #include <CCryptoBoringSSL_x509.h>
 
 #include <limits.h>
 
+#include "../internal.h"
+#include "../mem_internal.h"
 #include "internal.h"
+
 
 int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1, X509_ALGOR *algor2,
                    ASN1_BIT_STRING *signature, void *asn, EVP_PKEY *pkey,
@@ -73,67 +35,66 @@ int ASN1_item_sign(const ASN1_ITEM *it, X509_ALGOR *algor1, X509_ALGOR *algor2,
     OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_TYPE);
     return 0;
   }
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
-  if (!EVP_DigestSignInit(&ctx, NULL, type, NULL, pkey)) {
-    EVP_MD_CTX_cleanup(&ctx);
+  bssl::ScopedEVP_MD_CTX ctx;
+  if (!EVP_DigestSignInit(ctx.get(), nullptr, type, nullptr, pkey)) {
     return 0;
   }
-  return ASN1_item_sign_ctx(it, algor1, algor2, signature, asn, &ctx);
+  return ASN1_item_sign_ctx(it, algor1, algor2, signature, asn, ctx.get());
 }
 
 int ASN1_item_sign_ctx(const ASN1_ITEM *it, X509_ALGOR *algor1,
                        X509_ALGOR *algor2, ASN1_BIT_STRING *signature,
                        void *asn, EVP_MD_CTX *ctx) {
-  int ret = 0;
-  uint8_t *in = NULL, *out = NULL;
+  // Historically, this function called |EVP_MD_CTX_cleanup| on return. Some
+  // callers rely on this to avoid memory leaks.
+  bssl::Cleanup cleanup = [&] { EVP_MD_CTX_cleanup(ctx); };
 
-  {
-    if (signature->type != V_ASN1_BIT_STRING) {
-      OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_TYPE);
-      goto err;
-    }
-
-    // Write out the requested copies of the AlgorithmIdentifier.
-    if (algor1 && !x509_digest_sign_algorithm(ctx, algor1)) {
-      goto err;
-    }
-    if (algor2 && !x509_digest_sign_algorithm(ctx, algor2)) {
-      goto err;
-    }
-
-    int in_len = ASN1_item_i2d(reinterpret_cast<ASN1_VALUE *>(asn), &in, it);
-    if (in_len < 0) {
-      goto err;
-    }
-
-    EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
-    size_t out_len = EVP_PKEY_size(pkey);
-    if (out_len > INT_MAX) {
-      OPENSSL_PUT_ERROR(X509, ERR_R_OVERFLOW);
-      goto err;
-    }
-
-    out = reinterpret_cast<uint8_t *>(OPENSSL_malloc(out_len));
-    if (out == NULL) {
-      goto err;
-    }
-
-    if (!EVP_DigestSign(ctx, out, &out_len, in, in_len)) {
-      OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
-      goto err;
-    }
-
-    ASN1_STRING_set0(signature, out, (int)out_len);
-    out = NULL;
-    signature->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
-    signature->flags |= ASN1_STRING_FLAG_BITS_LEFT;
-    ret = (int)out_len;
+  // Write out the requested copies of the AlgorithmIdentifier. This may modify
+  // |asn|, so we must do it first.
+  if ((algor1 != nullptr && !x509_digest_sign_algorithm(ctx, algor1)) ||
+      (algor2 != nullptr && !x509_digest_sign_algorithm(ctx, algor2))) {
+    return 0;
   }
 
-err:
-  EVP_MD_CTX_cleanup(ctx);
-  OPENSSL_free(in);
-  OPENSSL_free(out);
-  return ret;
+  uint8_t *in = nullptr;
+  int in_len = ASN1_item_i2d(reinterpret_cast<ASN1_VALUE *>(asn), &in, it);
+  if (in_len < 0) {
+    return 0;
+  }
+  bssl::UniquePtr<uint8_t> free_in(in);
+
+  return x509_sign_to_bit_string(ctx, signature, bssl::Span(in, in_len));
+}
+
+int x509_sign_to_bit_string(EVP_MD_CTX *ctx, ASN1_BIT_STRING *out,
+                            bssl::Span<const uint8_t> in) {
+  if (out->type != V_ASN1_BIT_STRING) {
+    OPENSSL_PUT_ERROR(ASN1, ASN1_R_WRONG_TYPE);
+    return 0;
+  }
+
+  EVP_PKEY *pkey = EVP_PKEY_CTX_get0_pkey(ctx->pctx);
+  size_t sig_len = EVP_PKEY_size(pkey);
+  if (sig_len > INT_MAX) {
+    // Ensure the signature will fit in |out|.
+    OPENSSL_PUT_ERROR(X509, ERR_R_OVERFLOW);
+    return 0;
+  }
+  bssl::Array<uint8_t> sig;
+  if (!sig.Init(sig_len)) {
+    return 0;
+  }
+
+  if (!EVP_DigestSign(ctx, sig.data(), &sig_len, in.data(), in.size())) {
+    OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
+    return 0;
+  }
+  sig.Shrink(sig_len);
+
+  uint8_t *sig_data;
+  sig.Release(&sig_data, &sig_len);
+  ASN1_STRING_set0(out, sig_data, static_cast<int>(sig_len));
+  out->flags &= ~(ASN1_STRING_FLAG_BITS_LEFT | 0x07);
+  out->flags |= ASN1_STRING_FLAG_BITS_LEFT;
+  return static_cast<int>(sig_len);
 }

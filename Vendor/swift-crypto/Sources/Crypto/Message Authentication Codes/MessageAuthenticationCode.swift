@@ -14,14 +14,35 @@
 #if CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
 @_exported import CryptoKit
 #else
-import Foundation
+#if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+public import SwiftSystem
+#else
+#if canImport(FoundationEssentials)
+public import FoundationEssentials
+#else
+public import Foundation
+#endif
+#endif
 
+#if hasFeature(Embedded)
 /// A type that represents a message authentication code.
-public protocol MessageAuthenticationCode: Hashable, ContiguousBytes, CustomStringConvertible, Sequence where Element == UInt8 {
+@preconcurrency
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+public protocol MessageAuthenticationCode: Hashable, ContiguousBytes, Sendable, Sequence where Element == UInt8 {
     /// The number of bytes in the message authentication code.
     var byteCount: Int { get }
 }
+#else
+/// A type that represents a message authentication code.
+@preconcurrency
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+public protocol MessageAuthenticationCode: Hashable, ContiguousBytes, Sendable, CustomStringConvertible, Sequence where Element == UInt8 {
+    /// The number of bytes in the message authentication code.
+    var byteCount: Int { get }
+}
+#endif
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension MessageAuthenticationCode {
     /// Returns a Boolean value indicating whether two message authentication
     /// codes are equal.
@@ -59,9 +80,11 @@ extension MessageAuthenticationCode {
             return Array(buffPtr.bindMemory(to: UInt8.self)).makeIterator()
         })
     }
-
+    
+#if !hasFeature(Embedded)
     public var description: String {
         return "\(Self.self): \(Array(self).hexString)"
     }
+#endif
 }
 #endif // Linux or !SwiftPM

@@ -1,66 +1,23 @@
-/*
- * Written by Dr Stephen N Henson (steve@openssl.org) for the OpenSSL project
- * 2013.
- */
-/* ====================================================================
- * Copyright (c) 2013 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.OpenSSL.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    licensing@OpenSSL.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.OpenSSL.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com).
- *
- */
+// Copyright 2013-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#ifndef OPENSSL_HEADER_X509_INTERNAL_H
-#define OPENSSL_HEADER_X509_INTERNAL_H
+#ifndef OPENSSL_HEADER_CRYPTO_X509_INTERNAL_H
+#define OPENSSL_HEADER_CRYPTO_X509_INTERNAL_H
 
 #include <CCryptoBoringSSL_base.h>
 #include <CCryptoBoringSSL_evp.h>
+#include <CCryptoBoringSSL_span.h>
 #include <CCryptoBoringSSL_x509.h>
 
 #include "../asn1/internal.h"
@@ -73,21 +30,24 @@ extern "C" {
 
 // Internal structures.
 
-typedef struct X509_val_st {
-  ASN1_TIME *notBefore;
-  ASN1_TIME *notAfter;
-} X509_VAL;
-
-DECLARE_ASN1_FUNCTIONS_const(X509_VAL)
-
 struct X509_pubkey_st {
-  X509_ALGOR *algor;
-  ASN1_BIT_STRING *public_key;
+  X509_ALGOR algor;
+  ASN1_BIT_STRING public_key;
   EVP_PKEY *pkey;
 } /* X509_PUBKEY */;
 
+void x509_pubkey_init(X509_PUBKEY *key);
+void x509_pubkey_cleanup(X509_PUBKEY *key);
+
+int x509_parse_public_key(CBS *cbs, X509_PUBKEY *out,
+                          bssl::Span<const EVP_PKEY_ALG *const> algs);
+int x509_marshal_public_key(CBB *cbb, const X509_PUBKEY *in);
+int x509_pubkey_set1(X509_PUBKEY *key, EVP_PKEY *pkey);
+
 // X509_PUBKEY is an |ASN1_ITEM| whose ASN.1 type is SubjectPublicKeyInfo and C
 // type is |X509_PUBKEY*|.
+// TODO(crbug.com/42290417): Remove this when |X509| and |X509_REQ| no longer
+// depend on the tables.
 DECLARE_ASN1_ITEM(X509_PUBKEY)
 
 struct X509_name_entry_st {
@@ -141,28 +101,31 @@ DECLARE_ASN1_ITEM(X509_EXTENSION)
 // (RFC 5280) and C type is |STACK_OF(X509_EXTENSION)*|.
 DECLARE_ASN1_ITEM(X509_EXTENSIONS)
 
-typedef struct {
-  ASN1_INTEGER *version;  // [ 0 ] default of v1
-  ASN1_INTEGER *serialNumber;
-  X509_ALGOR *signature;
+struct x509_st {
+  // TBSCertificate fields:
+  uint8_t version;  // One of the |X509_VERSION_*| constants.
+  ASN1_INTEGER serialNumber;
+  X509_ALGOR tbs_sig_alg;
+  // TODO(crbug.com/42290417): When |X509_NAME| no longer uses the macro system,
+  // try to embed this struct.
   X509_NAME *issuer;
-  X509_VAL *validity;
+  ASN1_TIME notBefore;
+  ASN1_TIME notAfter;
+  // TODO(crbug.com/42290417): When |X509_NAME| no longer uses the macro system,
+  // try to embed this struct.
   X509_NAME *subject;
-  X509_PUBKEY *key;
+  X509_PUBKEY key;
   ASN1_BIT_STRING *issuerUID;            // [ 1 ] optional in v2
   ASN1_BIT_STRING *subjectUID;           // [ 2 ] optional in v2
   STACK_OF(X509_EXTENSION) *extensions;  // [ 3 ] optional in v3
-  ASN1_ENCODING enc;
-} X509_CINF;
-
-// TODO(https://crbug.com/boringssl/407): This is not const because it contains
-// an |X509_NAME|.
-DECLARE_ASN1_FUNCTIONS(X509_CINF)
-
-struct x509_st {
-  X509_CINF *cert_info;
-  X509_ALGOR *sig_alg;
-  ASN1_BIT_STRING *signature;
+  // Certificate fields:
+  X509_ALGOR sig_alg;
+  ASN1_BIT_STRING signature;
+  // Other state:
+  // buf, if not nullptr, contains a copy of the serialized Certificate.
+  // TODO(davidben): Now every parsed |X509| has an underlying |CRYPTO_BUFFER|,
+  // but |X509|s created peacemeal do not. Can we make this more uniform?
+  CRYPTO_BUFFER *buf;
   CRYPTO_refcount_t references;
   CRYPTO_EX_DATA ex_data;
   // These contain copies of various extension values
@@ -179,6 +142,8 @@ struct x509_st {
   X509_CERT_AUX *aux;
   CRYPTO_MUTEX lock;
 } /* X509 */;
+
+int x509_marshal_tbs_cert(CBB *cbb, X509 *x509);
 
 // X509 is an |ASN1_ITEM| whose ASN.1 type is X.509 Certificate (RFC 5280) and C
 // type is |X509*|.
@@ -429,6 +394,17 @@ int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
 int x509_digest_verify_init(EVP_MD_CTX *ctx, const X509_ALGOR *sigalg,
                             EVP_PKEY *pkey);
 
+// x509_verify_signature verifies a |signature| using |sigalg| and |pkey| over
+// |in|. It returns one if the signature is valid and zero on error.
+int x509_verify_signature(const X509_ALGOR *sigalg,
+                          const ASN1_BIT_STRING *signature,
+                          bssl::Span<const uint8_t> in, EVP_PKEY *pkey);
+
+// x509_sign_to_bit_string signs |in| using |ctx| and saves the result in |out|.
+// It returns the length of the signature on success and zero on error.
+int x509_sign_to_bit_string(EVP_MD_CTX *ctx, ASN1_BIT_STRING *out,
+                            bssl::Span<const uint8_t> in);
+
 
 // Path-building functions.
 
@@ -591,9 +567,47 @@ int X509_PURPOSE_get_trust(const X509_PURPOSE *xp);
 // TODO(https://crbug.com/boringssl/695): Remove this.
 int DIST_POINT_set_dpname(DIST_POINT_NAME *dpn, X509_NAME *iname);
 
+// x509_marshal_name marshals |in| as a DER-encoded, X.509 Name and writes the
+// result to |out|. It returns one on success and zero on error.
+//
+// TODO(https://crbug.com/boringssl/407): This function should be const and
+// thread-safe but is currently neither in some cases, notably if |in| was
+// mutated.
+int x509_marshal_name(CBB *out, X509_NAME *in);
+
+void x509_algor_init(X509_ALGOR *alg);
+void x509_algor_cleanup(X509_ALGOR *alg);
+
+// x509_parse_algorithm parses a DER-encoded, AlgorithmIdentifier from |cbs| and
+// writes the result to |*out|. It returns one on success and zero on error.
+int x509_parse_algorithm(CBS *cbs, X509_ALGOR *out);
+
+// x509_marshal_algorithm marshals |in| as a DER-encoded, AlgorithmIdentifier
+// and writes the result to |out|. It returns one on success and zero on error.
+int x509_marshal_algorithm(CBB *out, const X509_ALGOR *in);
+
+
+// Standard extensions.
+
+extern const X509V3_EXT_METHOD v3_bcons, v3_nscert, v3_key_usage, v3_ext_ku;
+extern const X509V3_EXT_METHOD v3_info, v3_sinfo;
+extern const X509V3_EXT_METHOD v3_skey_id, v3_akey_id;
+extern const X509V3_EXT_METHOD v3_subject_alt_name, v3_issuer_alt_name,
+    v3_certificate_issuer;
+extern const X509V3_EXT_METHOD v3_netscape_base_url, v3_netscape_revocation_url,
+    v3_netscape_ca_revocation_url, v3_netscape_renewal_url,
+    v3_netscape_ca_policy_url, v3_netscape_ssl_server_name, v3_netscape_comment;
+extern const X509V3_EXT_METHOD v3_crl_num, v3_crl_reason, v3_crl_invdate;
+extern const X509V3_EXT_METHOD v3_delta_crl, v3_cpols, v3_crld, v3_freshest_crl;
+extern const X509V3_EXT_METHOD v3_ocsp_nocheck;
+extern const X509V3_EXT_METHOD v3_crl_hold;
+extern const X509V3_EXT_METHOD v3_policy_mappings, v3_policy_constraints;
+extern const X509V3_EXT_METHOD v3_name_constraints, v3_inhibit_anyp, v3_idp;
+extern const X509V3_EXT_METHOD v3_addr, v3_asid;
+
 
 #if defined(__cplusplus)
 }  // extern C
 #endif
 
-#endif  // OPENSSL_HEADER_X509_INTERNAL_H
+#endif  // OPENSSL_HEADER_CRYPTO_X509_INTERNAL_H
