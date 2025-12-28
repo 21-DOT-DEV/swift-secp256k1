@@ -1,58 +1,16 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <CCryptoBoringSSL_evp.h>
 
@@ -62,7 +20,6 @@
 #include <CCryptoBoringSSL_err.h>
 #include <CCryptoBoringSSL_mem.h>
 #include <CCryptoBoringSSL_nid.h>
-#include <CCryptoBoringSSL_thread.h>
 
 #include "../internal.h"
 #include "internal.h"
@@ -84,17 +41,8 @@ EVP_PKEY *EVP_PKEY_new(void) {
     return NULL;
   }
 
-  ret->type = EVP_PKEY_NONE;
   ret->references = 1;
   return ret;
-}
-
-static void free_it(EVP_PKEY *pkey) {
-  if (pkey->ameth && pkey->ameth->pkey_free) {
-    pkey->ameth->pkey_free(pkey);
-    pkey->pkey = NULL;
-    pkey->type = EVP_PKEY_NONE;
-  }
 }
 
 void EVP_PKEY_free(EVP_PKEY *pkey) {
@@ -106,7 +54,7 @@ void EVP_PKEY_free(EVP_PKEY *pkey) {
     return;
   }
 
-  free_it(pkey);
+  evp_pkey_set0(pkey, nullptr, nullptr);
   OPENSSL_free(pkey);
 }
 
@@ -123,7 +71,7 @@ int EVP_PKEY_is_opaque(const EVP_PKEY *pkey) {
 }
 
 int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
-  if (a->type != b->type) {
+  if (EVP_PKEY_id(a) != EVP_PKEY_id(b)) {
     return -1;
   }
 
@@ -146,9 +94,13 @@ int EVP_PKEY_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
 }
 
 int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
-  if (to->type == EVP_PKEY_NONE) {
-    evp_pkey_set_method(to, from->ameth);
-  } else if (to->type != from->type) {
+  if (EVP_PKEY_id(to) == EVP_PKEY_NONE) {
+    // TODO(crbug.com/42290409): This shouldn't leave |to| in a half-empty state
+    // on error. The complexity here largely comes from parameterless DSA keys,
+    // which we no longer support, so this function can probably be trimmed
+    // down.
+    evp_pkey_set0(to, from->ameth, nullptr);
+  } else if (EVP_PKEY_id(to) != EVP_PKEY_id(from)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DIFFERENT_KEY_TYPES);
     return 0;
   }
@@ -171,8 +123,9 @@ int EVP_PKEY_copy_parameters(EVP_PKEY *to, const EVP_PKEY *from) {
     return from->ameth->param_copy(to, from);
   }
 
-  // TODO(https://crbug.com/boringssl/536): If the algorithm takes no
-  // parameters, copying them should vacuously succeed.
+  // TODO(https://crbug.com/42290406): If the algorithm takes no parameters,
+  // copying them should vacuously succeed. Better yet, simplify this whole
+  // notion of parameter copying above.
   return 0;
 }
 
@@ -197,32 +150,17 @@ int EVP_PKEY_bits(const EVP_PKEY *pkey) {
   return 0;
 }
 
-int EVP_PKEY_id(const EVP_PKEY *pkey) { return pkey->type; }
-
-// evp_pkey_asn1_find returns the ASN.1 method table for the given |nid|, which
-// should be one of the |EVP_PKEY_*| values. It returns NULL if |nid| is
-// unknown.
-static const EVP_PKEY_ASN1_METHOD *evp_pkey_asn1_find(int nid) {
-  switch (nid) {
-    case EVP_PKEY_RSA:
-      return &rsa_asn1_meth;
-    case EVP_PKEY_EC:
-      return &ec_asn1_meth;
-    case EVP_PKEY_DSA:
-      return &dsa_asn1_meth;
-    case EVP_PKEY_ED25519:
-      return &ed25519_asn1_meth;
-    case EVP_PKEY_X25519:
-      return &x25519_asn1_meth;
-    default:
-      return NULL;
-  }
+int EVP_PKEY_id(const EVP_PKEY *pkey) {
+  return pkey->ameth != nullptr ? pkey->ameth->pkey_id : EVP_PKEY_NONE;
 }
 
-void evp_pkey_set_method(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method) {
-  free_it(pkey);
+void evp_pkey_set0(EVP_PKEY *pkey, const EVP_PKEY_ASN1_METHOD *method,
+                   void *pkey_data) {
+  if (pkey->ameth && pkey->ameth->pkey_free) {
+    pkey->ameth->pkey_free(pkey);
+  }
   pkey->ameth = method;
-  pkey->type = pkey->ameth->pkey_id;
+  pkey->pkey = pkey_data;
 }
 
 int EVP_PKEY_type(int nid) {
@@ -253,92 +191,85 @@ int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key) {
 
 int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
   if (pkey && pkey->pkey) {
-    // This isn't strictly necessary, but historically |EVP_PKEY_set_type| would
-    // clear |pkey| even if |evp_pkey_asn1_find| failed, so we preserve that
-    // behavior.
-    free_it(pkey);
+    // Some callers rely on |pkey| getting cleared even if |type| is
+    // unsupported, usually setting |type| to |EVP_PKEY_NONE|.
+    evp_pkey_set0(pkey, nullptr, nullptr);
   }
 
-  const EVP_PKEY_ASN1_METHOD *ameth = evp_pkey_asn1_find(type);
-  if (ameth == NULL) {
+  // This function broadly isn't useful. It initializes |EVP_PKEY| for a type,
+  // but forgets to put anything in the |pkey|. The one pattern where it does
+  // anything is |EVP_PKEY_X25519|, where it's needed to make
+  // |EVP_PKEY_set1_tls_encodedpoint| work, so we support only that.
+  const EVP_PKEY_ASN1_METHOD *ameth;
+  if (type == EVP_PKEY_X25519) {
+    ameth = &x25519_asn1_meth;
+  } else {
     OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     ERR_add_error_dataf("algorithm %d", type);
     return 0;
   }
 
   if (pkey) {
-    evp_pkey_set_method(pkey, ameth);
+    evp_pkey_set0(pkey, ameth, nullptr);
   }
 
   return 1;
+}
+
+EVP_PKEY *EVP_PKEY_from_raw_private_key(const EVP_PKEY_ALG *alg,
+                                        const uint8_t *in, size_t len) {
+  if (alg->method->set_priv_raw == nullptr) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    return nullptr;
+  }
+  bssl::UniquePtr<EVP_PKEY> ret(EVP_PKEY_new());
+  if (ret == nullptr || !alg->method->set_priv_raw(ret.get(), in, len)) {
+    return nullptr;
+  }
+  return ret.release();
+}
+
+EVP_PKEY *EVP_PKEY_from_raw_public_key(const EVP_PKEY_ALG *alg,
+                                       const uint8_t *in, size_t len) {
+  if (alg->method->set_pub_raw == nullptr) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    return nullptr;
+  }
+  bssl::UniquePtr<EVP_PKEY> ret(EVP_PKEY_new());
+  if (ret == nullptr || !alg->method->set_pub_raw(ret.get(), in, len)) {
+    return nullptr;
+  }
+  return ret.release();
 }
 
 EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
                                        const uint8_t *in, size_t len) {
   // To avoid pulling in all key types, look for specifically the key types that
   // support |set_priv_raw|.
-  const EVP_PKEY_ASN1_METHOD *method;
   switch (type) {
     case EVP_PKEY_X25519:
-      method = &x25519_asn1_meth;
-      break;
+      return EVP_PKEY_from_raw_private_key(EVP_pkey_x25519(), in, len);
     case EVP_PKEY_ED25519:
-      method = &ed25519_asn1_meth;
-      break;
+      return EVP_PKEY_from_raw_private_key(EVP_pkey_ed25519(), in, len);
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-      return 0;
+      return nullptr;
   }
-
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL) {
-    goto err;
-  }
-  evp_pkey_set_method(ret, method);
-
-  if (!ret->ameth->set_priv_raw(ret, in, len)) {
-    goto err;
-  }
-
-  return ret;
-
-err:
-  EVP_PKEY_free(ret);
-  return NULL;
 }
 
 EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
                                       const uint8_t *in, size_t len) {
   // To avoid pulling in all key types, look for specifically the key types that
   // support |set_pub_raw|.
-  const EVP_PKEY_ASN1_METHOD *method;
   switch (type) {
     case EVP_PKEY_X25519:
-      method = &x25519_asn1_meth;
-      break;
+      return EVP_PKEY_from_raw_public_key(EVP_pkey_x25519(), in, len);
     case EVP_PKEY_ED25519:
-      method = &ed25519_asn1_meth;
-      break;
+      return EVP_PKEY_from_raw_public_key(EVP_pkey_ed25519(), in, len);
     default:
       OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
-      return 0;
+      return nullptr;
   }
-
-  EVP_PKEY *ret = EVP_PKEY_new();
-  if (ret == NULL) {
-    goto err;
-  }
-  evp_pkey_set_method(ret, method);
-
-  if (!ret->ameth->set_pub_raw(ret, in, len)) {
-    goto err;
-  }
-
-  return ret;
-
-err:
-  EVP_PKEY_free(ret);
-  return NULL;
 }
 
 int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
@@ -362,7 +293,7 @@ int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, uint8_t *out,
 }
 
 int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
-  if (a->type != b->type) {
+  if (EVP_PKEY_id(a) != EVP_PKEY_id(b)) {
     return -1;
   }
   if (a->ameth && a->ameth->param_cmp) {

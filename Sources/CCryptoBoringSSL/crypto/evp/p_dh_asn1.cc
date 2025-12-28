@@ -1,11 +1,16 @@
-/*
- * Copyright 2006-2021 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the OpenSSL license (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
+// Copyright 2006-2021 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <CCryptoBoringSSL_evp.h>
 
@@ -115,13 +120,15 @@ int EVP_PKEY_set1_DH(EVP_PKEY *pkey, DH *key) {
 }
 
 int EVP_PKEY_assign_DH(EVP_PKEY *pkey, DH *key) {
-  evp_pkey_set_method(pkey, &dh_asn1_meth);
-  pkey->pkey = key;
-  return key != NULL;
+  if (key == nullptr) {
+    return 0;
+  }
+  evp_pkey_set0(pkey, &dh_asn1_meth, key);
+  return 1;
 }
 
 DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey) {
-  if (pkey->type != EVP_PKEY_DH) {
+  if (EVP_PKEY_id(pkey) != EVP_PKEY_DH) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_EXPECTING_A_DH_KEY);
     return NULL;
   }

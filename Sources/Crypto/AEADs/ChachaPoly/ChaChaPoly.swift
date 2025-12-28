@@ -14,17 +14,28 @@
 #if CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
 @_exported import CryptoKit
 #else
-#if !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
+#if (!CRYPTO_IN_SWIFTPM_FORCE_BUILD_API) || CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 typealias ChaChaPolyImpl = CoreCryptoChaChaPolyImpl
-import Security
 #else
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 typealias ChaChaPolyImpl = OpenSSLChaChaPolyImpl
 #endif
 
-import Foundation
+#if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+public import SwiftSystem
+#else
+#if canImport(FoundationEssentials)
+public import FoundationEssentials
+#else
+public import Foundation
+#endif
+#endif
+
 
 /// An implementation of the ChaCha20-Poly1305 cipher.
-public enum ChaChaPoly: Cipher {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+public enum ChaChaPoly: Cipher, Sendable {
     static let tagByteCount = 16
     static let keyBitsCount = 256
     static let nonceByteCount = 12
@@ -36,7 +47,7 @@ public enum ChaChaPoly: Cipher {
     /// - Parameters:
     ///   - message: The plaintext data to seal.
     ///   - key: A cryptographic key used to seal the message.
-    ///   - nonce: The nonce the sealing process requires. If you don't provide a nonce, the method generates a random one by invoking ``ChaChaPoly.Nonce()``.
+    ///   - nonce: The nonce the sealing process requires. If you don't provide a nonce, the method generates a random one by invoking ``ChaChaPoly/Nonce/init()``.
     ///   - authenticatedData: Additional data to be authenticated.
     ///
     /// - Returns: The sealed message.
@@ -51,7 +62,7 @@ public enum ChaChaPoly: Cipher {
     /// - Parameters:
     ///   - message: The plaintext data to seal.
     ///   - key: A cryptographic key used to seal the message.
-    ///   - nonce: The nonce the sealing process requires. If you don't provide a nonce, the method generates a random one by invoking ``ChaChaPoly.Nonce()``.
+    ///   - nonce: The nonce the sealing process requires. If you don't provide a nonce, the method generates a random one by invoking ``ChaChaPoly/Nonce/init()``.
     ///
     /// - Returns: The sealed message.
     public static func seal<Plaintext: DataProtocol>
@@ -90,6 +101,7 @@ public enum ChaChaPoly: Cipher {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ChaChaPoly {
     /// A secure container for your data that you access using a cipher.
     ///
@@ -106,7 +118,8 @@ extension ChaChaPoly {
     /// The receiver uses another instance of the same cipher, like the
     /// ``open(_:using:)`` method, to open the box.
     @frozen
-    public struct SealedBox: AEADSealedBox {
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    public struct SealedBox: AEADSealedBox, Sendable {
         /// A combined element composed of the tag, the nonce, and the
         /// ciphertext.
         ///

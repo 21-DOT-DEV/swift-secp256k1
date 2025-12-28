@@ -14,18 +14,41 @@
 #if CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
 @_exported import CryptoKit
 #else
-import Foundation
 
+#if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+public import SwiftSystem
+#else
+#if canImport(FoundationEssentials)
+public import FoundationEssentials
+#else
+public import Foundation
+#endif
+#endif
+
+#if hasFeature(Embedded)
 /// A type that represents the output of a hash.
-public protocol Digest: Hashable, ContiguousBytes, CustomStringConvertible, Sequence where Element == UInt8 {
+@preconcurrency
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+public protocol Digest: Hashable, Sendable, ContiguousBytes, Sequence where Element == UInt8 {
     /// The number of bytes in the digest.
     static var byteCount: Int { get }
 }
+#else // hasFeature(Embedded)
+/// A type that represents the output of a hash.
+@preconcurrency
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+public protocol Digest: Hashable, Sendable, ContiguousBytes, CustomStringConvertible, Sequence where Element == UInt8 {
+    /// The number of bytes in the digest.
+    static var byteCount: Int { get }
+}
+#endif // hasFeature(Embedded)
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 protocol DigestPrivate: Digest {
     init?(bufferPointer: UnsafeRawBufferPointer)
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension DigestPrivate {
     @inlinable
     init?(bytes: [UInt8]) {
@@ -41,6 +64,7 @@ extension DigestPrivate {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Digest {
     public func makeIterator() -> Array<UInt8>.Iterator {
         self.withUnsafeBytes({ (buffPtr) in
@@ -50,6 +74,7 @@ extension Digest {
 }
 
 // We want to implement constant-time comparison for digests.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Digest {
     /// Determines whether two digests are equal.
     ///
@@ -79,9 +104,15 @@ extension Digest {
             return safeCompare(lhs, rhs.regions.first!)
         }
     }
+}
 
+#if !hasFeature(Embedded)
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension Digest {
     public var description: String {
         return "\(Self.self): \(Array(self).hexString)"
     }
 }
+#endif
+
 #endif // Linux or !SwiftPM

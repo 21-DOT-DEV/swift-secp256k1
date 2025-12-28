@@ -17,14 +17,20 @@
 @_implementationOnly import CCryptoBoringSSL
 @_implementationOnly import CCryptoBoringSSLShims
 import CryptoBoringWrapper
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
 import Foundation
+#endif
 
 @usableFromInline
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 protocol OpenSSLSupportedNISTCurve {
     @inlinable
     static var group: BoringSSLEllipticCurveGroup { get }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension OpenSSLSupportedNISTCurve {
     @inlinable
     static var coordinateByteCount: Int {
@@ -32,29 +38,27 @@ extension OpenSSLSupportedNISTCurve {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256: OpenSSLSupportedNISTCurve {
-    @inlinable
-    static var group: BoringSSLEllipticCurveGroup {
-        try! BoringSSLEllipticCurveGroup(.p256)
-    }
+    @usableFromInline
+    static let group = try! BoringSSLEllipticCurveGroup(.p256)
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P384: OpenSSLSupportedNISTCurve {
-    @inlinable
-    static var group: BoringSSLEllipticCurveGroup {
-        try! BoringSSLEllipticCurveGroup(.p384)
-    }
+    @usableFromInline
+    static let group = try! BoringSSLEllipticCurveGroup(.p384)
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P521: OpenSSLSupportedNISTCurve {
-    @inlinable
-    static var group: BoringSSLEllipticCurveGroup {
-        try! BoringSSLEllipticCurveGroup(.p521)
-    }
+    @usableFromInline
+    static let group = try! BoringSSLEllipticCurveGroup(.p521)
 }
 
 @usableFromInline
-struct OpenSSLNISTCurvePrivateKeyImpl<Curve: OpenSSLSupportedNISTCurve> {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+struct OpenSSLNISTCurvePrivateKeyImpl<Curve: OpenSSLSupportedNISTCurve>: Sendable {
     @usableFromInline
     var key: BoringSSLECPrivateKeyWrapper<Curve>
 
@@ -84,7 +88,8 @@ struct OpenSSLNISTCurvePrivateKeyImpl<Curve: OpenSSLSupportedNISTCurve> {
 }
 
 @usableFromInline
-struct OpenSSLNISTCurvePublicKeyImpl<Curve: OpenSSLSupportedNISTCurve> {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+struct OpenSSLNISTCurvePublicKeyImpl<Curve: OpenSSLSupportedNISTCurve>: Sendable {
     @usableFromInline
     var key: BoringSSLECPublicKeyWrapper<Curve>
 
@@ -133,9 +138,10 @@ struct OpenSSLNISTCurvePublicKeyImpl<Curve: OpenSSLSupportedNISTCurve> {
 /// A simple wrapper for an EC_KEY pointer for a private key. This manages the lifetime of that pointer and
 /// allows some helper operations.
 @usableFromInline
-class BoringSSLECPrivateKeyWrapper<Curve: OpenSSLSupportedNISTCurve> {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+class BoringSSLECPrivateKeyWrapper<Curve: OpenSSLSupportedNISTCurve>: @unchecked Sendable {
     @usableFromInline
-    var key: OpaquePointer
+    let key: OpaquePointer
 
     init(compactRepresentable: Bool) throws {
         // We cannot handle allocation failure.
@@ -337,9 +343,10 @@ class BoringSSLECPrivateKeyWrapper<Curve: OpenSSLSupportedNISTCurve> {
 /// A simple wrapper for an EC_KEY pointer for a public key. This manages the lifetime of that pointer and
 /// allows some helper operations.
 @usableFromInline
-class BoringSSLECPublicKeyWrapper<Curve: OpenSSLSupportedNISTCurve> {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+class BoringSSLECPublicKeyWrapper<Curve: OpenSSLSupportedNISTCurve>: @unchecked Sendable {
     @usableFromInline
-    var key: OpaquePointer
+    let key: OpaquePointer
 
     init<Bytes: ContiguousBytes>(compactRepresentation bytes: Bytes) throws {
         let group = Curve.group
@@ -572,6 +579,7 @@ class BoringSSLECPublicKeyWrapper<Curve: OpenSSLSupportedNISTCurve> {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ContiguousBytes {
     func readx963PrivateNumbers() throws -> (
         x: ArbitraryPrecisionInteger, y: ArbitraryPrecisionInteger, k: ArbitraryPrecisionInteger
@@ -641,19 +649,26 @@ extension ContiguousBytes {
 }
 
 @usableFromInline
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 func readRawPublicNumbers(
     copyingBytes bytesPtr: UnsafeRawBufferPointer
 ) throws -> (
     x: ArbitraryPrecisionInteger, y: ArbitraryPrecisionInteger
 ) {
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     let stride = bytesPtr.count / 2
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     var offset = 0
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     let xPointer = UnsafeRawBufferPointer(rebasing: bytesPtr[offset..<(offset + stride)])
     offset += stride
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     let yPointer = UnsafeRawBufferPointer(rebasing: bytesPtr[offset..<(offset + stride)])
 
     // We cannot handle allocation errors, so we check for fatal error.
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     let x = try ArbitraryPrecisionInteger(bytes: xPointer)
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     let y = try ArbitraryPrecisionInteger(bytes: yPointer)
 
     return (x: x, y: y)
@@ -664,6 +679,7 @@ func readRawPublicNumbers(
 /// The check is defined in https://tools.ietf.org/id/draft-jivsov-ecc-compact-05.html#rfc.section.4.2.1. Specifically, a
 /// point is compact representable if its y coordinate is the smaller of min(y, p-y) where p is the order of the prime field.
 @usableFromInline
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 func _isCompactRepresentable(
     group: BoringSSLEllipticCurveGroup,
     publicKeyPoint: EllipticCurvePoint
@@ -671,8 +687,11 @@ func _isCompactRepresentable(
     // We have three try!s here: any of those failing is the result of an allocation error, and we cannot recover from
     // those.
     let (_, y) = try! publicKeyPoint.affineCoordinates(group: group)
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     let p = group.weierstrassCoefficients.field
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     let context = try! FiniteFieldArithmeticContext(fieldSize: p)
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     let newY = try! context.subtract(y, from: group.order)
 
     // The point is compact representable if y is less than or equal to newY.

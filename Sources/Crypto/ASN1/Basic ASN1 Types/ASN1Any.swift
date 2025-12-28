@@ -14,8 +14,18 @@
 #if CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
 @_exported import CryptoKit
 #else
-import Foundation
 
+#if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+import SwiftSystem
+#else
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
+import Foundation
+#endif
+#endif
+
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
     /// An ASN1 ANY represents...well, anything.
     ///
@@ -24,45 +34,48 @@ extension ASN1 {
     ///
     /// The only things we allow users to do with ASN.1 ANYs is to try to decode them as something else,
     /// to create them from something else, or to serialize them.
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     struct ASN1Any: ASN1Parseable, ASN1Serializable, Hashable {
         fileprivate var serializedBytes: ArraySlice<UInt8>
 
-        init<ASN1Type: ASN1Serializable>(erasing: ASN1Type) throws {
+        init<ASN1Type: ASN1Serializable>(erasing: ASN1Type) throws(CryptoKitMetaError) {
             var serializer = ASN1.Serializer()
             try erasing.serialize(into: &serializer)
             self.serializedBytes = ArraySlice(serializer.serializedBytes)
         }
 
-        init<ASN1Type: ASN1ImplicitlyTaggable>(erasing: ASN1Type, withIdentifier identifier: ASN1.ASN1Identifier) throws {
+        init<ASN1Type: ASN1ImplicitlyTaggable>(erasing: ASN1Type, withIdentifier identifier: ASN1.ASN1Identifier) throws(CryptoKitMetaError) {
             var serializer = ASN1.Serializer()
             try erasing.serialize(into: &serializer, withIdentifier: identifier)
             self.serializedBytes = ArraySlice(serializer.serializedBytes)
         }
 
-        init(asn1Encoded rootNode: ASN1.ASN1Node) {
+        init(asn1Encoded rootNode: ASN1.ASN1Node) throws(CryptoKitMetaError) {
             // This is a bit sad: we just re-serialize this data. In an ideal world
             // we'd update the parse representation so that all nodes can point at their
             // complete backing storage, but for now this is better.
             var serializer = ASN1.Serializer()
-            serializer.serialize(rootNode)
+            try serializer.serialize(rootNode)
             self.serializedBytes = ArraySlice(serializer.serializedBytes)
         }
 
-        func serialize(into coder: inout ASN1.Serializer) throws {
+        func serialize(into coder: inout ASN1.Serializer) throws(CryptoKitMetaError) {
             // Dangerous to just reach in there like this, but it's the right way to serialize this.
             coder.serializedBytes.append(contentsOf: self.serializedBytes)
         }
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1Parseable {
-    init(asn1Any: ASN1.ASN1Any) throws {
+    init(asn1Any: ASN1.ASN1Any) throws(CryptoKitMetaError) {
         try self.init(asn1Encoded: asn1Any.serializedBytes)
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1ImplicitlyTaggable {
-    init(asn1Any: ASN1.ASN1Any, withIdentifier identifier: ASN1.ASN1Identifier) throws {
+    init(asn1Any: ASN1.ASN1Any, withIdentifier identifier: ASN1.ASN1Identifier) throws(CryptoKitMetaError) {
         try self.init(asn1Encoded: asn1Any.serializedBytes, withIdentifier: identifier)
     }
 }

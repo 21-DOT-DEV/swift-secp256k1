@@ -16,14 +16,20 @@
 #else
 @_implementationOnly import CCryptoBoringSSL
 @_implementationOnly import CCryptoBoringSSLShims
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
 import Foundation
+#endif
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Curve25519.KeyAgreement {
     @usableFromInline
     static let keySizeBytes = 32
 
     @usableFromInline
-    struct OpenSSLCurve25519PublicKeyImpl {
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    struct OpenSSLCurve25519PublicKeyImpl: Sendable {
         @usableFromInline
         var keyBytes: [UInt8]
 
@@ -50,7 +56,8 @@ extension Curve25519.KeyAgreement {
     }
 
     @usableFromInline
-    struct OpenSSLCurve25519PrivateKeyImpl {
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    struct OpenSSLCurve25519PrivateKeyImpl: Sendable {
         var key: SecureBytes
 
         @usableFromInline

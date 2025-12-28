@@ -16,8 +16,13 @@
 #else
 @_implementationOnly import CCryptoBoringSSL
 @_implementationOnly import CCryptoBoringSSLShims
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
 import Foundation
+#endif
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Curve25519.Signing.PublicKey {
     // We do this to enable inlinability on these methods.
     @usableFromInline
@@ -96,6 +101,7 @@ extension Curve25519.Signing.PublicKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Curve25519.Signing.PrivateKey {
     @inlinable
     func openSSLSignature<D: DataProtocol>(for data: D) throws -> Data {

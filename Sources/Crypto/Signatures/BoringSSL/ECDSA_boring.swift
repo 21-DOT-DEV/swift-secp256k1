@@ -16,8 +16,13 @@
 #else
 @_implementationOnly import CCryptoBoringSSL
 import CryptoBoringWrapper
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
 import Foundation
+#endif
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Data {
     init<D: DataProtocol, Curve: OpenSSLSupportedNISTCurve>(
         derSignature derBytes: D,
@@ -58,6 +63,7 @@ extension Data {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256.Signing.ECDSASignature {
     init<D: DataProtocol>(openSSLDERSignature derRepresentation: D) throws {
         self.rawRepresentation = try Data(derSignature: derRepresentation, over: P256.self)
@@ -68,6 +74,7 @@ extension P256.Signing.ECDSASignature {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256.Signing.PrivateKey {
     func openSSLSignature<D: Digest>(for digest: D) throws -> P256.Signing.ECDSASignature {
         let baseSignature = try self.impl.key.sign(digest: digest)
@@ -75,6 +82,7 @@ extension P256.Signing.PrivateKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256.Signing.PublicKey {
     func openSSLIsValidSignature<D: Digest>(
         _ signature: P256.Signing.ECDSASignature,
@@ -92,6 +100,7 @@ extension P256.Signing.PublicKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P384.Signing.ECDSASignature {
     init<D: DataProtocol>(openSSLDERSignature derRepresentation: D) throws {
         self.rawRepresentation = try Data(derSignature: derRepresentation, over: P384.self)
@@ -102,6 +111,7 @@ extension P384.Signing.ECDSASignature {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P384.Signing.PrivateKey {
     func openSSLSignature<D: Digest>(for digest: D) throws -> P384.Signing.ECDSASignature {
         let baseSignature = try self.impl.key.sign(digest: digest)
@@ -109,6 +119,7 @@ extension P384.Signing.PrivateKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P384.Signing.PublicKey {
     func openSSLIsValidSignature<D: Digest>(
         _ signature: P384.Signing.ECDSASignature,
@@ -126,6 +137,7 @@ extension P384.Signing.PublicKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P521.Signing.ECDSASignature {
     init<D: DataProtocol>(openSSLDERSignature derRepresentation: D) throws {
         self.rawRepresentation = try Data(derSignature: derRepresentation, over: P521.self)
@@ -136,6 +148,7 @@ extension P521.Signing.ECDSASignature {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P521.Signing.PrivateKey {
     func openSSLSignature<D: Digest>(for digest: D) throws -> P521.Signing.ECDSASignature {
         let baseSignature = try self.impl.key.sign(digest: digest)
@@ -143,6 +156,7 @@ extension P521.Signing.PrivateKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P521.Signing.PublicKey {
     func openSSLIsValidSignature<D: Digest>(
         _ signature: P521.Signing.ECDSASignature,

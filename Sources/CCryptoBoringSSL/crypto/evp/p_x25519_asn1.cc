@@ -1,16 +1,16 @@
-/* Copyright 2019 The BoringSSL Authors
- *
- * Permission to use, copy, modify, and/or distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
- * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
- * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
- * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
+// Copyright 2019 The BoringSSL Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <CCryptoBoringSSL_evp.h>
 
@@ -44,8 +44,7 @@ static int x25519_set_priv_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
   X25519_public_from_private(key->pub, key->priv);
   key->has_private = 1;
 
-  x25519_free(pkey);
-  pkey->pkey = key;
+  evp_pkey_set0(pkey, &x25519_asn1_meth, key);
   return 1;
 }
 
@@ -64,8 +63,7 @@ static int x25519_set_pub_raw(EVP_PKEY *pkey, const uint8_t *in, size_t len) {
   OPENSSL_memcpy(key->pub, in, 32);
   key->has_private = 0;
 
-  x25519_free(pkey);
-  pkey->pkey = key;
+  evp_pkey_set0(pkey, &x25519_asn1_meth, key);
   return 1;
 }
 
@@ -127,27 +125,31 @@ static size_t x25519_get1_tls_encodedpoint(const EVP_PKEY *pkey,
   return *out_ptr == NULL ? 0 : 32;
 }
 
-static int x25519_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static evp_decode_result_t x25519_pub_decode(const EVP_PKEY_ALG *alg,
+                                             EVP_PKEY *out, CBS *params,
+                                             CBS *key) {
   // See RFC 8410, section 4.
 
   // The parameters must be omitted. Public keys have length 32.
   if (CBS_len(params) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
+    return evp_decode_error;
   }
 
-  return x25519_set_pub_raw(out, CBS_data(key), CBS_len(key));
+  return x25519_set_pub_raw(out, CBS_data(key), CBS_len(key))
+             ? evp_decode_ok
+             : evp_decode_error;
 }
 
 static int x25519_pub_encode(CBB *out, const EVP_PKEY *pkey) {
   const X25519_KEY *key = reinterpret_cast<X25519_KEY *>(pkey->pkey);
 
   // See RFC 8410, section 4.
-  CBB spki, algorithm, oid, key_bitstring;
+  CBB spki, algorithm, key_bitstring;
   if (!CBB_add_asn1(out, &spki, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
-      !CBB_add_bytes(&oid, x25519_asn1_meth.oid, x25519_asn1_meth.oid_len) ||
+      !CBB_add_asn1_element(&algorithm, CBS_ASN1_OBJECT, x25519_asn1_meth.oid,
+                            x25519_asn1_meth.oid_len) ||
       !CBB_add_asn1(&spki, &key_bitstring, CBS_ASN1_BITSTRING) ||
       !CBB_add_u8(&key_bitstring, 0 /* padding */) ||
       !CBB_add_bytes(&key_bitstring, key->pub, 32) ||  //
@@ -165,7 +167,9 @@ static int x25519_pub_cmp(const EVP_PKEY *a, const EVP_PKEY *b) {
   return OPENSSL_memcmp(a_key->pub, b_key->pub, 32) == 0;
 }
 
-static int x25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
+static evp_decode_result_t x25519_priv_decode(const EVP_PKEY_ALG *alg,
+                                              EVP_PKEY *out, CBS *params,
+                                              CBS *key) {
   // See RFC 8410, section 7.
 
   // Parameters must be empty. The key is a 32-byte value wrapped in an extra
@@ -174,10 +178,12 @@ static int x25519_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   if (CBS_len(params) != 0 ||
       !CBS_get_asn1(key, &inner, CBS_ASN1_OCTETSTRING) || CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
-    return 0;
+    return evp_decode_error;
   }
 
-  return x25519_set_priv_raw(out, CBS_data(&inner), CBS_len(&inner));
+  return x25519_set_priv_raw(out, CBS_data(&inner), CBS_len(&inner))
+             ? evp_decode_ok
+             : evp_decode_error;
 }
 
 static int x25519_priv_encode(CBB *out, const EVP_PKEY *pkey) {
@@ -188,12 +194,12 @@ static int x25519_priv_encode(CBB *out, const EVP_PKEY *pkey) {
   }
 
   // See RFC 8410, section 7.
-  CBB pkcs8, algorithm, oid, private_key, inner;
+  CBB pkcs8, algorithm, private_key, inner;
   if (!CBB_add_asn1(out, &pkcs8, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&pkcs8, 0 /* version */) ||
       !CBB_add_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !CBB_add_asn1(&algorithm, &oid, CBS_ASN1_OBJECT) ||
-      !CBB_add_bytes(&oid, x25519_asn1_meth.oid, x25519_asn1_meth.oid_len) ||
+      !CBB_add_asn1_element(&algorithm, CBS_ASN1_OBJECT, x25519_asn1_meth.oid,
+                            x25519_asn1_meth.oid_len) ||
       !CBB_add_asn1(&pkcs8, &private_key, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_asn1(&private_key, &inner, CBS_ASN1_OCTETSTRING) ||
       // The PKCS#8 encoding stores only the 32-byte seed which is the first 32
@@ -235,3 +241,11 @@ const EVP_PKEY_ASN1_METHOD x25519_asn1_meth = {
     /*param_cmp=*/NULL,
     x25519_free,
 };
+
+const EVP_PKEY_ALG *EVP_pkey_x25519(void) {
+  static const EVP_PKEY_ALG kAlg = {
+      /*method=*/&x25519_asn1_meth,
+      /*ec_group=*/nullptr,
+  };
+  return &kAlg;
+}
