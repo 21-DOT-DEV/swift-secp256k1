@@ -31,9 +31,20 @@
 #if CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
     @_exported import CryptoKit
 #else
-    import Foundation
 
+    #if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+        import SwiftSystem
+    #else
+        #if canImport(FoundationEssentials)
+            import FoundationEssentials
+        #else
+            import Foundation
+        #endif
+    #endif
+
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension ASN1 {
+        @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         struct SubjectPublicKeyInfo: ASN1ImplicitlyTaggable {
             static var defaultIdentifier: ASN1.ASN1Identifier {
                 .sequence
@@ -76,6 +87,7 @@
             }
         }
 
+        @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         struct RFC5480AlgorithmIdentifier: ASN1ImplicitlyTaggable, Hashable {
             static var defaultIdentifier: ASN1.ASN1Identifier {
                 .sequence
@@ -105,11 +117,11 @@
                 // }
                 //
                 // We don't bother with helpers: we just try to decode it directly.
-                self = try ASN1.sequence(rootNode, identifier: identifier) { nodes in
+                self = try ASN1.sequence(rootNode, identifier: identifier) { nodes throws(CryptoKitMetaError) in
                     let algorithmOID = try ASN1.ASN1ObjectIdentifier(asn1Encoded: &nodes)
 
-                    let parameters = nodes.next().map { ASN1.ASN1Any(asn1Encoded: $0) }
-
+                    let n = nodes.next()
+                    let parameters = if let n { try ASN1.ASN1Any(asn1Encoded: n) } else { nil as ASN1.ASN1Any? }
                     return .init(algorithm: algorithmOID, parameters: parameters)
                 }
             }
@@ -127,6 +139,7 @@
 
     // MARK: Algorithm Identifier Statics
 
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension ASN1.RFC5480AlgorithmIdentifier {
         static let ecdsaP256K1 = ASN1.RFC5480AlgorithmIdentifier(
             algorithm: .AlgorithmIdentifier.idEcPublicKey,

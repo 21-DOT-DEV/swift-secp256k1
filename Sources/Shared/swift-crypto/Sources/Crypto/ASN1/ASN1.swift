@@ -14,7 +14,16 @@
 #if CRYPTO_IN_SWIFTPM && !CRYPTO_IN_SWIFTPM_FORCE_BUILD_API
 @_exported import CryptoKit
 #else
+
+#if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+import SwiftSystem
+#else
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
 import Foundation
+#endif
+#endif
 
 // This module implements "just enough" ASN.1. Specifically, we implement exactly enough ASN.1 DER parsing to handle
 // the following use-cases:
@@ -103,15 +112,18 @@ import Foundation
 // generally: that is, we don't hard-code special knowledge of these formats as part of the parsing process. Instead we have written a
 // parser that can divide the world of ASN.1 into parseable chunks, and then we try to decode specific formats from those chunks. This
 // allows us to extend things in the future without too much pain.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 internal enum ASN1 { }
 
 // MARK: - Parser Node
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
     /// An `ASN1ParserNode` is a representation of a parsed ASN.1 TLV section. An `ASN1ParserNode` may be primitive, or may be composed of other `ASN1ParserNode`s.
     /// In our representation, we keep track of this by storing a node "depth", which allows rapid forward and backward scans to hop over sections
     /// we're uninterested in.
     ///
     /// This type is not exposed to users of the API: it is only used internally for implementation of the user-level API.
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     fileprivate struct ASN1ParserNode {
         /// The identifier.
         var identifier: ASN1Identifier
@@ -124,20 +136,25 @@ extension ASN1 {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1.ASN1ParserNode: Hashable { }
 
+#if !hasFeature(Embedded)
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1.ASN1ParserNode: CustomStringConvertible {
     var description: String {
         return "ASN1.ASN1ParserNode(identifier: \(self.identifier), depth: \(self.depth), dataBytes: \(self.dataBytes?.count ?? 0))"
     }
 }
+#endif
 
 // MARK: - Sequence, SequenceOf, and Set
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
     /// Parse the node as an ASN.1 sequence.
-    internal static func sequence<T>(_ node: ASN1Node, identifier: ASN1.ASN1Identifier, _ builder: (inout ASN1.ASN1NodeCollection.Iterator) throws -> T) throws -> T {
+    internal static func sequence<T>(_ node: ASN1Node, identifier: ASN1.ASN1Identifier, _ builder: (inout ASN1.ASN1NodeCollection.Iterator) throws(CryptoKitMetaError) -> T) throws(CryptoKitMetaError) -> T {
         guard node.identifier == identifier, case .constructed(let nodes) = node.content else {
-            throw CryptoKitASN1Error.unexpectedFieldType
+            throw error(CryptoKitASN1Error.unexpectedFieldType)
         }
 
         var iterator = nodes.makeIterator()
@@ -145,42 +162,48 @@ extension ASN1 {
         let result = try builder(&iterator)
 
         guard iterator.next() == nil else {
-            throw CryptoKitASN1Error.invalidASN1Object
+            throw error(CryptoKitASN1Error.invalidASN1Object)
         }
 
         return result
     }
 
-    internal static func sequence<T: ASN1Parseable>(of: T.Type = T.self, identifier: ASN1.ASN1Identifier, rootNode: ASN1Node) throws -> [T] {
+    internal static func sequence<T: ASN1Parseable>(of: T.Type = T.self, identifier: ASN1.ASN1Identifier, rootNode: ASN1Node) throws(CryptoKitMetaError) -> [T] {
         guard rootNode.identifier == identifier, case .constructed(let nodes) = rootNode.content else {
-            throw CryptoKitASN1Error.unexpectedFieldType
+            throw error(CryptoKitASN1Error.unexpectedFieldType)
         }
 
-        return try nodes.map { try T(asn1Encoded: $0) }
+        var sequence = [T]()
+        // sequence.reserveCapacity(?)
+        for node in nodes {
+            sequence.append(try T(asn1Encoded: node))
+        }
+        return sequence
     }
 
-    internal static func sequence<T: ASN1Parseable>(of: T.Type = T.self, identifier: ASN1.ASN1Identifier, nodes: inout ASN1.ASN1NodeCollection.Iterator) throws -> [T] {
+    internal static func sequence<T: ASN1Parseable>(of: T.Type = T.self, identifier: ASN1.ASN1Identifier, nodes: inout ASN1.ASN1NodeCollection.Iterator) throws(CryptoKitMetaError) -> [T] {
         guard let node = nodes.next() else {
             // Not present, throw.
-            throw CryptoKitASN1Error.invalidASN1Object
+            throw error(CryptoKitASN1Error.invalidASN1Object)
         }
 
         return try sequence(of: T.self, identifier: identifier, rootNode: node)
     }
 
     /// Parse the node as an ASN.1 set.
-    internal static func set<T>(_ node: ASN1Node, identifier: ASN1.ASN1Identifier, _ builder: (inout ASN1.ASN1NodeCollection.Iterator) throws -> T) throws -> T {
+    internal static func set<T>(_ node: ASN1Node, identifier: ASN1.ASN1Identifier, _ builder: (inout ASN1.ASN1NodeCollection.Iterator) throws(CryptoKitMetaError) -> T) throws(CryptoKitMetaError) -> T {
         // Shhhh these two are secretly the same with identifier.
         return try sequence(node, identifier: identifier, builder)
     }
 }
 
 // MARK: - Optional explicitly tagged
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
     /// Parses an optional explicitly tagged element. Throws on a tag mismatch, returns nil if the element simply isn't there.
     ///
     /// Expects to be used with the `ASN1.sequence` helper function.
-    internal static func optionalExplicitlyTagged<T>(_ nodes: inout ASN1.ASN1NodeCollection.Iterator, tagNumber: Int, tagClass: ASN1.ASN1Identifier.TagClass, _ builder: (ASN1Node) throws -> T) throws -> T? {
+    internal static func optionalExplicitlyTagged<T>(_ nodes: inout ASN1.ASN1NodeCollection.Iterator, tagNumber: Int, tagClass: ASN1.ASN1Identifier.TagClass, _ builder: (ASN1Node) throws(CryptoKitMetaError) -> T) throws(CryptoKitMetaError) -> T? {
         var localNodesCopy = nodes
         guard let node = localNodesCopy.next() else {
             // Node not present, return nil.
@@ -205,7 +228,7 @@ extension ASN1 {
 
         var nodeIterator = nodes.makeIterator()
         guard let child = nodeIterator.next(), nodeIterator.next() == nil else {
-            throw CryptoKitASN1Error.invalidASN1Object
+            throw error(CryptoKitASN1Error.invalidASN1Object)
         }
 
         return try builder(child)
@@ -213,12 +236,13 @@ extension ASN1 {
 }
 
 // MARK: - DEFAULT
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
     /// Parses a value that is encoded with a DEFAULT. Such a value is optional, and if absent will
     /// be replaced with its default.
     ///
     /// Expects to be used with the `ASN1.sequence` helper function.
-    internal static func decodeDefault<T: ASN1Parseable & Equatable>(_ nodes: inout ASN1.ASN1NodeCollection.Iterator, identifier: ASN1.ASN1Identifier, defaultValue: T, _ builder: (ASN1Node) throws -> T) throws -> T {
+    internal static func decodeDefault<T: ASN1Parseable & Equatable>(_ nodes: inout ASN1.ASN1NodeCollection.Iterator, identifier: ASN1.ASN1Identifier, defaultValue: T, _ builder: (ASN1Node) throws(CryptoKitMetaError) -> T) throws(CryptoKitMetaError) -> T {
         // A weird trick here: we only want to consume the next node _if_ it has the right tag. To achieve that,
         // we work on a copy.
         var localNodesCopy = nodes
@@ -239,18 +263,18 @@ extension ASN1 {
         // DER forbids encoding DEFAULT values at their default state.
         // We can lift this in BER.
         guard parsed != defaultValue else {
-            throw CryptoKitASN1Error.invalidASN1Object
+            throw error(CryptoKitASN1Error.invalidASN1Object)
         }
 
         return parsed
     }
 
-    internal static func decodeDefaultExplicitlyTagged<T: ASN1Parseable & Equatable>(_ nodes: inout ASN1.ASN1NodeCollection.Iterator, tagNumber: Int, tagClass: ASN1.ASN1Identifier.TagClass, defaultValue: T, _ builder: (ASN1Node) throws -> T) throws -> T {
+    internal static func decodeDefaultExplicitlyTagged<T: ASN1Parseable & Equatable>(_ nodes: inout ASN1.ASN1NodeCollection.Iterator, tagNumber: Int, tagClass: ASN1.ASN1Identifier.TagClass, defaultValue: T, _ builder: (ASN1Node) throws(CryptoKitMetaError) -> T) throws(CryptoKitMetaError) -> T {
         if let result = try optionalExplicitlyTagged(&nodes, tagNumber: tagNumber, tagClass: tagClass, builder) {
             guard result != defaultValue else {
                 // DER forbids encoding DEFAULT values at their default state.
                 // We can lift this in BER.
-                throw CryptoKitASN1Error.invalidASN1Object
+                throw error(CryptoKitASN1Error.invalidASN1Object)
             }
 
             return result
@@ -261,8 +285,10 @@ extension ASN1 {
 }
 
 // MARK: - Parsing
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
     /// A parsed representation of ASN.1.
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     fileprivate struct ASN1ParseResult {
         private static let maximumNodeDepth = 10
 
@@ -272,46 +298,46 @@ extension ASN1 {
             self.nodes = nodes
         }
 
-        fileprivate static func parse(_ data: ArraySlice<UInt8>) throws -> ASN1ParseResult {
+        fileprivate static func parse(_ data: ArraySlice<UInt8>) throws(CryptoKitMetaError) -> ASN1ParseResult {
             var data = data
             var nodes = [ASN1ParserNode]()
             nodes.reserveCapacity(16)
 
             try parseNode(from: &data, depth: 1, into: &nodes)
             guard data.count == 0 else {
-                throw CryptoKitASN1Error.invalidASN1Object
+                throw error(CryptoKitASN1Error.invalidASN1Object)
             }
             return ASN1ParseResult(nodes[...])
         }
 
         /// Parses a single ASN.1 node from the data and appends it to the buffer. This may recursively
         /// call itself when there are child nodes for constructed nodes.
-        private static func parseNode(from data: inout ArraySlice<UInt8>, depth: Int, into nodes: inout [ASN1ParserNode]) throws {
+        private static func parseNode(from data: inout ArraySlice<UInt8>, depth: Int, into nodes: inout [ASN1ParserNode]) throws(CryptoKitMetaError) {
             guard depth <= ASN1.ASN1ParseResult.maximumNodeDepth else {
                 // We defend ourselves against stack overflow by refusing to allocate more than 10 stack frames to
                 // the parsing.
-                throw CryptoKitASN1Error.invalidASN1Object
+                throw error(CryptoKitASN1Error.invalidASN1Object)
             }
 
             guard let rawIdentifier = data.popFirst() else {
-                throw CryptoKitASN1Error.truncatedASN1Field
+                throw error(CryptoKitASN1Error.truncatedASN1Field)
             }
 
             let identifier = try ASN1Identifier(rawIdentifier: rawIdentifier)
             guard let wideLength = try data.readASN1Length() else {
-                throw CryptoKitASN1Error.truncatedASN1Field
+                throw error(CryptoKitASN1Error.truncatedASN1Field)
             }
 
             // UInt is sometimes too large for us!
             guard let length = Int(exactly: wideLength) else {
-                throw CryptoKitASN1Error.invalidASN1Object
+                throw error(CryptoKitASN1Error.invalidASN1Object)
             }
 
             var subData = data.prefix(length)
             data = data.dropFirst(length)
 
             guard subData.count == length else {
-                throw CryptoKitASN1Error.truncatedASN1Field
+                throw error(CryptoKitASN1Error.truncatedASN1Field)
             }
 
             if identifier.constructed {
@@ -326,14 +352,16 @@ extension ASN1 {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1.ASN1ParseResult: Hashable { }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
-    static func parse(_ data: [UInt8]) throws -> ASN1Node {
+    static func parse(_ data: [UInt8]) throws(CryptoKitMetaError) -> ASN1Node {
         return try parse(data[...])
     }
 
-    static func parse(_ data: ArraySlice<UInt8>) throws -> ASN1Node {
+    static func parse(_ data: ArraySlice<UInt8>) throws(CryptoKitMetaError) -> ASN1Node {
         var result = try ASN1ParseResult.parse(data)
 
         // There will always be at least one node if the above didn't throw, so we can safely just removeFirst here.
@@ -356,11 +384,13 @@ extension ASN1 {
 }
 
 // MARK: - ASN1NodeCollection
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
     /// Represents a collection of ASN.1 nodes contained in a constructed ASN.1 node.
     ///
     /// Constructed ASN.1 nodes are made up of multiple child nodes. This object represents the collection of those child nodes.
     /// It allows us to lazily construct the child nodes, potentially skipping over them when we don't care about them.
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     internal struct ASN1NodeCollection {
         private var nodes: ArraySlice<ASN1ParserNode>
 
@@ -378,7 +408,9 @@ extension ASN1 {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1.ASN1NodeCollection: Sequence {
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     struct Iterator: IteratorProtocol {
         private var nodes: ArraySlice<ASN1.ASN1ParserNode>
         private var depth: Int
@@ -412,6 +444,7 @@ extension ASN1.ASN1NodeCollection: Sequence {
 }
 
 // MARK: - ASN1Node
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
     /// An `ASN1Node` is a single entry in the ASN.1 representation of a data structure.
     ///
@@ -421,6 +454,7 @@ extension ASN1 {
     ///
     /// In this way, ASN.1 objects tend to form a "tree", where each object is represented by a single top-level constructed
     /// node that contains other objects and primitives, eventually reaching the bottom which is made up of primitive objects.
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     internal struct ASN1Node {
         internal var identifier: ASN1Identifier
 
@@ -429,8 +463,10 @@ extension ASN1 {
 }
 
 // MARK: - ASN1Node.Content
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1.ASN1Node {
     /// The content of a single ASN1Node.
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     enum Content {
         case constructed(ASN1.ASN1NodeCollection)
         case primitive(ArraySlice<UInt8>)
@@ -438,7 +474,9 @@ extension ASN1.ASN1Node {
 }
 
 // MARK: - Serializing
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1 {
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     struct Serializer {
         var serializedBytes: [UInt8]
 
@@ -449,48 +487,50 @@ extension ASN1 {
         }
 
         /// Appends a single, non-constructed node to the content.
-        mutating func appendPrimitiveNode(identifier: ASN1.ASN1Identifier, _ contentWriter: (inout [UInt8]) throws -> Void) rethrows {
+        mutating func appendPrimitiveNode(identifier: ASN1.ASN1Identifier, _ contentWriter: (inout [UInt8]) throws(CryptoKitMetaError) -> Void) throws(CryptoKitMetaError) {
             assert(identifier.primitive)
-            try self._appendNode(identifier: identifier) { try contentWriter(&$0.serializedBytes) }
+            try self._appendNode(identifier: identifier) { coder throws(CryptoKitMetaError) in
+                try contentWriter(&coder.serializedBytes)
+            }
         }
 
-        mutating func appendConstructedNode(identifier: ASN1.ASN1Identifier, _ contentWriter: (inout Serializer) throws -> Void) rethrows {
+        mutating func appendConstructedNode(identifier: ASN1.ASN1Identifier, _ contentWriter: (inout Serializer) throws(CryptoKitMetaError) -> Void) throws(CryptoKitMetaError) {
             assert(identifier.constructed)
             try self._appendNode(identifier: identifier, contentWriter)
         }
 
-        mutating func serialize<T: ASN1Serializable>(_ node: T) throws {
+        mutating func serialize<T: ASN1Serializable>(_ node: T) throws(CryptoKitMetaError) {
             try node.serialize(into: &self)
         }
 
-        mutating func serialize<T: ASN1Serializable>(_ node: T, explicitlyTaggedWithTagNumber tagNumber: Int, tagClass: ASN1.ASN1Identifier.TagClass) throws {
-            return try self.serialize(explicitlyTaggedWithTagNumber: tagNumber, tagClass: tagClass) { coder in
+        mutating func serialize<T: ASN1Serializable>(_ node: T, explicitlyTaggedWithTagNumber tagNumber: Int, tagClass: ASN1.ASN1Identifier.TagClass) throws(CryptoKitMetaError) {
+            return try self.serialize(explicitlyTaggedWithTagNumber: tagNumber, tagClass: tagClass) { coder throws(CryptoKitMetaError) in
                 try coder.serialize(node)
             }
         }
 
-        mutating func serialize(explicitlyTaggedWithTagNumber tagNumber: Int, tagClass: ASN1.ASN1Identifier.TagClass, _ block: (inout Serializer) throws -> Void) rethrows {
+        mutating func serialize(explicitlyTaggedWithTagNumber tagNumber: Int, tagClass: ASN1.ASN1Identifier.TagClass, _ block: (inout Serializer) throws(CryptoKitMetaError) -> Void) throws(CryptoKitMetaError) {
             let identifier = ASN1Identifier(explicitTagWithNumber: tagNumber, tagClass: tagClass)
-            try self.appendConstructedNode(identifier: identifier) { coder in
+            try self.appendConstructedNode(identifier: identifier) { coder throws(CryptoKitMetaError) in
                 try block(&coder)
             }
         }
 
-        mutating func serializeSequenceOf<Elements: Sequence>(_ elements: Elements, identifier: ASN1.ASN1Identifier = .sequence) throws where Elements.Element: ASN1Serializable {
-            try self.appendConstructedNode(identifier: identifier) { coder in
+        mutating func serializeSequenceOf<Elements: Sequence>(_ elements: Elements, identifier: ASN1.ASN1Identifier = .sequence) throws(CryptoKitMetaError) where Elements.Element: ASN1Serializable {
+            try self.appendConstructedNode(identifier: identifier) { coder throws(CryptoKitMetaError) in
                 for element in elements {
                     try coder.serialize(element)
                 }
             }
         }
 
-        mutating func serialize(_ node: ASN1.ASN1Node) {
+        mutating func serialize(_ node: ASN1.ASN1Node) throws(CryptoKitMetaError) {
             let identifier = node.identifier
-            self._appendNode(identifier: identifier) { coder in
+            try self._appendNode(identifier: identifier) { coder throws(CryptoKitMetaError) in
                 switch node.content {
                 case .constructed(let nodes):
                     for node in nodes {
-                        coder.serialize(node)
+                        try coder.serialize(node)
                     }
                 case .primitive(let baseData):
                     coder.serializedBytes.append(contentsOf: baseData)
@@ -500,7 +540,7 @@ extension ASN1 {
 
         // This is the base logical function that all other append methods are built on. This one has most of the logic, and doesn't
         // police what we expect to happen in the content writer.
-        private mutating func _appendNode(identifier: ASN1.ASN1Identifier, _ contentWriter: (inout Serializer) throws -> Void) rethrows {
+        private mutating func _appendNode(identifier: ASN1.ASN1Identifier, _ contentWriter: (inout Serializer) throws(CryptoKitMetaError) -> Void) throws(CryptoKitMetaError) {
             // This is a tricky game to play. We want to write the identifier and the length, but we don't know what the
             // length is here. To get around that, we _assume_ the length will be one byte, and let the writer write their content.
             // If it turns out to have been longer, we recalculate how many bytes we need and shuffle them in the buffer,
@@ -546,72 +586,78 @@ extension ASN1 {
 }
 
 // MARK: - Helpers
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 internal protocol ASN1Parseable {
-    init(asn1Encoded: ASN1.ASN1Node) throws
+    init(asn1Encoded: ASN1.ASN1Node) throws(CryptoKitMetaError)
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1Parseable {
-    internal init(asn1Encoded sequenceNodeIterator: inout ASN1.ASN1NodeCollection.Iterator) throws {
+    internal init(asn1Encoded sequenceNodeIterator: inout ASN1.ASN1NodeCollection.Iterator) throws(CryptoKitMetaError) {
         guard let node = sequenceNodeIterator.next() else {
-            throw CryptoKitASN1Error.invalidASN1Object
+            throw error(CryptoKitASN1Error.invalidASN1Object)
         }
 
         self = try .init(asn1Encoded: node)
     }
 
-    internal init(asn1Encoded: [UInt8]) throws {
+    internal init(asn1Encoded: [UInt8]) throws(CryptoKitMetaError) {
         self = try .init(asn1Encoded: ASN1.parse(asn1Encoded))
     }
 
-    internal init(asn1Encoded: ArraySlice<UInt8>) throws {
+    internal init(asn1Encoded: ArraySlice<UInt8>) throws(CryptoKitMetaError) {
         self = try .init(asn1Encoded: ASN1.parse(asn1Encoded))
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 internal protocol ASN1Serializable {
-    func serialize(into coder: inout ASN1.Serializer) throws
+    func serialize(into coder: inout ASN1.Serializer) throws(CryptoKitMetaError)
 }
 
 /// Covers ASN.1 types that may be implicitly tagged. Not all nodes can be!
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 internal protocol ASN1ImplicitlyTaggable: ASN1Parseable, ASN1Serializable {
     /// The tag that the first node will use "by default" if the grammar omits
     /// any more specific tag definition.
     static var defaultIdentifier: ASN1.ASN1Identifier { get }
 
-    init(asn1Encoded: ASN1.ASN1Node, withIdentifier identifier: ASN1.ASN1Identifier) throws
+    init(asn1Encoded: ASN1.ASN1Node, withIdentifier identifier: ASN1.ASN1Identifier) throws(CryptoKitMetaError)
 
-    func serialize(into coder: inout ASN1.Serializer, withIdentifier identifier: ASN1.ASN1Identifier) throws
+    func serialize(into coder: inout ASN1.Serializer, withIdentifier identifier: ASN1.ASN1Identifier) throws(CryptoKitMetaError)
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ASN1ImplicitlyTaggable {
     internal init(asn1Encoded sequenceNodeIterator: inout ASN1.ASN1NodeCollection.Iterator,
-                  withIdentifier identifier: ASN1.ASN1Identifier = Self.defaultIdentifier) throws {
+                  withIdentifier identifier: ASN1.ASN1Identifier = Self.defaultIdentifier) throws(CryptoKitMetaError) {
         guard let node = sequenceNodeIterator.next() else {
-            throw CryptoKitASN1Error.invalidASN1Object
+            throw error(CryptoKitASN1Error.invalidASN1Object)
         }
 
         self = try .init(asn1Encoded: node, withIdentifier: identifier)
     }
 
-    internal init(asn1Encoded: [UInt8], withIdentifier identifier: ASN1.ASN1Identifier = Self.defaultIdentifier) throws {
+    internal init(asn1Encoded: [UInt8], withIdentifier identifier: ASN1.ASN1Identifier = Self.defaultIdentifier) throws(CryptoKitMetaError) {
         self = try .init(asn1Encoded: ASN1.parse(asn1Encoded), withIdentifier: identifier)
     }
 
-    internal init(asn1Encoded: ArraySlice<UInt8>, withIdentifier identifier: ASN1.ASN1Identifier = Self.defaultIdentifier) throws {
+    internal init(asn1Encoded: ArraySlice<UInt8>, withIdentifier identifier: ASN1.ASN1Identifier = Self.defaultIdentifier) throws(CryptoKitMetaError) {
         self = try .init(asn1Encoded: ASN1.parse(asn1Encoded), withIdentifier: identifier)
     }
 
-    init(asn1Encoded: ASN1.ASN1Node) throws {
+    init(asn1Encoded: ASN1.ASN1Node) throws(CryptoKitMetaError) {
         try self.init(asn1Encoded: asn1Encoded, withIdentifier: Self.defaultIdentifier)
     }
 
-    func serialize(into coder: inout ASN1.Serializer) throws {
+    func serialize(into coder: inout ASN1.Serializer) throws(CryptoKitMetaError) {
         try self.serialize(into: &coder, withIdentifier: Self.defaultIdentifier)
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ArraySlice where Element == UInt8 {
-    fileprivate mutating func readASN1Length() throws -> UInt? {
+    fileprivate mutating func readASN1Length() throws(CryptoKitMetaError) -> UInt? {
         guard let firstByte = self.popFirst() else {
             return nil
         }
@@ -619,7 +665,7 @@ extension ArraySlice where Element == UInt8 {
         switch firstByte {
         case 0x80:
             // Indefinite form. Unsupported.
-            throw CryptoKitASN1Error.unsupportedFieldLength
+            throw error(CryptoKitASN1Error.unsupportedFieldLength)
         case let val where val & 0x80 == 0x80:
             // Top bit is set, this is the long form. The remaining 7 bits of this octet
             // determine how long the length field is.
@@ -638,16 +684,16 @@ extension ArraySlice where Element == UInt8 {
             switch requiredBits {
             case 0...7:
                 // For 0 to 7 bits, the long form is unacceptable and we require the short.
-                throw CryptoKitASN1Error.unsupportedFieldLength
+                throw error(CryptoKitASN1Error.unsupportedFieldLength)
             case 8...:
                 // For 8 or more bits, fieldLength should be the minimum required.
                 let requiredBytes = (requiredBits + 7) / 8
                 if fieldLength > requiredBytes {
-                    throw CryptoKitASN1Error.unsupportedFieldLength
+                    throw error(CryptoKitASN1Error.unsupportedFieldLength)
                 }
             default:
                 // This is not reachable, but we'll error anyway.
-                throw CryptoKitASN1Error.unsupportedFieldLength
+                throw error(CryptoKitASN1Error.unsupportedFieldLength)
             }
 
             return length
@@ -658,10 +704,11 @@ extension ArraySlice where Element == UInt8 {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension FixedWidthInteger {
-    internal init<Bytes: Collection>(bigEndianBytes bytes: Bytes) throws where Bytes.Element == UInt8 {
+    internal init<Bytes: Collection>(bigEndianBytes bytes: Bytes) throws(CryptoKitMetaError) where Bytes.Element == UInt8 {
         guard bytes.count <= (Self.bitWidth / 8) else {
-            throw CryptoKitASN1Error.invalidASN1Object
+            throw error(CryptoKitASN1Error.invalidASN1Object)
         }
 
         self = 0
@@ -675,6 +722,7 @@ extension FixedWidthInteger {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Array where Element == UInt8 {
     fileprivate mutating func writeIdentifier(_ identifier: ASN1.ASN1Identifier) {
         self.append(identifier.baseTag)
@@ -700,6 +748,7 @@ extension Array where Element == UInt8 {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension Int {
     fileprivate var bytesNeededToEncode: Int {
         // ASN.1 lengths are in two forms. If we can store the length in 7 bits, we should:
@@ -717,6 +766,7 @@ extension Int {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension FixedWidthInteger {
     // Bytes needed to store a given integer.
     internal var neededBytes: Int {

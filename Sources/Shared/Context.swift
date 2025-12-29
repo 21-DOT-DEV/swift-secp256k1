@@ -23,6 +23,7 @@
 /// A constructed context can safely be used from multiple threads simultaneously, but API calls that take a non-const
 /// pointer to a context need exclusive access to it. In particular this is the case for `secp256k1_context_destroy`,
 /// `secp256k1_context_preallocated_destroy`, and `secp256k1_context_randomize`.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K {
     /// A structure that represents the context flags for `secp256k1` operations.
     ///
@@ -32,9 +33,9 @@ public extension P256K {
     /// The `Context` structure is used to create and manage the context for `secp256k1` operations.
     /// It is used in the creation of the `secp256k1` context and also in determining the size of the preallocated
     /// memory for the context.
-    struct Context: OptionSet {
+    struct Context: OptionSet, Sendable {
         /// The raw representation of `secp256k1.Context`
-        public static let rawRepresentation = try! P256K.Context.create()
+        nonisolated(unsafe) public static let rawRepresentation = try! P256K.Context.create()
 
         /// The raw value of the context flags.
         public let rawValue: UInt32
@@ -50,7 +51,7 @@ public extension P256K {
         ///
         /// This static property represents a `Context` with no flags. It can be used when creating a `secp256k1`
         /// context with no flags.
-        public static let none = Self(rawValue: SECP256K1_CONTEXT_NONE)
+        nonisolated(unsafe) public static let none = Self(rawValue: SECP256K1_CONTEXT_NONE)
 
         /// Creates a new `secp256k1` context with the specified flags.
         ///

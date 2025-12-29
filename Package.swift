@@ -13,11 +13,11 @@ let package = Package(
     ],
     dependencies: [
         // Dependencies used for package development
-        .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "2.0.13"),
+        .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "2.0.9"),
         .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.118.1"),
         .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.58.7"),
         .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.62.2"),
-        .package(url: "https://github.com/21-DOT-DEV/swift-plugin-subtree.git", exact: "0.0.5")
+        .package(url: "https://github.com/21-DOT-DEV/swift-plugin-subtree.git", exact: "0.0.6")
     ],
     targets: [
         // MARK: - Build Plugins
@@ -59,7 +59,7 @@ let package = Package(
         .testTarget(name: "libsecp256k1zkpTests", dependencies: ["ZKP", "libsecp256k1_zkp"]),
         .testTarget(name: "ZKPTests", dependencies: ["ZKP"])
     ],
-    swiftLanguageModes: [.v5],
+    swiftLanguageModes: [.v6],
     cLanguageStandard: .c89
 )
 

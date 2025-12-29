@@ -16,6 +16,7 @@ import Foundation
     @_implementationOnly import libsecp256k1
 #endif
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing.PrivateKey {
     /// Create a new `PrivateKey` by adding tweak to the secret key.
     /// - Parameter tweak: the 32-byte tweak object
@@ -48,6 +49,7 @@ public extension P256K.Signing.PrivateKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Schnorr.PrivateKey {
     /// Create a new `PrivateKey` by adding tweak to the secret key. When tweaking keys,  implicit
     /// negations are handled when odd Y coordinates are reached.
@@ -72,6 +74,7 @@ public extension P256K.Schnorr.PrivateKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing.PublicKey {
     /// Create a new `PublicKey` by adding tweak to the public key.
     /// - Parameters:
@@ -112,6 +115,7 @@ public extension P256K.Signing.PublicKey {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Schnorr.XonlyKey {
     /// Create a new `XonlyKey` by adding tweak to the x-only public key.
     /// - Parameters:

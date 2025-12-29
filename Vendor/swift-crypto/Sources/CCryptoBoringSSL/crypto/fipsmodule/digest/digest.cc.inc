@@ -1,58 +1,16 @@
-/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
- * All rights reserved.
- *
- * This package is an SSL implementation written
- * by Eric Young (eay@cryptsoft.com).
- * The implementation was written so as to conform with Netscapes SSL.
- *
- * This library is free for commercial and non-commercial use as long as
- * the following conditions are aheared to.  The following conditions
- * apply to all code found in this distribution, be it the RC4, RSA,
- * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
- * included with this distribution is covered by the same copyright terms
- * except that the holder is Tim Hudson (tjh@cryptsoft.com).
- *
- * Copyright remains Eric Young's, and as such any Copyright notices in
- * the code are not to be removed.
- * If this package is used in a product, Eric Young should be given attribution
- * as the author of the parts of the library used.
- * This can be in the form of a textual message at program startup or
- * in documentation (online or textual) provided with the package.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *    "This product includes cryptographic software written by
- *     Eric Young (eay@cryptsoft.com)"
- *    The word 'cryptographic' can be left out if the rouines from the library
- *    being used are not cryptographic related :-).
- * 4. If you include any Windows specific code (or a derivative thereof) from
- *    the apps directory (application code) you must include an acknowledgement:
- *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
- *
- * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- *
- * The licence and distribution terms for any publically available version or
- * derivative of this code cannot be changed.  i.e. this code cannot simply be
- * copied and put under another distribution licence
- * [including the GNU Public Licence.] */
+// Copyright 1995-2016 The OpenSSL Project Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <CCryptoBoringSSL_digest.h>
 
@@ -78,7 +36,9 @@ size_t EVP_MD_block_size(const EVP_MD *md) { return md->block_size; }
 
 
 void EVP_MD_CTX_init(EVP_MD_CTX *ctx) {
-  OPENSSL_memset(ctx, 0, sizeof(EVP_MD_CTX));
+  ctx->digest = nullptr;
+  ctx->pctx = nullptr;
+  ctx->pctx_ops = nullptr;
 }
 
 EVP_MD_CTX *EVP_MD_CTX_new(void) {
@@ -95,8 +55,6 @@ EVP_MD_CTX *EVP_MD_CTX_new(void) {
 EVP_MD_CTX *EVP_MD_CTX_create(void) { return EVP_MD_CTX_new(); }
 
 int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx) {
-  OPENSSL_free(ctx->md_data);
-
   assert(ctx->pctx == NULL || ctx->pctx_ops != NULL);
   if (ctx->pctx_ops) {
     ctx->pctx_ops->free(ctx->pctx);
@@ -108,7 +66,7 @@ int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx) {
 }
 
 void EVP_MD_CTX_cleanse(EVP_MD_CTX *ctx) {
-  OPENSSL_cleanse(ctx->md_data, ctx->digest->ctx_size);
+  OPENSSL_cleanse(ctx->md_data, sizeof(ctx->md_data));
   EVP_MD_CTX_cleanup(ctx);
 }
 
@@ -139,6 +97,10 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
     OPENSSL_PUT_ERROR(DIGEST, DIGEST_R_INPUT_NOT_INITIALIZED);
     return 0;
   }
+  if (out == in) {
+    OPENSSL_PUT_ERROR(DIGEST, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
 
   EVP_PKEY_CTX *pctx = NULL;
   assert(in->pctx == NULL || in->pctx_ops != NULL);
@@ -149,31 +111,9 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
     }
   }
 
-  uint8_t *tmp_buf = NULL;
-  if (in->digest != NULL) {
-    if (out->digest != in->digest) {
-      assert(in->digest->ctx_size != 0);
-      tmp_buf =
-          reinterpret_cast<uint8_t *>(OPENSSL_malloc(in->digest->ctx_size));
-      if (tmp_buf == NULL) {
-        if (pctx) {
-          in->pctx_ops->free(pctx);
-        }
-        return 0;
-      }
-    } else {
-      // |md_data| will be the correct size in this case. It's removed from
-      // |out| so that |EVP_MD_CTX_cleanup| doesn't free it, and then it's
-      // reused.
-      tmp_buf = reinterpret_cast<uint8_t *>(out->md_data);
-      out->md_data = NULL;
-    }
-  }
-
   EVP_MD_CTX_cleanup(out);
 
   out->digest = in->digest;
-  out->md_data = tmp_buf;
   if (in->digest != NULL) {
     OPENSSL_memcpy(out->md_data, in->md_data, in->digest->ctx_size);
   }
@@ -209,14 +149,7 @@ int EVP_MD_CTX_reset(EVP_MD_CTX *ctx) {
 int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type, ENGINE *engine) {
   if (ctx->digest != type) {
     assert(type->ctx_size != 0);
-    uint8_t *md_data =
-        reinterpret_cast<uint8_t *>(OPENSSL_malloc(type->ctx_size));
-    if (md_data == NULL) {
-      return 0;
-    }
-
-    OPENSSL_free(ctx->md_data);
-    ctx->md_data = md_data;
+    assert(type->ctx_size <= sizeof(ctx->md_data));
     ctx->digest = type;
   }
 
@@ -254,16 +187,10 @@ int EVP_DigestFinal(EVP_MD_CTX *ctx, uint8_t *md, unsigned int *size) {
 
 int EVP_Digest(const void *data, size_t count, uint8_t *out_md,
                unsigned int *out_size, const EVP_MD *type, ENGINE *impl) {
-  EVP_MD_CTX ctx;
-  int ret;
-
-  EVP_MD_CTX_init(&ctx);
-  ret = EVP_DigestInit_ex(&ctx, type, impl) &&
-        EVP_DigestUpdate(&ctx, data, count) &&
-        EVP_DigestFinal_ex(&ctx, out_md, out_size);
-  EVP_MD_CTX_cleanup(&ctx);
-
-  return ret;
+  bssl::ScopedEVP_MD_CTX ctx;
+  return EVP_DigestInit_ex(ctx.get(), type, impl) &&
+         EVP_DigestUpdate(ctx.get(), data, count) &&
+         EVP_DigestFinal_ex(ctx.get(), out_md, out_size);
 }
 
 const EVP_MD *EVP_MD_CTX_get0_md(const EVP_MD_CTX *ctx) {

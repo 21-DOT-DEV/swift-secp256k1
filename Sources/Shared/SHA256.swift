@@ -17,6 +17,7 @@ import Foundation
 #endif
 
 /// The SHA256 hashing algorithm.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public enum SHA256 {
     /// The number of bytes in a SHA256 digest.
     @inlinable

@@ -1,4 +1,4 @@
-// swift-tools-version:5.9
+// swift-tools-version:6.0
 //===----------------------------------------------------------------------===//
 //
 // This source file is part of the SwiftCrypto open source project
@@ -20,10 +20,11 @@
 // Sources/CCryptoBoringSSL directory. The source repository is at
 // https://boringssl.googlesource.com/boringssl.
 //
-// BoringSSL Commit: aefa5d24da34ef77ac797bdbe684734e5bd870f4
+// BoringSSL Commit: 0226f30467f540a3f62ef48d453f93927da199b6
+
+import PackageDescription
 
 import class Foundation.ProcessInfo
-import PackageDescription
 
 // To develop this on Apple platforms, set this to true
 let development = false
@@ -48,13 +49,16 @@ if development || isFreeBSD {
         "CCryptoBoringSSL",
         "CCryptoBoringSSLShims",
         "CryptoBoringWrapper",
+        "CXKCP",
+        "CXKCPShims",
     ]
 } else {
     let platforms: [Platform] = [
         Platform.linux,
         Platform.android,
         Platform.windows,
-        Platform.wasi
+        Platform.wasi,
+        Platform.openbsd,
     ]
     swiftSettings = [
         .define("CRYPTO_IN_SWIFTPM"),
@@ -64,6 +68,8 @@ if development || isFreeBSD {
         .target(name: "CCryptoBoringSSL", condition: .when(platforms: platforms)),
         .target(name: "CCryptoBoringSSLShims", condition: .when(platforms: platforms)),
         .target(name: "CryptoBoringWrapper", condition: .when(platforms: platforms)),
+        .target(name: "CXKCP", condition: .when(platforms: platforms)),
+        .target(name: "CXKCPShims", condition: .when(platforms: platforms)),
     ]
 }
 
@@ -81,15 +87,11 @@ let privacyManifestResource: [PackageDescription.Resource] = []
 
 let package = Package(
     name: "swift-crypto",
-    platforms: [
-        .macOS(.v10_15),
-        .iOS(.v13),
-        .watchOS(.v6),
-        .tvOS(.v13),
-    ],
     products: [
         .library(name: "Crypto", targets: ["Crypto"]),
+        // Kept for backward compatibility
         .library(name: "_CryptoExtras", targets: ["_CryptoExtras"]),
+        .library(name: "CryptoExtras", targets: ["CryptoExtras"]),
         /* This target is used only for symbol mangling. It's added and removed automatically because it emits build warnings. MANGLE_START
             .library(name: "CCryptoBoringSSL", type: .static, targets: ["CCryptoBoringSSL"]),
             MANGLE_END */
@@ -102,7 +104,6 @@ let package = Package(
             name: "CCryptoBoringSSL",
             exclude: privacyManifestExclude + [
                 "hash.txt",
-                "include/boringssl_prefix_symbols_nasm.inc",
                 "CMakeLists.txt",
                 /*
                  * These files are excluded to support WASI libc which doesn't provide <netdb.h>.
@@ -110,7 +111,7 @@ let package = Package(
                  */
                 "crypto/bio/connect.cc",
                 "crypto/bio/socket_helper.cc",
-                "crypto/bio/socket.cc"
+                "crypto/bio/socket.cc",
             ],
             resources: privacyManifestResource,
             cSettings: [
@@ -130,8 +131,31 @@ let package = Package(
             ]
         ),
         .target(
+            name: "CXKCP",
+            exclude: [
+                "CMakeLists.txt"
+            ],
+            cSettings: [
+                .define("XKCP_has_KeccakP1600"),
+                .headerSearchPath("include"),
+                .headerSearchPath("high"),
+                .headerSearchPath("low"),
+                .headerSearchPath("low/KeccakP-1600"),
+                .headerSearchPath("low/common"),
+                .headerSearchPath("common"),
+            ]
+        ),
+        .target(
             name: "CCryptoBoringSSLShims",
             dependencies: ["CCryptoBoringSSL"],
+            exclude: privacyManifestExclude + [
+                "CMakeLists.txt"
+            ],
+            resources: privacyManifestResource
+        ),
+        .target(
+            name: "CXKCPShims",
+            dependencies: ["CXKCP"],
             exclude: privacyManifestExclude + [
                 "CMakeLists.txt"
             ],
@@ -146,12 +170,16 @@ let package = Package(
                 "Digests/Digests.swift.gyb",
                 "Key Agreement/ECDH.swift.gyb",
                 "Signatures/ECDSA.swift.gyb",
+                "Signatures/MLDSA.swift.gyb",
+                "Signatures/BoringSSL/MLDSA_boring.swift.gyb",
+                "KEM/MLKEM.swift.gyb",
+                "KEM/BoringSSL/MLKEM_boring.swift.gyb",
             ],
             resources: privacyManifestResource,
             swiftSettings: swiftSettings
         ),
         .target(
-            name: "_CryptoExtras",
+            name: "CryptoExtras",
             dependencies: [
                 "CCryptoBoringSSL",
                 "CCryptoBoringSSLShims",
@@ -163,6 +191,13 @@ let package = Package(
                 "CMakeLists.txt"
             ],
             resources: privacyManifestResource,
+            swiftSettings: swiftSettings
+        ),
+        .target(
+            name: "_CryptoExtras",
+            dependencies: [
+                "CryptoExtras",
+            ],
             swiftSettings: swiftSettings
         ),
         .target(
@@ -181,13 +216,20 @@ let package = Package(
             name: "CryptoTests",
             dependencies: ["Crypto"],
             resources: [
-                .copy("HPKE/hpke-test-vectors.json")
+                .copy("HPKE/hpke-test-vectors.json"),
+                .copy("KEM/MLKEM768_BSSLKAT.json"),
+                .copy("KEM/MLKEM768KAT.json"),
+                .copy("KEM/MLKEM1024_BSSLKAT.json"),
+                .copy("KEM/MLKEM1024KAT.json"),
+                .copy("KEM/test-vectors.json"),
+                .copy("Signatures/MLDSA/MLDSA65_KeyGen_KAT.json"),
+                .copy("Signatures/MLDSA/MLDSA87_KeyGen_KAT.json"),
             ],
             swiftSettings: swiftSettings
         ),
         .testTarget(
-            name: "_CryptoExtrasTests",
-            dependencies: ["_CryptoExtras"],
+            name: "CryptoExtrasTests",
+            dependencies: ["CryptoExtras"],
             resources: [
                 .copy("ECToolbox/H2CVectors/P256_XMD-SHA-256_SSWU_RO_.json"),
                 .copy("ECToolbox/H2CVectors/P384_XMD-SHA-384_SSWU_RO_.json"),
@@ -198,28 +240,34 @@ let package = Package(
             swiftSettings: swiftSettings
         ),
         .testTarget(name: "CryptoBoringWrapperTests", dependencies: ["CryptoBoringWrapper"]),
+        .testTarget(name: "CXKCPTests", dependencies: ["CXKCP"]),
     ],
-    cxxLanguageStandard: .cxx14
+    cxxLanguageStandard: .cxx17
 )
 
 // Switch between local and remote dependencies depending on an environment variable
 if ProcessInfo.processInfo.environment["SWIFTCI_USE_LOCAL_DEPS"] == nil {
     package.dependencies += [
-        .package(url: "https://github.com/apple/swift-asn1.git", from: "1.2.0"),
+        .package(url: "https://github.com/apple/swift-asn1.git", from: "1.2.0")
     ]
 } else {
     package.dependencies += [
-        .package(path: "../swift-asn1"),
+        .package(path: "../swift-asn1")
     ]
 }
 
 // ---    STANDARD CROSS-REPO SETTINGS DO NOT EDIT   --- //
 for target in package.targets {
-    if target.type != .plugin {
+    switch target.type {
+    case .regular, .test, .executable:
         var settings = target.swiftSettings ?? []
         // https://github.com/swiftlang/swift-evolution/blob/main/proposals/0444-member-import-visibility.md
         settings.append(.enableUpcomingFeature("MemberImportVisibility"))
         target.swiftSettings = settings
+    case .macro, .plugin, .system, .binary:
+        ()  // not applicable
+    @unknown default:
+        ()  // we don't know what to do here, do nothing
     }
 }
 // --- END: STANDARD CROSS-REPO SETTINGS DO NOT EDIT --- //

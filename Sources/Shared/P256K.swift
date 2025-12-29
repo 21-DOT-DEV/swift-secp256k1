@@ -7,8 +7,15 @@
 //
 //  See the accompanying file LICENSE for information
 //
-
-import Foundation
+#if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
+    import SwiftSystem
+#else
+    #if canImport(FoundationEssentials)
+        import FoundationEssentials
+    #else
+        import Foundation
+    #endif
+#endif
 
 #if canImport(libsecp256k1_zkp)
     @_implementationOnly import libsecp256k1_zkp
@@ -17,12 +24,14 @@ import Foundation
 #endif
 
 /// The secp256k1 Elliptic Curve.
-public enum P256K {}
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+public enum P256K: Sendable {}
 
 /// An extension to secp256k1 containing an enum for public key formats.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K {
     /// Enum representing public key formats to be passed to `secp256k1_ec_pubkey_serialize`.
-    enum Format: UInt32 {
+    enum Format: UInt32, Sendable {
         /// Compressed public key format.
         case compressed
         /// Uncompressed public key format.
@@ -51,6 +60,7 @@ public extension P256K {
 }
 
 /// An extension for secp256k1 containing nested enum byte length details.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K {
     /// An enum containing byte details about in secp256k1.
     @usableFromInline
@@ -79,7 +89,8 @@ extension P256K {
 /// Implementations for signing, we use bindings to libsecp256k1 for these operations.
 
 /// Private key for signing implementation
-@usableFromInline struct PrivateKeyImplementation {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+@usableFromInline struct PrivateKeyImplementation: Sendable {
     /// Backing private key object
     private var privateBytes: SecureBytes
 
@@ -158,7 +169,8 @@ extension P256K {
 }
 
 /// Public key for signing implementation
-@usableFromInline struct PublicKeyImplementation {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+@usableFromInline struct PublicKeyImplementation: Sendable {
     /// Implementation public key object
     @usableFromInline let bytes: [UInt8]
 
@@ -343,7 +355,8 @@ extension P256K {
 }
 
 /// Public X-only public key for Schnorr implementation
-@usableFromInline struct XonlyKeyImplementation {
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+@usableFromInline struct XonlyKeyImplementation: Sendable {
     /// Implementation x-only public key object
     @usableFromInline let bytes: [UInt8]
 

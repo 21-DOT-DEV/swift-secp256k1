@@ -36,6 +36,7 @@ protocol CompactSignature {
 // MARK: - secp256k1 + ECDSA Signature
 
 /// An ECDSA (Elliptic Curve Digital Signature Algorithm) Signature
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing {
     struct ECDSASignature: ContiguousBytes, NISTECDSASignature, CompactSignature {
         /// Returns the data signature.
@@ -164,6 +165,7 @@ public extension P256K.Signing {
 
 // MARK: - secp256k1 + Signing Key
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.PrivateKey: DigestSigner {
     ///  Generates an ECDSA signature over the secp256k1 elliptic curve.
     ///
@@ -189,6 +191,7 @@ extension P256K.Signing.PrivateKey: DigestSigner {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.PrivateKey: Signer {
     /// Generates an ECDSA signature over the secp256k1 elliptic curve.
     /// SHA256 is used as the hash function.
@@ -203,6 +206,7 @@ extension P256K.Signing.PrivateKey: Signer {
 
 // MARK: - secp256k1 + Validating Key
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.PublicKey: DigestValidator {
     /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
     ///
@@ -221,6 +225,7 @@ extension P256K.Signing.PublicKey: DigestValidator {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.PublicKey: DataValidator {
     /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
     /// SHA256 is used as the hash function.

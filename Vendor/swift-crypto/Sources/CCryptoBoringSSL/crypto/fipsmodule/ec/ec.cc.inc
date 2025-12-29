@@ -1,74 +1,24 @@
-/* Originally written by Bodo Moeller for the OpenSSL project.
- * ====================================================================
- * Copyright (c) 1998-2005 The OpenSSL Project.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- *
- * 3. All advertising materials mentioning features or use of this
- *    software must display the following acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
- *
- * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
- *    endorse or promote products derived from this software without
- *    prior written permission. For written permission, please contact
- *    openssl-core@openssl.org.
- *
- * 5. Products derived from this software may not be called "OpenSSL"
- *    nor may "OpenSSL" appear in their names without prior written
- *    permission of the OpenSSL Project.
- *
- * 6. Redistributions of any form whatsoever must retain the following
- *    acknowledgment:
- *    "This product includes software developed by the OpenSSL Project
- *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
- *
- * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
- * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
- * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
- * OF THE POSSIBILITY OF SUCH DAMAGE.
- * ====================================================================
- *
- * This product includes cryptographic software written by Eric Young
- * (eay@cryptsoft.com).  This product includes software written by Tim
- * Hudson (tjh@cryptsoft.com).
- *
- */
-/* ====================================================================
- * Copyright 2002 Sun Microsystems, Inc. ALL RIGHTS RESERVED.
- *
- * Portions of the attached software ("Contribution") are developed by
- * SUN MICROSYSTEMS, INC., and are contributed to the OpenSSL project.
- *
- * The Contribution is licensed pursuant to the OpenSSL open source
- * license provided above.
- *
- * The elliptic curve binary polynomial software is originally written by
- * Sheueling Chang Shantz and Douglas Stebila of Sun Microsystems
- * Laboratories. */
+// Copyright 2001-2016 The OpenSSL Project Authors. All Rights Reserved.
+// Copyright (c) 2002, Oracle and/or its affiliates. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <CCryptoBoringSSL_ec.h>
 
 #include <assert.h>
 #include <string.h>
+
+#include <iterator>
 
 #include <CCryptoBoringSSL_bn.h>
 #include <CCryptoBoringSSL_err.h>
@@ -116,10 +66,10 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p224) {
   OPENSSL_memcpy(out->oid, kOIDP224, sizeof(kOIDP224));
   out->oid_len = sizeof(kOIDP224);
 
-  ec_group_init_static_mont(&out->field, OPENSSL_ARRAY_SIZE(kP224Field),
-                            kP224Field, kP224FieldRR, kP224FieldN0);
-  ec_group_init_static_mont(&out->order, OPENSSL_ARRAY_SIZE(kP224Order),
-                            kP224Order, kP224OrderRR, kP224OrderN0);
+  ec_group_init_static_mont(&out->field, std::size(kP224Field), kP224Field,
+                            kP224FieldRR, kP224FieldN0);
+  ec_group_init_static_mont(&out->order, std::size(kP224Order), kP224Order,
+                            kP224OrderRR, kP224OrderN0);
 
 #if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
   out->meth = EC_GFp_nistp224_method();
@@ -150,10 +100,10 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p256) {
   OPENSSL_memcpy(out->oid, kOIDP256, sizeof(kOIDP256));
   out->oid_len = sizeof(kOIDP256);
 
-  ec_group_init_static_mont(&out->field, OPENSSL_ARRAY_SIZE(kP256Field),
-                            kP256Field, kP256FieldRR, kP256FieldN0);
-  ec_group_init_static_mont(&out->order, OPENSSL_ARRAY_SIZE(kP256Order),
-                            kP256Order, kP256OrderRR, kP256OrderN0);
+  ec_group_init_static_mont(&out->field, std::size(kP256Field), kP256Field,
+                            kP256FieldRR, kP256FieldN0);
+  ec_group_init_static_mont(&out->order, std::size(kP256Order), kP256Order,
+                            kP256OrderRR, kP256OrderN0);
 
 #if !defined(OPENSSL_NO_ASM) &&                              \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64)) && \
@@ -181,10 +131,10 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p384) {
   OPENSSL_memcpy(out->oid, kOIDP384, sizeof(kOIDP384));
   out->oid_len = sizeof(kOIDP384);
 
-  ec_group_init_static_mont(&out->field, OPENSSL_ARRAY_SIZE(kP384Field),
-                            kP384Field, kP384FieldRR, kP384FieldN0);
-  ec_group_init_static_mont(&out->order, OPENSSL_ARRAY_SIZE(kP384Order),
-                            kP384Order, kP384OrderRR, kP384OrderN0);
+  ec_group_init_static_mont(&out->field, std::size(kP384Field), kP384Field,
+                            kP384FieldRR, kP384FieldN0);
+  ec_group_init_static_mont(&out->order, std::size(kP384Order), kP384Order,
+                            kP384OrderRR, kP384OrderN0);
 
   out->meth = EC_GFp_mont_method();
   out->generator.group = out;
@@ -206,10 +156,10 @@ DEFINE_METHOD_FUNCTION(EC_GROUP, EC_group_p521) {
   OPENSSL_memcpy(out->oid, kOIDP521, sizeof(kOIDP521));
   out->oid_len = sizeof(kOIDP521);
 
-  ec_group_init_static_mont(&out->field, OPENSSL_ARRAY_SIZE(kP521Field),
-                            kP521Field, kP521FieldRR, kP521FieldN0);
-  ec_group_init_static_mont(&out->order, OPENSSL_ARRAY_SIZE(kP521Order),
-                            kP521Order, kP521OrderRR, kP521OrderN0);
+  ec_group_init_static_mont(&out->field, std::size(kP521Field), kP521Field,
+                            kP521FieldRR, kP521FieldN0);
+  ec_group_init_static_mont(&out->order, std::size(kP521Order), kP521Order,
+                            kP521OrderRR, kP521OrderN0);
 
   out->meth = EC_GFp_mont_method();
   out->generator.group = out;
@@ -227,47 +177,44 @@ EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
                                  const BIGNUM *b, BN_CTX *ctx) {
   if (BN_num_bytes(p) > EC_MAX_BYTES) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FIELD);
-    return NULL;
+    return nullptr;
   }
 
-  BN_CTX *new_ctx = NULL;
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return NULL;
+  bssl::UniquePtr<BN_CTX> new_ctx;
+  if (ctx == nullptr) {
+    new_ctx.reset(BN_CTX_new());
+    if (new_ctx == nullptr) {
+      return nullptr;
     }
+    ctx = new_ctx.get();
   }
 
   // Historically, |a| and |b| were not required to be fully reduced.
   // TODO(davidben): Can this be removed?
-  EC_GROUP *ret = NULL;
-  BN_CTX_start(ctx);
+  bssl::BN_CTXScope scope(ctx);
   BIGNUM *a_reduced = BN_CTX_get(ctx);
   BIGNUM *b_reduced = BN_CTX_get(ctx);
-  if (a_reduced == NULL || b_reduced == NULL ||
-      !BN_nnmod(a_reduced, a, p, ctx) || !BN_nnmod(b_reduced, b, p, ctx)) {
-    goto err;
+  if (a_reduced == nullptr || b_reduced == nullptr ||
+      !BN_nnmod(a_reduced, a, p, ctx) ||  //
+      !BN_nnmod(b_reduced, b, p, ctx)) {
+    return nullptr;
   }
 
-  ret = reinterpret_cast<EC_GROUP *>(OPENSSL_zalloc(sizeof(EC_GROUP)));
-  if (ret == NULL) {
-    return NULL;
+  bssl::UniquePtr<EC_GROUP> ret(
+      reinterpret_cast<EC_GROUP *>(OPENSSL_zalloc(sizeof(EC_GROUP))));
+  if (ret == nullptr) {
+    return nullptr;
   }
   ret->references = 1;
   ret->meth = EC_GFp_mont_method();
   bn_mont_ctx_init(&ret->field);
   bn_mont_ctx_init(&ret->order);
-  ret->generator.group = ret;
-  if (!ec_GFp_simple_group_set_curve(ret, p, a_reduced, b_reduced, ctx)) {
-    EC_GROUP_free(ret);
-    ret = NULL;
-    goto err;
+  ret->generator.group = ret.get();
+  if (!ec_GFp_simple_group_set_curve(ret.get(), p, a_reduced, b_reduced, ctx)) {
+    return nullptr;
   }
 
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
+  return ret.release();
 }
 
 int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
@@ -298,20 +245,19 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
   // Note any curve which did not satisfy this must have been invalid or use a
   // tiny prime (less than 17). See the proof in |field_element_to_scalar| in
   // the ECDSA implementation.
-  int ret = 0;
-  BIGNUM *tmp = BN_new();
-  if (tmp == NULL || !BN_lshift1(tmp, order)) {
-    goto err;
+  bssl::UniquePtr<BIGNUM> tmp(BN_new());
+  if (tmp == nullptr || !BN_lshift1(tmp.get(), order)) {
+    return 0;
   }
-  if (BN_cmp(tmp, &group->field.N) <= 0) {
+  if (BN_cmp(tmp.get(), &group->field.N) <= 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_GROUP_ORDER);
-    goto err;
+    return 0;
   }
 
   EC_AFFINE affine;
   if (!ec_jacobian_to_affine(group, &affine, &generator->raw) ||
       !BN_MONT_CTX_set(&group->order, order, NULL)) {
-    goto err;
+    return 0;
   }
 
   group->field_greater_than_order = BN_cmp(&group->field.N, order) > 0;
@@ -319,11 +265,7 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
   group->generator.raw.Y = affine.Y;
   // |raw.Z| was set to 1 by |EC_GROUP_new_curve_GFp|.
   group->has_order = 1;
-  ret = 1;
-
-err:
-  BN_free(tmp);
-  return ret;
+  return 1;
 }
 
 EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
@@ -715,12 +657,10 @@ static int arbitrary_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
   ERR_clear_error();
 
   // This is an unusual input, so we do not guarantee constant-time processing.
-  BN_CTX_start(ctx);
+  bssl::BN_CTXScope scope(ctx);
   BIGNUM *tmp = BN_CTX_get(ctx);
-  int ok = tmp != NULL && BN_nnmod(tmp, in, EC_GROUP_get0_order(group), ctx) &&
-           ec_bignum_to_scalar(group, out, tmp);
-  BN_CTX_end(ctx);
-  return ok;
+  return tmp != nullptr && BN_nnmod(tmp, in, EC_GROUP_get0_order(group), ctx) &&
+         ec_bignum_to_scalar(group, out, tmp);
 }
 
 int ec_point_mul_no_self_test(const EC_GROUP *group, EC_POINT *r,
@@ -741,14 +681,13 @@ int ec_point_mul_no_self_test(const EC_GROUP *group, EC_POINT *r,
     return 0;
   }
 
-  int ret = 0;
-  BN_CTX *new_ctx = NULL;
+  bssl::UniquePtr<BN_CTX> new_ctx;
   if (ctx == NULL) {
-    new_ctx = BN_CTX_new();
+    new_ctx.reset(BN_CTX_new());
     if (new_ctx == NULL) {
-      goto err;
+      return 0;
     }
-    ctx = new_ctx;
+    ctx = new_ctx.get();
   }
 
   // If both |g_scalar| and |p_scalar| are non-NULL,
@@ -766,7 +705,7 @@ int ec_point_mul_no_self_test(const EC_GROUP *group, EC_POINT *r,
     EC_SCALAR scalar;
     if (!arbitrary_bignum_to_scalar(group, &scalar, g_scalar, ctx) ||
         !ec_point_mul_scalar_base(group, &r->raw, &scalar)) {
-      goto err;
+      return 0;
     }
   }
 
@@ -775,7 +714,7 @@ int ec_point_mul_no_self_test(const EC_GROUP *group, EC_POINT *r,
     EC_JACOBIAN tmp;
     if (!arbitrary_bignum_to_scalar(group, &scalar, p_scalar, ctx) ||
         !ec_point_mul_scalar(group, &tmp, &p->raw, &scalar)) {
-      goto err;
+      return 0;
     }
     if (g_scalar == NULL) {
       OPENSSL_memcpy(&r->raw, &tmp, sizeof(EC_JACOBIAN));
@@ -784,11 +723,7 @@ int ec_point_mul_no_self_test(const EC_GROUP *group, EC_POINT *r,
     }
   }
 
-  ret = 1;
-
-err:
-  BN_CTX_free(new_ctx);
-  return ret;
+  return 1;
 }
 
 int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
@@ -937,7 +872,7 @@ void ec_precomp_select(const EC_GROUP *group, EC_PRECOMP *out, BN_ULONG mask,
                        const EC_PRECOMP *a, const EC_PRECOMP *b) {
   static_assert(sizeof(out->comb) == sizeof(*out),
                 "out->comb does not span the entire structure");
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(out->comb); i++) {
+  for (size_t i = 0; i < std::size(out->comb); i++) {
     ec_affine_select(group, &out->comb[i], mask, &a->comb[i], &b->comb[i]);
   }
 }

@@ -16,6 +16,7 @@ import Foundation
     @_implementationOnly import libsecp256k1
 #endif
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.MuSig {
     /// The byte length of a serialized aggregated nonce.
     static let aggregatedNonceByteCount = 66
@@ -199,6 +200,7 @@ public extension P256K.MuSig {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Schnorr {
     /// The byte length of a serialized public nonce.
     static let publicNonceByteCount = 66

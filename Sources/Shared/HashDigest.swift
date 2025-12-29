@@ -34,9 +34,11 @@ import Foundation
 // MARK: - HashDigest + DigestPrivate
 
 /// A typealias for the `HashDigest` struct as `SHA256Digest`.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public typealias SHA256Digest = HashDigest
 
 /// A struct representing a hash digest.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public struct HashDigest: Digest {
     let bytes: (UInt64, UInt64, UInt64, UInt64)
 
@@ -97,6 +99,7 @@ public struct HashDigest: Digest {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension HashDigest: Comparable {
     public static func < (lhs: HashDigest, rhs: HashDigest) -> Bool {
         Data(lhs).lexicographicallyPrecedes(Data(rhs))

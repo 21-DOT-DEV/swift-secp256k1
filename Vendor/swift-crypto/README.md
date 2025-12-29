@@ -1,15 +1,15 @@
 # Swift Crypto
 
-Swift Crypto is an open-source implementation of a substantial portion of the API of [Apple CryptoKit](https://developer.apple.com/documentation/cryptokit) suitable for use on Linux platforms. It enables cross-platform or server applications with the advantages of CryptoKit.
+Swift Crypto is an open-source implementation of a substantial portion of the API of [Apple CryptoKit](https://developer.apple.com/documentation/cryptokit) suitable for use on Linux and ARM64 Windows platforms. It enables cross-platform or server applications with the advantages of CryptoKit.
 
 ## Using Swift Crypto
 
 Swift Crypto is available as a Swift Package Manager package. To use it, add the following dependency in your `Package.swift`:
 
 ```swift
-// swift-crypto 1.x, 2.x and 3.x are almost API compatible, so most clients
+// swift-crypto 1.x, 2.x, 3.x, and 4.x are almost API compatible, so most clients
 // should allow any of them
-.package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "4.0.0"),
+.package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "5.0.0"),
 ```
 
 and to your target, add `Crypto` to your dependencies. You can then `import Crypto` to get access to Swift Crypto's functionality.
@@ -28,13 +28,13 @@ Swift Crypto compiles in two distinct modes depending on the platform for which 
 
 When building Swift Crypto for use on an Apple platform where CryptoKit is already available, Swift Crypto compiles its entire API surface down to nothing and simply re-exports the API of CryptoKit. This means that when using Apple platforms Swift Crypto simply delegates all work to the core implementation of CryptoKit, as though Swift Crypto was not even there.
 
-When building Swift Crypto for use on Linux, Swift Crypto builds substantially more code. In particular, we build:
+When building Swift Crypto for use on Linux or Windows, Swift Crypto builds substantially more code. In particular, we build:
 
 1. A vendored copy of BoringSSL's libcrypto.
 2. The common API of Swift Crypto and CryptoKit.
 3. The backing implementation of this common API, which calls into BoringSSL.
 
-The API code, and some cryptographic primitives which are directly implemented in Swift, are exactly the same for both Apple CryptoKit and Swift Crypto. The backing BoringSSL-based implementation is unique to Swift Crypto.
+The API code, and some cryptographic primitives which are directly implemented in Swift, are exactly the same for both Apple CryptoKit and Swift Crypto. The backing BoringSSL-based implementation is unique to Swift Crypto. In addition, there is another product, `CryptoExtras`, which provides additional functionality that is not offered in CryptoKit, which contains cryptographic APIS predominantly useful in the server ecosystem. **Note**: if you depend on CryptoExtras you'll bundle the BoringSSL implementation of the library in your application, no matter the platform.
 
 ## Evolution
 
@@ -108,17 +108,19 @@ If you believe you have identified a vulnerability in Swift Crypto, please [repo
 
 ### Swift versions
 
-The most recent versions of Swift Crypto support Swift 5.7 and newer. The minimum Swift version supported by Swift Crypto releases are detailed below:
+The most recent versions of Swift Crypto support Swift 6 and newer. The minimum Swift version supported by Swift Crypto releases are detailed below:
 
-Swift Crypto      | Minimum Swift Version
-------------------|----------------------
-`2.0.0 ..< 2.1.0` | 5.2
-`2.1.0 ..< 2.2.0` | 5.4
-`2.2.0 ..< 2.4.2` | 5.5
-`2.4.2 ..< 3.1.0` | 5.6
-`3.1.0 ..< 3.3.0` | 5.7
-`3.3.0 ..< 3.8.0` | 5.8
-`3.8.0 ...`       | 5.9
+Swift Crypto        | Minimum Swift Version
+--------------------|----------------------
+`2.0.0  ..< 2.1.0`  | 5.2
+`2.1.0  ..< 2.2.0`  | 5.4
+`2.2.0  ..< 2.4.2`  | 5.5
+`2.4.2  ..< 3.1.0`  | 5.6
+`3.1.0  ..< 3.3.0`  | 5.7
+`3.3.0  ..< 3.8.0`  | 5.8
+`3.9.0  ..< 3.13.0` | 5.9
+`3.13.0 ..< 4.0.0`  | 5.10
+`4.0.0 ...`         | 6.0 
 
 ### Compatibility
 
@@ -128,12 +130,16 @@ What this means for you is that you should depend on Swift Crypto with a version
 In SwiftPM that can be easily done specifying for example `from: "1.0.0"` meaning that you support Swift Crypto in every version starting from 1.0.0 up to (excluding) 2.0.0.
 SemVer and Swift Crypto's Public API guarantees should result in a working program without having to worry about testing every single version for compatibility.
 
-Swift Crypto 2.0.0 was released in September 2021. The only breaking change between Swift Crypto 2.0.0 and 1.0.0 was the addition of new cases in the `CryptoKitError` enumeration. For most users, then, it's safe to depend on either the 1.0.0 _or_ 2.0.0 series of releases.
+Swift Crypto 2.0.0 was released in September 2021. The only breaking change between Swift Crypto 2.0.0 and 1.0.0 was the addition of new cases in the `CryptoError` enumeration. For most users, then, it's safe to depend on either the 1.0.0 _or_ 2.0.0 series of releases.
+
+Swift Crypto 3.0.0 was released in September 2023. Again the only breaking change was the addition of new cases in the `CryptoError` enumeration, so most users can safely depend on the 1.0.0, 2.0.0, or 3.0.0 series of releases.
+
+Swift Crypto 4.0.0 was released in September 2025. Again the only breaking change was the addition of new cases in the `CryptoError` enumeration, so most users can safely depend on the 1.0.0, 2.0.0, 3.0.0, or 4.0.0 series of releases. Note that in this release `_CryptoExtras` was renamed to `CryptoExtras`. The old products and targets have been kept around for compatibility reasons, but users depending only on new code should use `CryptoExtras` not `_CryptoExtras`.
 
 To do so, please use the following dependency in your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "3.0.0"),
+.package(url: "https://github.com/apple/swift-crypto.git", "1.0.0" ..< "5.0.0"),
 ```
 
 ### Developing Swift Crypto on macOS

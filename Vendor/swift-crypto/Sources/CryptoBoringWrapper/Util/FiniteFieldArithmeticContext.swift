@@ -15,7 +15,11 @@
 @_exported import CryptoKit
 #else
 @_implementationOnly import CCryptoBoringSSL
+#if canImport(FoundationEssentials)
+import FoundationEssentials
+#else
 import Foundation
+#endif
 
 /// A context for performing mathematical operations on ArbitraryPrecisionIntegers over a finite field.
 ///
@@ -29,9 +33,10 @@ import Foundation
 /// Annoyingly, because of the way we have implemented ArbitraryPrecisionInteger, we can't actually use these temporary bignums
 /// ourselves.
 @usableFromInline
-package class FiniteFieldArithmeticContext {
-    private var fieldSize: ArbitraryPrecisionInteger
-    private var bnCtx: OpaquePointer
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+package class FiniteFieldArithmeticContext: @unchecked Sendable {
+    private let fieldSize: ArbitraryPrecisionInteger
+    package let bnCtx: OpaquePointer
 
     @usableFromInline
     package init(fieldSize: ArbitraryPrecisionInteger) throws {
@@ -51,6 +56,7 @@ package class FiniteFieldArithmeticContext {
 
 // MARK: - Arithmetic operations
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension FiniteFieldArithmeticContext {
     @usableFromInline
     package func residue(_ x: ArbitraryPrecisionInteger) throws -> ArbitraryPrecisionInteger {
@@ -270,7 +276,7 @@ extension FiniteFieldArithmeticContext {
             _ p: UnsafePointer<BIGNUM>?,
             _ m: UnsafePointer<BIGNUM>?,
             _ ctx: OpaquePointer?,
-            _ mont: UnsafePointer<BN_MONT_CTX>?
+            _ mont: OpaquePointer?
         ) -> Int32
     ) throws -> ArbitraryPrecisionInteger {
         var result = ArbitraryPrecisionInteger()
@@ -296,7 +302,7 @@ extension FiniteFieldArithmeticContext {
 
     /// Some functions require a `BN_MONT_CTX` parameter: this obtains one for the field modulus with a scoped lifetime.
     fileprivate func withUnsafeBN_MONT_CTX<T>(
-        _ body: (UnsafePointer<BN_MONT_CTX>) throws -> T
+        _ body: (OpaquePointer) throws -> T
     )
         rethrows -> T
     {

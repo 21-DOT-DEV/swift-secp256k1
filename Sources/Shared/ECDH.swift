@@ -19,11 +19,12 @@ import Foundation
 // MARK: - secp256k1 + KeyAgreement
 
 /// An elliptic curve that enables secp256k1 signatures and key agreement.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K {
     /// A namespace for key agreement functionality using the secp256k1 elliptic curve.
-    enum KeyAgreement {
+    enum KeyAgreement: Sendable {
         /// A public key for performing key agreement using the secp256k1 elliptic curve.
-        public struct PublicKey /*: NISTECPublicKey */ {
+        public struct PublicKey: Sendable {
             /// The underlying implementation of the secp256k1 public key.
             let baseKey: PublicKeyImplementation
 
@@ -94,7 +95,7 @@ public extension P256K {
         }
 
         /// A secp256k1 x-only public key for key agreement.
-        public struct XonlyKey {
+        public struct XonlyKey: Sendable {
             /// The underlying implementation of the secp256k1 x-only public key.
             private let baseKey: XonlyKeyImplementation
 
@@ -114,7 +115,7 @@ public extension P256K {
         }
 
         /// A secp256k1 private key for key agreement.
-        public struct PrivateKey {
+        public struct PrivateKey: Sendable {
             /// The underlying implementation of the secp256k1 private key.
             let baseKey: PrivateKeyImplementation
 
@@ -160,6 +161,7 @@ public extension P256K {
 // MARK: - secp256k1 + DH
 
 /// An extension to the `secp256k1.KeyAgreement.PrivateKey` conforming to the `DiffieHellmanKeyAgreement` protocol.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
     /// A pointer to a function that hashes an EC point to obtain an ECDH secret.
     public typealias HashFunctionType = @convention(c) (
