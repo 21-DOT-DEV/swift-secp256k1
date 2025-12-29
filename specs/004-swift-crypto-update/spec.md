@@ -2,7 +2,7 @@
 
 **Feature Branch**: `004-swift-crypto-update`  
 **Created**: 2025-12-26  
-**Status**: Clarified  
+**Status**: Implemented  
 **Input**: Update vendored swift-crypto via subtree plugin from 3.11.1 to 4.2.0. Resolve breaking availability attribute changes in `Sources/Shared/` on case-by-case basis.
 
 ## User Scenarios & Testing *(mandatory)*
