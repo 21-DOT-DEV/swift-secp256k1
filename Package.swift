@@ -59,7 +59,7 @@ let package = Package(
         .testTarget(name: "libsecp256k1zkpTests", dependencies: ["ZKP", "libsecp256k1_zkp"]),
         .testTarget(name: "ZKPTests", dependencies: ["ZKP"])
     ],
-    swiftLanguageModes: [.v5],
+    swiftLanguageModes: [.v6],
     cLanguageStandard: .c89
 )
 

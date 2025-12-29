@@ -35,7 +35,7 @@
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K {
         /// Enum representing public key formats to be passed to `secp256k1_ec_pubkey_serialize`.
-        enum Format: UInt32 {
+        enum Format: UInt32, Sendable {
             /// Compressed public key format.
             case compressed
             /// Uncompressed public key format.
@@ -94,7 +94,7 @@
 
     /// Private key for signing implementation
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
-    @usableFromInline struct PrivateKeyImplementation {
+    @usableFromInline struct PrivateKeyImplementation: Sendable {
         /// Backing private key object
         private var privateBytes: SecureBytes
 
@@ -174,7 +174,7 @@
 
     /// Public key for signing implementation
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
-    @usableFromInline struct PublicKeyImplementation {
+    @usableFromInline struct PublicKeyImplementation: Sendable {
         /// Implementation public key object
         @usableFromInline let bytes: [UInt8]
 
@@ -360,7 +360,7 @@
 
     /// Public X-only public key for Schnorr implementation
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
-    @usableFromInline struct XonlyKeyImplementation {
+    @usableFromInline struct XonlyKeyImplementation: Sendable {
         /// Implementation x-only public key object
         @usableFromInline let bytes: [UInt8]
 
