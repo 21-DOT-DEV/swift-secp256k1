@@ -18,9 +18,9 @@
 #endif
 
 #if canImport(libsecp256k1_zkp)
-    @_implementationOnly import libsecp256k1_zkp
+    import libsecp256k1_zkp
 #elseif canImport(libsecp256k1)
-    @_implementationOnly import libsecp256k1
+    import libsecp256k1
 #endif
 
 /// The secp256k1 Elliptic Curve.
