@@ -41,5 +41,5 @@ jobs:
       - name: Build for Android
         run: |
           docker run --pull=always --rm -v "$PWD:/workspace" -w /workspace \
-            registry.gitlab.com/finestructure/spi-images:android-6.2-latest \
+            registry.gitlab.com/finestructure/spi-images:android-6.2-1.30.0 \
             swift build --swift-sdk aarch64-unknown-linux-android28
