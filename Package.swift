@@ -16,7 +16,7 @@ let package = Package(
         .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "2.0.16"),
         .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.131.1"),
         .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.59.0"),
-        .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.63.1"),
+        .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.63.2"),
         .package(url: "https://github.com/21-DOT-DEV/swift-plugin-subtree.git", exact: "0.0.7")
     ],
     targets: [
