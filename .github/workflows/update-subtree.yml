@@ -1,0 +1,143 @@
+name: Update Subtree
+
+on:
+  workflow_dispatch:
+    inputs:
+      subtree_name:
+        description: 'Name of subtree to update (e.g., secp256k1)'
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  update:
+    name: Update ${{ inputs.subtree_name }}
+    runs-on: macos-26
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Query CLI for pre-computed fields
+        id: report
+        env:
+          SUBTREE_NAME: ${{ inputs.subtree_name }}
+        run: |
+          REPORT=$(swift package --allow-network-connections all \
+            subtree update --report --json --name "$SUBTREE_NAME" 2>/dev/null) || true
+
+          BRANCH_NAME=$(echo "$REPORT" | jq -r '.[0].branch_name')
+          PR_TITLE=$(echo "$REPORT" | jq -r '.[0].pr_title')
+          PR_BODY=$(echo "$REPORT" | jq -r '.[0].pr_body')
+          LATEST_TAG=$(echo "$REPORT" | jq -r '.[0].latest_tag // empty')
+          REMOTE=$(echo "$REPORT" | jq -r '.[0].remote')
+
+          if [ "$BRANCH_NAME" = "null" ] || [ -z "$BRANCH_NAME" ]; then
+            echo "No update available for $SUBTREE_NAME"
+            exit 0
+          fi
+
+          {
+            echo "branch_name=$BRANCH_NAME"
+            echo "pr_title=$PR_TITLE"
+            echo "latest_tag=$LATEST_TAG"
+            echo "remote=$REMOTE"
+          } >> "$GITHUB_OUTPUT"
+
+          # PR body may be multiline — use delimiter
+          {
+            echo "pr_body<<EOF"
+            echo "$PR_BODY"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check for existing PR
+        if: steps.report.outputs.branch_name
+        id: existing
+        env:
+          BRANCH_NAME: ${{ steps.report.outputs.branch_name }}
+        run: |
+          COUNT=$(gh pr list --head "$BRANCH_NAME" --state open --json number --jq 'length')
+          if [ "$COUNT" -gt 0 ]; then
+            echo "PR already exists for $BRANCH_NAME, skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create branch
+        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        env:
+          BRANCH_NAME: ${{ steps.report.outputs.branch_name }}
+        run: git checkout -b "$BRANCH_NAME"
+
+      - name: Run subtree update
+        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        env:
+          SUBTREE_NAME: ${{ inputs.subtree_name }}
+        run: |
+          swift package --allow-network-connections all \
+            --allow-writing-to-package-directory \
+            subtree update "$SUBTREE_NAME"
+
+      - name: Run subtree extract
+        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        env:
+          SUBTREE_NAME: ${{ inputs.subtree_name }}
+        run: |
+          swift package --allow-writing-to-package-directory \
+            subtree extract --name "$SUBTREE_NAME"
+
+      - name: Stage and commit
+        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        id: commit
+        env:
+          PR_TITLE: ${{ steps.report.outputs.pr_title }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes after update + extract, skipping PR"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "$PR_TITLE"
+
+      - name: Push branch
+        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true' && steps.commit.outputs.skip != 'true'
+        env:
+          BRANCH_NAME: ${{ steps.report.outputs.branch_name }}
+        run: git push origin "$BRANCH_NAME"
+
+      - name: Create PR
+        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true' && steps.commit.outputs.skip != 'true'
+        env:
+          LATEST_TAG: ${{ steps.report.outputs.latest_tag }}
+          REMOTE: ${{ steps.report.outputs.remote }}
+          PR_BODY: ${{ steps.report.outputs.pr_body }}
+          PR_TITLE: ${{ steps.report.outputs.pr_title }}
+          BRANCH_NAME: ${{ steps.report.outputs.branch_name }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          # Append upstream release notes if tag-based
+          if [ -n "$LATEST_TAG" ]; then
+            OWNER_REPO=$(echo "$REMOTE" | sed 's|https://github.com/||;s|\.git$||')
+            RELEASE_NOTES=$(gh release view "$LATEST_TAG" -R "$OWNER_REPO" \
+              --json body --jq '.body' 2>/dev/null || echo "")
+            if [ -n "$RELEASE_NOTES" ]; then
+              PR_BODY=$(printf '%s\n\n### Upstream Release Notes\n%s' "$PR_BODY" "$RELEASE_NOTES")
+            fi
+          fi
+
+          gh pr create \
+            --title "$PR_TITLE" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --label "dependencies" \
+            --reviewer "$REPO_OWNER"
