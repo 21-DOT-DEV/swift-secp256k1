@@ -129,7 +129,6 @@ jobs:
           PR_BODY: ${{ steps.report.outputs.pr_body }}
           PR_TITLE: ${{ steps.report.outputs.pr_title }}
           BRANCH_NAME: ${{ steps.report.outputs.branch_name }}
-          REPO_OWNER: ${{ github.repository_owner }}
         run: |
           # Append upstream release notes if tag-based
           if [ -n "$LATEST_TAG" ]; then
@@ -146,5 +145,4 @@ jobs:
             --body "$PR_BODY" \
             --base main \
             --head "$BRANCH_NAME" \
-            --label "dependencies" \
-            --reviewer "$REPO_OWNER"
+            --label "dependencies"
