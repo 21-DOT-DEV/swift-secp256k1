@@ -22,7 +22,7 @@ jobs:
 
       - name: Download subtree binary
         run: |
-          SUBTREE_VERSION="0.0.8"
+          SUBTREE_VERSION="0.0.9"
           gh release download "${SUBTREE_VERSION}" \
             -R 21-DOT-DEV/subtree \
             -p "subtree_linux_x86_64" \
