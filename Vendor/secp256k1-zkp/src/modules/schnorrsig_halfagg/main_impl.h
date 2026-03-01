@@ -8,7 +8,7 @@
 
 /* Initializes SHA256 with fixed midstate. This midstate was computed by applying
  * SHA256 to SHA256("HalfAgg/randomizer")||SHA256("HalfAgg/randomizer"). */
-void secp256k1_schnorrsig_sha256_tagged_aggregation(secp256k1_sha256 *sha) {
+static void secp256k1_schnorrsig_sha256_tagged_aggregation(secp256k1_sha256 *sha) {
    secp256k1_sha256_initialize(sha);
     sha->s[0] = 0xd11f5532ul;
     sha->s[1] = 0xfa57f70ful;
@@ -85,6 +85,7 @@ int secp256k1_schnorrsig_inc_aggregate(const secp256k1_context *ctx, unsigned ch
         hashcopy = hash;
         /* 1.c) Finalize the copy to get zi*/
         secp256k1_sha256_finalize(&hashcopy, hashoutput);
+        secp256k1_sha256_clear(&hashcopy);
         /* Note: No need to check overflow, comes from hash */
         secp256k1_scalar_set_b32(&zi, hashoutput, NULL);
 
@@ -162,6 +163,7 @@ int secp256k1_schnorrsig_aggverify(const secp256k1_context *ctx, const secp256k1
         hashcopy = hash;
         /* 1.c) Finalize the copy to get zi*/
         secp256k1_sha256_finalize(&hashcopy, hashoutput);
+        secp256k1_sha256_clear(&hashcopy);
         secp256k1_scalar_set_b32(&zi, hashoutput, NULL);
 
         /* Step 2: T_i = R_i+e_i*P_i */

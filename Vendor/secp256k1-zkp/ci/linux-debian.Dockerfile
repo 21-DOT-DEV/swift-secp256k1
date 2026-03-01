@@ -19,7 +19,7 @@ RUN dpkg --add-architecture i386 && \
     dpkg --add-architecture arm64 && \
     dpkg --add-architecture ppc64el
 
-# dkpg-dev: to make pkg-config work in cross-builds
+# dpkg-dev: to make pkg-config work in cross-builds
 # llvm: for llvm-symbolizer, which is used by clang's UBSan for symbolized stack traces
 RUN apt-get update && apt-get install --no-install-recommends -y \
         git ca-certificates \
@@ -32,7 +32,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         gcc-powerpc64le-linux-gnu libc6-dev-ppc64el-cross libc6-dbg:ppc64el \
         gcc-mingw-w64-x86-64-win32 wine64 wine \
         gcc-mingw-w64-i686-win32 wine32 \
-        python3 && \
+        python3-full && \
         if ! ( dpkg --print-architecture | grep --quiet "arm64" ) ; then \
          apt-get install --no-install-recommends -y \
          gcc-aarch64-linux-gnu libc6-dev-arm64-cross libc6-dbg:arm64 ;\
@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
         apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Build and install gcc snapshot
-ARG GCC_SNAPSHOT_MAJOR=14
+ARG GCC_SNAPSHOT_MAJOR=16
 RUN apt-get update && apt-get install --no-install-recommends -y wget libgmp-dev libmpfr-dev libmpc-dev flex && \
     mkdir gcc && cd gcc && \
     wget --progress=dot:giga --https-only --recursive --accept '*.tar.xz' --level 1 --no-directories "https://gcc.gnu.org/pub/gcc/snapshots/LATEST-${GCC_SNAPSHOT_MAJOR}" && \
@@ -66,6 +66,9 @@ RUN \
     wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
     # Add repository for this Debian release
     . /etc/os-release && echo "deb http://apt.llvm.org/${VERSION_CODENAME} llvm-toolchain-${VERSION_CODENAME} main" >> /etc/apt/sources.list && \
+    # Temporarily work around Sequoia PGP policy deadline for legacy repositories.
+    # See https://github.com/llvm/llvm-project/issues/153385.
+    sed -i 's/\(sha1\.second_preimage_resistance =\).*/\1 9999-01-01/' /usr/share/apt/default-sequoia.config && \
     apt-get update && \
     # Determine the version number of the LLVM development branch
     LLVM_VERSION=$(apt-cache search --names-only '^clang-[0-9]+$' | sort -V | tail -1 | cut -f1 -d" " | cut -f2 -d"-" ) && \
@@ -77,3 +80,7 @@ RUN \
     apt-get autoremove -y wget && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
+ENV VIRTUAL_ENV=/root/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN pip install lief

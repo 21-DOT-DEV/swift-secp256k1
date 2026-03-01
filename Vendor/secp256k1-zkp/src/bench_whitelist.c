@@ -4,6 +4,7 @@
  * file COPYING or http://www.opensource.org/licenses/mit-license.php.*
  **********************************************************************/
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "../include/secp256k1.h"
 
@@ -53,7 +54,7 @@ static void random_scalar_order(secp256k1_scalar *num) {
     do {
         unsigned char b32[32];
         int overflow = 0;
-        secp256k1_testrand256(b32);
+        testrand256(b32);
         secp256k1_scalar_set_b32(num, b32, &overflow);
         if (overflow || secp256k1_scalar_is_zero(num)) {
             continue;
@@ -104,5 +105,5 @@ int main(void) {
     }
 
     secp256k1_context_destroy(data.ctx);
-    return(0);
+    return EXIT_SUCCESS;
 }

@@ -5,7 +5,7 @@
 
 static void rand_scalar(secp256k1_scalar *scalar) {
     unsigned char buf32[32];
-    secp256k1_testrand256(buf32);
+    testrand256(buf32);
     secp256k1_scalar_set_b32(scalar, buf32, NULL);
 }
 
@@ -22,7 +22,7 @@ static void dleq_nonce_bitflip(unsigned char **args, size_t n_flip, size_t n_byt
     secp256k1_scalar k1, k2;
 
     CHECK(secp256k1_dleq_nonce(&k1, args[0], args[1], args[2], args[3], NULL, args[4]) == 1);
-    secp256k1_testrand_flip(args[n_flip], n_bytes);
+    testrand_flip(args[n_flip], n_bytes);
     CHECK(secp256k1_dleq_nonce(&k2, args[0], args[1], args[2], args[3], NULL, args[4]) == 1);
     CHECK(secp256k1_scalar_eq(&k1, &k2) == 0);
 }
@@ -73,11 +73,11 @@ static void dleq_tests(void) {
     CHECK(secp256k1_eckey_pubkey_serialize(&p2, p2_33, &pubkey_size, 1));
     CHECK(secp256k1_dleq_nonce(&k, sk32, gen2_33, p1_33, p2_33, NULL, NULL) == 1);
 
-    secp256k1_testrand_bytes_test(sk32, sizeof(sk32));
-    secp256k1_testrand_bytes_test(gen2_33, sizeof(gen2_33));
-    secp256k1_testrand_bytes_test(p1_33, sizeof(p1_33));
-    secp256k1_testrand_bytes_test(p2_33, sizeof(p2_33));
-    secp256k1_testrand_bytes_test(aux_rand, sizeof(aux_rand));
+    testrand_bytes_test(sk32, sizeof(sk32));
+    testrand_bytes_test(gen2_33, sizeof(gen2_33));
+    testrand_bytes_test(p1_33, sizeof(p1_33));
+    testrand_bytes_test(p2_33, sizeof(p2_33));
+    testrand_bytes_test(aux_rand, sizeof(aux_rand));
 
     /* Check that a bitflip in an argument results in different nonces. */
     args[0] = sk32;
@@ -101,7 +101,7 @@ static void dleq_tests(void) {
 }
 
 static void rand_flip_bit(unsigned char *array, size_t n) {
-    array[secp256k1_testrand_int(n)] ^= 1 << secp256k1_testrand_int(8);
+    array[testrand_int(n)] ^= 1 << testrand_int(8);
 }
 
 /* Helper function for test_ecdsa_adaptor_spec_vectors
@@ -713,29 +713,17 @@ static int ecdsa_adaptor_nonce_function_overflowing(unsigned char *nonce32, cons
 static void nonce_function_ecdsa_adaptor_bitflip(unsigned char **args, size_t n_flip, size_t n_bytes, size_t algolen) {
     unsigned char nonces[2][32];
     CHECK(nonce_function_ecdsa_adaptor(nonces[0], args[0], args[1], args[2], args[3], algolen, args[4]) == 1);
-    secp256k1_testrand_flip(args[n_flip], n_bytes);
+    testrand_flip(args[n_flip], n_bytes);
     CHECK(nonce_function_ecdsa_adaptor(nonces[1], args[0], args[1], args[2], args[3], algolen, args[4]) == 1);
     CHECK(secp256k1_memcmp_var(nonces[0], nonces[1], 32) != 0);
 }
 
-/* Tests for the equality of two sha256 structs. This function only produces a
- * correct result if an integer multiple of 64 many bytes have been written
- * into the hash functions. */
-static void ecdsa_adaptor_test_sha256_eq(const secp256k1_sha256 *sha1, const secp256k1_sha256 *sha2) {
-    /* Is buffer fully consumed? */
-    CHECK((sha1->bytes & 0x3F) == 0);
-
-    CHECK(sha1->bytes == sha2->bytes);
-    CHECK(secp256k1_memcmp_var(sha1->s, sha2->s, sizeof(sha1->s)) == 0);
-}
-
 static void run_nonce_function_ecdsa_adaptor_tests(void) {
-    unsigned char tag[] = {'E', 'C', 'D', 'S', 'A', 'a', 'd', 'a', 'p', 't', 'o', 'r', '/', 'n', 'o', 'n'};
-    unsigned char aux_tag[] = {'E', 'C', 'D', 'S', 'A', 'a', 'd', 'a', 'p', 't', 'o', 'r', '/', 'a', 'u', 'x'};
+    static const unsigned char tag[] = {'E', 'C', 'D', 'S', 'A', 'a', 'd', 'a', 'p', 't', 'o', 'r', '/', 'n', 'o', 'n'};
+    static const unsigned char aux_tag[] = {'E', 'C', 'D', 'S', 'A', 'a', 'd', 'a', 'p', 't', 'o', 'r', '/', 'a', 'u', 'x'};
     unsigned char algo[] = {'E', 'C', 'D', 'S', 'A', 'a', 'd', 'a', 'p', 't', 'o', 'r', '/', 'n', 'o', 'n'};
     size_t algolen = sizeof(algo);
-    unsigned char dleq_tag[] = {'D', 'L', 'E', 'Q'};
-    secp256k1_sha256 sha;
+    static const unsigned char dleq_tag[] = {'D', 'L', 'E', 'Q'};
     secp256k1_sha256 sha_optimized;
     unsigned char nonce[32];
     unsigned char msg[32];
@@ -748,28 +736,25 @@ static void run_nonce_function_ecdsa_adaptor_tests(void) {
     /* Check that hash initialized by
      * secp256k1_nonce_function_ecdsa_adaptor_sha256_tagged has the expected
      * state. */
-    secp256k1_sha256_initialize_tagged(&sha, tag, sizeof(tag));
     secp256k1_nonce_function_ecdsa_adaptor_sha256_tagged(&sha_optimized);
-    ecdsa_adaptor_test_sha256_eq(&sha, &sha_optimized);
+    test_sha256_tag_midstate(&sha_optimized, tag, sizeof(tag));
 
    /* Check that hash initialized by
     * secp256k1_nonce_function_ecdsa_adaptor_sha256_tagged_aux has the expected
     * state. */
-    secp256k1_sha256_initialize_tagged(&sha, aux_tag, sizeof(aux_tag));
     secp256k1_nonce_function_ecdsa_adaptor_sha256_tagged_aux(&sha_optimized);
-    ecdsa_adaptor_test_sha256_eq(&sha, &sha_optimized);
+    test_sha256_tag_midstate(&sha_optimized, aux_tag, sizeof(aux_tag));
 
    /* Check that hash initialized by
     * secp256k1_nonce_function_dleq_sha256_tagged_aux has the expected
     * state. */
-    secp256k1_sha256_initialize_tagged(&sha, dleq_tag, sizeof(dleq_tag));
     secp256k1_nonce_function_dleq_sha256_tagged(&sha_optimized);
-    ecdsa_adaptor_test_sha256_eq(&sha, &sha_optimized);
+    test_sha256_tag_midstate(&sha_optimized, dleq_tag, sizeof(dleq_tag));
 
-    secp256k1_testrand_bytes_test(msg, sizeof(msg));
-    secp256k1_testrand_bytes_test(key, sizeof(key));
-    secp256k1_testrand_bytes_test(pk, sizeof(pk));
-    secp256k1_testrand_bytes_test(aux_rand, sizeof(aux_rand));
+    testrand_bytes_test(msg, sizeof(msg));
+    testrand_bytes_test(key, sizeof(key));
+    testrand_bytes_test(pk, sizeof(pk));
+    testrand_bytes_test(aux_rand, sizeof(aux_rand));
 
     /* Check that a bitflip in an argument results in different nonces. */
     args[0] = msg;
@@ -802,7 +787,7 @@ static void run_nonce_function_ecdsa_adaptor_tests(void) {
     /* Different algolen gives different nonce */
     for (i = 0; i < COUNT; i++) {
         unsigned char nonce2[32];
-        uint32_t offset = secp256k1_testrand_int(algolen - 1);
+        uint32_t offset = testrand_int(algolen - 1);
         size_t algolen_tmp = (algolen + offset) % algolen;
 
         CHECK(nonce_function_ecdsa_adaptor(nonce2, msg, key, pk, algo, algolen_tmp, NULL) == 1);
@@ -824,9 +809,9 @@ static void test_ecdsa_adaptor_api(void) {
     unsigned char deckey[32];
 
     /** setup **/
-    secp256k1_testrand256(sk);
-    secp256k1_testrand256(msg);
-    secp256k1_testrand256(deckey);
+    testrand256(sk);
+    testrand256(msg);
+    testrand256(deckey);
     CHECK(secp256k1_ec_pubkey_create(CTX, &pubkey, sk) == 1);
     CHECK(secp256k1_ec_pubkey_create(CTX, &enckey, deckey) == 1);
     memset(&zero_pk, 0, sizeof(zero_pk));
@@ -877,9 +862,9 @@ static void adaptor_tests(void) {
     unsigned char zeros64[64] = { 0 };
     unsigned char big[32];
 
-    secp256k1_testrand256(seckey);
-    secp256k1_testrand256(msg);
-    secp256k1_testrand256(deckey);
+    testrand256(seckey);
+    testrand256(msg);
+    testrand256(deckey);
 
     CHECK(secp256k1_ec_pubkey_create(CTX, &pubkey, seckey) == 1);
     CHECK(secp256k1_ec_pubkey_create(CTX, &enckey, deckey) == 1);
@@ -1082,19 +1067,19 @@ static void multi_hop_lock_tests(void) {
     secp256k1_scalar deckey;
     secp256k1_ecdsa_signature sig_ab, sig_bc;
 
-    secp256k1_testrand256(seckey_a);
-    secp256k1_testrand256(seckey_b);
+    testrand256(seckey_a);
+    testrand256(seckey_b);
 
     CHECK(secp256k1_ec_pubkey_create(CTX, &pubkey_a, seckey_a));
     CHECK(secp256k1_ec_pubkey_create(CTX, &pubkey_b, seckey_b));
 
     /* Carol setup */
     /* Proof of payment */
-    secp256k1_testrand256(pop);
+    testrand256(pop);
     CHECK(secp256k1_ec_pubkey_create(CTX, &pubkey_pop, pop));
 
     /* Alice setup */
-    secp256k1_testrand256(tx_ab);
+    testrand256(tx_ab);
     rand_scalar(&t1);
     rand_scalar(&t2);
     secp256k1_scalar_add(&tp, &t1, &t2);
@@ -1110,7 +1095,7 @@ static void multi_hop_lock_tests(void) {
 
     /* Bob setup */
     CHECK(secp256k1_ecdsa_adaptor_verify(CTX, asig_ab, &pubkey_a, tx_ab, &l));
-    secp256k1_testrand256(tx_bc);
+    testrand256(tx_bc);
     CHECK(secp256k1_ecdsa_adaptor_encrypt(CTX, asig_bc, seckey_b, &r, tx_bc, NULL, NULL));
 
     /* Carol decrypt */

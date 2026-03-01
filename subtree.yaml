@@ -17,17 +17,9 @@ subtrees:
 - name: secp256k1-zkp
   remote: https://github.com/BlockstreamResearch/secp256k1-zkp
   prefix: Vendor/secp256k1-zkp
-  commit: a703924661377254492a639bbec02001b7d8c719
+  commit: 42ae776d3b49f27f2a1edd5ec62c023e05b93607
   branch: master
   squash: true
-  extractions:
-  - from: '{include,src}/**/*.{c,h}'
-    to: Sources/libsecp256k1_zkp/
-    exclude:
-    - '**/{bench,test,precompute_ecmult}*'
-    - '**/{wycheproof,test_vectors}/**'
-    - '**/*tests*'
-    - '**/musig/vectors.h'
 - name: swift-crypto
   remote: https://github.com/apple/swift-crypto.git
   prefix: Vendor/swift-crypto
@@ -36,11 +28,9 @@ subtrees:
   squash: true
   extractions:
   - from:
-    - 'Sources/Crypto/{CryptoKitErrors,Digests/Digest,Signatures/Signature}.swift'
-    - 'Sources/Crypto/Util/{PrettyBytes,SecureBytes,BoringSSL/RNG_boring}.swift'
-    - 'Sources/Crypto/ASN1/**/*.swift'
-    to:
-    - 'Sources/Shared/swift-crypto/'
+    - Sources/Crypto/{CryptoKitErrors,Digests/Digest,Signatures/Signature}.swift
+    - Sources/Crypto/Util/{PrettyBytes,SecureBytes,BoringSSL/RNG_boring}.swift
+    - Sources/Crypto/ASN1/**/*.swift
+    to: Sources/Shared/swift-crypto/
     exclude:
     - '**/{ObjectIdentifier,SEC1PrivateKey,SubjectPublicKeyInfo}*'
-
