@@ -3,8 +3,8 @@ subtrees:
 - name: secp256k1
   remote: https://github.com/bitcoin-core/secp256k1
   prefix: Vendor/secp256k1
-  commit: fb04f3327a266913b12e81b80fdabb5f251a7f0f
-  tag: v0.7.0
+  commit: 833ca65c66b6e97b86489807103ca6e187ab25aa
+  tag: v0.7.1
   squash: true
   extractions:
   - from: '{include,src}/**/*.{c,h}'
@@ -36,11 +36,9 @@ subtrees:
   squash: true
   extractions:
   - from:
-    - 'Sources/Crypto/{CryptoKitErrors,Digests/Digest,Signatures/Signature}.swift'
-    - 'Sources/Crypto/Util/{PrettyBytes,SecureBytes,BoringSSL/RNG_boring}.swift'
-    - 'Sources/Crypto/ASN1/**/*.swift'
-    to:
-    - 'Sources/Shared/swift-crypto/'
+    - Sources/Crypto/{CryptoKitErrors,Digests/Digest,Signatures/Signature}.swift
+    - Sources/Crypto/Util/{PrettyBytes,SecureBytes,BoringSSL/RNG_boring}.swift
+    - Sources/Crypto/ASN1/**/*.swift
+    to: Sources/Shared/swift-crypto/
     exclude:
     - '**/{ObjectIdentifier,SEC1PrivateKey,SubjectPublicKeyInfo}*'
-
