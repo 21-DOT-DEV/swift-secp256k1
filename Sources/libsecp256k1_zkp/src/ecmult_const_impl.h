@@ -214,8 +214,8 @@ static void secp256k1_ecmult_const(secp256k1_gej *r, const secp256k1_ge *a, cons
 #ifdef VERIFY
     /* Verify that v1 and v2 are in range [0, 2^129-1]. */
     for (i = 129; i < 256; ++i) {
-        VERIFY_CHECK(secp256k1_scalar_get_bits(&v1, i, 1) == 0);
-        VERIFY_CHECK(secp256k1_scalar_get_bits(&v2, i, 1) == 0);
+        VERIFY_CHECK(secp256k1_scalar_get_bits_limb32(&v1, i, 1) == 0);
+        VERIFY_CHECK(secp256k1_scalar_get_bits_limb32(&v2, i, 1) == 0);
     }
 #endif
 
@@ -372,6 +372,8 @@ static int secp256k1_ecmult_const_xonly(secp256k1_fe* r, const secp256k1_fe *n, 
             if (!secp256k1_fe_is_square_var(&g)) return 0;
         }
     }
+
+    SECP256K1_FE_VERIFY_MAGNITUDE(&g, 2);
 
     /* Compute base point P = (n*g, g^2), the effective affine version of (n*g, g^2, v), which has
      * corresponding affine X coordinate n/d. */
