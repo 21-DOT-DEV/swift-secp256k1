@@ -19,27 +19,27 @@ import Testing
 
 struct TaprootTestSuite {
     @Test("Test Taproot Derivation")
-    func taprootDerivation() {
-        let privateKeyBytes = try! "41F41D69260DF4CF277826A9B65A3717E4EEDDBEEDF637F212CA096576479361".bytes
-        let privateKey = try! P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
-        let internalKeyBytes = try! "cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115".bytes
+    func taprootDerivation() throws {
+        let privateKeyBytes = try "41F41D69260DF4CF277826A9B65A3717E4EEDDBEEDF637F212CA096576479361".bytes
+        let privateKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
+        let internalKeyBytes = try "cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115".bytes
         let internalKey = privateKey.xonly
 
         #expect(internalKey.bytes == internalKeyBytes, "Internal key bytes should match expected")
 
-        let tweakHash = try! SHA256.taggedHash(
-            tag: "TapTweak".data(using: .utf8)!,
+        let tweakHash = try SHA256.taggedHash(
+            tag: #require("TapTweak".data(using: .utf8)),
             data: Data(internalKey.bytes)
         )
 
-        let outputKeyBytes = try! "a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c".bytes
-        let outputKey = try! internalKey.add(tweakHash.bytes)
+        let outputKeyBytes = try "a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c".bytes
+        let outputKey = try internalKey.add(tweakHash.bytes)
 
         #expect(outputKey.bytes == outputKeyBytes, "Output key bytes should match expected")
     }
 
     @Test("Test Tapscript execution and hash verification")
-    func tapscript() {
+    func tapscript() throws {
         let OP_CHECKSEQUENCEVERIFY = Data([0xB2])
         let OP_DROP = Data([0x75])
         let OP_CHECKSIG = Data([0xAC])
@@ -50,15 +50,15 @@ struct TaprootTestSuite {
         let numberOfBytes = ((64 - value.leadingZeroBitCount) / 8) + 1
         let array = withUnsafeBytes(of: &value) { Array($0).prefix(numberOfBytes) }
 
-        let aliceBytes = try! "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90".bytes
-        let alice = try! P256K.Signing.PrivateKey(dataRepresentation: aliceBytes)
+        let aliceBytes = try "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90".bytes
+        let alice = try P256K.Signing.PrivateKey(dataRepresentation: aliceBytes)
         let aliceScript = Data([UInt8(array.count)] + array) +
             OP_CHECKSEQUENCEVERIFY +
             OP_DROP +
             Data([UInt8(alice.publicKey.xonly.bytes.count)] + alice.publicKey.xonly.bytes) +
             OP_CHECKSIG
-        let aliceLeafHash = try! SHA256.taggedHash(
-            tag: "TapLeaf".data(using: .utf8)!,
+        let aliceLeafHash = try SHA256.taggedHash(
+            tag: #require("TapLeaf".data(using: .utf8)),
             data: Data([0xC0]) + aliceScript.compactSizePrefix
         )
 
@@ -66,16 +66,16 @@ struct TaprootTestSuite {
 
         #expect(String(bytes: Array(aliceLeafHash).bytes) == aliceExpectedLeafHash, "Alice's leaf hash mismatch")
 
-        let bobBytes = try! "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9".bytes
-        let bob = try! P256K.Signing.PrivateKey(dataRepresentation: bobBytes)
-        let preimageBytes = try! "6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333".bytes
+        let bobBytes = try "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9".bytes
+        let bob = try P256K.Signing.PrivateKey(dataRepresentation: bobBytes)
+        let preimageBytes = try "6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333".bytes
         let bobScript = OP_SHA256 +
             Data([UInt8(preimageBytes.count)] + preimageBytes.bytes) +
             OP_EQUALVERIFY +
             Data([UInt8(bob.publicKey.xonly.bytes.count)] + bob.publicKey.xonly.bytes) +
             OP_CHECKSIG
-        let bobLeafHash = try! SHA256.taggedHash(
-            tag: "TapLeaf".data(using: .utf8)!,
+        let bobLeafHash = try SHA256.taggedHash(
+            tag: #require("TapLeaf".data(using: .utf8)),
             data: Data([0xC0]) + bobScript.compactSizePrefix
         )
 
@@ -92,8 +92,8 @@ struct TaprootTestSuite {
             rightHash = Data(aliceLeafHash)
         }
 
-        let merkleRoot = try! SHA256.taggedHash(
-            tag: "TapBranch".data(using: .utf8)!,
+        let merkleRoot = try SHA256.taggedHash(
+            tag: #require("TapBranch".data(using: .utf8)),
             data: leftHash + rightHash
         )
 

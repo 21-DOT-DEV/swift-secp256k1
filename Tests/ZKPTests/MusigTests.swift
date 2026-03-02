@@ -19,35 +19,35 @@ import Testing
 
 struct MuSigTestSuite {
     @Test("MuSig Signing and Verification")
-    func musig() {
+    func musig() throws {
         // Test MuSig aggregate
-        let privateKeys = [
-            try! P256K.Schnorr.PrivateKey(),
-            try! P256K.Schnorr.PrivateKey(),
-            try! P256K.Schnorr.PrivateKey()
+        let privateKeys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
         ]
 
         let publicKeys = privateKeys.map(\.publicKey)
-        let aggregate = try! P256K.MuSig.aggregate(publicKeys)
+        let aggregate = try P256K.MuSig.aggregate(publicKeys)
 
         // Create a message to sign
         let message = "Hello, MuSig!".data(using: .utf8)!
         let messageHash = SHA256.hash(data: message)
 
         // Generate nonces for each signer
-        let firstNonce = try! P256K.MuSig.Nonce.generate(
+        let firstNonce = try P256K.MuSig.Nonce.generate(
             secretKey: privateKeys[0],
             publicKey: privateKeys[0].publicKey,
             msg32: Array(messageHash)
         )
 
-        let secondNonce = try! P256K.MuSig.Nonce.generate(
+        let secondNonce = try P256K.MuSig.Nonce.generate(
             secretKey: privateKeys[1],
             publicKey: privateKeys[1].publicKey,
             msg32: Array(messageHash)
         )
 
-        let thirdNonce = try! P256K.MuSig.Nonce.generate(
+        let thirdNonce = try P256K.MuSig.Nonce.generate(
             secretKey: privateKeys[2],
             publicKey: privateKeys[2].publicKey,
             msg32: Array(messageHash)
@@ -57,10 +57,10 @@ struct MuSigTestSuite {
         let publicNonces = [firstNonce.pubnonce, secondNonce.pubnonce, thirdNonce.pubnonce]
 
         // Aggregate public nonces
-        let aggregateNonce = try! P256K.MuSig.Nonce(aggregating: publicNonces)
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: publicNonces)
 
         // Create partial signatures
-        let firstPartialSignature = try! privateKeys[0].partialSignature(
+        let firstPartialSignature = try privateKeys[0].partialSignature(
             for: messageHash,
             pubnonce: firstNonce.pubnonce,
             secureNonce: firstNonce.secnonce,
@@ -68,7 +68,7 @@ struct MuSigTestSuite {
             xonlyKeyAggregate: aggregate.xonly
         )
 
-        let secondPartialSignature = try! privateKeys[1].partialSignature(
+        let secondPartialSignature = try privateKeys[1].partialSignature(
             for: messageHash,
             pubnonce: secondNonce.pubnonce,
             secureNonce: secondNonce.secnonce,
@@ -76,7 +76,7 @@ struct MuSigTestSuite {
             publicKeyAggregate: aggregate
         )
 
-        let thirdPartialSignature = try! privateKeys[2].partialSignature(
+        let thirdPartialSignature = try privateKeys[2].partialSignature(
             for: messageHash,
             pubnonce: thirdNonce.pubnonce,
             secureNonce: thirdNonce.secnonce,
@@ -94,9 +94,9 @@ struct MuSigTestSuite {
 //        )
 
         // Aggregate partial signatures
-        _ = try! P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature, thirdPartialSignature])
+        _ = try P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature, thirdPartialSignature])
 
         // Verify the signature
-        #expect(aggregate.isValidSignature(firstPartialSignature, publicKey: publicKeys.first!, nonce: publicNonces.first!, for: messageHash), "MuSig signature verification failed.")
+        #expect(try aggregate.isValidSignature(firstPartialSignature, publicKey: #require(publicKeys.first), nonce: #require(publicNonces.first), for: messageHash), "MuSig signature verification failed.")
     }
 }

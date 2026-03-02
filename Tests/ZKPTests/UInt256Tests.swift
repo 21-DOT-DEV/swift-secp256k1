@@ -56,7 +56,7 @@ import XCTest
     typealias Base = XCTestCase
 #endif
 
-// @main
+/// @main
 final class SIMDWordsIntegerTests: Base {
     static func main() {
         #if canImport(StdlibUnittest)
