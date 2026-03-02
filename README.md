@@ -1,257 +1,133 @@
-[![Build Status](https://app.bitrise.io/app/18c18db60fc4fddf/status.svg?token=nczB4mTPCrlTfDQnXH_8Pw&branch=main)](https://app.bitrise.io/app/18c18db60fc4fddf) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F21-DOT-DEV%2Fswift-secp256k1%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/21-DOT-DEV/swift-secp256k1) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F21-DOT-DEV%2Fswift-secp256k1%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/21-DOT-DEV/swift-secp256k1)
+libsecp256k1-zkp
+================
 
-# 🔐 swift-secp256k1
+![Dependencies: None](https://img.shields.io/badge/dependencies-none-success)
 
-Swift package for elliptic curve public key cryptography, ECDSA, and Schnorr Signatures for Bitcoin, with C bindings from [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
+A fork of [libsecp256k1](https://github.com/bitcoin-core/secp256k1) with support for advanced and experimental features
 
-## Objectives
+Added features:
+* Experimental module for ECDSA adaptor signatures.
+* Experimental module for ECDSA sign-to-contract.
+* Experimental module for Confidential Assets (Pedersen commitments, range proofs, and [surjection proofs](src/modules/surjection/surjection.md)).
+* Experimental module for Bulletproofs++ range proofs.
+* Experimental module for [address whitelisting](src/modules/whitelist/whitelist.md).
 
-- Provide lightweight ECDSA & Schnorr Signatures functionality
-- Support simple and advanced usage, including BIP-327 and BIP-340
-- Expose libsecp256k1 bindings for full control of the implementation
-- Offer a familiar API design inspired by [Swift Crypto](https://github.com/apple/swift-crypto)
-- Maintain automatic updates for Swift and libsecp256k1
-- Ensure availability for Linux and Apple platform ecosystems
+Experimental features are made available for testing and review by the community. The APIs of these features should not be considered stable.
 
-## Installation
+Build steps
+-----------
 
-This package uses Swift Package Manager. To add it to your project:
+Obtaining and verifying
+-----------------------
 
-> [!WARNING]  
-> These APIs are not considered stable and may change with any update. Specify a version using `exact:` to avoid breaking changes.
+The git tag for each release (e.g. `v0.6.0`) is GPG-signed by one of the maintainers.
+For a fully verified build of this project, it is recommended to obtain this repository
+via git, obtain the GPG keys of the signing maintainer(s), and then verify the release
+tag's signature using git.
 
-### Using Xcode
+This can be done with the following steps:
 
-1. Go to `File > Add Packages...`
-2. Enter the package URL: `https://github.com/21-DOT-DEV/swift-secp256k1`
-3. Select the desired version
+1. Obtain the GPG keys listed in [SECURITY.md](./SECURITY.md).
+2. If possible, cross-reference these key IDs with another source controlled by its owner (e.g.
+   social media, personal website). This is to mitigate the unlikely case that incorrect 
+   content is being presented by this repository.
+3. Clone the repository: 
+    ```
+    git clone https://github.com/bitcoin-core/secp256k1
+    ```
+4. Check out the latest release tag, e.g. 
+    ```
+    git checkout v0.6.0
+    ```
+5. Use git to verify the GPG signature: 
+   ```
+   % git tag -v v0.6.0 | grep -C 3 'Good signature'
 
-### Using Package.swift (Recommended)
+   gpg: Signature made Mon 04 Nov 2024 12:14:44 PM EST
+   gpg:                using RSA key 4BBB845A6F5A65A69DFAEC234861DBF262123605
+   gpg: Good signature from "Jonas Nick <jonas@n-ck.net>" [unknown]
+   gpg:                 aka "Jonas Nick <jonasd.nick@gmail.com>" [unknown]
+   gpg: WARNING: This key is not certified with a trusted signature!
+   gpg:          There is no indication that the signature belongs to the owner.
+   Primary key fingerprint: 36C7 1A37 C9D9 88BD E825  08D9 B1A7 0E4F 8DCD 0366
+        Subkey fingerprint: 4BBB 845A 6F5A 65A6 9DFA  EC23 4861 DBF2 6212 3605
+   ```
 
-Add the following to your `Package.swift` file:
+Building with Autotools
+-----------------------
 
-```swift
-.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.21.1"),
-```
+    $ ./autogen.sh       # Generate a ./configure script
+    $ ./configure        # Generate a build system
+    $ make               # Run the actual build process
+    $ make check         # Run the test suite
+    $ sudo make install  # Install the library into the system (optional)
 
-Then, include `P256K` as a dependency in your target:
+To compile optional modules (such as Schnorr signatures), you need to run `./configure` with additional flags (such as `--enable-module-schnorrsig`). Run `./configure --help` to see the full list of available flags. For experimental modules, you will also need `--enable-experimental` as well as a flag for each individual module, e.g. `--enable-module-rangeproof`.
 
-```swift
-.target(name: "<target>", dependencies: [
-    .product(name: "P256K", package: "swift-secp256k1")
-]),
-```
+Building with CMake
+-------------------
 
-### Using CocoaPods
+To maintain a pristine source tree, CMake encourages to perform an out-of-source build by using a separate dedicated build tree.
 
-Add the following to your `Podfile`:
+### Building on POSIX systems
 
-```ruby
-pod 'swift-secp256k1', '0.21.1'
-```
+    $ cmake -B build              # Generate a build system in subdirectory "build"
+    $ cmake --build build         # Run the actual build process
+    $ ctest --test-dir build      # Run the test suite
+    $ sudo cmake --install build  # Install the library into the system (optional)
 
-### Try it out
+To compile optional modules (such as Schnorr signatures), you need to run `cmake` with additional flags (such as `-DSECP256K1_ENABLE_MODULE_SCHNORRSIG=ON`). Run `cmake -B build -LH` or `ccmake -B build` to see the full list of available flags.
 
-Use [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground):
+### Cross compiling
 
-```swift
-arena 21-DOT-DEV/swift-secp256k1
-```
+To alleviate issues with cross compiling, preconfigured toolchain files are available in the `cmake` directory.
+For example, to cross compile for Windows:
 
-## Swift Versions
+    $ cmake -B build -DCMAKE_TOOLCHAIN_FILE=cmake/x86_64-w64-mingw32.toolchain.cmake
 
-| swift-secp256k1       | Minimum Swift Version | Minimum Xcode Version |
-|-----------------------|-----------------------|-----------------------|
-| `0.1.0 ..< 0.4.0`     | 5.0                   | 10.2                  |
-| `0.4.0 ..< 0.5.0`     | 5.1                   | 11.0                  |
-| `0.5.0 ..< 0.8.0`     | 5.5                   | 13.0                  |
-| `0.8.0 ..< 0.14.0`    | 5.6                   | 13.3                  |
-| `0.14.0 ..< 0.18.0`   | 5.8                   | 14.3                  |
-| `0.18.0 ...`          | 6.0                   | 16.0                  |
+To cross compile for Android with [NDK](https://developer.android.com/ndk/guides/cmake) (using NDK's toolchain file, and assuming the `ANDROID_NDK_ROOT` environment variable has been set):
 
-## Usage Examples
+    $ cmake -B build -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=28
 
-### ECDSA
-```swift
-import P256K
+### Building on Windows
 
-// Private key
-let privateBytes = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
-let privateKey = try! P256K.Signing.PrivateKey(dataRepresentation: privateBytes)
+The following example assumes Visual Studio 2022. Using clang-cl is recommended.
 
-// Public key
-print(String(bytes: privateKey.publicKey.dataRepresentation))
+In "Developer Command Prompt for VS 2022":
 
-// ECDSA signature
-let messageData = "We're all Satoshi.".data(using: .utf8)!
-let signature = try! privateKey.signature(for: messageData)
+    >cmake -B build -T ClangCL
+    >cmake --build build --config RelWithDebInfo
 
-// DER signature
-print(try! signature.derRepresentation.base64EncodedString())
-```
+Usage examples
+-----------
 
-### Schnorr
-```swift
-// Strict BIP340 mode is disabled by default for Schnorr signatures with variable length messages
-let privateKey = try! P256K.Schnorr.PrivateKey()
+Usage examples can be found in the [examples](examples) directory. To compile them you need to configure with `--enable-examples`.
+  * [ECDSA example](examples/ecdsa.c)
+  * [Schnorr signatures example](examples/schnorr.c)
+  * [Deriving a shared secret (ECDH) example](examples/ecdh.c)
+  * [ElligatorSwift key exchange example](examples/ellswift.c)
+  * [MuSig2 Schnorr multi-signatures example](examples/musig.c)
 
-// Extra params for custom signing
-var auxRand = try! "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906".bytes
-var messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9D0A508B75C".bytes
+To compile the examples, make sure the corresponding modules are enabled.
 
-// API allows for signing variable length messages
-let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
-```
+Benchmark
+------------
+If configured with `--enable-benchmark` (which is the default), binaries for benchmarking the libsecp256k1-zkp functions will be present in the root directory after the build.
 
-### Tweak
+To print the benchmark result to the command line:
 
-```swift
-let privateKey = try! P256K.Signing.PrivateKey()
+    $ ./bench_name
 
-// Adding a tweak to the private key and public key
-let tweak = try! "5f0da318c6e02f653a789950e55756ade9f194e1ec228d7f368de1bd821322b6".bytes
-let tweakedPrivateKey = try! privateKey.add(tweak)
-let tweakedPublicKeyKey = try! privateKey.publicKey.add(tweak)
-```
+To create a CSV file for the benchmark result :
 
-### Elliptic Curve Diffie Hellman
+    $ ./bench_name | sed '2d;s/ \{1,\}//g' > bench_name.csv
 
-```swift
-let privateKey = try! P256K.KeyAgreement.PrivateKey()
-let publicKey = try! P256K.KeyAgreement.PrivateKey().publicKey
+Reporting a vulnerability
+------------
 
-// Create a compressed shared secret with a private key from only a public key
-let sharedSecret = try! privateKey.sharedSecretFromKeyAgreement(with: publicKey, format: .compressed)
+See [SECURITY.md](SECURITY.md)
 
-// By default, libsecp256k1 hashes the x-coordinate with version information.
-let symmetricKey = SHA256.hash(data: sharedSecret.bytes)
-```
+Contributing to libsecp256k1
+------------
 
-### Silent Payments Scheme
-
-```swift
-let privateSign1 = try! P256K.Signing.PrivateKey()
-let privateSign2 = try! P256K.Signing.PrivateKey()
-
-let privateKey1 = try! P256K.KeyAgreement.PrivateKey(dataRepresentation: privateSign1.dataRepresentation)
-let privateKey2 = try! P256K.KeyAgreement.PrivateKey(dataRepresentation: privateSign2.dataRepresentation)
-
-let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
-let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: publicKey1)
-
-let symmetricKey1 = SHA256.hash(data: sharedSecret1.bytes)
-let symmetricKey2 = SHA256.hash(data: sharedSecret2.bytes)
-
-let sharedSecretSign1 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey1.bytes)
-let sharedSecretSign2 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
-
-// Spendable Silent Payment private key
-let privateTweak1 = try! sharedSecretSign1.add(privateSign1.publicKey.xonly.bytes)
-let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
-
-let schnorrPrivate = try! P256K.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)
-// Payable Silent Payment public key
-let xonlyTweak2 = try! schnorrPrivate.xonly.add(privateSign1.publicKey.xonly.bytes)
-```
-
-### Recovery
-
-```swift
-let privateKey = try! P256K.Recovery.PrivateKey()
-let messageData = "We're all Satoshi.".data(using: .utf8)!
-
-// Create a recoverable ECDSA signature
-let recoverySignature = try! privateKey.signature(for: messageData)
-
-// Recover an ECDSA public key from a signature
-let publicKey = try! P256K.Recovery.PublicKey(messageData, signature: recoverySignature)
-
-// Convert a recoverable signature into a normal signature
-let signature = try! recoverySignature.normalize
-```
-
-### Combine Public Keys
-
-```swift
-let privateKey = try! P256K.Signing.PrivateKey()
-let publicKey = try! P256K.Signing.PrivateKey().public
-
-// The Combine API arguments are an array of PublicKey objects and an optional format 
-publicKey.combine([privateKey.publicKey], format: .uncompressed)
-```
-
-### PEM Key Format
-
-```swift
-let privateKeyString = """
------BEGIN EC PRIVATE KEY-----
-MHQCAQEEIBXwHPDpec6b07GeLbnwetT0dvWzp0nV3MR+4pPKXIc7oAcGBSuBBAAK
-oUQDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMAcjHIrTDS6HEELgguOatmFBOp
-2wU4P2TAl/0Ihiq+nMkrAIV69m2W8g==
------END EC PRIVATE KEY-----
-"""
-
-// Import keys generated from OpenSSL
-let privateKey = try! P256K.Signing.PrivateKey(pemRepresentation: privateKeyString)
-```
-
-### MuSig2
-
-```swift
-// Initialize private keys for two signers
-let firstPrivateKey = try P256K.Schnorr.PrivateKey()
-let secondPrivateKey = try P256K.Schnorr.PrivateKey()
-
-// Aggregate the public keys using MuSig
-let aggregateKey = try P256K.MuSig.aggregate([firstPrivateKey.publicKey, secondPrivateKey.publicKey])
-
-// Message to be signed
-let message = "Vires in Numeris.".data(using: .utf8)!
-let messageHash = SHA256.hash(data: message)
-
-// Generate nonces for each signer
-let firstNonce = try P256K.MuSig.Nonce.generate(
-    secretKey: firstPrivateKey,
-    publicKey: firstPrivateKey.publicKey,
-    msg32: Array(messageHash)
-)
-
-let secondNonce = try P256K.MuSig.Nonce.generate(
-    secretKey: secondPrivateKey,
-    publicKey: secondPrivateKey.publicKey,
-    msg32: Array(messageHash)
-)
-
-// Aggregate nonces
-let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
-
-// Create partial signatures
-let firstPartialSignature = try firstPrivateKey.partialSignature(
-    for: messageHash,
-    pubnonce: firstNonce.pubnonce,
-    secureNonce: firstNonce.secnonce,
-    publicNonceAggregate: aggregateNonce,
-    publicKeyAggregate: aggregateKey
-)
-
-let secondPartialSignature = try secondPrivateKey.partialSignature(
-    for: messageHash,
-    pubnonce: secondNonce.pubnonce,
-    secureNonce: secondNonce.secnonce,
-    publicNonceAggregate: aggregateNonce,
-    publicKeyAggregate: aggregateKey
-)
-
-// Aggregate partial signatures into a full signature
-let aggregateSignature = try P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
-
-// Verify the aggregate signature
-let isValid = aggregateKey.isValidSignature(
-    firstPartialSignature,
-    publicKey: firstPrivateKey.publicKey,
-    nonce: firstNonce.pubnonce,
-    for: messageHash
-)
-
-print("Is valid MuSig signature: \(isValid)")
-```
+See [CONTRIBUTING.md](CONTRIBUTING.md)

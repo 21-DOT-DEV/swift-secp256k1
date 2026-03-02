@@ -1,103 +1,76 @@
-# Xcode
-#
-# gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
+bench
+bench_bppp
+bench_ecmult
+bench_generator
+bench_rangeproof
+bench_internal
+bench_whitelist
+noverify_tests
+tests
+exhaustive_tests
+precompute_ecmult_gen
+precompute_ecmult
+ctime_tests
+ecdh_example
+ecdsa_example
+schnorr_example
+ellswift_example
+musig_example
+*.exe
+*.so
+*.a
+*.csv
+*.log
+*.trs
+*.sage.py
 
-## User settings
-xcuserdata/
+Makefile
+configure
+.libs/
+Makefile.in
+aclocal.m4
+autom4te.cache/
+config.log
+config.status
+conftest*
+*.tar.gz
+*.la
+libtool
+.deps/
+.dirstamp
+*.lo
+*.o
+*~
 
-## compatibility with Xcode 8 and earlier (ignoring not required starting Xcode 9)
-*.xcscmblueprint
-*.xccheckout
+coverage/
+coverage.html
+coverage.*.html
+*.gcda
+*.gcno
+*.gcov
 
-## compatibility with Xcode 3 and earlier (ignoring not required starting Xcode 4)
-build/
-DerivedData/
-*.moved-aside
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
+build-aux/ar-lib
+build-aux/config.guess
+build-aux/config.sub
+build-aux/depcomp
+build-aux/install-sh
+build-aux/ltmain.sh
+build-aux/m4/libtool.m4
+build-aux/m4/lt~obsolete.m4
+build-aux/m4/ltoptions.m4
+build-aux/m4/ltsugar.m4
+build-aux/m4/ltversion.m4
+build-aux/missing
+build-aux/compile
+build-aux/test-driver
+libsecp256k1.pc
+contrib/gh-pr-create.sh
 
-## Obj-C/Swift specific
-*.hmap
+### CMake
+/CMakeUserPresets.json
+# Default CMake build directory.
+/build
 
-## Swift build artifacts
-*.d
-*.dia
-*.swiftdeps
-*.swiftmodule
-*.swiftsourceinfo
-
-## App packaging
-*.ipa
-*.dSYM.zip
-*.dSYM
-
-## Playgrounds
-timeline.xctimeline
-playground.xcworkspace
-
-## macOS
-.DS_Store
-
-# Swift Package Manager
-#
-# Add this line if you want to avoid checking in source code from Swift Package Manager dependencies.
-Packages/
-Package.pins
-Package.resolved
-*.xcodeproj
-
-# Xcode automatically generates this directory with a .xcworkspacedata file and xcuserdata
-# hence it is not needed unless you have added a package configuration file to your project
-.swiftpm
-
-.build/
-
-# CocoaPods
-#
-# We recommend against adding the Pods directory to your .gitignore. However
-# you should judge for yourself, the pros and cons are mentioned at:
-# https://guides.cocoapods.org/using/using-cocoapods.html#should-i-check-the-pods-directory-into-source-control
-#
-# Pods/
-#
-# Add this line if you want to avoid checking in source code from the Xcode workspace
-*.xcworkspace
-
-# Carthage
-#
-# Add this line if you want to avoid checking in source code from Carthage dependencies.
-# Carthage/Checkouts
-
-Carthage/Build/
-
-# Accio dependency management
-Dependencies/
-.accio/
-
-# fastlane
-#
-# It is recommended to not store the screenshots in the git repo.
-# Instead, use fastlane to re-generate the screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/#source-control
-
-fastlane/report.xml
-fastlane/Preview.html
-fastlane/screenshots/**/*.png
-fastlane/test_output
-
-# Code Injection
-#
-# After new code Injection tools there's a generated folder /iOSInjectionProject
-# https://github.com/johnno1962/injectionforxcode
-
-iOSInjectionProject/
-
-# Tuist
-**/Derived/*
+### Python
+__pycache__/
+*.py[oc]
