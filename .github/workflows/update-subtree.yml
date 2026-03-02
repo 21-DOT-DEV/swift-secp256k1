@@ -14,15 +14,14 @@ jobs:
   update:
     name: Update ${{ inputs.subtree_name }}
     runs-on: macos-26
-    permissions:
-      contents: write
-      pull-requests: write
+    permissions: {}
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.BOT_TOKEN }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          token: ${{ secrets.BOT_TOKEN }}
 
       - name: Query CLI for pre-computed fields
         id: report
@@ -78,6 +77,20 @@ jobs:
           BRANCH_NAME: ${{ steps.report.outputs.branch_name }}
         run: git checkout -b "$BRANCH_NAME"
 
+      - name: Configure git identity
+        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Clean stale extractions
+        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        env:
+          SUBTREE_NAME: ${{ inputs.subtree_name }}
+        run: |
+          swift package --allow-writing-to-package-directory \
+            subtree extract --clean --name "$SUBTREE_NAME"
+
       - name: Run subtree update
         if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
         env:
@@ -101,8 +114,6 @@ jobs:
         env:
           PR_TITLE: ${{ steps.report.outputs.pr_title }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
           # Commit extracted files if any changed (update already committed Vendor/ + config)
           git add -A
           if ! git diff --cached --quiet; then
