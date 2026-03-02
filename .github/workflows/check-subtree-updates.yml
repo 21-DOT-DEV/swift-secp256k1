@@ -11,19 +11,15 @@ jobs:
   check:
     name: Check for updates
     runs-on: ubuntu-slim
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: write
+    permissions: {}
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.BOT_TOKEN }}
     steps:
       - uses: actions/checkout@v6
 
       - name: Download subtree binary
         run: |
-          SUBTREE_VERSION="0.0.9"
-          gh release download "${SUBTREE_VERSION}" \
+          gh release download --latest \
             -R 21-DOT-DEV/subtree \
             -p "subtree_linux_x86_64" \
             -D /usr/local/bin
