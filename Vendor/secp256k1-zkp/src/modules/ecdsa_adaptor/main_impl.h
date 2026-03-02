@@ -114,6 +114,7 @@ static int nonce_function_ecdsa_adaptor(unsigned char *nonce32, const unsigned c
         secp256k1_nonce_function_ecdsa_adaptor_sha256_tagged_aux(&sha);
         secp256k1_sha256_write(&sha, data, 32);
         secp256k1_sha256_finalize(&sha, masked_key);
+        secp256k1_sha256_clear(&sha);
         for (i = 0; i < 32; i++) {
             masked_key[i] ^= key32[i];
         }
@@ -141,6 +142,7 @@ static int nonce_function_ecdsa_adaptor(unsigned char *nonce32, const unsigned c
     secp256k1_sha256_write(&sha, pk33, 33);
     secp256k1_sha256_write(&sha, msg32, 32);
     secp256k1_sha256_finalize(&sha, nonce32);
+    secp256k1_sha256_clear(&sha);
     return 1;
 }
 
@@ -339,7 +341,7 @@ int secp256k1_ecdsa_adaptor_recover(const secp256k1_context* ctx, unsigned char 
     /* We declassify non-secret enckey_expected_ge to allow using it as a
      * branch point. */
     secp256k1_declassify(ctx, &enckey_expected_ge, sizeof(enckey_expected_ge));
-    if (!secp256k1_eckey_pubkey_serialize(&enckey_expected_ge, enckey_expected33, &size, SECP256K1_EC_COMPRESSED)) {
+    if (!secp256k1_eckey_pubkey_serialize(&enckey_expected_ge, enckey_expected33, &size, 1)) {
         /* Unreachable from tests (and other VERIFY builds) and therefore this
          * branch should be ignored in test coverage analysis.
          *

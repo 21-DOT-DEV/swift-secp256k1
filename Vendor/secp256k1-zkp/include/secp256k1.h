@@ -49,19 +49,6 @@ extern "C" {
  */
 typedef struct secp256k1_context_struct secp256k1_context;
 
-/** Opaque data structure that holds rewritable "scratch space"
- *
- *  The purpose of this structure is to replace dynamic memory allocations,
- *  because we target architectures where this may not be available. It is
- *  essentially a resizable (within specified parameters) block of bytes,
- *  which is initially created either by memory allocation or TODO as a pointer
- *  into some fixed rewritable space.
- *
- *  Unlike the context object, this cannot safely be shared between threads
- *  without additional synchronization logic.
- */
-typedef struct secp256k1_scratch_space_struct secp256k1_scratch_space;
-
 /** Opaque data structure that holds a parsed and valid public key.
  *
  *  The exact representation of data inside is implementation defined and not
@@ -71,11 +58,11 @@ typedef struct secp256k1_scratch_space_struct secp256k1_scratch_space;
  *  use secp256k1_ec_pubkey_serialize and secp256k1_ec_pubkey_parse. To
  *  compare keys, use secp256k1_ec_pubkey_cmp.
  */
-typedef struct {
+typedef struct secp256k1_pubkey {
     unsigned char data[64];
 } secp256k1_pubkey;
 
-/** Opaque data structured that holds a parsed ECDSA signature.
+/** Opaque data structure that holds a parsed ECDSA signature.
  *
  *  The exact representation of data inside is implementation defined and not
  *  guaranteed to be portable between different platforms or versions. It is
@@ -84,7 +71,7 @@ typedef struct {
  *  comparison, use the secp256k1_ecdsa_signature_serialize_* and
  *  secp256k1_ecdsa_signature_parse_* functions.
  */
-typedef struct {
+typedef struct secp256k1_ecdsa_signature {
     unsigned char data[64];
 } secp256k1_ecdsa_signature;
 
@@ -134,35 +121,57 @@ typedef int (*secp256k1_nonce_function)(
 #endif
 
 /* Symbol visibility. */
-#if defined(_WIN32)
-  /* GCC for Windows (e.g., MinGW) accepts the __declspec syntax
-   * for MSVC compatibility. A __declspec declaration implies (but is not
-   * exactly equivalent to) __attribute__ ((visibility("default"))), and so we
-   * actually want __declspec even on GCC, see "Microsoft Windows Function
-   * Attributes" in the GCC manual and the recommendations in
-   * https://gcc.gnu.org/wiki/Visibility. */
-# if defined(SECP256K1_BUILD)
-#  if defined(DLL_EXPORT) || defined(SECP256K1_DLL_EXPORT)
-    /* Building libsecp256k1 as a DLL.
-     * 1. If using Libtool, it defines DLL_EXPORT automatically.
-     * 2. In other cases, SECP256K1_DLL_EXPORT must be defined. */
-#   define SECP256K1_API extern __declspec (dllexport)
-#  endif
-  /* The user must define SECP256K1_STATIC when consuming libsecp256k1 as a static
-   * library on Windows. */
-# elif !defined(SECP256K1_STATIC)
-   /* Consuming libsecp256k1 as a DLL. */
-#  define SECP256K1_API extern __declspec (dllimport)
-# endif
+#if !defined(SECP256K1_API) && defined(SECP256K1_NO_API_VISIBILITY_ATTRIBUTES)
+     /* The user has requested that we don't specify visibility attributes in
+      * the public API.
+      *
+      * Since all our non-API declarations use the static qualifier, this means
+      * that the user can use -fvisibility=<value> to set the visibility of the
+      * API symbols. For instance, -fvisibility=hidden can be useful *even for
+      * the API symbols*, e.g., when building a static library which is linked
+      * into a shared library, and the latter should not re-export the
+      * libsecp256k1 API.
+      *
+      * While visibility is a concept that applies only to shared libraries,
+      * setting visibility will still make a difference when building a static
+      * library: the visibility settings will be stored in the static library,
+      * solely for the potential case that the static library will be linked into
+      * a shared library. In that case, the stored visibility settings will
+      * resurface and be honored for the shared library. */
+#    define SECP256K1_API extern
 #endif
-#ifndef SECP256K1_API
-# if defined(__GNUC__) && (__GNUC__ >= 4) && defined(SECP256K1_BUILD)
-   /* Building libsecp256k1 on non-Windows using GCC or compatible. */
-#  define SECP256K1_API extern __attribute__ ((visibility ("default")))
-# else
-   /* All cases not captured above. */
-#  define SECP256K1_API extern
-# endif
+#if !defined(SECP256K1_API)
+#    if defined(SECP256K1_BUILD)
+         /* On Windows, assume a shared library only if explicitly requested.
+          *   1. If using Libtool, it defines DLL_EXPORT automatically.
+          *   2. In other cases, SECP256K1_DLL_EXPORT must be defined. */
+#        if defined(_WIN32) && (defined(SECP256K1_DLL_EXPORT) || defined(DLL_EXPORT))
+             /* GCC for Windows (e.g., MinGW) accepts the __declspec syntax for
+              * MSVC compatibility. A __declspec declaration implies (but is not
+              * exactly equivalent to) __attribute__ ((visibility("default"))),
+              * and so we actually want __declspec even on GCC, see "Microsoft
+              * Windows Function Attributes" in the GCC manual and the
+              * recommendations in https://gcc.gnu.org/wiki/Visibility . */
+#            define SECP256K1_API extern __declspec(dllexport)
+         /* Avoid __attribute__ ((visibility("default"))) on Windows to get rid
+          * of warnings when compiling with -flto due to a bug in GCC, see
+          * https://gcc.gnu.org/bugzilla/show_bug.cgi?id=116478 . */
+#        elif !defined(_WIN32) && defined (__GNUC__) && (__GNUC__ >= 4)
+#            define SECP256K1_API extern __attribute__ ((visibility("default")))
+#        else
+#            define SECP256K1_API extern
+#        endif
+#    else
+         /* On Windows, SECP256K1_STATIC must be defined when consuming
+          * libsecp256k1 as a static library. Note that SECP256K1_STATIC is a
+          * "consumer-only" macro, and it has no meaning when building
+          * libsecp256k1. */
+#        if defined(_WIN32) && !defined(SECP256K1_STATIC)
+#            define SECP256K1_API extern __declspec(dllimport)
+#        else
+#            define SECP256K1_API extern
+#        endif
+#    endif
 #endif
 
 /* Warning attributes
@@ -233,10 +242,10 @@ typedef int (*secp256k1_nonce_function)(
  *
  *  It is highly recommended to call secp256k1_selftest before using this context.
  */
-SECP256K1_API const secp256k1_context *secp256k1_context_static;
+SECP256K1_API const secp256k1_context * const secp256k1_context_static;
 
 /** Deprecated alias for secp256k1_context_static. */
-SECP256K1_API const secp256k1_context *secp256k1_context_no_precomp
+SECP256K1_API const secp256k1_context * const secp256k1_context_no_precomp
 SECP256K1_DEPRECATED("Use secp256k1_context_static instead");
 
 /** Perform basic self tests (to be used in conjunction with secp256k1_context_static)
@@ -392,29 +401,6 @@ SECP256K1_API void secp256k1_context_set_error_callback(
     const void *data
 ) SECP256K1_ARG_NONNULL(1);
 
-/** Create a secp256k1 scratch space object.
- *
- *  Returns: a newly created scratch space.
- *  Args: ctx:  pointer to a context object.
- *  In:   size: amount of memory to be available as scratch space. Some extra
- *              (<100 bytes) will be allocated for extra accounting.
- */
-SECP256K1_API SECP256K1_WARN_UNUSED_RESULT secp256k1_scratch_space *secp256k1_scratch_space_create(
-    const secp256k1_context *ctx,
-    size_t size
-) SECP256K1_ARG_NONNULL(1);
-
-/** Destroy a secp256k1 scratch space.
- *
- *  The pointer may not be used afterwards.
- *  Args:       ctx: pointer to a context object.
- *          scratch: space to destroy
- */
-SECP256K1_API void secp256k1_scratch_space_destroy(
-    const secp256k1_context *ctx,
-    secp256k1_scratch_space *scratch
-) SECP256K1_ARG_NONNULL(1);
-
 /** Parse a variable-length public key into the pubkey object.
  *
  *  Returns: 1 if the public key was fully valid.
@@ -473,6 +459,20 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ec_pubkey_cmp(
     const secp256k1_pubkey *pubkey1,
     const secp256k1_pubkey *pubkey2
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
+
+/** Sort public keys using lexicographic (of compressed serialization) order
+ *
+ *  Returns: 0 if the arguments are invalid. 1 otherwise.
+ *
+ *  Args:     ctx: pointer to a context object
+ *  In:   pubkeys: array of pointers to pubkeys to sort
+ *      n_pubkeys: number of elements in the pubkeys array
+ */
+SECP256K1_API int secp256k1_ec_pubkey_sort(
+    const secp256k1_context *ctx,
+    const secp256k1_pubkey **pubkeys,
+    size_t n_pubkeys
+) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2);
 
 /** Parse an ECDSA signature in compact (64 bytes) format.
  *
@@ -665,12 +665,14 @@ SECP256K1_API int secp256k1_ecdsa_sign(
     const void *ndata
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4);
 
-/** Verify an ECDSA secret key.
+/** Verify an elliptic curve secret key.
  *
  *  A secret key is valid if it is not 0 and less than the secp256k1 curve order
  *  when interpreted as an integer (most significant byte first). The
  *  probability of choosing a 32-byte string uniformly at random which is an
- *  invalid secret key is negligible.
+ *  invalid secret key is negligible. However, if it does happen it should
+ *  be assumed that the randomness source is severely broken and there should
+ *  be no retry.
  *
  *  Returns: 1: secret key is valid
  *           0: secret key is invalid
@@ -711,21 +713,13 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ec_seckey_negate(
     unsigned char *seckey
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2);
 
-/** Same as secp256k1_ec_seckey_negate, but DEPRECATED. Will be removed in
- *  future versions. */
-SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ec_privkey_negate(
-    const secp256k1_context *ctx,
-    unsigned char *seckey
-) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2)
-  SECP256K1_DEPRECATED("Use secp256k1_ec_seckey_negate instead");
-
 /** Negates a public key in place.
  *
  *  Returns: 1 always
  *  Args:   ctx:        pointer to a context object
  *  In/Out: pubkey:     pointer to the public key to be negated.
  */
-SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ec_pubkey_negate(
+SECP256K1_API int secp256k1_ec_pubkey_negate(
     const secp256k1_context *ctx,
     secp256k1_pubkey *pubkey
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2);
@@ -750,15 +744,6 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ec_seckey_tweak_add(
     unsigned char *seckey,
     const unsigned char *tweak32
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
-
-/** Same as secp256k1_ec_seckey_tweak_add, but DEPRECATED. Will be removed in
- *  future versions. */
-SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ec_privkey_tweak_add(
-    const secp256k1_context *ctx,
-    unsigned char *seckey,
-    const unsigned char *tweak32
-) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3)
-  SECP256K1_DEPRECATED("Use secp256k1_ec_seckey_tweak_add instead");
 
 /** Tweak a public key by adding tweak times the generator to it.
  *
@@ -797,15 +782,6 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ec_seckey_tweak_mul(
     unsigned char *seckey,
     const unsigned char *tweak32
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
-
-/** Same as secp256k1_ec_seckey_tweak_mul, but DEPRECATED. Will be removed in
- *  future versions. */
-SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ec_privkey_tweak_mul(
-    const secp256k1_context *ctx,
-    unsigned char *seckey,
-    const unsigned char *tweak32
-) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3)
-  SECP256K1_DEPRECATED("Use secp256k1_ec_seckey_tweak_mul instead");
 
 /** Tweak a public key by multiplying it by a tweak value.
  *
@@ -893,7 +869,7 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_ec_pubkey_combine(
  *           msg: pointer to an array containing the message
  *        msglen: length of the message array
  */
-SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_tagged_sha256(
+SECP256K1_API int secp256k1_tagged_sha256(
     const secp256k1_context *ctx,
     unsigned char *hash32,
     const unsigned char *tag,
