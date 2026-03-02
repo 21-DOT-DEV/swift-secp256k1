@@ -19,7 +19,8 @@ jobs:
 
       - name: Download subtree binary
         run: |
-          gh release download --latest \
+          LATEST_TAG=$(gh release view --repo 21-DOT-DEV/subtree --json tagName -q '.tagName')
+          gh release download "$LATEST_TAG" \
             -R 21-DOT-DEV/subtree \
             -p "subtree_linux_x86_64" \
             -D /usr/local/bin
