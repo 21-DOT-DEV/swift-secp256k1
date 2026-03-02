@@ -90,6 +90,10 @@ jobs:
         run: |
           swift package --allow-writing-to-package-directory \
             subtree extract --clean --name "$SUBTREE_NAME"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: clean stale extractions for $SUBTREE_NAME"
+          fi
 
       - name: Run subtree update
         if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
