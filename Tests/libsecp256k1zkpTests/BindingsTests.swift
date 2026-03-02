@@ -18,7 +18,7 @@ import Testing
 struct BindingsTestSuite {
     /// Uncompressed Key pair test
     @Test("Uncompressed Key pair creation bindings")
-    func uncompressedKeypairCreationBindings() {
+    func uncompressedKeypairCreationBindings() throws {
         // Initialize context
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
@@ -30,7 +30,7 @@ struct BindingsTestSuite {
         var cPubkey = secp256k1_pubkey()
         var publicKey = [UInt8](repeating: 0, count: pubkeyLen)
 
-        let privateKey = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
+        let privateKey = try "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
 
         // Verify the context and keys are setup correctly
         #expect(secp256k1_context_randomize(context, privateKey) == 1, "Context randomization failed.")
@@ -42,7 +42,7 @@ struct BindingsTestSuite {
         """
 
         // Define the expected public key
-        let expectedPublicKey = try! hexString.bytes
+        let expectedPublicKey = try hexString.bytes
 
         // Verify the generated public key matches the expected public key
         #expect(expectedPublicKey == publicKey, "Generated public key does not match expected public key.")
@@ -51,7 +51,7 @@ struct BindingsTestSuite {
 
     /// Compressed Key pair creation bindings
     @Test("Compressed Key pair creation bindings")
-    func compressedKeypairCreationBindings() {
+    func compressedKeypairCreationBindings() throws {
         // Initialize context
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
@@ -62,7 +62,7 @@ struct BindingsTestSuite {
         var pubkeyLen = 33
         var cPubkey = secp256k1_pubkey()
         var publicKey = [UInt8](repeating: 0, count: pubkeyLen)
-        let privateKey = try! "B035FCFC6ABF660856C5F3A6F9AC51FCA897BB4E76AD9ACA3EFD40DA6B9C864B".bytes
+        let privateKey = try "B035FCFC6ABF660856C5F3A6F9AC51FCA897BB4E76AD9ACA3EFD40DA6B9C864B".bytes
 
         // Verify the context and keys are setup correctly
         #expect(secp256k1_context_randomize(context, privateKey) == 1, "Context randomization failed.")
@@ -70,7 +70,7 @@ struct BindingsTestSuite {
         #expect(secp256k1_ec_pubkey_serialize(context, &publicKey, &pubkeyLen, &cPubkey, UInt32(SECP256K1_EC_COMPRESSED)) == 1, "Public key serialization failed.")
 
         // Define the expected public key
-        let expectedPublicKey = try! "02EA724B70B48B61FB87E4310871A48C65BF38BF3FDFEFE73C2B90F8F32F9C1794".bytes
+        let expectedPublicKey = try "02EA724B70B48B61FB87E4310871A48C65BF38BF3FDFEFE73C2B90F8F32F9C1794".bytes
 
         // Verify the generated public key matches the expected public key
         #expect(expectedPublicKey == publicKey, "Generated public key does not match expected public key.")
@@ -97,7 +97,7 @@ struct BindingsTestSuite {
 
     /// Extra Keys Bindings Test
     @Test("Extra Keys Bindings Test")
-    func extraKeysBindings() {
+    func extraKeysBindings() throws {
         // Initialize context
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
@@ -108,7 +108,7 @@ struct BindingsTestSuite {
         var xOnlyPubKey = secp256k1_xonly_pubkey()
         var pk_parity = Int32()
 
-        let privateKey = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
+        let privateKey = try "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
 
         #expect(secp256k1_ec_pubkey_create(context, &pubKey, privateKey) == 1, "Failed to create public key from private key.")
         #expect(secp256k1_xonly_pubkey_from_pubkey(context, &xOnlyPubKey, &pk_parity, &pubKey) == 1, "Failed to convert public key to xonly format.")
@@ -116,7 +116,7 @@ struct BindingsTestSuite {
 
     /// Recovery Bindings Test
     @Test("Recovery Bindings Test")
-    func recoveryBindings() {
+    func recoveryBindings() throws {
         // Initialize context
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
@@ -127,7 +127,7 @@ struct BindingsTestSuite {
         var recsig = secp256k1_ecdsa_recoverable_signature()
         var message = [UInt8](repeating: 0, count: 32)
 
-        let privateKey = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
+        let privateKey = try "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
 
         #expect(secp256k1_ec_seckey_verify(context, privateKey) == 1, "Failed to verify private key.")
         #expect(secp256k1_ec_pubkey_create(context, &pubKey, privateKey) == 1, "Failed to create public key from private key.")
@@ -136,7 +136,7 @@ struct BindingsTestSuite {
 
     /// Schnorr Bindings Test
     @Test("Schnorr Bindings Test")
-    func schnorrBindings() {
+    func schnorrBindings() throws {
         // Initialize context
         let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
 
@@ -147,7 +147,7 @@ struct BindingsTestSuite {
         var xpubKey = secp256k1_xonly_pubkey()
         var xpubKeyBytes = [UInt8](repeating: 0, count: 32)
 
-        let privateKey = try! "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
+        let privateKey = try "14E4A74438858920D8A35FB2D88677580B6A2EE9BE4E711AE34EC6B396D87B5C".bytes
 
         #expect(secp256k1_keypair_create(context, &keypair, privateKey) == 1, "Failed to create keypair from private key.")
         #expect(secp256k1_keypair_xonly_pub(context, &xpubKey, nil, &keypair) == 1, "Failed to get xonly public key from keypair.")
@@ -160,13 +160,13 @@ struct BindingsTestSuite {
 
     /// Key Agreement Hash Function Test
     @Test("Key Agreement Hash Function Test")
-    func keyAgreementHashFunction() {
+    func keyAgreementHashFunction() throws {
         let context = P256K.Context.rawRepresentation
-        let privateKey1 = try! P256K.KeyAgreement.PrivateKey()
-        let privateKey2 = try! P256K.KeyAgreement.PrivateKey()
+        let privateKey1 = try P256K.KeyAgreement.PrivateKey()
+        let privateKey2 = try P256K.KeyAgreement.PrivateKey()
 
         var pub = secp256k1_pubkey()
-        let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
+        let sharedSecret1 = try privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
         var sharedSecret2 = [UInt8](repeating: 0, count: 32)
 
         #expect(secp256k1_ec_pubkey_parse(context, &pub, privateKey1.publicKey.bytes, privateKey1.publicKey.bytes.count) == 1, "Failed to parse public key.")
@@ -179,9 +179,9 @@ struct BindingsTestSuite {
 
     /// Pubkey Combine Bindings Test
     @Test("Pubkey Combine Bindings Test")
-    func pubkeyCombineBindings() {
+    func pubkeyCombineBindings() throws {
         // Initialize context
-        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_NONE))!
+        let context = try #require(secp256k1_context_create(UInt32(SECP256K1_CONTEXT_NONE)))
 
         // Destroy context after execution
         defer { secp256k1_context_destroy(context) }
@@ -191,8 +191,8 @@ struct BindingsTestSuite {
         var cPubKey1 = secp256k1_pubkey()
         var cPubKey2 = secp256k1_pubkey()
 
-        let publicKeyBytes1 = try! "021b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014".bytes
-        let publicKeyBytes2 = try! "0260303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752".bytes
+        let publicKeyBytes1 = try "021b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014".bytes
+        let publicKeyBytes2 = try "0260303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752".bytes
 
         // Verify the context and keys are setup correctly
         #expect(secp256k1_ec_pubkey_parse(context, &cPubKey1, publicKeyBytes1, pubKeyLen) == 1, "Failed to parse the first public key.")
@@ -207,7 +207,7 @@ struct BindingsTestSuite {
         #expect(secp256k1_ec_pubkey_serialize(context, &combinedKeyBytes, &pubKeyLen, &combinedKey, P256K.Format.compressed.rawValue) == 1, "Failed to serialize the combined public key.")
 
         // Define the expected combined key
-        let expectedCombinedKey = try! "03d6a3a9d62c7650fcac18f9ee68c7a004ebad71b7581b683062213ad9f37ddb28".bytes
+        let expectedCombinedKey = try "03d6a3a9d62c7650fcac18f9ee68c7a004ebad71b7581b683062213ad9f37ddb28".bytes
 
         #expect(combinedKeyBytes == expectedCombinedKey, "Combined public key does not match the expected value.")
     }

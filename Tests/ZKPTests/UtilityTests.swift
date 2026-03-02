@@ -19,18 +19,18 @@ import Testing
 
 struct UtilityTestSuite {
     @Test("Verify keypair equality checks work correctly")
-    func keypairSafeCompare() {
+    func keypairSafeCompare() throws {
         let expectedPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed"
-        var privateKeyBytes = try! expectedPrivateKey.bytes
-        let privateKey0 = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
-        let privateKey1 = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        var privateKeyBytes = try expectedPrivateKey.bytes
+        let privateKey0 = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        let privateKey1 = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
 
         // Verify the keys match
         #expect(privateKey0 == privateKey1)
 
         let expectedFailingPrivateKey = "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888dd"
-        privateKeyBytes = try! expectedFailingPrivateKey.bytes
-        let privateKey2 = try! P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        privateKeyBytes = try expectedFailingPrivateKey.bytes
+        let privateKey2 = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
 
         #expect(privateKey0 != privateKey2)
     }
@@ -57,8 +57,8 @@ struct UtilityTestSuite {
     }
 
     @Test("Test Compact Size Prefix")
-    func testCompactSizePrefix() {
-        let bytes = try! "c15bf08d58a430f8c222bffaf9127249c5cdff70a2d68b2b45637eb662b6b88eb5c81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9".bytes
+    func testCompactSizePrefix() throws {
+        let bytes = try "c15bf08d58a430f8c222bffaf9127249c5cdff70a2d68b2b45637eb662b6b88eb5c81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9".bytes
         let compactBytes = "41c15bf08d58a430f8c222bffaf9127249c5cdff70a2d68b2b45637eb662b6b88eb5c81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9"
         #expect(compactBytes == String(bytes: Array(Data(bytes).compactSizePrefix)), "Compact size prefix encoding is incorrect.")
     }

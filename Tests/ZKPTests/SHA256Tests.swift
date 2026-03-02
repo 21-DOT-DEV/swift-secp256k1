@@ -28,8 +28,8 @@ struct SHA256TestSuite {
     }
 
     @Test("SHA256 hash digest consistency test")
-    func shaHashDigestTest() {
-        let expectedHash = try! "f08a78cbbaee082b052ae0708f32fa1e50c5c421aa772ba5dbb406a2ea6be342".bytes
+    func shaHashDigestTest() throws {
+        let expectedHash = try "f08a78cbbaee082b052ae0708f32fa1e50c5c421aa772ba5dbb406a2ea6be342".bytes
         let data = "For this sample, this 63-byte string will be used as input data".data(using: .utf8)!
 
         let digest = SHA256.hash(data: data)

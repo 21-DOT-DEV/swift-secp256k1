@@ -112,29 +112,48 @@ jobs:
           swift package --allow-writing-to-package-directory \
             subtree extract --name "$SUBTREE_NAME"
 
-      - name: Stage and commit
+      - name: Squash, commit, and push
         if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
         id: commit
         env:
           PR_TITLE: ${{ steps.report.outputs.pr_title }}
+          BRANCH_NAME: ${{ steps.report.outputs.branch_name }}
         run: |
-          # Commit extracted files if any changed (update already committed Vendor/ + config)
+          # Stage any remaining changes (extracted files, config)
           git add -A
           if ! git diff --cached --quiet; then
-            git commit -m "$PR_TITLE"
+            git commit -m "stage extracted files"
           fi
-          # Check if branch diverged from main (update creates commits even if extract is a no-op)
-          if [ "$(git rev-list --count main..HEAD)" -eq 0 ]; then
+
+          # Check if branch diverged from main
+          COMMIT_COUNT=$(git rev-list --count main..HEAD)
+          if [ "$COMMIT_COUNT" -eq 0 ]; then
             echo "No changes after update + extract, skipping PR"
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-      - name: Push branch
-        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true' && steps.commit.outputs.skip != 'true'
-        env:
-          BRANCH_NAME: ${{ steps.report.outputs.branch_name }}
-        run: git push origin "$BRANCH_NAME"
+          # Extract git-subtree trailers from branch commits (before squashing)
+          TRAILERS=$(git log main..HEAD --format="%B" | grep "^git-subtree-" || true)
+
+          # Squash all branch commits into one to preserve trailers on GitHub squash merge
+          if [ "$COMMIT_COUNT" -gt 1 ]; then
+            git reset --soft main
+            if [ -n "$TRAILERS" ]; then
+              printf '%s\n\n%s\n' "$PR_TITLE" "$TRAILERS" | git commit -F -
+            else
+              git commit -m "$PR_TITLE"
+            fi
+          else
+            # Single commit — amend with PR title + trailers if needed
+            if [ -n "$TRAILERS" ]; then
+              printf '%s\n\n%s\n' "$PR_TITLE" "$TRAILERS" | git commit --amend -F -
+            else
+              git commit --amend -m "$PR_TITLE"
+            fi
+          fi
+
+          git push origin "$BRANCH_NAME"
 
       - name: Create PR
         if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true' && steps.commit.outputs.skip != 'true'
