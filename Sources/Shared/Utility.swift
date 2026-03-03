@@ -78,14 +78,16 @@ extension secp256k1_ecdsa_signature {
     }
 }
 
-/// An extension for secp256k1_ecdsa_recoverable_signature providing a convenience property.
-extension secp256k1_ecdsa_recoverable_signature {
-    /// A property that returns the Data representation of the `secp256k1_ecdsa_recoverable_signature` object.
-    var dataValue: Data {
-        var mutableSig = self
-        return Data(bytes: &mutableSig.data, count: MemoryLayout.size(ofValue: data))
+#if Xcode || ENABLE_MODULE_RECOVERY
+    /// An extension for secp256k1_ecdsa_recoverable_signature providing a convenience property.
+    extension secp256k1_ecdsa_recoverable_signature {
+        /// A property that returns the Data representation of the `secp256k1_ecdsa_recoverable_signature` object.
+        var dataValue: Data {
+            var mutableSig = self
+            return Data(bytes: &mutableSig.data, count: MemoryLayout.size(ofValue: data))
+        }
     }
-}
+#endif
 
 /// An extension for String providing convenience initializers and properties for working with bytes.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
