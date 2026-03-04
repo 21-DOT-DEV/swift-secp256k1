@@ -93,7 +93,7 @@ jobs:
         if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
         env:
           BRANCH_NAME: ${{ steps.report.outputs.branch_name }}
-        run: git checkout -b "$BRANCH_NAME"
+        run: git checkout -b "$BRANCH_NAME" origin/main
 
       - name: Configure git identity
         if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
@@ -212,7 +212,7 @@ jobs:
           fi
 
           # Check if branch diverged from main
-          COMMIT_COUNT=$(git rev-list --count main..HEAD)
+          COMMIT_COUNT=$(git rev-list --count origin/main..HEAD)
           if [ "$COMMIT_COUNT" -eq 0 ]; then
             echo "No changes after update + extract, skipping PR"
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -220,11 +220,11 @@ jobs:
           fi
 
           # Extract git-subtree trailers from branch commits (before squashing)
-          TRAILERS=$(git log main..HEAD --format="%B" | grep "^git-subtree-" || true)
+          TRAILERS=$(git log origin/main..HEAD --format="%B" | grep "^git-subtree-" || true)
 
           # Squash all branch commits into one to preserve trailers on GitHub squash merge
           if [ "$COMMIT_COUNT" -gt 1 ]; then
-            git reset --soft main
+            git reset --soft origin/main
             if [ -n "$TRAILERS" ]; then
               printf '%s\n\n%s\n' "$PR_TITLE" "$TRAILERS" | git commit -F -
             else
