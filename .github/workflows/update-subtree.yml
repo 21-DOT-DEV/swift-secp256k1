@@ -113,17 +113,85 @@ jobs:
             git commit -m "chore: clean stale extractions for $SUBTREE_NAME"
           fi
 
-      - name: Run subtree update
+      - name: Debug state before update
         if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
         env:
           SUBTREE_NAME: ${{ inputs.subtree_name }}
         run: |
+          echo "::group::subtree.yaml config"
+          grep -A6 "name: $SUBTREE_NAME" subtree.yaml || echo "not found"
+          echo "::endgroup::"
+
+          echo "::group::git-subtree trailers (reachable from HEAD)"
+          git log --grep="^git-subtree-dir:" --format="%H %s" -5
+          echo "---"
+          LATEST=$(git log --grep="^git-subtree-dir:" --format="%H" -1)
+          if [ -n "$LATEST" ]; then
+            git log --format="%B" "$LATEST" -1 | grep "git-subtree-"
+          else
+            echo "no trailers found"
+          fi
+          echo "::endgroup::"
+
+          echo "::group::git log (last 5 first-parent)"
+          git log --first-parent --oneline -5
+          echo "::endgroup::"
+
+          echo "::group::working tree status"
+          git status --short | head -20
+          echo "::endgroup::"
+
+      - name: Run subtree update
+        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        id: update
+        env:
+          SUBTREE_NAME: ${{ inputs.subtree_name }}
+        run: |
+          STDOUT_FILE=$(mktemp)
+          STDERR_FILE=$(mktemp)
+
+          EXIT_CODE=0
           swift package --allow-network-connections all \
             --allow-writing-to-package-directory \
-            subtree update "$SUBTREE_NAME"
+            subtree update "$SUBTREE_NAME" \
+            > "$STDOUT_FILE" 2>"$STDERR_FILE" || EXIT_CODE=$?
+
+          cat "$STDOUT_FILE"
+          if [ "$EXIT_CODE" -ne 0 ]; then
+            echo "::error::subtree update failed with exit code $EXIT_CODE"
+            echo "::group::stdout"
+            cat "$STDOUT_FILE"
+            echo "::endgroup::"
+            echo "::group::stderr"
+            cat "$STDERR_FILE"
+            echo "::endgroup::"
+            rm -f "$STDOUT_FILE" "$STDERR_FILE"
+            exit "$EXIT_CODE"
+          fi
+          cat "$STDERR_FILE" >&2
+          rm -f "$STDOUT_FILE" "$STDERR_FILE"
+
+      - name: Debug state after update
+        if: always() && steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        run: |
+          echo "::group::git log after update (last 8 first-parent)"
+          git log --first-parent --oneline -8
+          echo "::endgroup::"
+
+          echo "::group::git-subtree trailers after update"
+          git log --grep="^git-subtree-dir:" --format="%H %s" -5
+          echo "::endgroup::"
+
+          echo "::group::subtree.yaml after update"
+          grep -A6 "name: ${{ inputs.subtree_name }}" subtree.yaml || echo "not found"
+          echo "::endgroup::"
+
+          echo "::group::working tree status"
+          git status --short | head -20
+          echo "::endgroup::"
 
       - name: Run subtree extract
-        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        if: steps.update.outcome == 'success' && steps.existing.outputs.skip != 'true'
         env:
           SUBTREE_NAME: ${{ inputs.subtree_name }}
         run: |
@@ -131,7 +199,7 @@ jobs:
             subtree extract --name "$SUBTREE_NAME"
 
       - name: Squash, commit, and push
-        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        if: steps.update.outcome == 'success' && steps.existing.outputs.skip != 'true'
         id: commit
         env:
           PR_TITLE: ${{ steps.report.outputs.pr_title }}
@@ -174,7 +242,7 @@ jobs:
           git push origin "$BRANCH_NAME"
 
       - name: Create PR
-        if: steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true' && steps.commit.outputs.skip != 'true'
+        if: steps.update.outcome == 'success' && steps.existing.outputs.skip != 'true' && steps.commit.outputs.skip != 'true'
         env:
           LATEST_TAG: ${{ steps.report.outputs.latest_tag }}
           REMOTE: ${{ steps.report.outputs.remote }}
