@@ -16,7 +16,7 @@ let project = Project(
     settings: .settings(
         configurations: [
             .debug(name: "Debug", xcconfig: "Resources/Project/Debug.xcconfig"),
-            .debug(name: "Release", xcconfig: "Resources/Project/Release.xcconfig")
+            .release(name: "Release", xcconfig: "Resources/Project/Release.xcconfig")
         ]
     ),
     targets: [
@@ -33,6 +33,7 @@ let project = Project(
             ],
             settings: .settings(
                 base: [
+                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) Xcode",
                     "BUILD_LIBRARY_FOR_DISTRIBUTION": "YES",
                     "MACOSX_DEPLOYMENT_TARGET": "13.0"
                 ],
@@ -67,7 +68,10 @@ let project = Project(
             bundleId: "dev.21.BindingsTests",
             deploymentTargets: deploymentTargets,
             sources: ["Sources/BindingsTests/**"],
-            dependencies: [.package(product: "libsecp256k1")],
+            dependencies: [
+                .target(name: "P256K"),
+                .package(product: "libsecp256k1")
+            ],
             settings: .settings(
                 configurations: [
                     .debug(name: "Debug", xcconfig: "Resources/BindingsTests/Debug.xcconfig"),

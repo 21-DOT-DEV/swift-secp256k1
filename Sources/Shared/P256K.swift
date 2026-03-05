@@ -67,26 +67,36 @@ extension P256K {
     enum ByteLength {
         /// Number of bytes for one dimension of a secp256k1 coordinate.
         @inlinable
-        static var dimension: Int { 32 }
+        static var dimension: Int {
+            32
+        }
 
         /// Number of bytes in a secp256k1 private key.
         @inlinable
-        static var privateKey: Int { 32 }
+        static var privateKey: Int {
+            32
+        }
 
         /// Number of bytes in a secp256k1 signature.
         @inlinable
-        static var signature: Int { 64 }
+        static var signature: Int {
+            64
+        }
 
         /// Number of bytes in a secp256k1 signature.
         @inlinable
-        static var partialSignature: Int { 36 }
+        static var partialSignature: Int {
+            36
+        }
 
         @inlinable
-        static var uncompressedPublicKey: Int { 65 }
+        static var uncompressedPublicKey: Int {
+            65
+        }
     }
 }
 
-/// Implementations for signing, we use bindings to libsecp256k1 for these operations.
+// Implementations for signing, we use bindings to libsecp256k1 for these operations.
 
 /// Private key for signing implementation
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
@@ -289,42 +299,44 @@ extension P256K {
         self.bytes = yCoord + xonlyKey.bytes
     }
 
-    /// Backing initialization that sets the public key from a digest and recoverable signature.
-    /// - Parameters:
-    ///   - digest: The digest that was signed.
-    ///   - signature: The signature to recover the public key from
-    ///   - format: the format of the public key object
-    /// - Throws: An error is thrown when a public key is not recoverable from the  signature.
-    @usableFromInline init<D: Digest>(
-        _ digest: D,
-        signature: P256K.Recovery.ECDSASignature,
-        format: P256K.Format
-    ) throws {
-        let context = P256K.Context.rawRepresentation
-        var keyParity = Int32()
-        var pubKeyLen = format.length
-        var pubKey = secp256k1_pubkey()
-        var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
-        var recoverySignature = secp256k1_ecdsa_recoverable_signature()
+    #if Xcode || ENABLE_MODULE_RECOVERY
+        /// Backing initialization that sets the public key from a digest and recoverable signature.
+        /// - Parameters:
+        ///   - digest: The digest that was signed.
+        ///   - signature: The signature to recover the public key from
+        ///   - format: the format of the public key object
+        /// - Throws: An error is thrown when a public key is not recoverable from the  signature.
+        @usableFromInline init<D: Digest>(
+            _ digest: D,
+            signature: P256K.Recovery.ECDSASignature,
+            format: P256K.Format
+        ) throws {
+            let context = P256K.Context.rawRepresentation
+            var keyParity = Int32()
+            var pubKeyLen = format.length
+            var pubKey = secp256k1_pubkey()
+            var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
+            var recoverySignature = secp256k1_ecdsa_recoverable_signature()
 
-        signature.dataRepresentation.copyToUnsafeMutableBytes(of: &recoverySignature.data)
+            signature.dataRepresentation.copyToUnsafeMutableBytes(of: &recoverySignature.data)
 
-        guard secp256k1_ecdsa_recover(context, &pubKey, &recoverySignature, Array(digest)).boolValue,
-              secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
-            throw secp256k1Error.underlyingCryptoError
+            guard secp256k1_ecdsa_recover(context, &pubKey, &recoverySignature, Array(digest)).boolValue,
+                  secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
+            self.xonlyBytes = try XonlyKeyImplementation.generate(
+                bytes: pubBytes,
+                keyParity: &keyParity,
+                format: format
+            )
+
+            self.keyParity = keyParity
+            self.format = format
+            self.cache = []
+            self.bytes = pubBytes
         }
-
-        self.xonlyBytes = try XonlyKeyImplementation.generate(
-            bytes: pubBytes,
-            keyParity: &keyParity,
-            format: format
-        )
-
-        self.keyParity = keyParity
-        self.format = format
-        self.cache = []
-        self.bytes = pubBytes
-    }
+    #endif
 
     /// Generates a secp256k1 public key from bytes representation.
     /// - Parameter privateBytes: a private key object in bytes form

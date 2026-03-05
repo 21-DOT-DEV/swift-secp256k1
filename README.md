@@ -58,6 +58,35 @@ Use [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground):
 arena 21-DOT-DEV/swift-secp256k1
 ```
 
+## Package Traits
+
+This package uses [SE-0450 Package Traits](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md) (Swift 6.1+) to enable fine-grained module selection. By default, the following traits are enabled: `ecdh`, `musig`, `recovery`, and `schnorrsig`.
+
+To use only specific modules, specify traits in your dependency:
+
+```swift
+.package(
+    url: "https://github.com/21-DOT-DEV/swift-secp256k1",
+    from: "0.21.1",
+    traits: ["schnorrsig"]
+),
+```
+
+To enable all ZKP modules, use the `zkp` bundle trait:
+
+```swift
+.package(
+    url: "https://github.com/21-DOT-DEV/swift-secp256k1",
+    from: "0.21.1",
+    traits: ["zkp"]
+),
+```
+
+Available traits: `ecdh`, `ellswift`, `musig`, `recovery`, `schnorrsig`, `bppp`, `ecdsaAdaptor`, `ecdsaS2C`, `generator`, `rangeproof`, `schnorrsigHalfagg`, `surjectionproof`, `whitelist`, `zkp`.
+
+> [!NOTE]
+> Xcode does not currently resolve SwiftPM package trait conditions for Swift settings. As a workaround, all optional modules are compiled when building in Xcode. Package traits are fully supported when building with `swift build` from the command line.
+
 ## Swift Versions
 
 | swift-secp256k1       | Minimum Swift Version | Minimum Xcode Version |
