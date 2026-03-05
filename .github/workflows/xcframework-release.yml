@@ -105,7 +105,7 @@ jobs:
       - name: 7z XCFramework
         run: |
           # Copy COPYING file to current directory to avoid including folder structure
-          cp "Submodules/secp256k1/COPYING" "COPYING-libsecp256k1"
+          cp "Vendor/secp256k1/COPYING" "COPYING-libsecp256k1"
           # Create zip with maximum compression including license files alongside the XCFramework
           7z a -tzip -mx=9 P256K.xcframework.zip P256K.xcframework LICENSE "COPYING-libsecp256k1"
       - name: Upload XCFramework
