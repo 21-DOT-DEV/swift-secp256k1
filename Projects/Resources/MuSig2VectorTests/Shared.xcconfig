@@ -48,7 +48,7 @@ SWIFT_EMIT_LOC_STRINGS = NO
 
 // Swift Language Version
 
-SWIFT_VERSION = 5.0
+SWIFT_VERSION = 6.0
 
 
 

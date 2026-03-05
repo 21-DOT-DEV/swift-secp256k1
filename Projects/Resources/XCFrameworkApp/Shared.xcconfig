@@ -246,7 +246,7 @@ SWIFT_EMIT_LOC_STRINGS = YES
 // 
 // The language version used to compile the target's Swift code.
 
-SWIFT_VERSION = 5.0
+SWIFT_VERSION = 6.0
 
 
 

@@ -31,7 +31,7 @@ This package uses Swift Package Manager. To add it to your project:
 Add the following to your `Package.swift` file:
 
 ```swift
-.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.21.1"),
+.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.22.0"),
 ```
 
 Then, include `P256K` as a dependency in your target:
@@ -42,12 +42,12 @@ Then, include `P256K` as a dependency in your target:
 ]),
 ```
 
-### Using CocoaPods
+### Using CocoaPods ([version history](https://github.com/CocoaPods/Specs/tree/master/Specs/7/b/2/swift-secp256k1))
 
 Add the following to your `Podfile`:
 
 ```ruby
-pod 'swift-secp256k1', '0.21.1'
+pod 'swift-secp256k1', '0.22.0'
 ```
 
 ### Try it out
@@ -67,7 +67,7 @@ To use only specific modules, specify traits in your dependency:
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    from: "0.21.1",
+    from: "0.22.0",
     traits: ["schnorrsig"]
 ),
 ```
@@ -77,7 +77,7 @@ To enable all ZKP modules, use the `zkp` bundle trait:
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    from: "0.21.1",
+    from: "0.22.0",
     traits: ["zkp"]
 ),
 ```
@@ -96,7 +96,8 @@ Available traits: `ecdh`, `ellswift`, `musig`, `recovery`, `schnorrsig`, `bppp`,
 | `0.5.0 ..< 0.8.0`     | 5.5                   | 13.0                  |
 | `0.8.0 ..< 0.14.0`    | 5.6                   | 13.3                  |
 | `0.14.0 ..< 0.18.0`   | 5.8                   | 14.3                  |
-| `0.18.0 ...`          | 6.0                   | 16.0                  |
+| `0.18.0 ..< 0.22.0`   | 6.0                   | 16.0                  |
+| `0.22.0 ...`          | 6.1                   | 16.3                  |
 
 ## Usage Examples
 
