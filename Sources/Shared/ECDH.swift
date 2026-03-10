@@ -2,7 +2,7 @@
 //  ECDH.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -189,9 +189,8 @@ import Foundation
         ///
         /// - Parameter publicKeyShare: The public key to perform the ECDH with.
         /// - Returns: Returns a shared secret.
-        /// - Throws: An error occurred while computing the shared secret.
-        func sharedSecretFromKeyAgreement(with publicKeyShare: P256K.KeyAgreement.PublicKey) throws -> SharedSecret {
-            try sharedSecretFromKeyAgreement(with: publicKeyShare, format: .compressed)
+        func sharedSecretFromKeyAgreement(with publicKeyShare: P256K.KeyAgreement.PublicKey) -> SharedSecret {
+            sharedSecretFromKeyAgreement(with: publicKeyShare, format: .compressed)
         }
 
         /// Performs a key agreement with the provided public key share.
@@ -200,18 +199,17 @@ import Foundation
         ///   - publicKeyShare: The public key to perform the ECDH with.
         ///   - format: An enum that represents the format of the shared secret.
         /// - Returns: Returns a shared secret.
-        /// - Throws: An error occurred while computing the shared secret.
         public func sharedSecretFromKeyAgreement(
             with publicKeyShare: P256K.KeyAgreement.PublicKey,
             format: P256K.Format = .compressed
-        ) throws -> SharedSecret {
+        ) -> SharedSecret {
             let context = P256K.Context.rawRepresentation
             var publicKey = publicKeyShare.baseKey.rawRepresentation
             var sharedSecret = [UInt8](repeating: 0, count: format.length)
             var data = [UInt8](repeating: format == .compressed ? 1 : 0, count: 1)
 
             guard secp256k1_ecdh(context, &sharedSecret, &publicKey, baseKey.key.bytes, hashClosure(), &data).boolValue else {
-                throw secp256k1Error.underlyingCryptoError
+                fatalError("secp256k1_ecdh failed with valid keys — library bug")
             }
 
             return SharedSecret(ss: SecureBytes(bytes: sharedSecret), format: format)

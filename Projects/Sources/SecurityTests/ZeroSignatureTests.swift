@@ -2,7 +2,7 @@
 //  ZeroSignatureTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -10,15 +10,13 @@
 
 import CryptoKit
 import Foundation
-import Testing
-
 @testable import P256K
+import Testing
 
 /// Tests for zero/invalid signature value vulnerabilities (ZS-001 through ZS-004).
 ///
 /// These tests ensure the library correctly rejects signatures with zero or invalid
 /// r/s values, which could lead to signature forgery (e.g., CVE-2022-21449 "Psychic Signatures").
-@Suite("Zero Signature Security Tests")
 struct ZeroSignatureTests {
     // MARK: - Test Setup
 

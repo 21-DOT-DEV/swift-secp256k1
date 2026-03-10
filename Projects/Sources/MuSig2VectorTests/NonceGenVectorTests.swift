@@ -2,7 +2,7 @@
 //  NonceGenVectorTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -13,7 +13,6 @@ import P256K
 import Testing
 
 /// BIP-0327 Nonce Generation test vectors
-@Suite("BIP-0327 Nonce Generation")
 struct NonceGenVectorTests {
     /// Loaded test vectors
     let vectors: NonceGenVectors

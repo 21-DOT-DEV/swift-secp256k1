@@ -2,7 +2,7 @@
 //  ECDHWycheproofTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -13,7 +13,6 @@ import P256K
 import Testing
 
 /// Wycheproof ECDH test vectors for secp256k1
-@Suite("Wycheproof ECDH")
 struct ECDHWycheproofTests {
     /// Loaded test file
     let testFile: WycheproofECDH
@@ -24,7 +23,7 @@ struct ECDHWycheproofTests {
     }
 
     @Test("All ECDH vectors pass")
-    func allECDHVectors() throws {
+    func allECDHVectors() {
         #expect(!testFile.testGroups.isEmpty, "No ECDH test groups loaded")
 
         var passed = 0
@@ -58,7 +57,7 @@ struct ECDHWycheproofTests {
     }
 
     @Test("Valid ECDH vectors succeed")
-    func validVectors() throws {
+    func validVectors() {
         let validVectors = testFile.testGroups.flatMap { $0.tests }.filter { $0.result == .valid }
         #expect(!validVectors.isEmpty, "No valid ECDH vectors found")
 
@@ -71,7 +70,7 @@ struct ECDHWycheproofTests {
     }
 
     @Test("Invalid ECDH vectors are rejected")
-    func invalidVectors() throws {
+    func invalidVectors() {
         let invalidVectors = testFile.testGroups.flatMap { $0.tests }.filter { $0.result == .invalid }
         #expect(!invalidVectors.isEmpty, "No invalid ECDH vectors found")
 
@@ -89,8 +88,8 @@ struct ECDHWycheproofTests {
         // WrongCurve: Tests non-secp256k1 curves (P-256, P-384, etc.) - out of scope
         // InvalidAsn: Our strict ASN.1 parser rejects these; Wycheproof marks some as "acceptable"
         // tcIds 496, 497, 502-505, 507: Invalid curve OIDs that aren't secp256k1
-        let flagsToSkip: Set<String> = ["InvalidAsn", "WrongCurve"]
-        let tcIdsToSkip: Set<Int> = [496, 497, 502, 503, 504, 505, 507]
+        let flagsToSkip: Set = ["InvalidAsn", "WrongCurve"]
+        let tcIdsToSkip: Set = [496, 497, 502, 503, 504, 505, 507]
 
         if tcIdsToSkip.contains(vector.tcId) {
             return true
@@ -108,7 +107,7 @@ struct ECDHWycheproofTests {
             let expectedShared = try vector.shared.bytes
 
             let privateKey = try P256K.KeyAgreement.PrivateKey(dataRepresentation: privateKeyBytes)
-            let sharedSecret = try privateKey.sharedSecretFromKeyAgreement(with: publicKey, format: .compressed)
+            let sharedSecret = privateKey.sharedSecretFromKeyAgreement(with: publicKey, format: .compressed)
 
             // libsecp256k1 returns compressed format: version byte + x-coordinate
             // Wycheproof expects just the x-coordinate (32 bytes)

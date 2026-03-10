@@ -2,13 +2,13 @@
 //  SEC1PrivateKey.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Modifications Copyright (c) 2025 21-DOT-DEV
+//  Modifications Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
 //
 //
-//  NOTICE: THIS FILE HAS BEEN MODIFIED BY GigaBitcoin LLC
+//  NOTICE: THIS FILE HAS BEEN MODIFIED BY Timechain Software Initiative, Inc.
 //  UNDER COMPLIANCE WITH THE APACHE 2.0 LICENSE FROM THE
 //  ORIGINAL WORK OF THE COMPANY Apple Inc.
 //
@@ -44,14 +44,14 @@
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension ASN1 {
-        // For private keys, SEC 1 uses:
-        //
-        // ECPrivateKey ::= SEQUENCE {
-        //   version INTEGER { ecPrivkeyVer1(1) } (ecPrivkeyVer1),
-        //   privateKey OCTET STRING,
-        //   parameters [0] EXPLICIT ECDomainParameters OPTIONAL,
-        //   publicKey [1] EXPLICIT BIT STRING OPTIONAL
-        // }
+        /// For private keys, SEC 1 uses:
+        ///
+        /// ECPrivateKey ::= SEQUENCE {
+        ///   version INTEGER { ecPrivkeyVer1(1) } (ecPrivkeyVer1),
+        ///   privateKey OCTET STRING,
+        ///   parameters [0] EXPLICIT ECDomainParameters OPTIONAL,
+        ///   publicKey [1] EXPLICIT BIT STRING OPTIONAL
+        /// }
         @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         struct SEC1PrivateKey: ASN1ImplicitlyTaggable {
             static var defaultIdentifier: ASN1.ASN1Identifier {

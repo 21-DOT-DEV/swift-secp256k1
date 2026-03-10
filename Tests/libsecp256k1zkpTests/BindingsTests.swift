@@ -166,7 +166,7 @@ struct BindingsTestSuite {
         let privateKey2 = try P256K.KeyAgreement.PrivateKey()
 
         var pub = secp256k1_pubkey()
-        let sharedSecret1 = try privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
+        let sharedSecret1 = privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
         var sharedSecret2 = [UInt8](repeating: 0, count: 32)
 
         #expect(secp256k1_ec_pubkey_parse(context, &pub, privateKey1.publicKey.bytes, privateKey1.publicKey.bytes.count) == 1, "Failed to parse public key.")

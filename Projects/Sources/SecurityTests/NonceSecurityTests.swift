@@ -2,7 +2,7 @@
 //  NonceSecurityTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -10,9 +10,8 @@
 
 import CryptoKit
 import Foundation
-import Testing
-
 @testable import P256K
+import Testing
 
 /// Tests for nonce security vulnerabilities (NS-001 through NS-003).
 ///
@@ -22,7 +21,6 @@ import Testing
 /// Note on NS-002: SecureNonce reuse is prevented at compile-time by Swift's type system.
 /// The `consuming` keyword on `partialSignature` ensures the nonce cannot be used twice.
 /// This is stronger than a runtime check - it's enforced by the compiler.
-@Suite("Nonce Security Tests")
 struct NonceSecurityTests {
     // MARK: - NS-001: Deterministic nonce (RFC 6979)
 

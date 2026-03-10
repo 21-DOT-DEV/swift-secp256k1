@@ -2,7 +2,7 @@
 //  ECDSAWycheproofTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -13,7 +13,6 @@ import P256K
 import Testing
 
 /// Wycheproof ECDSA Bitcoin test vectors for secp256k1
-@Suite("Wycheproof ECDSA Bitcoin")
 struct ECDSAWycheproofTests {
     /// Loaded test file
     let testFile: WycheproofECDSABitcoin
@@ -24,7 +23,7 @@ struct ECDSAWycheproofTests {
     }
 
     @Test("All ECDSA vectors pass")
-    func allECDSAVectors() throws {
+    func allECDSAVectors() {
         #expect(!testFile.testGroups.isEmpty, "No ECDSA test groups loaded")
 
         var passed = 0
@@ -58,7 +57,7 @@ struct ECDSAWycheproofTests {
     }
 
     @Test("Valid ECDSA signatures verify")
-    func validSignatures() throws {
+    func validSignatures() {
         let validVectors = testFile.testGroups.flatMap { group in
             group.tests.filter { $0.result == .valid }.map { (group.publicKey, $0) }
         }
@@ -73,7 +72,7 @@ struct ECDSAWycheproofTests {
     }
 
     @Test("Invalid ECDSA signatures are rejected")
-    func invalidSignatures() throws {
+    func invalidSignatures() {
         let invalidVectors = testFile.testGroups.flatMap { group in
             group.tests.filter { $0.result == .invalid }.map { (group.publicKey, $0) }
         }
@@ -88,7 +87,7 @@ struct ECDSAWycheproofTests {
     }
 
     @Test("Signature malleability is rejected (Bitcoin low-S rule)")
-    func signatureMalleabilityRejection() throws {
+    func signatureMalleabilityRejection() {
         let malleableVectors = testFile.testGroups.flatMap { group in
             group.tests.filter { $0.flags.contains("SignatureMalleabilityBitcoin") }.map { (group.publicKey, $0) }
         }
@@ -104,7 +103,7 @@ struct ECDSAWycheproofTests {
     // MARK: - Private Helpers
 
     private func shouldSkip(vector: ECDSABitcoinTestVector) -> Bool {
-        let unsupportedFlags: Set<String> = ["InvalidTypesInSignature"]
+        let unsupportedFlags: Set = ["InvalidTypesInSignature"]
         return !Set(vector.flags).isDisjoint(with: unsupportedFlags)
     }
 

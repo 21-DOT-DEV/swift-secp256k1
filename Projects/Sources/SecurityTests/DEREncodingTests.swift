@@ -2,23 +2,21 @@
 //  DEREncodingTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
 //
 
 import Foundation
-import Testing
-
 @testable import P256K
+import Testing
 
 /// Tests for DER encoding strictness vulnerabilities (DE-001 through DE-004).
 ///
 /// These tests ensure the library correctly rejects non-strict DER encodings
 /// that could lead to signature malleability or parsing vulnerabilities
 /// (CVE-2020-14966, CVE-2020-13822, CVE-2019-14859, CVE-2016-1000342).
-@Suite("DER Encoding Security Tests")
 struct DEREncodingTests {
     // MARK: - DE-001: Reject BER padding
 

@@ -46,3 +46,4 @@
 # --disable elseOnSameLine,semicolons
 --disable strongOutlets
 --disable wrapMultilineStatementBraces
+--disable redundantSendable

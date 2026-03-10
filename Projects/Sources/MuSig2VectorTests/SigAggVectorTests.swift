@@ -2,7 +2,7 @@
 //  SigAggVectorTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -13,7 +13,6 @@ import P256K
 import Testing
 
 /// BIP-0327 Signature Aggregation test vectors
-@Suite("BIP-0327 Signature Aggregation")
 struct SigAggVectorTests {
     /// Loaded test vectors
     let vectors: SigAggVectors
@@ -24,7 +23,7 @@ struct SigAggVectorTests {
     }
 
     @Test("Vectors file loads correctly")
-    func vectorsLoadCorrectly() throws {
+    func vectorsLoadCorrectly() {
         #expect(vectors.pubkeys.count == 4, "Should have 4 public keys")
         #expect(vectors.psigs.count == 9, "Should have 9 partial signatures")
         #expect(vectors.valid_test_cases.count >= 1, "Should have valid test cases")

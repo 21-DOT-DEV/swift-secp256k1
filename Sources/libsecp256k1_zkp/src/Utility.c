@@ -1,8 +1,8 @@
 //
 //  Utility.c
-//  GigaBitcoin/secp256k1.swift
+//  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2021 GigaBitcoin LLC
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information

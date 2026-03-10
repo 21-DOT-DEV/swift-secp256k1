@@ -2,13 +2,13 @@
 //  DH.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Modifications Copyright (c) 2025 21-DOT-DEV
+//  Modifications Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
 //
 //
-//  NOTICE: THIS FILE HAS BEEN MODIFIED BY GigaBitcoin LLC
+//  NOTICE: THIS FILE HAS BEEN MODIFIED BY Timechain Software Initiative, Inc.
 //  UNDER COMPLIANCE WITH THE APACHE 2.0 LICENSE FROM THE
 //  ORIGINAL WORK OF THE COMPANY Apple Inc.
 //
@@ -51,7 +51,7 @@ protocol DiffieHellmanKeyAgreement: Sendable {
     /// - Parameters:
     ///   - publicKeyShare: The public key share.
     /// - Returns: The resulting key agreement result.
-    func sharedSecretFromKeyAgreement(with publicKeyShare: PublicKey) throws -> SharedSecret
+    func sharedSecretFromKeyAgreement(with publicKeyShare: PublicKey) -> SharedSecret
 }
 
 /// A key agreement result from which you can derive a symmetric cryptographic
@@ -67,14 +67,14 @@ public struct SharedSecret: ContiguousBytes, Sendable {
     // secp256k1: An enum that represents the format of the shared secret
     let format: P256K.Format
 
-    /// Invokes the given closure with a buffer pointer covering the raw bytes
-    /// of the shared secret.
-    ///
-    /// - Parameters:
-    ///   - body: A closure that takes a raw buffer pointer to the bytes of the
-    /// shared secret and returns the shared secret.
-    ///
-    /// - Returns: The shared secret, as returned from the body closure.
+    // Invokes the given closure with a buffer pointer covering the raw bytes
+    // of the shared secret.
+    //
+    // - Parameters:
+    //   - body: A closure that takes a raw buffer pointer to the bytes of the
+    // shared secret and returns the shared secret.
+    //
+    // - Returns: The shared secret, as returned from the body closure.
     #if hasFeature(Embedded)
         public func withUnsafeBytes<R, E: Error>(_ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
             try ss.withUnsafeBytes(body)
@@ -93,7 +93,7 @@ extension SharedSecret: Hashable {
     }
 }
 
-// We want to implement constant-time comparison for shared secrets.
+/// We want to implement constant-time comparison for shared secrets.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension SharedSecret: Equatable {
     public static func == (lhs: Self, rhs: Self) -> Bool {

@@ -2,7 +2,7 @@
 //  Combine.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -37,6 +37,6 @@ public extension P256K.Signing.PublicKey {
             throw secp256k1Error.underlyingCryptoError
         }
 
-        return try Self(dataRepresentation: combinedBytes, format: format)
+        return Self(baseKey: PublicKeyImplementation(validatedBytes: combinedBytes, format: format))
     }
 }

@@ -2,7 +2,7 @@
 //  SHA256.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -41,9 +41,8 @@ public enum SHA256 {
     /// - Parameters:
     ///   - tag: The tag to be used in the hash computation.
     ///   - data: The data to be hashed.
-    /// - Throws: An error if the tagged hash computation fails.
     /// - Returns: The computed digest.
-    public static func taggedHash<D: DataProtocol>(tag: D, data: D) throws -> SHA256Digest {
+    public static func taggedHash<D: DataProtocol>(tag: D, data: D) -> SHA256Digest {
         let context = P256K.Context.rawRepresentation
         let tagBytes = Array(tag)
         let messageBytes = Array(data)
@@ -57,7 +56,7 @@ public enum SHA256 {
             messageBytes,
             messageBytes.count
         ).boolValue else {
-            throw secp256k1Error.underlyingCryptoError
+            fatalError("secp256k1_tagged_sha256 failed — library bug")
         }
 
         return .init(output)

@@ -2,22 +2,20 @@
 //  ScalarValidationTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
 //
 
 import Foundation
-import Testing
-
 @testable import P256K
+import Testing
 
 /// Tests for scalar validation vulnerabilities (SV-001 through SV-003).
 ///
 /// These tests ensure the library correctly validates private key scalars
 /// to prevent weak key attacks and out-of-range values.
-@Suite("Scalar Validation Security Tests")
 struct ScalarValidationTests {
     // MARK: - SV-001: Reject zero private key
 

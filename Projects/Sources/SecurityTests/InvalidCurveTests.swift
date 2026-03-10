@@ -2,22 +2,20 @@
 //  InvalidCurveTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
 //
 
 import Foundation
-import Testing
-
 @testable import P256K
+import Testing
 
 /// Tests for invalid curve attack vulnerabilities (IC-001 through IC-002).
 ///
 /// These tests ensure the library correctly rejects points that are not on the secp256k1 curve,
 /// which could leak private key information through invalid curve attacks on ECDH.
-@Suite("Invalid Curve Attack Security Tests")
 struct InvalidCurveTests {
     // MARK: - IC-001: Reject truncated public key
 
@@ -108,8 +106,8 @@ struct InvalidCurveTests {
         let bobPublic = bobPrivate.publicKey
 
         // Both parties compute shared secret
-        let aliceShared = try alicePrivate.sharedSecretFromKeyAgreement(with: bobPublic)
-        let bobShared = try bobPrivate.sharedSecretFromKeyAgreement(with: alicePublic)
+        let aliceShared = alicePrivate.sharedSecretFromKeyAgreement(with: bobPublic)
+        let bobShared = bobPrivate.sharedSecretFromKeyAgreement(with: alicePublic)
 
         // Shared secrets should match
         #expect(
@@ -131,7 +129,7 @@ struct InvalidCurveTests {
         )
 
         // Alice computes shared secret with deserialized key
-        let sharedSecret = try alicePrivate.sharedSecretFromKeyAgreement(with: deserializedBobPublic)
+        let sharedSecret = alicePrivate.sharedSecretFromKeyAgreement(with: deserializedBobPublic)
 
         #expect(sharedSecret.bytes.count > 0, "Shared secret should have bytes")
     }
