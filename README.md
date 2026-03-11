@@ -130,10 +130,10 @@ print(String(bytes: privateKey.publicKey.dataRepresentation))
 
 // ECDSA signature
 let messageData = "We're all Satoshi.".data(using: .utf8)!
-let signature = try! privateKey.signature(for: messageData)
+let signature = privateKey.signature(for: messageData)
 
 // DER signature
-print(try! signature.derRepresentation.base64EncodedString())
+print(signature.derRepresentation.base64EncodedString())
 ```
 
 ### Schnorr
@@ -167,7 +167,7 @@ let privateKey = try! P256K.KeyAgreement.PrivateKey()
 let publicKey = try! P256K.KeyAgreement.PrivateKey().publicKey
 
 // Create a compressed shared secret with a private key from only a public key
-let sharedSecret = try! privateKey.sharedSecretFromKeyAgreement(with: publicKey, format: .compressed)
+let sharedSecret = privateKey.sharedSecretFromKeyAgreement(with: publicKey, format: .compressed)
 
 // By default, libsecp256k1 hashes the x-coordinate with version information.
 let symmetricKey = SHA256.hash(data: sharedSecret.bytes)
@@ -207,13 +207,13 @@ let privateKey = try! P256K.Recovery.PrivateKey()
 let messageData = "We're all Satoshi.".data(using: .utf8)!
 
 // Create a recoverable ECDSA signature
-let recoverySignature = try! privateKey.signature(for: messageData)
+let recoverySignature = privateKey.signature(for: messageData)
 
 // Recover an ECDSA public key from a signature
-let publicKey = try! P256K.Recovery.PublicKey(messageData, signature: recoverySignature)
+let publicKey = P256K.Recovery.PublicKey(messageData, signature: recoverySignature)
 
 // Convert a recoverable signature into a normal signature
-let signature = try! recoverySignature.normalize
+let signature = recoverySignature.normalize
 ```
 
 ### Combine Public Keys
@@ -245,34 +245,34 @@ let privateKey = try! P256K.Signing.PrivateKey(pemRepresentation: privateKeyStri
 
 ```swift
 // Initialize private keys for two signers
-let firstPrivateKey = try P256K.Schnorr.PrivateKey()
-let secondPrivateKey = try P256K.Schnorr.PrivateKey()
+let firstPrivateKey = try! P256K.Schnorr.PrivateKey()
+let secondPrivateKey = try! P256K.Schnorr.PrivateKey()
 
 // Aggregate the public keys using MuSig
-let aggregateKey = try P256K.MuSig.aggregate([firstPrivateKey.publicKey, secondPrivateKey.publicKey])
+let aggregateKey = try! P256K.MuSig.aggregate([firstPrivateKey.publicKey, secondPrivateKey.publicKey])
 
 // Message to be signed
 let message = "Vires in Numeris.".data(using: .utf8)!
 let messageHash = SHA256.hash(data: message)
 
 // Generate nonces for each signer
-let firstNonce = try P256K.MuSig.Nonce.generate(
+let firstNonce = try! P256K.MuSig.Nonce.generate(
     secretKey: firstPrivateKey,
     publicKey: firstPrivateKey.publicKey,
     msg32: Array(messageHash)
 )
 
-let secondNonce = try P256K.MuSig.Nonce.generate(
+let secondNonce = try! P256K.MuSig.Nonce.generate(
     secretKey: secondPrivateKey,
     publicKey: secondPrivateKey.publicKey,
     msg32: Array(messageHash)
 )
 
 // Aggregate nonces
-let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+let aggregateNonce = try! P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
 
 // Create partial signatures
-let firstPartialSignature = try firstPrivateKey.partialSignature(
+let firstPartialSignature = try! firstPrivateKey.partialSignature(
     for: messageHash,
     pubnonce: firstNonce.pubnonce,
     secureNonce: firstNonce.secnonce,
@@ -280,7 +280,7 @@ let firstPartialSignature = try firstPrivateKey.partialSignature(
     publicKeyAggregate: aggregateKey
 )
 
-let secondPartialSignature = try secondPrivateKey.partialSignature(
+let secondPartialSignature = try! secondPrivateKey.partialSignature(
     for: messageHash,
     pubnonce: secondNonce.pubnonce,
     secureNonce: secondNonce.secnonce,
@@ -289,7 +289,7 @@ let secondPartialSignature = try secondPrivateKey.partialSignature(
 )
 
 // Aggregate partial signatures into a full signature
-let aggregateSignature = try P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
+let aggregateSignature = try! P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
 
 // Verify the aggregate signature
 let isValid = aggregateKey.isValidSignature(

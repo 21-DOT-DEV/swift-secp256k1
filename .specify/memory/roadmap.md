@@ -1,7 +1,7 @@
 # swift-secp256k1 Product Roadmap
 
-**Version**: v1.3.0  
-**Last Updated**: 2025-12-26  
+**Version**: v1.4.0  
+**Last Updated**: 2026-03-14  
 **Constitution**: [constitution.md](constitution.md)
 
 ---
@@ -28,7 +28,6 @@ Build the most reliable, secure, and developer-friendly Swift wrapper for secp25
 
 | Item | Description | Status |
 |------|-------------|--------|
-| **Swift Version Compatibility Table** | Document minimum Swift version requirements for all releases in README.md (similar to swift-crypto). Extracted swift-tools-version from Package.swift for each release. Grouped consecutive releases with identical requirements into ranges. Includes Xcode version column. | ✅ Complete |
 | **swift-crypto 4.2.0 Update** | Update vendored swift-crypto via subtree plugin from 3.11.1 to 4.2.0. Resolve breaking availability attribute changes in `Sources/Shared/` on case-by-case basis (e.g., `UInt256.swift` retains current attributes due to `StaticBigInt` dependency). | 🔜 Planned |
 | **UInt256 SecurityTests** | Add security test vectors for `UInt256`/`SIMDWordsInteger` to `Projects/Sources/SecurityTests/`. Cover: overflow detection, boundary correctness, power-of-two multiply paths, Codable parsing hardening. Use swift-testing framework with `*ReportingOverflow` pattern. | 🔜 Planned |
 
@@ -47,6 +46,18 @@ Build the most reliable, secure, and developer-friendly Swift wrapper for secp25
 | **6** | Long-term: MACs & PRFs | 📋 Future | [phase-6-macs-prfs.md](roadmap/phase-6-macs-prfs.md) |
 | **7** | Long-term: KDFs | 📋 Future | [phase-7-kdfs.md](roadmap/phase-7-kdfs.md) |
 | **—** | Backlog | 📋 Future | [backlog.md](roadmap/backlog.md) |
+
+### Phase Summaries
+
+- **Phase 0** — SPM pre-build plugin enabling code sharing between P256K and ZKP targets from a single source
+- **Phase 1** — Test architecture under `Projects/`; BIP-340 Schnorr vectors, Wycheproof ECDSA/ECDH vectors, CVE regression tests, native secp256k1/zkp test suites
+- **Phase 2** — Coveralls code coverage (tiered: ≥90% critical, ≥70% overall), CodeQL security scanning, fuzz testing, exit tests for precondition failures
+- **Phase 3** — DocC setup at docs.21.dev with quickstart guide; 5 tutorials (ECDSA, Schnorr/BIP-340, Key Formats, ECDH, MuSig2); UInt256 audit and improvement
+- **Phase 4** — SHA-512 (zero-dep, constant-time), RIPEMD-160 / HASH160, Bech32/Bech32m encoding for Bitcoin (SegWit/Taproot), Lightning (BOLT11), and Nostr (NIP-19)
+- **Phase 5** — MuSig2 SwiftUI signing app on all Apple platforms; Bitcoin multi-sig wallet and Nostr shared-account user flows
+- **Phase 6** — HMAC-SHA512 (BIP-32), HMAC-SHA256, HKDF (BIP-151), SipHash (BIP-152/158), MurmurHash3 (BIP-37), HMAC-DRBG
+- **Phase 7** — PBKDF2-SHA512 for BIP-39 mnemonic-to-seed derivation; scrypt for BIP-38 encrypted private keys
+- **Backlog** — Data structures (Bloom filters, Golomb-coded sets, Merkle trees), CLI apps, additional primitives (tagged hashes, Base58Check, strict DER), Windows support
 
 ---
 
@@ -89,6 +100,24 @@ Phase 0 (SPM Plugin) ──► Phase 1 (Testing) ──► Phase 2 (CI/Quality)
 
 ---
 
+## Global Risks & Assumptions
+
+**Assumptions**:
+- Zero runtime dependency philosophy is maintained across all phases (libsecp256k1 bindings only)
+- Swift Package Manager remains the primary build system; Tuist used for `Projects/` only
+- All six Apple platforms + Linux continue as supported targets
+
+**Risks & Mitigations**:
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Zero-dependency constraint limits implementation options | All hash/MAC/KDF primitives must be hand-rolled | Base on libsecp256k1 patterns; accept modest performance cost vs platform crypto |
+| Constant-time requirement for all crypto code | Significant verification burden per primitive | Adopt libsecp256k1's existing constant-time patterns; consider formal verification for critical paths |
+| Platform breadth (6 platforms) multiplies CI/testing effort | Slow CI, flaky platform-specific failures | Tiered CI: full matrix on release, subset on PRs |
+| Scope creep from BIP completeness pressure | Primitives expand into full protocol implementations | Strict scope: primitives only in Phases 4-7; full BIP protocols are separate packages/features |
+
+---
+
 ## Change Log
 
 | Version | Date | Change Type | Description |
@@ -97,3 +126,4 @@ Phase 0 (SPM Plugin) ──► Phase 1 (Testing) ──► Phase 2 (CI/Quality)
 | v1.1.0 | 2025-12-12 | Added | High Priority Items section with Swift Version Compatibility Table |
 | v1.2.0 | 2025-12-14 | Completed | Swift Version Compatibility Table implemented in README.md |
 | v1.3.0 | 2025-12-26 | Updated | Phase 0 & 1 marked complete; added swift-crypto 4.2.0 update and UInt256 SecurityTests as high-priority items |
+| v1.4.0 | 2026-03-14 | Improved | Full overview refresh: added per-phase summaries, removed completed high-priority item, added Global Risks & Assumptions section |
