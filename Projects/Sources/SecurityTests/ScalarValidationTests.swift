@@ -16,6 +16,7 @@ import Testing
 ///
 /// These tests ensure the library correctly validates private key scalars
 /// to prevent weak key attacks and out-of-range values.
+@Suite("Scalar Validation Security Tests")
 struct ScalarValidationTests {
     // MARK: - SV-001: Reject zero private key
 

@@ -13,6 +13,7 @@ import Foundation
 import Testing
 
 /// BIP-0327 Sign/Verify test vectors
+@Suite("BIP-0327 Sign/Verify")
 struct SignVerifyVectorTests {
     /// Loaded test vectors
     let vectors: SignVerifyVectors

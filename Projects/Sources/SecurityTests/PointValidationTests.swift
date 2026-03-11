@@ -16,6 +16,7 @@ import Testing
 ///
 /// These tests ensure the library correctly rejects invalid elliptic curve points
 /// that could lead to security vulnerabilities if accepted.
+@Suite("Point Validation Security Tests")
 struct PointValidationTests {
     // MARK: - PV-001: Reject point at infinity
 

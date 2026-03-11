@@ -16,6 +16,7 @@ import Testing
 ///
 /// These tests ensure the library correctly rejects points that are not on the secp256k1 curve,
 /// which could leak private key information through invalid curve attacks on ECDH.
+@Suite("Invalid Curve Attack Security Tests")
 struct InvalidCurveTests {
     // MARK: - IC-001: Reject truncated public key
 

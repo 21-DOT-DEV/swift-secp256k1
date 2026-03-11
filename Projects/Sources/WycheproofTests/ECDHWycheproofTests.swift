@@ -13,6 +13,7 @@ import P256K
 import Testing
 
 /// Wycheproof ECDH test vectors for secp256k1
+@Suite("Wycheproof ECDH")
 struct ECDHWycheproofTests {
     /// Loaded test file
     let testFile: WycheproofECDH

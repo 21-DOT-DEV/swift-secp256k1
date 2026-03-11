@@ -13,6 +13,7 @@ import P256K
 import Testing
 
 /// BIP-0327 Signature Aggregation test vectors
+@Suite("BIP-0327 Signature Aggregation")
 struct SigAggVectorTests {
     /// Loaded test vectors
     let vectors: SigAggVectors

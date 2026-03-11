@@ -21,6 +21,7 @@ import Testing
 /// Note on NS-002: SecureNonce reuse is prevented at compile-time by Swift's type system.
 /// The `consuming` keyword on `partialSignature` ensures the nonce cannot be used twice.
 /// This is stronger than a runtime check - it's enforced by the compiler.
+@Suite("Nonce Security Tests")
 struct NonceSecurityTests {
     // MARK: - NS-001: Deterministic nonce (RFC 6979)
 

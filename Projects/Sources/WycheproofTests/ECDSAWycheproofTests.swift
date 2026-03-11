@@ -13,6 +13,7 @@ import P256K
 import Testing
 
 /// Wycheproof ECDSA Bitcoin test vectors for secp256k1
+@Suite("Wycheproof ECDSA Bitcoin")
 struct ECDSAWycheproofTests {
     /// Loaded test file
     let testFile: WycheproofECDSABitcoin

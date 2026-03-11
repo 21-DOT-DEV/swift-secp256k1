@@ -13,6 +13,7 @@ import P256K
 import Testing
 
 /// BIP-0327 Nonce Aggregation test vectors
+@Suite("BIP-0327 Nonce Aggregation")
 struct NonceAggVectorTests {
     /// Loaded test vectors
     let vectors: NonceAggVectors

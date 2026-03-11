@@ -17,6 +17,7 @@ import Testing
 ///
 /// These tests ensure the library correctly rejects signatures with zero or invalid
 /// r/s values, which could lead to signature forgery (e.g., CVE-2022-21449 "Psychic Signatures").
+@Suite("Zero Signature Security Tests")
 struct ZeroSignatureTests {
     // MARK: - Test Setup
 

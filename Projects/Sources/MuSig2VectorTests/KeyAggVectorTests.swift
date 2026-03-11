@@ -13,6 +13,7 @@ import P256K
 import Testing
 
 /// BIP-0327 Key Aggregation test vectors
+@Suite("BIP-0327 Key Aggregation")
 struct KeyAggVectorTests {
     /// Loaded test vectors
     let vectors: KeyAggVectors

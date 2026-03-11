@@ -20,6 +20,7 @@ import Testing
 ///
 /// Note: SM-003 (normalize then verify) is skipped because `secp256k1_ecdsa_signature_normalize`
 /// is not exposed in the Swift API. libsecp256k1 auto-normalizes during signing.
+@Suite("Signature Malleability Security Tests")
 struct SignatureMalleabilityTests {
     // MARK: - SM-001: Reject high-s signature
 

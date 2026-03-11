@@ -13,6 +13,7 @@ import Foundation
 import Testing
 
 /// BIP-0327 Deterministic Sign test vectors
+@Suite("BIP-0327 Deterministic Sign")
 struct DetSignVectorTests {
     /// Loaded test vectors
     let vectors: DetSignVectors

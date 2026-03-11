@@ -13,6 +13,7 @@ import P256K
 import Testing
 
 /// BIP-0327 Tweak test vectors
+@Suite("BIP-0327 Tweaking")
 struct TweakVectorTests {
     /// Loaded test vectors
     let vectors: TweakVectors

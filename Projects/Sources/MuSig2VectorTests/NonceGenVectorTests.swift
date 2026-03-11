@@ -13,6 +13,7 @@ import P256K
 import Testing
 
 /// BIP-0327 Nonce Generation test vectors
+@Suite("BIP-0327 Nonce Generation")
 struct NonceGenVectorTests {
     /// Loaded test vectors
     let vectors: NonceGenVectors

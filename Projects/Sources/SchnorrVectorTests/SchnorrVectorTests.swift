@@ -13,6 +13,7 @@ import P256K
 import Testing
 
 /// BIP-340 Schnorr signature test vectors
+@Suite("BIP-340 Schnorr Signatures")
 struct SchnorrVectorTests {
     /// Loaded test vectors
     let vectors: [BIP340Vector]
