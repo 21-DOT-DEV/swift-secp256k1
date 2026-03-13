@@ -304,11 +304,11 @@ print("Is valid MuSig signature: \(isValid)")
 
 ## Security
 
-If you believe you have found a security vulnerability, please report it through [GitHub Security Advisories](https://github.com/21-DOT-DEV/swift-secp256k1/security/advisories) rather than opening a public issue.
+For information on reporting security vulnerabilities, see [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
-Contributions are welcome. Please open an issue or submit a pull request on [GitHub](https://github.com/21-DOT-DEV/swift-secp256k1).
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
 
 ## License
 
