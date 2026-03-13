@@ -1,10 +1,23 @@
-[![Build Status](https://app.bitrise.io/app/18c18db60fc4fddf/status.svg?token=nczB4mTPCrlTfDQnXH_8Pw&branch=main)](https://app.bitrise.io/app/18c18db60fc4fddf) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F21-DOT-DEV%2Fswift-secp256k1%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/21-DOT-DEV/swift-secp256k1) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F21-DOT-DEV%2Fswift-secp256k1%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/21-DOT-DEV/swift-secp256k1)
+[![Latest Release](https://github.com/21-DOT-DEV/swift-secp256k1/actions/workflows/xcframework-release.yml/badge.svg)](https://github.com/21-DOT-DEV/swift-secp256k1/actions/workflows/xcframework-release.yml) [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE) [![Swift Versions](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F21-DOT-DEV%2Fswift-secp256k1%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/21-DOT-DEV/swift-secp256k1) [![Platforms](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2F21-DOT-DEV%2Fswift-secp256k1%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/21-DOT-DEV/swift-secp256k1)
 
 # 🔐 swift-secp256k1
 
-Swift package for elliptic curve public key cryptography, ECDSA, and Schnorr Signatures for Bitcoin, with C bindings from [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
+Swift cryptography package for Bitcoin — ECDSA, Schnorr Signatures, Elliptic Curve Diffie-Hellman, and zero-knowledge proofs. Uses Swift's C interoperability with [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
 
-## Objectives
+🌐 [Project page](https://21.dev/packages/p256k/) · 📚 [Documentation](https://docs.21.dev/documentation/p256k/)
+
+## Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Package Traits](#package-traits)
+- [Swift Versions](#swift-versions)
+- [Usage Examples](#usage-examples)
+- [Security](#security)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Features
 
 - Provide lightweight ECDSA & Schnorr Signatures functionality
 - Support simple and advanced usage, including BIP-327 and BIP-340
@@ -18,7 +31,7 @@ Swift package for elliptic curve public key cryptography, ECDSA, and Schnorr Sig
 This package uses Swift Package Manager. To add it to your project:
 
 > [!WARNING]  
-> These APIs are not considered stable and may change with any update. Specify a version using `exact:` to avoid breaking changes.
+> This package is pre-1.0 ([SemVer major version zero](https://semver.org/#spec-item-4)). The public API should not be considered stable and may change with any release. Pin a version using `exact:` to avoid unexpected breaking changes.
 
 ### Using Xcode
 
@@ -31,7 +44,7 @@ This package uses Swift Package Manager. To add it to your project:
 Add the following to your `Package.swift` file:
 
 ```swift
-.package(name: "swift-secp256k1", url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.22.0"),
+.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.22.0"),
 ```
 
 Then, include `P256K` as a dependency in your target:
@@ -44,6 +57,9 @@ Then, include `P256K` as a dependency in your target:
 
 ### Using CocoaPods ([version history](https://github.com/CocoaPods/Specs/tree/master/Specs/7/b/2/swift-secp256k1))
 
+> [!NOTE]
+> Swift Package Manager is the recommended way to add this package. CocoaPods support may be deprecated in a future release.
+
 Add the following to your `Podfile`:
 
 ```ruby
@@ -52,9 +68,9 @@ pod 'swift-secp256k1', '0.22.0'
 
 ### Try it out
 
-Use [SPI Playgrounds app](https://swiftpackageindex.com/try-in-a-playground):
+Use [Arena](https://github.com/finestructure/Arena) to try the package in a playground:
 
-```swift
+```
 arena 21-DOT-DEV/swift-secp256k1
 ```
 
@@ -166,8 +182,8 @@ let privateSign2 = try! P256K.Signing.PrivateKey()
 let privateKey1 = try! P256K.KeyAgreement.PrivateKey(dataRepresentation: privateSign1.dataRepresentation)
 let privateKey2 = try! P256K.KeyAgreement.PrivateKey(dataRepresentation: privateSign2.dataRepresentation)
 
-let sharedSecret1 = try! privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
-let sharedSecret2 = try! privateKey2.sharedSecretFromKeyAgreement(with: publicKey1)
+let sharedSecret1 = privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
+let sharedSecret2 = privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey)
 
 let symmetricKey1 = SHA256.hash(data: sharedSecret1.bytes)
 let symmetricKey2 = SHA256.hash(data: sharedSecret2.bytes)
@@ -204,7 +220,7 @@ let signature = try! recoverySignature.normalize
 
 ```swift
 let privateKey = try! P256K.Signing.PrivateKey()
-let publicKey = try! P256K.Signing.PrivateKey().public
+let publicKey = try! P256K.Signing.PrivateKey().publicKey
 
 // The Combine API arguments are an array of PublicKey objects and an optional format 
 publicKey.combine([privateKey.publicKey], format: .uncompressed)
@@ -285,3 +301,15 @@ let isValid = aggregateKey.isValidSignature(
 
 print("Is valid MuSig signature: \(isValid)")
 ```
+
+## Security
+
+For information on reporting security vulnerabilities, see [SECURITY.md](SECURITY.md).
+
+## Contributing
+
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
+
+## License
+
+This project is released under the MIT License. See [LICENSE](LICENSE) for details.
