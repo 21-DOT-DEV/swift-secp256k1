@@ -1,6 +1,6 @@
 # AGENTS.md (swift-secp256k1)
 
-This repository is a Swift implementation/wrapper of secp256k1 (+ ZKP) for the Bitcoin and Nostrecosystem.
+This repository is a Swift implementation/wrapper of secp256k1 (+ ZKP) for the Bitcoin and Nostr ecosystems.
 
 ## Global guidance
 
