@@ -2,7 +2,7 @@
 
 # 🔐 swift-secp256k1
 
-Swift cryptography package for Bitcoin — ECDSA, Schnorr Signatures, Elliptic Curve Diffie-Hellman, and zero-knowledge proofs. Uses Swift's C interoperability with [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
+Swift cryptography library for Bitcoin and Nostr. ECDSA, Schnorr Signatures, Elliptic Curve Diffie-Hellman, and zero-knowledge proofs. Uses Swift's C interoperability with [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
 
 🌐 [Project page](https://21.dev/packages/p256k/) · 📚 [Documentation](https://docs.21.dev/documentation/p256k/)
 
@@ -30,9 +30,6 @@ Swift cryptography package for Bitcoin — ECDSA, Schnorr Signatures, Elliptic C
 
 This package uses Swift Package Manager. To add it to your project:
 
-> [!WARNING]  
-> This package is pre-1.0 ([SemVer major version zero](https://semver.org/#spec-item-4)). The public API should not be considered stable and may change with any release. Pin a version using `exact:` to avoid unexpected breaking changes.
-
 ### Using Xcode
 
 1. Go to `File > Add Packages...`
@@ -46,6 +43,9 @@ Add the following to your `Package.swift` file:
 ```swift
 .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.22.0"),
 ```
+
+> [!WARNING]  
+> This package is pre-1.0 ([SemVer major version zero](https://semver.org/#spec-item-4)). The public API should not be considered stable and may change with any release. Pin a version using `exact:` to avoid unexpected breaking changes.
 
 Then, include `P256K` as a dependency in your target:
 
@@ -308,7 +308,7 @@ For information on reporting security vulnerabilities, see [SECURITY.md](SECURIT
 
 ## Contributing
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started. For AI-assisted development guidance, see [AGENTS.md](AGENTS.md).
 
 ## License
 
