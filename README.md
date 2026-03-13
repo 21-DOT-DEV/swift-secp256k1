@@ -57,14 +57,14 @@ Then, include `P256K` as a dependency in your target:
 
 ### Using CocoaPods ([version history](https://github.com/CocoaPods/Specs/tree/master/Specs/7/b/2/swift-secp256k1))
 
-> [!NOTE]
-> Swift Package Manager is the recommended way to add this package. CocoaPods support may be deprecated in a future release.
-
 Add the following to your `Podfile`:
 
 ```ruby
 pod 'swift-secp256k1', '0.22.0'
 ```
+
+> [!NOTE]
+> Swift Package Manager is the recommended way to add this package. CocoaPods support may be deprecated in a future release.
 
 ### Try it out
 
