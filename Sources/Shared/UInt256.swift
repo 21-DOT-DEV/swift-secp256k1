@@ -2,13 +2,13 @@
 //  UInt256.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Modifications Copyright (c) 2025 21-DOT-DEV
+//  Modifications Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
 //
 //
-//  NOTICE: THIS FILE HAS BEEN MODIFIED BY GigaBitcoin LLC
+//  NOTICE: THIS FILE HAS BEEN MODIFIED BY Timechain Software Initiative, Inc.
 //  UNDER COMPLIANCE WITH THE APACHE 2.0 LICENSE FROM THE
 //  ORIGINAL WORK OF THE COMPANY Apple Inc.
 //
@@ -37,11 +37,11 @@
 
 import Foundation
 
-/// A larger fixed-width integer, stored as a SIMD vector of words.
-///
-/// FIXME: Not implemented yet.
-/// - ``FixedWidthInteger.multipliedFullWidth(by:)``
-/// - ``FixedWidthInteger.dividingFullWidth(_:)``
+// A larger fixed-width integer, stored as a SIMD vector of words.
+//
+// FIXME: Not implemented yet.
+// - ``FixedWidthInteger.multipliedFullWidth(by:)``
+// - ``FixedWidthInteger.dividingFullWidth(_:)``
 
 public protocol SIMDWordsInteger: Codable,
     CustomDebugStringConvertible,
@@ -67,10 +67,10 @@ public protocol SIMDWordsInteger: Codable,
 }
 
 public extension SIMDWordsInteger where Self == Stride {
-    /// Creates a new instance with the same memory representation as the given
-    /// value.
-    ///
-    /// - Parameter source: A value of an associated type.
+    // Creates a new instance with the same memory representation as the given
+    // value.
+    //
+    // - Parameter source: A value of an associated type.
 
     @inlinable
     init(bitPattern source: Magnitude) {
@@ -79,10 +79,10 @@ public extension SIMDWordsInteger where Self == Stride {
 }
 
 public extension SIMDWordsInteger where Self == Magnitude {
-    /// Creates a new instance with the same memory representation as the given
-    /// value.
-    ///
-    /// - Parameter source: A value of an associated type.
+    // Creates a new instance with the same memory representation as the given
+    // value.
+    //
+    // - Parameter source: A value of an associated type.
 
     @inlinable
     init(bitPattern source: Stride) {
@@ -691,7 +691,7 @@ public extension SIMDWordsInteger where Self == Magnitude {
 
 //===----------------------------------------------------------------------===//
 
-/// A mutable random-access collection, stored as a SIMD vector.
+// A mutable random-access collection, stored as a SIMD vector.
 
 @frozen
 @propertyWrapper
@@ -811,7 +811,7 @@ private extension SIMDWrapper where Element == UInt {
 
 //===----------------------------------------------------------------------===//
 
-/// A 128-bit signed integer, stored as a SIMD vector of words.
+// A 128-bit signed integer, stored as a SIMD vector of words.
 
 @frozen @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 public struct Int128: SIMDWordsInteger, SignedInteger {
@@ -835,7 +835,7 @@ public struct Int128: SIMDWordsInteger, SignedInteger {
     }
 }
 
-/// A 128-bit unsigned integer, stored as a SIMD vector of words.
+// A 128-bit unsigned integer, stored as a SIMD vector of words.
 
 @frozen @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 public struct UInt128: SIMDWordsInteger, UnsignedInteger {
@@ -866,7 +866,7 @@ public struct UInt128: SIMDWordsInteger, UnsignedInteger {
 
 //===----------------------------------------------------------------------===//
 
-/// A 256-bit signed integer, stored as a SIMD vector of words.
+// A 256-bit signed integer, stored as a SIMD vector of words.
 
 @frozen @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 public struct Int256: SIMDWordsInteger, SignedInteger {
@@ -890,7 +890,7 @@ public struct Int256: SIMDWordsInteger, SignedInteger {
     }
 }
 
-/// A 256-bit unsigned integer, stored as a SIMD vector of words.
+// A 256-bit unsigned integer, stored as a SIMD vector of words.
 
 @frozen @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
 public struct UInt256: SIMDWordsInteger, UnsignedInteger {
@@ -953,10 +953,8 @@ extension UInt256: RawRepresentable {
     }
 
     public var rawValue: Data {
-        let hexData = words.reduce(Data(capacity: Self.bitWidth / 8)) { accumulator, word in
+        words.reduce(Data(capacity: Self.bitWidth / 8)) { accumulator, word in
             withUnsafeBytes(of: word.bigEndian) { Data($0) } + accumulator
         }
-
-        return hexData
     }
 }

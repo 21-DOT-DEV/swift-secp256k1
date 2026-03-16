@@ -2,13 +2,13 @@
 //  SafeCompare.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Modifications Copyright (c) 2025 21-DOT-DEV
+//  Modifications Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
 //
 //
-//  NOTICE: THIS FILE HAS BEEN MODIFIED BY GigaBitcoin LLC
+//  NOTICE: THIS FILE HAS BEEN MODIFIED BY Timechain Software Initiative, Inc.
 //  UNDER COMPLIANCE WITH THE APACHE 2.0 LICENSE FROM THE
 //  ORIGINAL WORK OF THE COMPANY Apple Inc.
 //

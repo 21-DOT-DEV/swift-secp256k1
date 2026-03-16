@@ -46,3 +46,7 @@
 # --disable elseOnSameLine,semicolons
 --disable strongOutlets
 --disable wrapMultilineStatementBraces
+--disable redundantSendable
+--disable redundantSwiftTestingSuite
+--disable swiftTestingTestCaseNames
+--suite-name-format preserve

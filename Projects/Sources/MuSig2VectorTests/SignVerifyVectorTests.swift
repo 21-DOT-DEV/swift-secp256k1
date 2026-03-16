@@ -2,7 +2,7 @@
 //  SignVerifyVectorTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -79,7 +79,7 @@ struct SignVerifyVectorTests {
     }
 
     @Test("Vectors file loads correctly")
-    func vectorsLoadCorrectly() throws {
+    func vectorsLoadCorrectly() {
         #expect(vectors.pubkeys.count == 4, "Should have 4 public keys")
         #expect(vectors.secnonces.count == 2, "Should have 2 secret nonces")
         #expect(vectors.pnonces.count == 5, "Should have 5 public nonces")

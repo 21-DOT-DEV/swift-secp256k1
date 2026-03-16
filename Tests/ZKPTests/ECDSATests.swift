@@ -2,7 +2,7 @@
 //  ECDSATests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 GigaBitcoin LLC
+//  Copyright (c) 2025 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -27,11 +27,11 @@ struct ECDSATestSuite {
         let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
-        let signature = try privateKey.signature(for: messageData)
+        let signature = privateKey.signature(for: messageData)
 
         // Verify the signature matches the expected output
         #expect(signature.dataRepresentation.base64EncodedString() == expectedSignature)
-        #expect(try signature.derRepresentation.base64EncodedString() == expectedDerSignature)
+        #expect(signature.derRepresentation.base64EncodedString() == expectedDerSignature)
     }
 
     @Test("Signature Verification Test")
@@ -41,7 +41,7 @@ struct ECDSATestSuite {
         let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
-        let signature = try privateKey.signature(for: messageData)
+        let signature = privateKey.signature(for: messageData)
 
         // Verify that the public key is valid for the generated signature
         #expect(privateKey.publicKey.isValidSignature(signature, for: SHA256.hash(data: messageData)))
@@ -92,10 +92,10 @@ struct ECDSATestSuite {
         let privateKey = try P256K.Signing.PrivateKey(pemRepresentation: privateKeyString)
         let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
 
-        let signature = try privateKey.signature(for: messageData)
+        let signature = privateKey.signature(for: messageData)
 
         // Verify the signature matches the expected output
-        #expect(try signature.derRepresentation.base64EncodedString() == expectedDerSignature, "Signature DER representation mismatch")
+        #expect(signature.derRepresentation.base64EncodedString() == expectedDerSignature, "Signature DER representation mismatch")
     }
 
     @Test("Verifying with PEM representation")

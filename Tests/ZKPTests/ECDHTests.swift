@@ -2,7 +2,7 @@
 //  ECDHTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 GigaBitcoin LLC
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -29,8 +29,8 @@ struct ECDHTestSuite {
         let privateKey1 = try P256K.KeyAgreement.PrivateKey(dataRepresentation: privateBytes1)
         let privateKey2 = try P256K.KeyAgreement.PrivateKey(dataRepresentation: privateBytes2)
 
-        let sharedSecret1 = try privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey, format: .uncompressed)
-        let sharedSecret2 = try privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey, format: .uncompressed)
+        let sharedSecret1 = privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey, format: .uncompressed)
+        let sharedSecret2 = privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey, format: .uncompressed)
 
         #expect(sharedSecret1.bytes == sharedSecret2.bytes, "Shared secrets should be equal")
     }
@@ -45,8 +45,8 @@ struct ECDHTestSuite {
 
         let publicKey1 = try P256K.KeyAgreement.PublicKey(dataRepresentation: privateKey1.publicKey.dataRepresentation)
 
-        let sharedSecret1 = try privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
-        let sharedSecret2 = try privateKey2.sharedSecretFromKeyAgreement(with: publicKey1)
+        let sharedSecret1 = privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
+        let sharedSecret2 = privateKey2.sharedSecretFromKeyAgreement(with: publicKey1)
 
         #expect(sharedSecret1.bytes == sharedSecret2.bytes, "Shared secrets should be equal")
 

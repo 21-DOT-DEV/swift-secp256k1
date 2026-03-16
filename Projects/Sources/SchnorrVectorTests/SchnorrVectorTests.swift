@@ -2,7 +2,7 @@
 //  SchnorrVectorTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -25,7 +25,7 @@ struct SchnorrVectorTests {
     }
 
     @Test("All BIP-340 vectors pass verification")
-    func allBIP340Vectors() throws {
+    func allBIP340Vectors() {
         #expect(!vectors.isEmpty, "No BIP-340 vectors loaded")
 
         for vector in vectors {
@@ -38,7 +38,7 @@ struct SchnorrVectorTests {
     }
 
     @Test("Verification-only vectors pass")
-    func verificationOnlyVectors() throws {
+    func verificationOnlyVectors() {
         let verificationOnlyVectors = vectors.filter { $0.secretKey == nil }
         #expect(!verificationOnlyVectors.isEmpty, "No verification-only vectors found")
 

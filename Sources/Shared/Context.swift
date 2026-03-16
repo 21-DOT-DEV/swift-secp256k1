@@ -2,7 +2,7 @@
 //  Context.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -27,48 +27,34 @@
 public extension P256K {
     /// A structure that represents the context flags for `secp256k1` operations.
     ///
-    /// This structure conforms to the `OptionSet` protocol, allowing you to combine different context flags.
-    /// It includes a static property, `none`, which represents a `Context` with no flags.
-    ///
     /// The `Context` structure is used to create and manage the context for `secp256k1` operations.
     /// It is used in the creation of the `secp256k1` context and also in determining the size of the preallocated
     /// memory for the context.
-    struct Context: OptionSet, Sendable {
+    struct Context: Sendable {
         /// The raw representation of `secp256k1.Context`
-        nonisolated(unsafe) public static let rawRepresentation = try! P256K.Context.create()
+        nonisolated(unsafe) public static let rawRepresentation = P256K.Context.create()
 
         /// The raw value of the context flags.
-        public let rawValue: UInt32
-
-        /// Creates a new `Context` instance with the specified raw value.
-        public init(rawValue: UInt32) { self.rawValue = rawValue }
-
-        /// Initializes a new Context with the specified raw value.
-        /// - Parameter rawValue: The Int32 raw value for the context flags.
-        init(rawValue: Int32) { self.rawValue = UInt32(rawValue) }
-
-        /// No context flag.
-        ///
-        /// This static property represents a `Context` with no flags. It can be used when creating a `secp256k1`
-        /// context with no flags.
-        nonisolated(unsafe) public static let none = Self(rawValue: SECP256K1_CONTEXT_NONE)
+        static let rawValue = UInt32(SECP256K1_CONTEXT_NONE)
 
         /// Creates a new `secp256k1` context with the specified flags.
         ///
-        /// - Parameter context: The context flags to create a new `secp256k1` context.
-        /// - Throws: An error of type `secp256k1Error.underlyingCryptoError` if the context creation or randomization
-        /// fails.
+        /// - Precondition: Context creation and randomization must succeed.
         /// - Returns: An opaque pointer to the created context.
         ///
         /// This static method creates a new `secp256k1` context with the specified flags. The flags are represented by
-        /// the `Context` structure. The method throws an error if the context creation or randomization fails. If the
-        /// context creation is successful, the method returns an opaque pointer to the created context.
-        public static func create(_ context: Self = .none) throws -> OpaquePointer {
+        /// the `Context` structure. A precondition failure occurs if the context creation or randomization fails.
+        public static func create() -> OpaquePointer {
             var randomBytes = SecureBytes(count: P256K.ByteLength.privateKey).bytes
-            guard let context = secp256k1_context_create(context.rawValue),
-                  secp256k1_context_randomize(context, &randomBytes).boolValue else {
-                throw secp256k1Error.underlyingCryptoError
+
+            guard let context = secp256k1_context_create(Self.rawValue) else {
+                preconditionFailure("Failed to create secp256k1 context")
             }
+
+            precondition(
+                secp256k1_context_randomize(context, &randomBytes).boolValue,
+                "Failed to randomize secp256k1 context"
+            )
 
             return context
         }

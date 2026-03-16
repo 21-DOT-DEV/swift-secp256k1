@@ -2,7 +2,7 @@
 //  SignatureMalleabilityTests.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -10,9 +10,8 @@
 
 import CryptoKit
 import Foundation
-import Testing
-
 @testable import P256K
+import Testing
 
 /// Tests for signature malleability vulnerabilities (SM-001 through SM-002).
 ///

@@ -1,8 +1,8 @@
 //
-//  ECDSA.swift
+//  ECDSA+Signature.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Copyright (c) 2025 21-DOT-DEV
+//  Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
@@ -15,23 +15,6 @@ import Foundation
 #elseif canImport(libsecp256k1)
     import libsecp256k1
 #endif
-
-typealias NISTECDSASignature = DERSignature & DataSignature
-
-protocol DataSignature {
-    init<D: DataProtocol>(dataRepresentation: D) throws
-    var dataRepresentation: Data { get }
-}
-
-protocol DERSignature {
-    init<D: DataProtocol>(derRepresentation: D) throws
-    var derRepresentation: Data { get throws }
-}
-
-protocol CompactSignature {
-    init<D: DataProtocol>(compactRepresentation: D) throws
-    var compactRepresentation: Data { get throws }
-}
 
 // MARK: - secp256k1 + ECDSA Signature
 
@@ -58,12 +41,9 @@ public extension P256K.Signing {
         /// Initializes ECDSASignature from the raw representation.
         /// - Parameters:
         ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
-        /// - Throws: If there is a failure with the dataRepresentation count
-        init(_ dataRepresentation: Data) throws {
-            guard dataRepresentation.count == P256K.ByteLength.signature else {
-                throw secp256k1Error.incorrectParameterSize
-            }
-
+        /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.signature`.
+        init(_ dataRepresentation: Data) {
+            precondition(dataRepresentation.count == P256K.ByteLength.signature, "Invalid ECDSA signature size")
             self.dataRepresentation = dataRepresentation
         }
 
@@ -114,51 +94,45 @@ public extension P256K.Signing {
         }
 
         /// Serialize an ECDSA signature in compact (64 byte) format.
-        /// - Throws: If there is a failure parsing signature
         /// - Returns: a 64-byte data representation of the compact serialization
         public var compactRepresentation: Data {
-            get throws {
-                let context = P256K.Context.rawRepresentation
-                var signature = secp256k1_ecdsa_signature()
-                var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
+            let context = P256K.Context.rawRepresentation
+            var signature = secp256k1_ecdsa_signature()
+            var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
 
-                dataRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
+            dataRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
 
-                guard secp256k1_ecdsa_signature_serialize_compact(
-                    context,
-                    &compactSignature,
-                    &signature
-                ).boolValue else {
-                    throw secp256k1Error.underlyingCryptoError
-                }
-
-                return Data(bytes: &compactSignature, count: P256K.ByteLength.signature)
+            guard secp256k1_ecdsa_signature_serialize_compact(
+                context,
+                &compactSignature,
+                &signature
+            ).boolValue else {
+                fatalError("secp256k1_ecdsa_signature_serialize_compact failed with valid signature — library bug")
             }
+
+            return Data(bytes: &compactSignature, count: P256K.ByteLength.signature)
         }
 
         /// A DER-encoded representation of the signature
-        /// - Throws: If there is a failure parsing signature
         /// - Returns: a DER representation of the signature
         public var derRepresentation: Data {
-            get throws {
-                let context = P256K.Context.rawRepresentation
-                var signature = secp256k1_ecdsa_signature()
-                var derSignatureLength = 80
-                var derSignature = [UInt8](repeating: 0, count: derSignatureLength)
+            let context = P256K.Context.rawRepresentation
+            var signature = secp256k1_ecdsa_signature()
+            var derSignatureLength = 80
+            var derSignature = [UInt8](repeating: 0, count: derSignatureLength)
 
-                dataRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
+            dataRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
 
-                guard secp256k1_ecdsa_signature_serialize_der(
-                    context,
-                    &derSignature,
-                    &derSignatureLength,
-                    &signature
-                ).boolValue else {
-                    throw secp256k1Error.underlyingCryptoError
-                }
-
-                return Data(bytes: &derSignature, count: derSignatureLength)
+            guard secp256k1_ecdsa_signature_serialize_der(
+                context,
+                &derSignature,
+                &derSignatureLength,
+                &signature
+            ).boolValue else {
+                fatalError("secp256k1_ecdsa_signature_serialize_der failed with valid signature — library bug")
             }
+
+            return Data(bytes: &derSignature, count: derSignatureLength)
         }
     }
 }
@@ -171,8 +145,7 @@ extension P256K.Signing.PrivateKey: DigestSigner {
     ///
     /// - Parameter digest: The digest to sign.
     /// - Returns: The ECDSA Signature.
-    /// - Throws: If there is a failure producing the signature
-    public func signature<D: Digest>(for digest: D) throws -> P256K.Signing.ECDSASignature {
+    public func signature<D: Digest>(for digest: D) -> P256K.Signing.ECDSASignature {
         let context = P256K.Context.rawRepresentation
         var signature = secp256k1_ecdsa_signature()
 
@@ -184,10 +157,10 @@ extension P256K.Signing.PrivateKey: DigestSigner {
             nil,
             nil
         ).boolValue else {
-            throw secp256k1Error.underlyingCryptoError
+            fatalError("secp256k1_ecdsa_sign failed with valid key — library bug")
         }
 
-        return try P256K.Signing.ECDSASignature(signature.dataValue)
+        return P256K.Signing.ECDSASignature(signature.dataValue)
     }
 }
 
@@ -198,9 +171,8 @@ extension P256K.Signing.PrivateKey: Signer {
     ///
     /// - Parameter data: The data to sign.
     /// - Returns: The ECDSA Signature.
-    /// - Throws: If there is a failure producing the signature.
-    public func signature<D: DataProtocol>(for data: D) throws -> P256K.Signing.ECDSASignature {
-        try signature(for: SHA256.hash(data: data))
+    public func signature<D: DataProtocol>(for data: D) -> P256K.Signing.ECDSASignature {
+        signature(for: SHA256.hash(data: data))
     }
 }
 

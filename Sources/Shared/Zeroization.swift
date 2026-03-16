@@ -2,13 +2,13 @@
 //  Zeroization.swift
 //  21-DOT-DEV/swift-secp256k1
 //
-//  Modifications Copyright (c) 2025 21-DOT-DEV
+//  Modifications Copyright (c) 2026 Timechain Software Initiative, Inc.
 //  Distributed under the MIT software license
 //
 //  See the accompanying file LICENSE for information
 //
 //
-//  NOTICE: THIS FILE HAS BEEN MODIFIED BY GigaBitcoin LLC
+//  NOTICE: THIS FILE HAS BEEN MODIFIED BY Timechain Software Initiative, Inc.
 //  UNDER COMPLIANCE WITH THE APACHE 2.0 LICENSE FROM THE
 //  ORIGINAL WORK OF THE COMPANY Apple Inc.
 //
@@ -38,8 +38,8 @@
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     typealias errno_t = CInt
 
-    // This is a Swift wrapper for the libc function that does not exist on Linux. We shim it via a call to secp256k1_swift_memczero.
-    // We have the same syntax, but mostly ignore it.
+    /// This is a Swift wrapper for the libc function that does not exist on Linux. We shim it via a call to secp256k1_swift_memczero.
+    /// We have the same syntax, but mostly ignore it.
     @discardableResult
     func memset_s(_ s: UnsafeMutableRawPointer!, _ smax: Int, _ byte: CInt, _ n: Int) -> errno_t {
         assert(smax == n, "memset_s invariant not met")
