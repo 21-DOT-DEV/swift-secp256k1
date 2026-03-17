@@ -22,7 +22,7 @@ Sources/libsecp256k1_zkp/include/Utility.h  linguist-vendored=false
 
 # Vendor/development directories
 Vendor/**                   export-ignore linguist-vendored
-Projects/**                 export-ignore linguist-vendored
+Projects/**                 export-ignore
 .build/**                   export-ignore linguist-vendored
 .build_custom/**            export-ignore linguist-vendored
 .github/**                  export-ignore linguist-vendored
@@ -35,6 +35,7 @@ specs/**                    export-ignore linguist-vendored
 # CI/CD and tooling configs
 bitrise.yml                 export-ignore
 Dockerfile                  export-ignore
+.dockerignore               export-ignore
 lefthook.yml                export-ignore
 subtree.yaml                export-ignore
 .spi.yml                    export-ignore
