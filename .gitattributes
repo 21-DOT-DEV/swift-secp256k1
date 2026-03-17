@@ -22,15 +22,15 @@ Sources/libsecp256k1_zkp/include/Utility.h  linguist-vendored=false
 
 # Vendor/development directories
 Vendor/**                   export-ignore linguist-vendored
-Projects/**                 export-ignore
-.build/**                   export-ignore
-.build_custom/**            export-ignore
-.github/**                  export-ignore
-.vscode/**                  export-ignore
-.swiftpm/**                 export-ignore
-.specify/**                 export-ignore
-.windsurf/**                export-ignore
-specs/**                    export-ignore
+Projects/**                 export-ignore linguist-vendored
+.build/**                   export-ignore linguist-vendored
+.build_custom/**            export-ignore linguist-vendored
+.github/**                  export-ignore linguist-vendored
+.vscode/**                  export-ignore linguist-vendored
+.swiftpm/**                 export-ignore linguist-vendored
+.specify/**                 export-ignore linguist-vendored
+.windsurf/**                export-ignore linguist-vendored
+specs/**                    export-ignore linguist-vendored
 
 # CI/CD and tooling configs
 bitrise.yml                 export-ignore
