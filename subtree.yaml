@@ -18,7 +18,7 @@ subtrees:
 - name: secp256k1-zkp
   remote: https://github.com/BlockstreamResearch/secp256k1-zkp
   prefix: Vendor/secp256k1-zkp
-  commit: f049578e5fd91b65006bd9843c9f6f33e10f237f
+  commit: c83a403f9429ed3c521fc6038352ba7000f36f9a
   branch: master
   squash: true
   extractions:
