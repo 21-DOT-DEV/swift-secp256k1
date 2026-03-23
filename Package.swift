@@ -56,7 +56,7 @@ let package = Package(
         .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.162.0"),
         .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.60.1"),
         .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.63.2"),
-        .package(url: "https://github.com/21-DOT-DEV/swift-plugin-subtree.git", exact: "0.0.12")
+        .package(url: "https://github.com/21-DOT-DEV/swift-plugin-subtree.git", exact: "0.0.13")
     ],
     targets: [
         // MARK: - Build Plugins
