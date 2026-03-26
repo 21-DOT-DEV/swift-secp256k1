@@ -23,7 +23,7 @@ jobs:
       - name: Build for WebAssembly
         run: |
           docker run --pull=always --rm -v "$PWD:/workspace" -w /workspace \
-            registry.gitlab.com/finestructure/spi-images:wasm-6.1-latest \
+            registry.gitlab.com/swiftpackageindex/spi-images:wasm-6.1-latest \
             swift build \
               --swift-sdk wasm32-unknown-wasi \
               -Xswiftc -Xfrontend -Xswiftc -stats-output-dir -Xswiftc -Xfrontend -Xswiftc .stats \
@@ -41,5 +41,5 @@ jobs:
       - name: Build for Android
         run: |
           docker run --pull=always --rm -v "$PWD:/workspace" -w /workspace \
-            registry.gitlab.com/finestructure/spi-images:android-6.2-1.30.0 \
+            registry.gitlab.com/swiftpackageindex/spi-images:android-6.1-latest \
             swift build --swift-sdk aarch64-unknown-linux-android28
