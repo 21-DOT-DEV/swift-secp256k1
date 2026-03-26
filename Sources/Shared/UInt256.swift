@@ -35,7 +35,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-import Foundation
+public import Foundation
 
 // A larger fixed-width integer, stored as a SIMD vector of words.
 //

@@ -8,12 +8,12 @@
 //  See the accompanying file LICENSE for information
 //
 #if CRYPTOKIT_NO_ACCESS_TO_FOUNDATION
-    import SwiftSystem
+    public import SwiftSystem
 #else
     #if canImport(FoundationEssentials)
-        import FoundationEssentials
+        public import FoundationEssentials
     #else
-        import Foundation
+        public import Foundation
     #endif
 #endif
 

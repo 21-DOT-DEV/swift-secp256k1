@@ -8,7 +8,7 @@
 //  See the accompanying file LICENSE for information
 //
 
-import Foundation
+public import Foundation
 
 #if canImport(libsecp256k1_zkp)
     import libsecp256k1_zkp

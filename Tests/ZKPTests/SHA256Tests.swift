@@ -14,6 +14,7 @@
     @testable import P256K
 #endif
 
+import Foundation
 import Testing
 
 struct SHA256TestSuite {

@@ -71,13 +71,15 @@ let package = Package(
         .target(
             name: "P256K",
             dependencies: ["libsecp256k1"],
-            swiftSettings: PackageDescription.SwiftSetting.moduleSettings,
+            swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
+                + PackageDescription.SwiftSetting.moduleSettings,
             plugins: ["SharedSourcesPlugin"]
         ),
         .target(
             name: "ZKP",
             dependencies: ["libsecp256k1_zkp"],
-            swiftSettings: PackageDescription.SwiftSetting.moduleSettings
+            swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
+                + PackageDescription.SwiftSetting.moduleSettings
                 + PackageDescription.SwiftSetting.zkpModuleSettings,
             plugins: ["SharedSourcesPlugin"]
         ),
@@ -95,13 +97,15 @@ let package = Package(
         .testTarget(
             name: "libsecp256k1zkpTests",
             dependencies: ["ZKP", "libsecp256k1_zkp"],
-            swiftSettings: PackageDescription.SwiftSetting.moduleSettings
+            swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
+                + PackageDescription.SwiftSetting.moduleSettings
                 + PackageDescription.SwiftSetting.zkpModuleSettings
         ),
         .testTarget(
             name: "ZKPTests",
             dependencies: ["ZKP"],
-            swiftSettings: PackageDescription.SwiftSetting.moduleSettings
+            swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
+                + PackageDescription.SwiftSetting.moduleSettings
                 + PackageDescription.SwiftSetting.zkpModuleSettings
         )
     ],
@@ -129,6 +133,12 @@ extension PackageDescription.CSetting {
 }
 
 extension PackageDescription.SwiftSetting {
+    /// Upcoming feature flags opted into ahead of the next language version.
+    static let upcomingFeatures: [Self] = [
+        .enableUpcomingFeature("MemberImportVisibility"),
+        .enableUpcomingFeature("InternalImportsByDefault")
+    ]
+
     /// Trait-conditional settings for secp256k1 modules.
     ///
     /// - Note: Xcode does not resolve `.when(traits:)` conditions for Swift settings,
