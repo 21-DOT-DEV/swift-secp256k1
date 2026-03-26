@@ -52,11 +52,11 @@ struct TaprootTestSuite {
 
         let aliceBytes = try "2bd806c97f0e00af1a1fc3328fa763a9269723c8db8fac4f93af71db186d6e90".bytes
         let alice = try P256K.Signing.PrivateKey(dataRepresentation: aliceBytes)
-        let aliceScript = Data([UInt8(array.count)] + array) +
-            OP_CHECKSEQUENCEVERIFY +
-            OP_DROP +
-            Data([UInt8(alice.publicKey.xonly.bytes.count)] + alice.publicKey.xonly.bytes) +
-            OP_CHECKSIG
+        var aliceScript = Data([UInt8(array.count)] + array)
+        aliceScript += OP_CHECKSEQUENCEVERIFY
+        aliceScript += OP_DROP
+        aliceScript += Data([UInt8(alice.publicKey.xonly.bytes.count)] + alice.publicKey.xonly.bytes)
+        aliceScript += OP_CHECKSIG
         let aliceLeafHash = try SHA256.taggedHash(
             tag: #require("TapLeaf".data(using: .utf8)),
             data: Data([0xC0]) + aliceScript.compactSizePrefix
@@ -69,11 +69,11 @@ struct TaprootTestSuite {
         let bobBytes = try "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9".bytes
         let bob = try P256K.Signing.PrivateKey(dataRepresentation: bobBytes)
         let preimageBytes = try "6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333".bytes
-        let bobScript = OP_SHA256 +
-            Data([UInt8(preimageBytes.count)] + preimageBytes.bytes) +
-            OP_EQUALVERIFY +
-            Data([UInt8(bob.publicKey.xonly.bytes.count)] + bob.publicKey.xonly.bytes) +
-            OP_CHECKSIG
+        var bobScript = OP_SHA256
+        bobScript += Data([UInt8(preimageBytes.count)] + preimageBytes.bytes)
+        bobScript += OP_EQUALVERIFY
+        bobScript += Data([UInt8(bob.publicKey.xonly.bytes.count)] + bob.publicKey.xonly.bytes)
+        bobScript += OP_CHECKSIG
         let bobLeafHash = try SHA256.taggedHash(
             tag: #require("TapLeaf".data(using: .utf8)),
             data: Data([0xC0]) + bobScript.compactSizePrefix
