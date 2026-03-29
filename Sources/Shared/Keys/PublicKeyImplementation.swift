@@ -23,35 +23,35 @@
     import libsecp256k1
 #endif
 
-/// Public key for signing implementation
+/// Internal backing implementation for a validated secp256k1 public key, storing serialized bytes, the derived x-only key, key parity, and an optional MuSig2 aggregation cache.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 @usableFromInline struct PublicKeyImplementation: Sendable {
-    /// Implementation public key object
+    /// Serialized secp256k1 public key bytes in the key's ``P256K/Format``, as output by `secp256k1_ec_pubkey_serialize`.
     @usableFromInline let bytes: [UInt8]
 
-    /// Backing x-only public key object
+    /// Serialized x-only public key bytes (32-byte X coordinate), as output by `secp256k1_xonly_pubkey_serialize`.
     @usableFromInline let xonlyBytes: [UInt8]
 
-    /// Backing key parity object
+    /// Parity of the public key's Y coordinate: 0 if Y is even, 1 if Y is odd, as returned by `secp256k1_xonly_pubkey_from_pubkey`.
     @usableFromInline let keyParity: Int32
 
     /// A key format representation of the backing public key
     @usableFromInline let format: P256K.Format
 
-    /// Backing cache for information about public key aggregation.
+    /// Serialized MuSig2 public key aggregation cache, populated when this key was created as part of an aggregate key computation. Empty for non-aggregated keys.
     @usableFromInline let cache: [UInt8]
 
-    /// Backing implementation for a public key object
+    /// The x-only public key derived from this public key, used for Schnorr signature verification.
     @usableFromInline var xonly: XonlyKeyImplementation {
         XonlyKeyImplementation(xonlyBytes, keyParity: keyParity, cache: cache)
     }
 
-    /// A data representation of the backing public key
+    /// The serialized public key bytes as `Data`, in the key's ``P256K/Format``.
     @usableFromInline var dataRepresentation: Data {
         Data(bytes)
     }
 
-    /// A data representation of the backing public key
+    /// The 65-byte uncompressed representation of this public key, produced by `secp256k1_ec_pubkey_serialize` with `SECP256K1_EC_UNCOMPRESSED`.
     var uncompressedRepresentation: Data {
         let context = P256K.Context.rawRepresentation
         var pubKey = rawRepresentation
@@ -69,14 +69,14 @@
         return Data(pubKeyBytes)
     }
 
-    /// A raw representation of the backing public key
+    /// The parsed `secp256k1_pubkey` struct reconstructed from `bytes` via `secp256k1_ec_pubkey_parse`.
     var rawRepresentation: secp256k1_pubkey {
         var pubKey = secp256k1_pubkey()
         _ = secp256k1_ec_pubkey_parse(P256K.Context.rawRepresentation, &pubKey, bytes, bytes.count)
         return pubKey
     }
 
-    /// Negates a public key in place.
+    /// The additive inverse of this public key on the secp256k1 curve, produced by `secp256k1_ec_pubkey_negate`.
     @usableFromInline var negation: Self {
         let context = P256K.Context.rawRepresentation
         var key = rawRepresentation
@@ -207,10 +207,11 @@
         }
     #endif
 
-    /// Generates a secp256k1 public key from bytes representation.
-    /// - Parameter privateBytes: a private key object in bytes form
-    /// - Returns: a public key object
-    /// - Throws: An error is thrown when the bytes does not create a public key.
+    /// Generates a serialized secp256k1 public key from a private key using `secp256k1_ec_pubkey_create` and `secp256k1_ec_pubkey_serialize`.
+    /// - Parameter privateBytes: A 32-byte private key as `SecureBytes`; must pass `secp256k1_ec_seckey_verify`.
+    /// - Parameter format: The output serialization format.
+    /// - Returns: The serialized public key bytes in the requested format.
+    /// - Throws: ``secp256k1Error/incorrectKeySize`` if `privateBytes` is not 32 bytes; ``secp256k1Error/underlyingCryptoError`` if key generation fails.
     static func generate(
         bytes privateBytes: inout SecureBytes,
         format: P256K.Format

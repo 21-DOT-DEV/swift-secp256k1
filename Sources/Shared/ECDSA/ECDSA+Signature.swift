@@ -18,18 +18,29 @@ public import Foundation
 
 // MARK: - secp256k1 + ECDSA Signature
 
-/// An ECDSA (Elliptic Curve Digital Signature Algorithm) Signature
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing {
+    /// 64-byte secp256k1 ECDSA signature in libsecp256k1 internal format, convertible to and from DER (variable-length, up to 72 bytes) and compact (exactly 64 bytes) representations.
+    ///
+    /// All signatures produced by ``PrivateKey/signature(for:)-2bdso`` are automatically normalized
+    /// to lower-S form by `secp256k1_ecdsa_sign`. This normalization is required because
+    /// `secp256k1_ecdsa_verify` only accepts lower-S signatures; a non-normalized signature will
+    /// always fail verification.
+    ///
+    /// ## Serialization
+    ///
+    /// - ``compactRepresentation``: 64 bytes, `r || s` in big-endian. Use for Bitcoin witness
+    ///   fields and Nostr events.
+    /// - ``derRepresentation``: Variable-length DER encoding (up to 72 bytes). Use for
+    ///   Bitcoin legacy script and standard X.509 / TLS contexts.
     struct ECDSASignature: ContiguousBytes, NISTECDSASignature, CompactSignature {
-        /// Returns the data signature.
-        /// The raw signature format for ECDSA is r || s
+        /// The 64-byte libsecp256k1 internal representation of the signature (`r || s` in big-endian).
         public var dataRepresentation: Data
 
-        /// Initializes ECDSASignature from the raw representation.
-        /// - Parameters:
-        ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
-        /// - Throws: If there is a failure with the dataRepresentation count
+        /// Creates an ``ECDSASignature`` from a 64-byte raw representation.
+        ///
+        /// - Parameter dataRepresentation: Exactly 64 bytes in libsecp256k1 internal format (`r || s`).
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count is not 64.
         public init<D: DataProtocol>(dataRepresentation: D) throws {
             guard dataRepresentation.count == P256K.ByteLength.signature else {
                 throw secp256k1Error.incorrectParameterSize
@@ -47,9 +58,10 @@ public extension P256K.Signing {
             self.dataRepresentation = dataRepresentation
         }
 
-        /// Initializes ECDSASignature from the DER representation.
-        /// - Parameter derRepresentation: A DER representation of the key as a collection of contiguous bytes.
-        /// - Throws: If there is a failure with parsing the derRepresentation
+        /// Creates an ``ECDSASignature`` by parsing a DER-encoded ECDSA signature via `secp256k1_ecdsa_signature_parse_der`.
+        ///
+        /// - Parameter derRepresentation: A valid DER-encoded ECDSA signature (typically up to 72 bytes).
+        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if DER parsing fails.
         public init<D: DataProtocol>(derRepresentation: D) throws {
             let context = P256K.Context.rawRepresentation
             let derSignatureBytes = Array(derRepresentation)
@@ -67,9 +79,10 @@ public extension P256K.Signing {
             self.dataRepresentation = signature.dataValue
         }
 
-        /// Initializes ECDSASignature from the Compact representation.
-        /// - Parameter derRepresentation: A Compact representation of the key as a collection of contiguous bytes.
-        /// - Throws: If there is a failure with parsing the derRepresentation
+        /// Creates an ``ECDSASignature`` by parsing a 64-byte compact representation via `secp256k1_ecdsa_signature_parse_compact`.
+        ///
+        /// - Parameter compactRepresentation: Exactly 64 bytes in compact format (`r || s` in big-endian).
+        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if parsing fails.
         public init<D: DataProtocol>(compactRepresentation: D) throws {
             let context = P256K.Context.rawRepresentation
             var signature = secp256k1_ecdsa_signature()
@@ -85,16 +98,15 @@ public extension P256K.Signing {
             self.dataRepresentation = signature.dataValue
         }
 
-        /// Invokes the given closure with a buffer pointer covering the raw bytes of the digest.
-        /// - Parameter body: A closure that takes a raw buffer pointer to the bytes of the digest and returns the digest.
-        /// - Throws: If there is a failure with underlying `withUnsafeBytes`
-        /// - Returns: The signature as returned from the body closure.
+        /// Calls `body` with an unsafe pointer to the signature's raw bytes.
+        ///
+        /// - Parameter body: A closure receiving a raw buffer pointer over the 64-byte signature data.
+        /// - Returns: The value returned by `body`.
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
             try dataRepresentation.withUnsafeBytes(body)
         }
 
-        /// Serialize an ECDSA signature in compact (64 byte) format.
-        /// - Returns: a 64-byte data representation of the compact serialization
+        /// The 64-byte compact representation of the signature (`r || s` in big-endian), produced by `secp256k1_ecdsa_signature_serialize_compact`.
         public var compactRepresentation: Data {
             let context = P256K.Context.rawRepresentation
             var signature = secp256k1_ecdsa_signature()
@@ -113,8 +125,7 @@ public extension P256K.Signing {
             return Data(bytes: &compactSignature, count: P256K.ByteLength.signature)
         }
 
-        /// A DER-encoded representation of the signature
-        /// - Returns: a DER representation of the signature
+        /// The variable-length DER-encoded representation of the signature (up to 72 bytes), produced by `secp256k1_ecdsa_signature_serialize_der`.
         public var derRepresentation: Data {
             let context = P256K.Context.rawRepresentation
             var signature = secp256k1_ecdsa_signature()
@@ -141,10 +152,10 @@ public extension P256K.Signing {
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.PrivateKey: DigestSigner {
-    ///  Generates an ECDSA signature over the secp256k1 elliptic curve.
+    /// Generates a lower-S normalized ECDSA signature over the secp256k1 elliptic curve using RFC 6979 deterministic nonce generation.
     ///
-    /// - Parameter digest: The digest to sign.
-    /// - Returns: The ECDSA Signature.
+    /// - Parameter digest: The pre-computed message digest to sign.
+    /// - Returns: An ``ECDSASignature`` in lower-S normalized form, ready for verification by ``P256K/Signing/PublicKey/isValidSignature(_:for:)-6vcl1``.
     public func signature<D: Digest>(for digest: D) -> P256K.Signing.ECDSASignature {
         let context = P256K.Context.rawRepresentation
         var signature = secp256k1_ecdsa_signature()
@@ -166,11 +177,10 @@ extension P256K.Signing.PrivateKey: DigestSigner {
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.PrivateKey: Signer {
-    /// Generates an ECDSA signature over the secp256k1 elliptic curve.
-    /// SHA256 is used as the hash function.
+    /// Generates a lower-S normalized ECDSA signature by first hashing `data` with SHA-256, then signing with `secp256k1_ecdsa_sign`.
     ///
-    /// - Parameter data: The data to sign.
-    /// - Returns: The ECDSA Signature.
+    /// - Parameter data: The message bytes to hash and sign.
+    /// - Returns: An ``ECDSASignature`` in lower-S normalized form.
     public func signature<D: DataProtocol>(for data: D) -> P256K.Signing.ECDSASignature {
         signature(for: SHA256.hash(data: data))
     }
@@ -180,12 +190,12 @@ extension P256K.Signing.PrivateKey: Signer {
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.PublicKey: DigestValidator {
-    /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
+    /// Verifies an ECDSA signature against a pre-computed digest using `secp256k1_ecdsa_verify`, which requires the signature to be in lower-S normalized form.
     ///
     /// - Parameters:
-    ///   - signature: The signature to verify
+    ///   - signature: The ``ECDSASignature`` to verify; must be in lower-S normalized form.
     ///   - digest: The digest that was signed.
-    /// - Returns: True if the signature is valid, false otherwise.
+    /// - Returns: `true` if the signature is valid for `digest` under this public key, `false` otherwise.
     public func isValidSignature<D: Digest>(_ signature: P256K.Signing.ECDSASignature, for digest: D) -> Bool {
         let context = P256K.Context.rawRepresentation
         var ecdsaSignature = secp256k1_ecdsa_signature()
@@ -199,13 +209,12 @@ extension P256K.Signing.PublicKey: DigestValidator {
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.PublicKey: DataValidator {
-    /// Verifies an ECDSA signature over the secp256k1 elliptic curve.
-    /// SHA256 is used as the hash function.
+    /// Verifies an ECDSA signature by first hashing `data` with SHA-256, then calling `secp256k1_ecdsa_verify`.
     ///
     /// - Parameters:
-    ///   - signature: The signature to verify
-    ///   - data: The data that was signed.
-    /// - Returns: True if the signature is valid, false otherwise.
+    ///   - signature: The ``ECDSASignature`` to verify; must be in lower-S normalized form.
+    ///   - data: The original message bytes whose SHA-256 hash was signed.
+    /// - Returns: `true` if the signature is valid, `false` otherwise.
     public func isValidSignature<D: DataProtocol>(_ signature: P256K.Signing.ECDSASignature, for data: D) -> Bool {
         isValidSignature(signature, for: SHA256.hash(data: data))
     }

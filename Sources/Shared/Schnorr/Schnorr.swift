@@ -20,15 +20,20 @@ import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K {
+        /// BIP-340 Schnorr signatures over secp256k1: sign with ``PrivateKey``, verify against ``XonlyKey``, using a fixed 64-byte ``SchnorrSignature`` encoding.
+        ///
+        /// All signing operations use `secp256k1_schnorrsig_sign_custom` with
+        /// `secp256k1_nonce_function_bip340`. Verification uses `secp256k1_schnorrsig_verify`
+        /// against the 32-byte x-only public key, not the full compressed key.
         enum Schnorr {
-            /// Fixed number of bytes for Schnorr signature
+            /// The fixed byte length of a BIP-340 Schnorr signature: 64 bytes (`R.x || s`).
             ///
             /// [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#abstract)
             @inlinable static var signatureByteCount: Int {
                 64
             }
 
-            /// Fixed number of bytes for x-only key
+            /// The fixed byte length of a BIP-340 x-only public key: 32 bytes (X coordinate only).
             ///
             /// [BIP340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#abstract)
             @inlinable static var xonlyByteCount: Int {

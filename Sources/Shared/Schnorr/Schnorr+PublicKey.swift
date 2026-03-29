@@ -20,43 +20,43 @@ public import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.Schnorr {
-        /// The corresponding public key for the secp256k1 curve.
+        /// secp256k1 BIP-340 Schnorr public key in compressed or uncompressed form, from which the x-only key used for signature verification is derived via the ``xonly`` property.
+        ///
+        /// For BIP-340 Schnorr signature verification, use the ``xonly`` property of this key.
+        /// The full ``PublicKey`` is provided for contexts that require the complete curve point,
+        /// such as key aggregation or Taproot key-path spending.
         struct PublicKey {
-            /// Generated secp256k1 public key.
+            /// The internal backing public key implementation.
             let baseKey: PublicKeyImplementation
 
-            /// The secp256k1 public key object.
+            /// The serialized public key bytes in the key's ``format``.
             var bytes: [UInt8] {
                 baseKey.bytes
             }
 
-            /// The key format representation of the public key.
+            /// The serialization format of this public key: `.compressed` (33 bytes) or `.uncompressed` (65 bytes).
             public var format: P256K.Format {
                 baseKey.format
             }
 
-            /// A data representation of the public key.
+            /// The serialized public key bytes as `Data`, in the key's ``format``.
             public var dataRepresentation: Data {
                 baseKey.dataRepresentation
             }
 
-            /// The associated x-only public key for verifying Schnorr signatures.
-            ///
-            /// - Returns: The associated x-only public key.
+            /// The 32-byte x-only public key (X coordinate only) derived from this key for use in BIP-340 Schnorr signature verification.
             public var xonly: XonlyKey {
                 XonlyKey(baseKey: baseKey.xonly)
             }
 
-            /// Generates a secp256k1 public key.
-            ///
-            /// - Parameter baseKey: Generated secp256k1 public key.
+            /// Creates a public key from a validated backing implementation.
             init(baseKey: PublicKeyImplementation) {
                 self.baseKey = baseKey
             }
 
-            /// Generates a secp256k1 public key from an x-only key.
+            /// Creates a compressed secp256k1 public key from an x-only key by prepending the 0x02 (even-Y) or 0x03 (odd-Y) parity prefix.
             ///
-            /// - Parameter xonlyKey: An x-only key object.
+            /// - Parameter xonlyKey: The 32-byte x-only public key to convert.
             public init(xonlyKey: XonlyKey) {
                 let key = XonlyKeyImplementation(
                     dataRepresentation: xonlyKey.bytes,
@@ -65,11 +65,11 @@ public import Foundation
                 self.baseKey = PublicKeyImplementation(xonlyKey: key)
             }
 
-            /// Generates a secp256k1 public key from a raw representation.
+            /// Creates a secp256k1 Schnorr public key from serialized bytes.
             ///
-            /// - Parameter data: A data representation of the key.
-            /// - Parameter format: The key format.
-            /// - Throws: An error if the raw representation does not create a public key.
+            /// - Parameter data: Serialized public key bytes whose length must match `format.length`.
+            /// - Parameter format: The serialization format of `data` (`.compressed` for 33 bytes, `.uncompressed` for 65 bytes).
+            /// - Throws: ``secp256k1Error/underlyingCryptoError`` if parsing via `secp256k1_ec_pubkey_parse` fails.
             public init<D: ContiguousBytes>(
                 dataRepresentation data: D,
                 format: P256K.Format

@@ -18,53 +18,53 @@ public import Foundation
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing {
-    /// The corresponding public key for the secp256k1 curve.
+    /// secp256k1 ECDSA public key for verifying ``ECDSASignature`` values, available in compressed (33-byte) or uncompressed (65-byte) serialized form.
+    ///
+    /// Obtain a public key from its companion ``PrivateKey/publicKey`` property, or by deserializing
+    /// a compressed (33-byte), uncompressed (65-byte), PEM, DER, or ANSI X9.63 representation.
+    /// The serialization format is preserved and reported by the ``format`` property.
     struct PublicKey: Sendable {
-        /// Generated secp256k1 public key.
+        /// The internal backing public key implementation.
         let baseKey: PublicKeyImplementation
 
-        /// The secp256k1 public key object.
+        /// The serialized public key bytes in the key's ``format``.
         var bytes: [UInt8] {
             baseKey.bytes
         }
 
-        /// A data representation of the public key.
+        /// The serialized public key bytes as `Data`, in the key's ``format``.
         public var dataRepresentation: Data {
             baseKey.dataRepresentation
         }
 
-        /// The associated x-only public key for verifying Schnorr signatures.
-        ///
-        /// - Returns: The associated x-only public key.
+        /// The 32-byte x-only public key (X coordinate only) derived from this key for use with Schnorr signature verification.
         public var xonly: XonlyKey {
             XonlyKey(baseKey: baseKey.xonly)
         }
 
-        /// The key format representation of the public key.
+        /// The serialization format of this public key: `.compressed` (33 bytes) or `.uncompressed` (65 bytes).
         public var format: P256K.Format {
             baseKey.format
         }
 
-        /// Negates a public key.
+        /// A new ``PublicKey`` that is the additive inverse of this key on the secp256k1 curve, produced by `secp256k1_ec_pubkey_negate`.
         public var negation: Self {
             Self(baseKey: baseKey.negation)
         }
 
-        /// Returns a public key in uncompressed 65 byte form
+        /// The 65-byte uncompressed serialization of this public key (0x04 prefix + 32-byte X + 32-byte Y), regardless of the key's stored ``format``.
         public var uncompressedRepresentation: Data {
             baseKey.uncompressedRepresentation
         }
 
-        /// Generates a secp256k1 public key.
-        ///
-        /// - Parameter baseKey: Generated secp256k1 public key.
+        /// Creates a public key from a validated backing implementation.
         init(baseKey: PublicKeyImplementation) {
             self.baseKey = baseKey
         }
 
-        /// Generates a secp256k1 public key from an x-only key.
+        /// Creates a compressed secp256k1 public key from an x-only key by prepending the 0x02 (even-Y) or 0x03 (odd-Y) parity prefix.
         ///
-        /// - Parameter xonlyKey: An x-only key object.
+        /// - Parameter xonlyKey: The x-only public key to convert.
         public init(xonlyKey: XonlyKey) {
             let key = XonlyKeyImplementation(
                 dataRepresentation: xonlyKey.bytes,
@@ -73,11 +73,11 @@ public extension P256K.Signing {
             self.baseKey = PublicKeyImplementation(xonlyKey: key)
         }
 
-        /// Generates a secp256k1 public key from a data representation.
+        /// Creates a secp256k1 public key from serialized bytes.
         ///
-        /// - Parameter data: A data representation of the key.
-        /// - Parameter format: The key format.
-        /// - Throws: An error if the data representation does not create a public key.
+        /// - Parameter data: Serialized public key bytes whose length must match `format.length`.
+        /// - Parameter format: The serialization format of `data` (`.compressed` for 33 bytes, `.uncompressed` for 65 bytes).
+        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if parsing via `secp256k1_ec_pubkey_parse` fails.
         public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format) throws {
             self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
         }
@@ -104,11 +104,10 @@ public extension P256K.Signing {
             self = try .init(x963Representation: parsed.key)
         }
 
-        /// Creates a secp256k1 public key for signing from an ANSI x9.63 representation.
+        /// Creates a secp256k1 public key from an ANSI X9.63 representation.
         ///
-        /// - Parameters:
-        ///   - x963Representation: An ANSI x9.63 representation of the key.
-        ///     Accepts both compressed (33 bytes) and uncompressed (65 bytes) formats.
+        /// - Parameter x963Representation: 33 bytes for compressed or 65 bytes for uncompressed format; the byte-length determines the ``format`` automatically.
+        /// - Throws: `CryptoKitError.incorrectParameterSize` if the length is neither 33 nor 65 bytes; ``secp256k1Error/underlyingCryptoError`` if parsing fails.
         public init<Bytes: ContiguousBytes>(x963Representation: Bytes) throws {
             let length = x963Representation.withUnsafeBytes { $0.count }
 

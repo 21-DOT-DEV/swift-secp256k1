@@ -18,21 +18,29 @@ public import Foundation
 
 #if Xcode || ENABLE_MODULE_RECOVERY
 
-    /// An ECDSA (Elliptic Curve Digital Signature Algorithm) Recovery Signature
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.Recovery {
-        /// Recovery Signature
+        /// A 64-byte compact ECDSA signature paired with its 1-byte recovery ID, as produced by `secp256k1_ecdsa_recoverable_signature_serialize_compact`.
         struct ECDSACompactSignature {
+            /// The 64-byte compact ECDSA signature (`r || s`).
             public let signature: Data
+            /// The recovery ID (0–3) that identifies which of the possible public keys corresponds to the signer.
             public let recoveryId: Int32
         }
 
+        /// 65-byte secp256k1 ECDSA recoverable signature (64-byte compact form + 1-byte recovery ID) produced by `secp256k1_ecdsa_sign_recoverable` using RFC 6979 deterministic nonces.
+        ///
+        /// A recoverable signature allows ``PublicKey`` to be reconstructed from the message hash
+        /// alone via `secp256k1_ecdsa_recover`. Successful recovery guarantees the signature would
+        /// pass `secp256k1_ecdsa_verify` **after normalization**; however, converting the signature
+        /// to a non-recoverable form via ``normalize`` does **not** automatically normalize it.
+        /// Call `secp256k1_ecdsa_signature_normalize` on the result of ``normalize`` if lower-S
+        /// normalized form is required for standard ECDSA verification.
         struct ECDSASignature: ContiguousBytes, DataSignature {
-            /// Returns the raw signature.
+            /// The raw 65-byte internal representation of the `secp256k1_ecdsa_recoverable_signature` struct.
             public var dataRepresentation: Data
 
-            /// Serialize an ECDSA signature in compact (64 byte) format.
-            /// - Returns: a 64-byte data representation of the compact serialization
+            /// The 64-byte compact serialization and 1-byte recovery ID, produced by `secp256k1_ecdsa_recoverable_signature_serialize_compact`.
             public var compactRepresentation: ECDSACompactSignature {
                 let context = P256K.Context.rawRepresentation
                 var recoveryId = Int32()
@@ -56,7 +64,11 @@ public import Foundation
                 )
             }
 
-            /// Convert a recoverable signature into a normal signature.
+            /// Converts this recoverable signature to a standard ``P256K/Signing/ECDSASignature`` via `secp256k1_ecdsa_recoverable_signature_convert`.
+            ///
+            /// > Important: The converted signature is **not guaranteed to be lower-S normalized**
+            /// > and may fail `secp256k1_ecdsa_verify`. If normalized form is required, call
+            /// > ``P256K/Signing/ECDSASignature/normalize`` on the result.
             public var normalize: P256K.Signing.ECDSASignature {
                 let context = P256K.Context.rawRepresentation
                 var normalizedSignature = secp256k1_ecdsa_signature()
@@ -75,10 +87,10 @@ public import Foundation
                 return P256K.Signing.ECDSASignature(normalizedSignature.dataValue)
             }
 
-            /// Initializes ECDSASignature from the raw representation.
-            /// - Parameters:
-            ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
-            /// - Throws: If there is a failure with the dataRepresentation count
+            /// Creates an ``ECDSASignature`` from a 65-byte raw recoverable signature representation.
+            ///
+            /// - Parameter dataRepresentation: Exactly 65 bytes (`P256K.ByteLength.signature + 1`) in the internal recoverable signature format.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count is not 65.
             public init<D: DataProtocol>(dataRepresentation: D) throws {
                 guard dataRepresentation.count == P256K.ByteLength.signature + 1 else {
                     throw secp256k1Error.incorrectParameterSize
@@ -87,18 +99,18 @@ public import Foundation
                 self.dataRepresentation = Data(dataRepresentation)
             }
 
-            /// Initializes ECDSASignature from the raw representation.
-            /// - Parameters:
-            ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
-            /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.signature + 1`.
+            /// Creates an ``ECDSASignature`` from a pre-validated 65-byte data value.
+            /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.signature + 1` (65).
             init(_ dataRepresentation: Data) {
                 precondition(dataRepresentation.count == P256K.ByteLength.signature + 1, "Invalid recoverable signature size")
                 self.dataRepresentation = dataRepresentation
             }
 
-            /// Initializes ECDSASignature from the Compact representation.
-            /// - Parameter compactRepresentation: A Compact representation of the key as a collection of contiguous bytes.
-            /// - Throws: If there is a failure with parsing the derRepresentation
+            /// Creates an ``ECDSASignature`` from a 64-byte compact representation and recovery ID via `secp256k1_ecdsa_recoverable_signature_parse_compact`.
+            ///
+            /// - Parameter compactRepresentation: The 64-byte compact ECDSA signature (`r || s`).
+            /// - Parameter recoveryId: The recovery ID (0–3) from the original signing operation.
+            /// - Throws: ``secp256k1Error/underlyingCryptoError`` if parsing fails.
             public init<D: DataProtocol>(compactRepresentation: D, recoveryId: Int32) throws {
                 let context = P256K.Context.rawRepresentation
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
@@ -115,10 +127,10 @@ public import Foundation
                 self.dataRepresentation = recoverableSignature.dataValue
             }
 
-            /// Invokes the given closure with a buffer pointer covering the raw bytes of the digest.
-            /// - Parameter body: A closure that takes a raw buffer pointer to the bytes of the digest and returns the digest.
-            /// - Throws: If there is a failure with underlying `withUnsafeBytes`
-            /// - Returns: The signature as returned from the body closure.
+            /// Calls `body` with an unsafe pointer to the signature's 65 raw bytes.
+            ///
+            /// - Parameter body: A closure receiving a raw buffer pointer over the signature data.
+            /// - Returns: The value returned by `body`.
             public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
                 try dataRepresentation.withUnsafeBytes(body)
             }
@@ -131,10 +143,10 @@ public import Foundation
     extension P256K.Recovery.PrivateKey: DigestSigner {
         public typealias Signature = P256K.Recovery.ECDSASignature
 
-        ///  Generates a recoverable ECDSA signature.
+        /// Generates a recoverable ECDSA signature from a pre-computed digest via `secp256k1_ecdsa_sign_recoverable` with RFC 6979 deterministic nonce generation.
         ///
-        /// - Parameter digest: The digest to sign.
-        /// - Returns: The recoverable ECDSA Signature.
+        /// - Parameter digest: The pre-computed message digest to sign.
+        /// - Returns: A 65-byte ``ECDSASignature`` from which the signer's ``PublicKey`` can be recovered.
         public func signature<D: Digest>(for digest: D) -> Signature {
             let context = P256K.Context.rawRepresentation
             var signature = secp256k1_ecdsa_recoverable_signature()
@@ -156,10 +168,10 @@ public import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension P256K.Recovery.PrivateKey: Signer {
-        /// Generates a recoverable ECDSA signature. SHA256 is used as the hash function.
+        /// Generates a recoverable ECDSA signature by SHA-256 hashing `data` then calling `secp256k1_ecdsa_sign_recoverable`.
         ///
-        /// - Parameter data: The data to sign.
-        /// - Returns: The ECDSA Signature.
+        /// - Parameter data: The message to sign; hashed with SHA-256 before signing.
+        /// - Returns: A 65-byte ``ECDSASignature`` from which the signer's ``PublicKey`` can be recovered.
         public func signature<D: DataProtocol>(for data: D) -> Signature {
             signature(for: SHA256.hash(data: data))
         }
