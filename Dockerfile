@@ -8,4 +8,4 @@ ADD . /LinuxTests
 WORKDIR /LinuxTests
 
 # Execute Linux test suite
-RUN swift test
+RUN swift test --traits ecdh,musig,recovery,schnorrsig,uint256

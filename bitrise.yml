@@ -68,7 +68,7 @@ workflows:
             # fail if any commands fails; debug log
             set -ex
 
-            swift test
+            swift test --traits ecdh,musig,recovery,schnorrsig,uint256
   BUILD-P256K:
     before_run:
     - PULL-PACKAGE-FILES
@@ -223,7 +223,7 @@ workflows:
 
             # Run swift tests after modifying the Package.swift, allowing verification 
             # of the setup with the newly integrated XCFramework.
-            swift test
+            swift test --traits ecdh,musig,recovery,schnorrsig,uint256
   PULL-PACKAGE-FILES:
     steps:
     - pull-intermediate-files:

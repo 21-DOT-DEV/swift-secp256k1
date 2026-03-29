@@ -7,7 +7,8 @@ let moduleDefines: [(trait: String, define: String)] = [
     ("ellswift", "ENABLE_MODULE_ELLSWIFT"),
     ("musig", "ENABLE_MODULE_MUSIG"),
     ("recovery", "ENABLE_MODULE_RECOVERY"),
-    ("schnorrsig", "ENABLE_MODULE_SCHNORRSIG")
+    ("schnorrsig", "ENABLE_MODULE_SCHNORRSIG"),
+    ("uint256", "ENABLE_UINT256")
 ]
 
 let zkpModuleDefines: [(trait: String, define: String)] = [
@@ -45,6 +46,7 @@ let package = Package(
         .trait(name: "schnorrsigHalfagg"),
         .trait(name: "surjectionproof"),
         .trait(name: "whitelist"),
+        .trait(name: "uint256"),
         .trait(name: "zkp", enabledTraits: [
             "bppp", "ecdsaAdaptor", "ecdsaS2C", "ellswift", "generator",
             "rangeproof", "schnorrsigHalfagg", "surjectionproof", "whitelist"
