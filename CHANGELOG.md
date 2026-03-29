@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Improved DocC doc comments across public API modules: refined summary lines, discussion sections, parameter/return/throws markup, and cross-references for `P256K.MuSig`, `P256K.Recovery`, `P256K.Signing`, `P256K.Schnorr`, `P256K.KeyAgreement`, and `P256K.Context`
+- Added BIP-327 signing protocol order documentation and nonce reuse warnings to `P256K.MuSig` and `P256K.MuSig.Nonce`
+- Added recovery-does-not-imply-verification caveat to `P256K.Recovery.ECDSASignature`
+
 ## [0.22.0]
 
 ### Added
