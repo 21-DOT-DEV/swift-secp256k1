@@ -1,0 +1,61 @@
+# .github/workflows/benchmark-pr.yml
+#
+# Fetches the cached main baseline, runs benchmarks only on the PR
+# branch, and compares. Cuts CI time roughly in half.
+
+name: Benchmark PR Check
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.3.0
+
+    steps:
+      - name: Install dependencies
+        run: apt-get update && apt-get install -y libjemalloc-dev gh
+        env:
+          DEBIAN_FRONTEND: noninteractive
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      # ── Fetch the latest main baseline ──
+      - name: Download main baseline
+        uses: actions/download-artifact@v4
+        with:
+          name: main-benchmark-baseline
+          path: .benchmarkBaselines
+          # Grab the artifact from the most recent main workflow run
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.pull_request.base.sha && '' }}
+          # download-artifact@v4 fetches the latest matching artifact
+          # from the repo by default when run-id is omitted
+
+      - name: Verify baseline exists
+        run: |
+          if [ ! -d ".benchmarkBaselines" ] || [ -z "$(ls -A .benchmarkBaselines)" ]; then
+            echo "::warning::No main baseline found. Run the main workflow first."
+            echo "Skipping comparison — running benchmarks only."
+            swift package benchmark --no-progress
+            exit 0
+          fi
+          echo "Main baseline found."
+
+      # ── Run benchmarks on the PR branch only ──
+      - name: Benchmark PR branch
+        run: |
+          swift package --allow-writing-to-package-directory \
+            benchmark baseline update pr --no-progress
+
+      # ── Compare: exit code 2 = regression (fails the job) ──
+      - name: Compare main → PR
+        run: |
+          swift package benchmark baseline compare main pr --no-progress
