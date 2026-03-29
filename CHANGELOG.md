@@ -7,11 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- DocC documentation catalog with Getting Started guide, API reference, and `swift-docc-plugin` 1.4.6 dependency (#1060)
+- `AGENTS.md` files for AI-assisted development guidance (#1038)
+- `CONTRIBUTING.md` and `SECURITY.md` project documentation (#1037)
+
 ### Changed
 
-- Improved DocC doc comments across public API modules: refined summary lines, discussion sections, parameter/return/throws markup, and cross-references for `P256K.MuSig`, `P256K.Recovery`, `P256K.Signing`, `P256K.Schnorr`, `P256K.KeyAgreement`, and `P256K.Context`
-- Added BIP-327 signing protocol order documentation and nonce reuse warnings to `P256K.MuSig` and `P256K.MuSig.Nonce`
-- Added recovery-does-not-imply-verification caveat to `P256K.Recovery.ECDSASignature`
+- Reduced `throws` propagation and reorganized `Shared` sources into subdirectories (`ECDSA/`, `Keys/`, `MuSig/`, `Recovery/`, `Schnorr/`) (#1034)
+- Improved DocC doc comments across public API modules: refined summary lines, discussion sections, parameter/return/throws markup, and cross-references for `P256K.MuSig`, `P256K.Recovery`, `P256K.Signing`, `P256K.Schnorr`, `P256K.KeyAgreement`, and `P256K.Context` (#1060)
+- Enabled Swift upcoming features `MemberImportVisibility` and `InternalImportsByDefault` (#1057)
+- Updated vendored swift-crypto from 4.2.0 to 4.3.0 (#1042)
+- Updated vendored secp256k1-zkp to latest upstream (#1026, #1028, #1036, #1045, #1047, #1051, #1053)
+- Updated Docker base image from Swift 6.2.4 to 6.3.0 (#1054)
+- Updated Docker registry path from finestructure to SwiftPackageIndex (#1056)
+- Marked SPM build stubs as vendored in `.gitattributes` (#1043)
+- Updated README with improved structure, table of contents, and clarity (#1037)
+- Updated `CODE_OF_CONDUCT.md` to version 2.1 (#1037)
 
 ## [0.22.0]
 
