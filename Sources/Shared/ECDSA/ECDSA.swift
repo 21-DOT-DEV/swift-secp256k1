@@ -33,10 +33,14 @@ protocol CompactSignature {
     var compactRepresentation: Data { get }
 }
 
-/// An elliptic curve that enables secp256k1 signatures and key agreement.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K {
-    /// A mechanism used to create or verify a cryptographic signature using the secp256k1
-    /// elliptic curve digital signature algorithm (ECDSA).
+    /// secp256k1 ECDSA signing namespace providing ``PrivateKey`` for RFC 6979 deterministic signing and ``PublicKey`` for signature verification; all produced signatures are lower-S normalized.
+    ///
+    /// ECDSA (Elliptic Curve Digital Signature Algorithm) is the signature scheme used in Bitcoin
+    /// transactions and compatible with a wide range of cryptographic infrastructure. Use
+    /// ``Signing/PrivateKey`` to sign and ``Signing/PublicKey`` to verify. Both accept `Digest`
+    /// inputs for pre-hashed messages and `DataProtocol` inputs that are hashed with SHA-256
+    /// internally before the operation.
     enum Signing: Sendable {}
 }

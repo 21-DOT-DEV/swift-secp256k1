@@ -20,51 +20,51 @@ public import Foundation
 
     // MARK: - secp256k1 + KeyAgreement
 
-    /// An elliptic curve that enables secp256k1 signatures and key agreement.
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K {
-        /// A namespace for key agreement functionality using the secp256k1 elliptic curve.
+        /// secp256k1 ECDH key agreement namespace providing ``PrivateKey`` and ``PublicKey`` for computing a ``SharedSecret`` via `secp256k1_ecdh`.
+        ///
+        /// ECDH computes a shared secret `S = private_key × peer_public_key` on the secp256k1
+        /// elliptic curve. **Context randomization does not provide side-channel protection for
+        /// ECDH** — it uses a different kind of point multiplication than ECDSA or Schnorr signing.
+        /// The shared secret is returned as a serialized point in compressed (33-byte, default)
+        /// or uncompressed (65-byte) form depending on the `format` argument.
         enum KeyAgreement: Sendable {
-            /// A public key for performing key agreement using the secp256k1 elliptic curve.
+            /// secp256k1 ECDH public key, accepted by ``PrivateKey/sharedSecretFromKeyAgreement(with:format:)`` to compute a ``SharedSecret``.
             public struct PublicKey: Sendable {
-                /// The underlying implementation of the secp256k1 public key.
+                /// The internal backing public key implementation.
                 let baseKey: PublicKeyImplementation
 
-                /// Creates a secp256k1 public key for key agreement from a collection of bytes.
+                /// Creates a secp256k1 ECDH public key from serialized bytes.
                 ///
-                /// - Parameters:
-                ///   - data: A data representation of the public key as a collection of contiguous bytes.
-                ///   - format: The format of the public key object.
-                /// - Throws: An error if the raw representation does not create a public key.
+                /// - Parameter data: Serialized public key bytes whose length must match `format.length`.
+                /// - Parameter format: The serialization format; defaults to `.compressed` (33 bytes).
+                /// - Throws: ``secp256k1Error/underlyingCryptoError`` if parsing via `secp256k1_ec_pubkey_parse` fails.
                 public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format = .compressed) throws {
                     self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
                 }
 
-                /// Initializes a secp256k1 public key for key agreement.
-                ///
-                /// - Parameter baseKey: Generated secp256k1 public key.
+                /// Creates an ECDH public key from a validated backing implementation.
                 init(baseKey: PublicKeyImplementation) {
                     self.baseKey = baseKey
                 }
 
-                /// The associated x-only public key for verifying Schnorr signatures.
-                ///
-                /// - Returns: The associated x-only public key.
+                /// The 32-byte x-only public key (X coordinate only) derived from this key.
                 public var xonly: P256K.KeyAgreement.XonlyKey {
                     XonlyKey(baseKey: baseKey.xonly)
                 }
 
-                /// Returns a public key in uncompressed 65 byte form
+                /// The 65-byte uncompressed serialization of this public key (0x04 prefix + X + Y).
                 public var uncompressedRepresentation: Data {
                     baseKey.uncompressedRepresentation
                 }
 
-                /// A data representation of the public key.
+                /// The serialized public key bytes as `Data`, in the key's format.
                 public var dataRepresentation: Data {
                     baseKey.dataRepresentation
                 }
 
-                /// Implementation public key object.
+                /// The serialized public key bytes as `[UInt8]`.
                 var bytes: [UInt8] {
                     baseKey.bytes
                 }
@@ -79,11 +79,10 @@ public import Foundation
                     self = try .init(x963Representation: parsed.key)
                 }
 
-                /// Creates a secp256k1 public key for key agreement from an ANSI x9.63 representation.
+                /// Creates a secp256k1 ECDH public key from an ANSI X9.63 representation.
                 ///
-                /// - Parameters:
-                ///   - x963Representation: An ANSI x9.63 representation of the key.
-                ///     Accepts both compressed (33 bytes) and uncompressed (65 bytes) formats.
+                /// - Parameter x963Representation: 33 bytes for compressed or 65 bytes for uncompressed; byte-length determines the format automatically.
+                /// - Throws: `CryptoKitError.incorrectParameterSize` if the length is neither 33 nor 65 bytes.
                 public init<Bytes: ContiguousBytes>(x963Representation: Bytes) throws {
                     let length = x963Representation.withUnsafeBytes { $0.count }
 
@@ -100,71 +99,65 @@ public import Foundation
                 }
             }
 
-            /// A secp256k1 x-only public key for key agreement.
+            /// The 32-byte x-only form of a ``PublicKey``, derived via `secp256k1_xonly_pubkey_from_pubkey`.
             public struct XonlyKey: Sendable {
-                /// The underlying implementation of the secp256k1 x-only public key.
+                /// The internal backing x-only key implementation.
                 private let baseKey: XonlyKeyImplementation
 
-                /// A data representation of the backing x-only public key.
+                /// The 32-byte X coordinate as `Data`.
                 public var dataRepresentation: Data {
                     baseKey.dataRepresentation
                 }
 
-                /// A boolean that will be set to true if the point encoded by xonly is the
-                /// negation of the pubkey and set to false otherwise.
+                /// `true` if the full public key's Y coordinate is odd (the x-only point is the negation of the original pubkey), `false` if even; as returned by `secp256k1_xonly_pubkey_from_pubkey`.
                 public var parity: Bool {
                     baseKey.keyParity.boolValue
                 }
 
-                /// Initializes a secp256k1 x-only key for key agreement.
-                ///
-                /// - Parameter baseKey: Generated secp256k1 x-only public key.
+                /// Creates an ECDH x-only key from a validated backing implementation.
                 init(baseKey: XonlyKeyImplementation) {
                     self.baseKey = baseKey
                 }
             }
 
-            /// A secp256k1 private key for key agreement.
+            /// secp256k1 ECDH private key for deriving a ``SharedSecret`` with a peer's ``PublicKey`` via `secp256k1_ecdh`.
             public struct PrivateKey: Sendable {
-                /// The underlying implementation of the secp256k1 private key.
+                /// The internal backing private key implementation.
                 let baseKey: PrivateKeyImplementation
 
-                /// Creates a random secp256k1 private key for key agreement.
+                /// Creates a random secp256k1 ECDH private key.
                 ///
-                /// - Parameter format: The format of the secp256k1 key (default is .compressed).
-                /// - Throws: An error is thrown when the key generation fails.
+                /// - Parameter format: The serialization format of the companion ``publicKey``; defaults to `.compressed`.
+                /// - Throws: ``secp256k1Error/underlyingCryptoError`` if key generation fails.
                 public init(format: P256K.Format = .compressed) throws {
                     self.baseKey = try PrivateKeyImplementation(format: format)
                 }
 
-                /// Creates a secp256k1 private key for key agreement from a collection of bytes.
+                /// Creates a secp256k1 ECDH private key from a 32-byte raw scalar.
                 ///
-                /// - Parameters:
-                ///   - data: A raw representation of the key.
-                ///   - format: The format of the secp256k1 key (default is .compressed).
-                /// - Throws: An error is thrown when the raw representation does not create a private key for key agreement.
+                /// - Parameter data: Exactly 32 bytes; must pass `secp256k1_ec_seckey_verify`.
+                /// - Parameter format: The serialization format of the companion ``publicKey``; defaults to `.compressed`.
+                /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not 32 bytes; ``secp256k1Error/underlyingCryptoError`` if the scalar is invalid.
                 public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format = .compressed) throws {
                     self.baseKey = try PrivateKeyImplementation(dataRepresentation: data, format: format)
                 }
 
-                /// Initializes a secp256k1 private key for key agreement.
-                ///
-                /// - Parameter baseKey: Generated secp256k1 private key.
+                /// Creates an ECDH private key from a validated backing implementation.
                 init(baseKey: PrivateKeyImplementation) {
                     self.baseKey = baseKey
                 }
 
-                /// The associated public key for verifying signatures done with this private key.
+                /// The secp256k1 public key derived from this private key.
                 public var publicKey: P256K.KeyAgreement.PublicKey {
                     PublicKey(baseKey: baseKey.publicKey)
                 }
 
-                /// A data representation of the private key.
+                /// The raw 32-byte private key as `Data`. Keep this value confidential.
                 public var rawRepresentation: Data {
                     baseKey.dataRepresentation
                 }
 
-                /// A secure bytes representation of the private key.
+                /// The raw 32-byte private key as `SecureBytes`.
                 var bytes: SecureBytes {
                     baseKey.key
                 }
@@ -174,10 +167,9 @@ public import Foundation
 
     // MARK: - secp256k1 + DH
 
-    /// An extension to the `secp256k1.KeyAgreement.PrivateKey` conforming to the `DiffieHellmanKeyAgreement` protocol.
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension P256K.KeyAgreement.PrivateKey: DiffieHellmanKeyAgreement {
-        /// A pointer to a function that hashes an EC point to obtain an ECDH secret.
+        /// The C function type for a custom ECDH hash function that serializes the shared EC point into secret bytes.
         public typealias HashFunctionType = @convention(c) (
             UnsafeMutablePointer<UInt8>?,
             UnsafePointer<UInt8>?,
@@ -185,20 +177,24 @@ public import Foundation
             UnsafeMutableRawPointer?
         ) -> Int32
 
-        /// Performs a key agreement with the provided public key share.
+        /// Computes a compressed-format ECDH shared secret with `publicKeyShare` via `secp256k1_ecdh`.
         ///
-        /// - Parameter publicKeyShare: The public key to perform the ECDH with.
-        /// - Returns: Returns a shared secret.
+        /// - Parameter publicKeyShare: The peer's public key.
+        /// - Returns: A ``SharedSecret`` in compressed (33-byte) format.
         func sharedSecretFromKeyAgreement(with publicKeyShare: P256K.KeyAgreement.PublicKey) -> SharedSecret {
             sharedSecretFromKeyAgreement(with: publicKeyShare, format: .compressed)
         }
 
-        /// Performs a key agreement with the provided public key share.
+        /// Computes an ECDH shared secret by calling `secp256k1_ecdh` with a custom hash closure that serializes the shared point.
         ///
-        /// - Parameters:
-        ///   - publicKeyShare: The public key to perform the ECDH with.
-        ///   - format: An enum that represents the format of the shared secret.
-        /// - Returns: Returns a shared secret.
+        /// The shared point is serialized as a compressed (33-byte) or uncompressed (65-byte) public
+        /// key depending on `format`. **Context randomization does not protect this operation
+        /// against side-channel attacks** — ECDH uses a different kind of point multiplication than
+        /// signing operations.
+        ///
+        /// - Parameter publicKeyShare: The peer's secp256k1 public key.
+        /// - Parameter format: Whether to serialize the shared point as compressed (33 bytes, default) or uncompressed (65 bytes).
+        /// - Returns: A ``SharedSecret`` containing the serialized shared point.
         public func sharedSecretFromKeyAgreement(
             with publicKeyShare: P256K.KeyAgreement.PublicKey,
             format: P256K.Format = .compressed
@@ -215,9 +211,9 @@ public import Foundation
             return SharedSecret(ss: SecureBytes(bytes: sharedSecret), format: format)
         }
 
-        /// Creates a closure which handles creating either a compressed or uncompressed shared secret
+        /// Returns a `secp256k1_ecdh` hash function closure that serializes the shared EC point as a compressed or uncompressed public key, bypassing the default SHA-256 hashing.
         ///
-        /// - Returns: Closure to override the libsecp256k1 hashing function
+        /// - Returns: A C-compatible ``HashFunctionType`` closure for use as the `hashfp` argument of `secp256k1_ecdh`.
         func hashClosure() -> HashFunctionType {
             { output, x32, y32, data in
                 guard let output, let x32, let y32, let compressed = data?.load(as: Bool.self) else { return 0 }

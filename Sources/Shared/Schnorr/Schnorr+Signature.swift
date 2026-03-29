@@ -20,17 +20,21 @@ public import Foundation
 
     // MARK: - Schnorr Signatures
 
-    /// A Schnorr (Schnorr Digital Signature Scheme) Signature
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.Schnorr {
+        /// 64-byte BIP-340 Schnorr signature over the secp256k1 elliptic curve, produced by `secp256k1_schnorrsig_sign_custom` and verified by `secp256k1_schnorrsig_verify`.
+        ///
+        /// BIP-340 Schnorr signatures always have a fixed 64-byte encoding: the 32-byte `R.x`
+        /// coordinate followed by 32-byte scalar `s`. There is no DER encoding or alternative
+        /// format. Unlike ECDSA, Schnorr signatures have a unique representation.
         struct SchnorrSignature: ContiguousBytes, DataSignature {
-            /// Returns the raw signature in a fixed 64-byte format.
+            /// The 64-byte BIP-340 Schnorr signature (`R.x || s` in big-endian).
             public var dataRepresentation: Data
 
-            /// Initializes SchnorrSignature from the raw representation.
-            /// - Parameters:
-            ///     - dataRepresentation: A raw representation of the key as a collection of contiguous bytes.
-            /// - Throws: If there is a failure with the rawRepresentation count
+            /// Creates a ``SchnorrSignature`` from a 64-byte raw representation.
+            ///
+            /// - Parameter dataRepresentation: Exactly 64 bytes in BIP-340 format (`R.x || s`).
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count is not 64.
             public init<D: DataProtocol>(dataRepresentation: D) throws {
                 guard dataRepresentation.count == P256K.ByteLength.signature else {
                     throw secp256k1Error.incorrectParameterSize
@@ -39,20 +43,17 @@ public import Foundation
                 self.dataRepresentation = Data(dataRepresentation)
             }
 
-            /// Initializes SchnorrSignature from the raw representation.
-            /// - Parameters:
-            ///     - rawRepresentation: A raw representation of the key as a collection of contiguous bytes.
-            /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.signature`.
+            /// Creates a ``SchnorrSignature`` from a pre-validated 64-byte data value.
+            /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.signature` (64).
             init(_ dataRepresentation: Data) {
                 precondition(dataRepresentation.count == P256K.ByteLength.signature, "Invalid Schnorr signature size")
                 self.dataRepresentation = dataRepresentation
             }
 
-            /// Invokes the given closure with a buffer pointer covering the raw bytes of the digest.
-            /// - Parameters:
-            ///     - body: A closure that takes a raw buffer pointer to the bytes of the digest and returns the digest.
-            /// - Throws: If there is a failure with underlying `withUnsafeBytes`
-            /// - Returns: The signature as returned from the body closure.
+            /// Calls `body` with an unsafe pointer to the signature's 64 raw bytes.
+            ///
+            /// - Parameter body: A closure receiving a raw buffer pointer over the signature data.
+            /// - Returns: The value returned by `body`.
             public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
                 try dataRepresentation.withUnsafeBytes(body)
             }
@@ -63,33 +64,26 @@ public import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension P256K.Schnorr.PrivateKey: DigestSigner {
-        /// Generates an Schnorr signature from the hash digest object
+        /// Generates a BIP-340 Schnorr signature from a pre-computed digest using `secp256k1_schnorrsig_sign_custom` with fresh 32-byte auxiliary randomness.
         ///
-        /// This function is used when a hash digest has been created before invoking.
-        /// Enables BIP340 signatures assuming the hash digest used the `Tagged Hashes` scheme as defined in the proposal.
+        /// The auxiliary randomness is mixed into the BIP-340 nonce derivation (`secp256k1_nonce_function_bip340`)
+        /// to protect against fault attacks. When the digest was produced using BIP-340 Tagged Hashes,
+        /// the resulting signature is fully BIP-340 compliant.
         ///
-        /// [BIP340 Design](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#design)
-        ///
-        /// - Parameters:
-        ///     - digest: The digest to sign.
-        /// - Returns: The Schnorr Signature.
-        /// - Throws: If there is a failure producing the signature.
+        /// - Parameter digest: The pre-computed message digest to sign.
+        /// - Returns: A 64-byte ``SchnorrSignature``.
+        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if signature production fails.
         public func signature<D: Digest>(for digest: D) throws -> P256K.Schnorr.SchnorrSignature {
             try signature(for: digest, auxiliaryRand: SecureBytes(count: P256K.ByteLength.dimension).bytes)
         }
 
-        /// Generates an Schnorr signature from the hash digest object
-        ///
-        /// This function is used when a hash digest has been created before invoking.
-        /// Enables BIP340 signatures assuming the hash digest used the `Tagged Hashes` scheme as defined in the proposal.
-        ///
-        /// [BIP340 Design](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#design)
+        /// Generates a BIP-340 Schnorr signature from a pre-computed digest using caller-supplied auxiliary randomness.
         ///
         /// - Parameters:
-        ///     - digest: The digest to sign.
-        ///     - auxiliaryRand: Auxiliary randomness; BIP340 requires 32-bytes.
-        /// - Returns: The Schnorr Signature.
-        /// - Throws: If there is a failure producing the signature.
+        ///   - digest: The pre-computed message digest to sign.
+        ///   - auxiliaryRand: Exactly 32 bytes of auxiliary randomness for BIP-340 nonce derivation; pass zeroed bytes to disable.
+        /// - Returns: A 64-byte ``SchnorrSignature``.
+        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if signature production fails.
         public func signature<D: Digest>(for digest: D, auxiliaryRand: [UInt8]) throws -> P256K.Schnorr.SchnorrSignature {
             var hashDataBytes = Array(digest).bytes
             var randomBytes = auxiliaryRand
@@ -97,18 +91,19 @@ public import Foundation
             return try signature(message: &hashDataBytes, auxiliaryRand: &randomBytes)
         }
 
-        /// Generates an Schnorr signature from a message object with a variable length of bytes
+        /// Generates a Schnorr signature over an arbitrary-length message using `secp256k1_schnorrsig_sign_custom`.
         ///
-        /// This function provides the flexibility for creating a Schnorr signature without making assumptions about message object.
-        /// If ``auxiliaryRand`` is ``nil`` the ``secp256k1_nonce_function_bip340`` is used.
-        ///
-        /// [secp256k1_schnorrsig_extraparams](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h#L66L81)
+        /// Unlike the `Digest`-based overloads, this method accepts any message length and passes it
+        /// directly to `secp256k1_schnorrsig_sign_custom`. If `auxiliaryRand` is `nil`,
+        /// `secp256k1_nonce_function_bip340` sets the auxiliary random data to zero. Pass a pointer
+        /// to 32 bytes for full BIP-340 compliant nonce derivation.
         ///
         /// - Parameters:
-        ///   - message: The message object to sign
-        ///   - auxiliaryRand: Auxiliary randomness; BIP340 requires 32-bytes.
-        /// - Returns: The Schnorr Signature.
-        /// - Throws: If there is a failure creating the context or signature.
+        ///   - message: The message bytes to sign (any length unless `strict` is `true`).
+        ///   - auxiliaryRand: Pointer to 32 bytes of auxiliary randomness, or `nil` to use zero auxiliary data.
+        ///   - strict: If `true`, throws ``secp256k1Error/incorrectParameterSize`` when `message.count` is not 32.
+        /// - Returns: A 64-byte ``SchnorrSignature``.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `strict` is `true` and the message is not 32 bytes; ``secp256k1Error/underlyingCryptoError`` if signing fails.
         public func signature(
             message: inout [UInt8],
             auxiliaryRand: UnsafeMutableRawPointer?,
@@ -147,33 +142,24 @@ public import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension P256K.Schnorr.XonlyKey: DigestValidator {
-        /// Verifies a Schnorr signature with a digest
-        ///
-        /// This function is used when a hash digest has been created before invoking.
-        /// Enables BIP340 signatures assuming the hash digest used the `Tagged Hashes` scheme as defined in the proposal.
-        ///
-        /// [BIP340 Design](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#design)
+        /// Verifies a BIP-340 Schnorr signature against a pre-computed digest using `secp256k1_schnorrsig_verify`.
         ///
         /// - Parameters:
-        ///   - signature: The signature to verify.
-        ///   - digest: The digest that was signed.
-        /// - Returns: True if the signature is valid, false otherwise.
+        ///   - signature: The 64-byte ``SchnorrSignature`` to verify.
+        ///   - digest: The pre-computed digest that was signed. Must be the same digest type and data used when signing.
+        /// - Returns: `true` if the signature is valid for `digest` under this x-only public key, `false` otherwise.
         public func isValidSignature<D: Digest>(_ signature: P256K.Schnorr.SchnorrSignature, for digest: D) -> Bool {
             var hashDataBytes = Array(digest).bytes
 
             return isValid(signature, for: &hashDataBytes)
         }
 
-        /// Verifies a Schnorr signature with a variable length message object
-        ///
-        /// This function provides flexibility for verifying a Schnorr signature without assumptions about message.
-        ///
-        /// [secp256k1_schnorrsig_verify](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h#L149L158)
+        /// Verifies a Schnorr signature over an arbitrary-length message using `secp256k1_schnorrsig_verify`.
         ///
         /// - Parameters:
-        ///   - signature: The signature to verify.
-        ///   - message:  The message that was signed.
-        /// - Returns: True if the signature is valid, false otherwise.
+        ///   - signature: The 64-byte ``SchnorrSignature`` to verify.
+        ///   - message: The message bytes that were signed (any length; must match the bytes used when signing).
+        /// - Returns: `true` if the signature is valid, `false` otherwise.
         public func isValid(_ signature: P256K.Schnorr.SchnorrSignature, for message: inout [UInt8]) -> Bool {
             let context = P256K.Context.rawRepresentation
             var pubKey = secp256k1_xonly_pubkey()

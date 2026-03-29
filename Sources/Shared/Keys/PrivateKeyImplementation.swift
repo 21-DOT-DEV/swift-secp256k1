@@ -23,35 +23,35 @@
     import libsecp256k1
 #endif
 
-/// Private key for signing implementation
+/// Internal backing implementation for a secp256k1 private key, storing 32 secret bytes as `SecureBytes` alongside the derived public key, x-only key, and key parity.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 @usableFromInline struct PrivateKeyImplementation: Sendable {
-    /// Backing private key object
+    /// The raw 32-byte secret key, stored in `SecureBytes` to prevent accidental disclosure.
     private var privateBytes: SecureBytes
 
-    /// Backing secp256k1 private key object
+    /// The raw 32-byte secret key as `SecureBytes`.
     var key: SecureBytes {
         privateBytes
     }
 
-    /// Backing public key object
+    /// Serialized secp256k1 public key bytes derived from `privateBytes` via `secp256k1_ec_pubkey_create` and `secp256k1_ec_pubkey_serialize`.
     @usableFromInline let publicBytes: [UInt8]
 
-    /// Backing x-only public key object
+    /// Serialized x-only public key bytes (32-byte X coordinate) derived from `publicBytes` via `secp256k1_xonly_pubkey_serialize`.
     @usableFromInline let xonlyBytes: [UInt8]
 
-    /// Backing public key format
+    /// Serialization format of `publicBytes`.
     @usableFromInline let format: P256K.Format
 
-    /// Backing key parity
+    /// Parity of the public key's Y coordinate: 0 if even, 1 if odd, as returned by `secp256k1_xonly_pubkey_from_pubkey`.
     @usableFromInline var keyParity: Int32
 
-    /// Backing implementation for a public key object
+    /// The public key implementation derived from this private key.
     @usableFromInline var publicKey: PublicKeyImplementation {
         PublicKeyImplementation(publicBytes, xonly: xonlyBytes, keyParity: keyParity, format: format)
     }
 
-    /// Negates a secret key in place.
+    /// The additive inverse of this private key modulo the secp256k1 curve order, produced by `secp256k1_ec_seckey_negate`.
     @usableFromInline var negation: Self {
         var privateBytes = privateBytes.bytes
         guard secp256k1_ec_seckey_negate(P256K.Context.rawRepresentation, &privateBytes).boolValue else {
@@ -61,7 +61,7 @@
         return Self(validatedBytes: privateBytes, format: format)
     }
 
-    /// A data representation of the backing private key
+    /// The raw 32-byte private key as `Data`. Handle with care — this exposes the secret key material.
     @usableFromInline var dataRepresentation: Data {
         Data(privateBytes)
     }

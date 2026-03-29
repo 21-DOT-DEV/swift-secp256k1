@@ -20,16 +20,17 @@ import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.MuSig.PublicKey {
-        /// Verifies a partial signature against this public key.
+        /// Verifies one signer's ``P256K/Schnorr/PartialSignature`` against this aggregate public key using `secp256k1_musig_partial_sig_verify`.
         ///
-        /// This function implements the partial signature verification process as described in BIP-327.
+        /// Partial signature verification is optional in regular MuSig2 sessions — if any partial
+        /// signature is wrong, the final ``P256K/MuSig/AggregateSignature`` will simply fail to
+        /// verify. Call this method to identify *which* signer produced an invalid partial signature.
         ///
-        /// - Parameters:
-        ///   - partialSignature: The partial signature to verify.
-        ///   - publicKey: The signer's public key.
-        ///   - nonce: The signer's public nonce.
-        ///   - digest: The message digest being signed.
-        /// - Returns: `true` if the partial signature is valid, `false` otherwise.
+        /// - Parameter partialSignature: The signer's ``P256K/Schnorr/PartialSignature`` to verify.
+        /// - Parameter publicKey: The individual signer's ``P256K/Schnorr/PublicKey`` (not the aggregate).
+        /// - Parameter nonce: The same signer's public nonce used in this session.
+        /// - Parameter digest: The message digest that was signed.
+        /// - Returns: `true` if the partial signature is valid for `digest` under this aggregate key, `false` otherwise.
         func isValidSignature<D: Digest>(
             _ partialSignature: P256K.Schnorr.PartialSignature,
             publicKey: P256K.Schnorr.PublicKey,
@@ -64,18 +65,24 @@ import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.Schnorr.PrivateKey {
-        /// Generates a partial signature for MuSig.
+        /// Produces a 36-byte ``P256K/Schnorr/PartialSignature`` via `secp256k1_musig_partial_sign`, consuming and zeroing the secret nonce to prevent reuse.
         ///
-        /// This function implements the partial signing process as described in BIP-327.
+        /// > Warning: **The secret nonce is zeroed after this call.** `secp256k1_musig_partial_sign`
+        /// > overwrites `secureNonce` with zeros as a best-effort defence against nonce reuse;
+        /// > if `secureNonce` was copied beforehand, that copy must never be used again.
+        /// > Nonce reuse leaks the secret signing key.
         ///
-        /// - Parameters:
-        ///   - digest: The message digest to sign.
-        ///   - pubnonce: The signer's public nonce.
-        ///   - secureNonce: The signer's secret nonce.
-        ///   - publicNonceAggregate: The aggregate of all signers' public nonces.
-        ///   - publicKeyAggregate: The aggregate of all signers' public keys.
-        /// - Returns: A partial MuSig signature.
-        /// - Throws: An error if partial signature generation fails.
+        /// This method does **not** verify the output partial signature, deviating from the
+        /// BIP-327 specification. Call ``P256K/MuSig/PublicKey/isValidSignature(_:publicKey:nonce:for:)``
+        /// afterwards to detect computation errors.
+        ///
+        /// - Parameter digest: The message digest to sign.
+        /// - Parameter pubnonce: This signer's own public nonce from nonce generation.
+        /// - Parameter secureNonce: This signer's secret nonce (`~Copyable`); consumed and zeroed on return.
+        /// - Parameter publicNonceAggregate: The ``P256K/MuSig/Nonce`` aggregated from all signers' public nonces.
+        /// - Parameter xonlyKeyAggregate: The x-only form of the ``P256K/MuSig/aggregate(_:)`` result.
+        /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
+        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if signing fails or the secnonce was already used.
         func partialSignature<D: Digest>(
             for digest: D,
             pubnonce: P256K.Schnorr.Nonce,
@@ -122,18 +129,15 @@ import Foundation
             )
         }
 
-        /// Generates a partial signature for MuSig using SHA256 as the hash function.
+        /// Convenience overload of ``partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)`` that derives the x-only key from a ``P256K/MuSig/PublicKey``.
         ///
-        /// This is a convenience method that extracts the xonlyKeyAggregate from the public key aggregate.
-        ///
-        /// - Parameters:
-        ///   - data: The data to sign.
-        ///   - pubnonce: The signer's public nonce.
-        ///   - secureNonce: The signer's secret nonce.
-        ///   - publicNonceAggregate: The aggregate of all signers' public nonces.
-        ///   - publicKeyAggregate: The aggregate of all signers' public keys.
-        /// - Returns: A partial MuSig signature.
-        /// - Throws: An error if partial signature generation fails.
+        /// - Parameter digest: The message digest to sign.
+        /// - Parameter pubnonce: This signer's public nonce.
+        /// - Parameter secureNonce: This signer's secret nonce; consumed and zeroed on return.
+        /// - Parameter publicNonceAggregate: The ``P256K/MuSig/Nonce`` from all signers' public nonces.
+        /// - Parameter publicKeyAggregate: The ``P256K/MuSig/PublicKey`` returned by ``P256K/MuSig/aggregate(_:)``.
+        /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
+        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if signing fails or the secnonce was already used.
         func partialSignature<D: Digest>(
             for digest: D,
             pubnonce: P256K.Schnorr.Nonce,
@@ -155,33 +159,24 @@ import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.MuSig.XonlyKey {
-        /// Verifies a MuSig aggregate signature with a digest.
-        ///
-        /// This function is used when a hash digest has been created before invoking.
-        /// Enables BIP-340 signatures assuming the hash digest used the `Tagged Hashes` scheme as defined in the proposal.
-        ///
-        /// [BIP-340 Design](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#design)
+        /// Verifies a MuSig2 ``P256K/MuSig/AggregateSignature`` against a pre-computed digest using `secp256k1_schnorrsig_verify`.
         ///
         /// - Parameters:
-        ///   - signature: The aggregate signature to verify.
-        ///   - digest: The digest that was signed.
-        /// - Returns: True if the signature is valid, false otherwise.
+        ///   - signature: The 64-byte ``P256K/MuSig/AggregateSignature`` to verify.
+        ///   - digest: The pre-computed digest that was signed.
+        /// - Returns: `true` if the aggregate signature is valid for `digest` under this x-only aggregate key, `false` otherwise.
         func isValidSignature<D: Digest>(_ signature: P256K.MuSig.AggregateSignature, for digest: D) -> Bool {
             var hashDataBytes = Array(digest).bytes
 
             return isValid(signature, for: &hashDataBytes)
         }
 
-        /// Verifies a MuSig aggregate signature with a variable length message.
-        ///
-        /// This function provides flexibility for verifying a MuSig aggregate signature without assumptions about message format.
-        ///
-        /// [secp256k1_schnorrsig_verify](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h#L149L158)
+        /// Verifies a MuSig2 aggregate signature over an arbitrary-length message using `secp256k1_schnorrsig_verify`.
         ///
         /// - Parameters:
-        ///   - signature: The aggregate signature to verify.
-        ///   - message: The message that was signed.
-        /// - Returns: True if the signature is valid, false otherwise.
+        ///   - signature: The 64-byte ``P256K/MuSig/AggregateSignature`` to verify.
+        ///   - message: The message bytes that were signed (must match those used in the signing session).
+        /// - Returns: `true` if the aggregate signature is valid, `false` otherwise.
         func isValid(_ signature: P256K.MuSig.AggregateSignature, for message: inout [UInt8]) -> Bool {
             let context = P256K.Context.rawRepresentation
             var pubKey = secp256k1_xonly_pubkey()
