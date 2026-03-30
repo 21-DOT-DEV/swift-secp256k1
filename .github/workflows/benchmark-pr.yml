@@ -29,6 +29,9 @@ jobs:
       - name: Checkout PR branch
         uses: actions/checkout@v6
 
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
       # ── Find the run ID of the latest successful main baseline ──
       - name: Find main baseline run
         id: find-run
