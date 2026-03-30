@@ -16,10 +16,6 @@
 
     //===----------------------------------------------------------------------===//
 
-    #if !(arch(x86_64) || arch(arm64) || arch(powerpc64) || arch(powerpc64le) || arch(s390x))
-        #error("UInt256 requires a 64-bit platform")
-    #endif
-
     // A 256-bit unsigned integer backed by two stdlib UInt128 limbs.
 
     @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)

@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: read
+  actions: read
+  pull-requests: write
 
 jobs:
   compare:
@@ -29,25 +31,14 @@ jobs:
 
       # ── Fetch the latest main baseline ──
       - name: Download main baseline
+        id: download-baseline
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: main-benchmark-baseline
           path: .benchmarkBaselines
-          # Grab the artifact from the most recent main workflow run
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.pull_request.base.sha && '' }}
-          # download-artifact@v4 fetches the latest matching artifact
-          # from the repo by default when run-id is omitted
-
-      - name: Verify baseline exists
-        run: |
-          if [ ! -d ".benchmarkBaselines" ] || [ -z "$(ls -A .benchmarkBaselines)" ]; then
-            echo "::warning::No main baseline found. Run the main workflow first."
-            echo "Skipping comparison — running benchmarks only."
-            swift package benchmark --no-progress
-            exit 0
-          fi
-          echo "Main baseline found."
+          repository: ${{ github.repository }}
 
       # ── Run benchmarks on the PR branch only ──
       - name: Benchmark PR branch
@@ -55,7 +46,46 @@ jobs:
           swift package --allow-writing-to-package-directory \
             benchmark baseline update pr --no-progress
 
-      # ── Compare: exit code 2 = regression (fails the job) ──
+      # ── Compare: continue-on-error so comment always posts ──
       - name: Compare main → PR
+        id: compare
+        if: steps.download-baseline.outcome == 'success'
+        continue-on-error: true
         run: |
-          swift package benchmark baseline compare main pr --no-progress
+          swift package benchmark baseline compare main pr \
+            --no-progress --format markdown > /tmp/benchmark-comparison.md
+
+      # ── Build comment body into a temp file (avoids UTF-8 variable issues) ──
+      - name: Build PR comment
+        if: steps.download-baseline.outcome == 'success'
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMPARE_OUTCOME: ${{ steps.compare.outcome }}
+        run: |
+          {
+            echo "### Benchmark Comparison: \`main\` → PR"
+            echo ""
+            if [ "$COMPARE_OUTCOME" = "success" ]; then
+              echo "✅ No regressions detected. [View run]($RUN_URL)"
+            else
+              echo "⚠️ Regressions detected. [View run]($RUN_URL)"
+            fi
+            echo ""
+            cat /tmp/benchmark-comparison.md
+          } > /tmp/pr-comment.md
+
+      # ── Post or update the PR comment ──
+      - name: Post PR comment
+        if: steps.download-baseline.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if ! gh issue comment "$PR_NUMBER" --edit-last --body-file /tmp/pr-comment.md 2>/dev/null; then
+            gh issue comment "$PR_NUMBER" --body-file /tmp/pr-comment.md
+          fi
+
+      # ── Fail the job if regressions were detected ──
+      - name: Fail on regression
+        if: steps.download-baseline.outcome == 'success' && steps.compare.outcome == 'failure'
+        run: exit 2
