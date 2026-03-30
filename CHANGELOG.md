@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-03-29
+
 ### Added
 
 - `benchmark-main.yml` GitHub Actions workflow: records a `package-benchmark` baseline on every push to `main` and uploads it as a 90-day artifact
