@@ -54,7 +54,7 @@ jobs:
       - name: Download main baseline
         id: download-baseline
         continue-on-error: true
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: main-benchmark-baseline
           path: Projects/.benchmarkBaselines
