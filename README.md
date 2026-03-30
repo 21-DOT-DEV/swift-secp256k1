@@ -41,7 +41,7 @@ This package uses Swift Package Manager. To add it to your project:
 Add the following to your `Package.swift` file:
 
 ```swift
-.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.22.0"),
+.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.23.0"),
 ```
 
 > [!WARNING]  
@@ -60,7 +60,7 @@ Then, include `P256K` as a dependency in your target:
 Add the following to your `Podfile`:
 
 ```ruby
-pod 'swift-secp256k1', '0.22.0'
+pod 'swift-secp256k1', '0.23.0'
 ```
 
 > [!NOTE]
@@ -83,7 +83,7 @@ To use only specific modules, specify traits in your dependency:
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    from: "0.22.0",
+    from: "0.23.0",
     traits: ["schnorrsig"]
 ),
 ```
@@ -93,7 +93,7 @@ To enable all ZKP modules, use the `zkp` bundle trait:
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    from: "0.22.0",
+    from: "0.23.0",
     traits: ["zkp"]
 ),
 ```
@@ -103,7 +103,7 @@ To use the `UInt256` and `Int256` fixed-width integer types, enable the `uint256
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    branch: "main",
+    from: "0.23.0",
     traits: ["uint256"]
 ),
 ```
