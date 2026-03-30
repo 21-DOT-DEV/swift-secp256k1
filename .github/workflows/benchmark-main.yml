@@ -38,3 +38,4 @@ jobs:
           path: Projects/.benchmarkBaselines
           retention-days: 90
           overwrite: true
+          include-hidden-files: true

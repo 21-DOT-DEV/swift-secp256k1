@@ -8,14 +8,14 @@
 //  See the accompanying file LICENSE for information
 //
 
-/// Errors thrown for secp256k1
+/// Errors thrown by swift-secp256k1 operations: covers key-size mismatches, byte-count errors for individual parameters, and failures propagated from the libsecp256k1 C library.
 public enum secp256k1Error: Error {
-    /// A key is being deserialized with an incorrect key size.
+    /// A key was deserialized with the wrong byte count (e.g., 33 bytes for compressed or 65 bytes for uncompressed secp256k1 keys).
     case incorrectKeySize
 
-    /// The number of bytes passed for a given argument is incorrect.
+    /// A function argument had the wrong number of bytes (e.g., a 32-byte hash, nonce, or tweak scalar was expected but not provided).
     case incorrectParameterSize
 
-    /// An unexpected error at a lower-level occurred.
+    /// A libsecp256k1 C function returned `0`, indicating the cryptographic operation failed (invalid key, invalid signature, or arithmetic failure).
     case underlyingCryptoError
 }
