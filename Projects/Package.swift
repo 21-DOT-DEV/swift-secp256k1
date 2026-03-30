@@ -18,7 +18,7 @@ let package = Package(
     name: "swift-secp256k1-benchmarks",
     platforms: [.macOS(.v15)],
     dependencies: [
-        .package(path: ".."),
+        .package(path: "..", traits: ["uint256"]),
         .package(
             url: "https://github.com/ordo-one/package-benchmark",
             from: "1.4.0",
