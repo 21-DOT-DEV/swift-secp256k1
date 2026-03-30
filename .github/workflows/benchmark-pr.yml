@@ -36,12 +36,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: main-benchmark-baseline
-          path: .benchmarkBaselines
+          path: Projects/.benchmarkBaselines
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
 
       # ── Run benchmarks on the PR branch only ──
       - name: Benchmark PR branch
+        working-directory: Projects
         run: |
           swift package --allow-writing-to-package-directory \
             benchmark baseline update pr --no-progress
@@ -51,6 +52,7 @@ jobs:
         id: compare
         if: steps.download-baseline.outcome == 'success'
         continue-on-error: true
+        working-directory: Projects
         run: |
           swift package benchmark baseline compare main pr \
             --no-progress --format markdown > /tmp/benchmark-comparison.md
