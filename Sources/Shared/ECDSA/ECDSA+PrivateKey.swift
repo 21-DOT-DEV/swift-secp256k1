@@ -121,15 +121,17 @@ public extension P256K.Signing {
             }
         }
 
-        /// Creates a secp256k1 private key for signing from a `UInt256` constant.
-        ///
-        /// - Parameter staticInt: A `UInt256` value whose raw bytes form the 32-byte private key scalar.
-        /// - Parameter format: The serialization format of the companion ``publicKey``; defaults to `.compressed`.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the scalar is not a valid secp256k1 private key.
-        @available(macOS 13.3, iOS 16.4, watchOS 9.4, tvOS 16.4, macCatalyst 16.4, visionOS 1.0, *)
-        public init(_ staticInt: UInt256, format: P256K.Format = .compressed) throws {
-            self.baseKey = try PrivateKeyImplementation(dataRepresentation: staticInt.rawValue, format: format)
-        }
+        #if Xcode || ENABLE_UINT256
+            /// Creates a secp256k1 private key for signing from a `UInt256` constant.
+            ///
+            /// - Parameter staticInt: A `UInt256` value whose raw bytes form the 32-byte private key scalar.
+            /// - Parameter format: The serialization format of the companion ``publicKey``; defaults to `.compressed`.
+            /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the scalar is not a valid secp256k1 private key.
+            @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
+            public init(_ staticInt: UInt256, format: P256K.Format = .compressed) throws {
+                self.baseKey = try PrivateKeyImplementation(dataRepresentation: staticInt.rawValue, format: format)
+            }
+        #endif
 
         /// Returns `true` if both private keys have identical 32-byte secret scalars; compares using `SecureBytes` constant-time equality.
         ///

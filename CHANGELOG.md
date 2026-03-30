@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `benchmark-main.yml` GitHub Actions workflow: records a `package-benchmark` baseline on every push to `main` and uploads it as a 90-day artifact
+- `benchmark-pr.yml` GitHub Actions workflow: downloads the cached `main` baseline, runs benchmarks on the PR branch only, and fails on regressions (exit code 2)
+- `UInt256` and `Int256` types in a dedicated `Sources/Shared/UInt256/` module (`UInt256.swift`, `UInt256+Representation.swift`, `UInt256+Arithmetic.swift`, `UInt256+FixedWidthInteger.swift`, `UInt256+Modular.swift`)
+- `uint256` opt-in SPM trait (not enabled by default) gating all `UInt256`/`Int256` sources and tests behind `#if Xcode || ENABLE_UINT256`; consumers with a conflicting type or awaiting a future stdlib addition can omit it
 - DocC documentation catalog with Getting Started guide, API reference, and `swift-docc-plugin` 1.4.6 dependency (#1060)
 - `AGENTS.md` files for AI-assisted development guidance (#1038)
 - `CONTRIBUTING.md` and `SECURITY.md` project documentation (#1037)
 
 ### Changed
 
+- CI (`bitrise.yml`, `Dockerfile`) now runs `swift test --traits ecdh,musig,recovery,schnorrsig,uint256` to cover the `uint256`-gated code paths
 - Reduced `throws` propagation and reorganized `Shared` sources into subdirectories (`ECDSA/`, `Keys/`, `MuSig/`, `Recovery/`, `Schnorr/`) (#1034)
 - Improved DocC doc comments across public API modules: refined summary lines, discussion sections, parameter/return/throws markup, and cross-references for `P256K.MuSig`, `P256K.Recovery`, `P256K.Signing`, `P256K.Schnorr`, `P256K.KeyAgreement`, and `P256K.Context` (#1060)
 - Enabled Swift upcoming features `MemberImportVisibility` and `InternalImportsByDefault` (#1057)

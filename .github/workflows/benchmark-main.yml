@@ -1,0 +1,40 @@
+# .github/workflows/benchmark-main.yml
+#
+# Runs on every push to main and caches the baseline so PR workflows
+# can compare against it without re-running main benchmarks.
+
+name: Benchmark Baseline (main)
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  update-baseline:
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.3.0
+
+    steps:
+      - name: Install dependencies
+        run: apt-get update && apt-get install -y libjemalloc-dev
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run benchmarks
+        working-directory: Projects
+        run: |
+          swift package --allow-writing-to-package-directory \
+            benchmark baseline update main --no-progress
+
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-benchmark-baseline
+          path: Projects/.benchmarkBaselines
+          retention-days: 90
+          overwrite: true
