@@ -98,7 +98,20 @@ To enable all ZKP modules, use the `zkp` bundle trait:
 ),
 ```
 
-Available traits: `ecdh`, `ellswift`, `musig`, `recovery`, `schnorrsig`, `bppp`, `ecdsaAdaptor`, `ecdsaS2C`, `generator`, `rangeproof`, `schnorrsigHalfagg`, `surjectionproof`, `whitelist`, `zkp`.
+To use the `UInt256` and `Int256` fixed-width integer types, enable the `uint256` trait:
+
+```swift
+.package(
+    url: "https://github.com/21-DOT-DEV/swift-secp256k1",
+    from: "0.22.0",
+    traits: ["uint256"]
+),
+```
+
+> [!NOTE]
+> The `uint256` trait is opt-in and not enabled by default. The `UInt256` and `Int256` types require macOS 15, iOS 18, macCatalyst 18, watchOS 11, tvOS 18, or visionOS 2 and later.
+
+Available traits: `ecdh`, `ellswift`, `musig`, `recovery`, `schnorrsig`, `uint256`, `bppp`, `ecdsaAdaptor`, `ecdsaS2C`, `generator`, `rangeproof`, `schnorrsigHalfagg`, `surjectionproof`, `whitelist`, `zkp`.
 
 > [!NOTE]
 > Xcode does not currently resolve SwiftPM package trait conditions for Swift settings. As a workaround, all optional modules are compiled when building in Xcode. Package traits are fully supported when building with `swift build` from the command line.
