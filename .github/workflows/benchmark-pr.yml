@@ -27,7 +27,25 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
 
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      # ── Find the run ID of the latest successful main baseline ──
+      - name: Find main baseline run
+        id: find-run
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          run_id=$(gh run list \
+            --repo "$REPO" \
+            --workflow=benchmark-main.yml \
+            --branch=main \
+            --status=success \
+            --limit=1 \
+            --json=databaseId \
+            --jq='.[0].databaseId')
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
 
       # ── Fetch the latest main baseline ──
       - name: Download main baseline
@@ -39,6 +57,7 @@ jobs:
           path: Projects/.benchmarkBaselines
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
+          run-id: ${{ steps.find-run.outputs.run_id }}
 
       # ── Run benchmarks on the PR branch only ──
       - name: Benchmark PR branch
