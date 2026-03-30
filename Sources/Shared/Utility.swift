@@ -16,25 +16,24 @@ public import Foundation
     import libsecp256k1
 #endif
 
-/// An extension for ContiguousBytes providing a convenience property.
 public extension ContiguousBytes {
-    /// A property that returns an array of UInt8 bytes.
+    /// The raw bytes of this value as a `[UInt8]` array, equivalent to `withUnsafeBytes { Array($0) }`.
     @inlinable var bytes: [UInt8] {
         withUnsafeBytes { bytesPtr in Array(bytesPtr) }
     }
 }
 
-/// An extension for Data providing convenience properties and functions.
 public extension Data {
-    /// Copies data to unsafe mutable bytes of a given value.
-    /// - Parameter value: The inout value to copy the data to.
+    /// Copies up to `MemoryLayout<T>.size` bytes from this `Data` into the raw memory of `value`, used to populate opaque C structs such as `secp256k1_pubkey` and `secp256k1_musig_aggnonce`.
+    ///
+    /// - Parameter value: The inout value whose raw bytes are overwritten; only the leading `min(self.count, MemoryLayout<T>.size)` bytes are written.
     func copyToUnsafeMutableBytes<T>(of value: inout T) {
         _ = Swift.withUnsafeMutableBytes(of: &value) { ptr in
             ptr.copyBytes(from: self.prefix(ptr.count))
         }
     }
 
-    /// A computed property that returns the data with a compact size prefix.
+    /// The data prefixed with a Bitcoin-style compact-size integer encoding the byte count: 1 byte for lengths 0–252, 3 bytes (`0xfd` + LE16) for 253–65535, 5 bytes (`0xfe` + LE32) for larger, and 9 bytes (`0xff` + LE64) for the full 64-bit range.
     var compactSizePrefix: Data {
         let size = UInt64(count)
         var prefix = Data()
@@ -89,19 +88,19 @@ extension secp256k1_ecdsa_signature {
     }
 #endif
 
-/// An extension for String providing convenience initializers and properties for working with bytes.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension String {
-    /// Initializes a String from a byte array using the `hexString` property from the `BytesUtil.swift` DataProtocol extension.
-    /// - Parameter bytes: A byte array to initialize the String.
+    /// Creates a lowercase hex-encoded string from `bytes`, backed by the `hexString` property on `DataProtocol`.
+    ///
+    /// - Parameter bytes: The bytes to encode as a hexadecimal string.
     init<T: DataProtocol>(bytes: T) {
         self.init()
         self = bytes.hexString
     }
 
-    /// A convenience property that returns a byte array from a hexadecimal string.
-    /// Backed by the `BytesUtil.swift` Array extension initializer.
-    /// - Throws: `ByteHexEncodingErrors` for invalid string or hex value.
+    /// The bytes decoded from this hex string, lowercased before decoding.
+    ///
+    /// - Throws: `ByteHexEncodingErrors.invalidHexString` if the string contains non-hex characters; `ByteHexEncodingErrors.invalidHexValue` if the string has an odd length.
     var bytes: [UInt8] {
         get throws {
             // The `BytesUtil.swift` Array extension expects lowercase strings.

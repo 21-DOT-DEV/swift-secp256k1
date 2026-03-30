@@ -103,7 +103,7 @@ To use the `UInt256` and `Int256` fixed-width integer types, enable the `uint256
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    from: "0.22.0",
+    branch: "main",
     traits: ["uint256"]
 ),
 ```

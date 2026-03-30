@@ -10,14 +10,7 @@
 
 #if Xcode || ENABLE_UINT256
 
-    //===----------------------------------------------------------------------===//
-
-    // MARK: - 256-bit Integer Types
-
-    //===----------------------------------------------------------------------===//
-
-    // A 256-bit unsigned integer backed by two stdlib UInt128 limbs.
-
+    /// A 256-bit unsigned integer backed by two `UInt128` limbs, conforming to `FixedWidthInteger`, `BinaryInteger`, and `UnsignedInteger`; used for 256-bit field arithmetic on the secp256k1 curve.
     @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
     @frozen
     public struct UInt256 {
@@ -36,8 +29,7 @@
         }
     }
 
-    // A 256-bit signed integer backed by two stdlib UInt128/Int128 limbs.
-
+    /// A 256-bit signed integer backed by a `UInt128` low limb and an `Int128` high limb, conforming to `FixedWidthInteger`, `BinaryInteger`, and `SignedInteger`; the signed counterpart to ``UInt256``.
     @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
     @frozen
     public struct Int256 {

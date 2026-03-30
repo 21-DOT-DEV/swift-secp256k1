@@ -33,18 +33,18 @@ import Foundation
 
 // MARK: - HashDigest + DigestPrivate
 
-/// A typealias for the `HashDigest` struct as `SHA256Digest`.
+/// A type alias for ``HashDigest`` used as the concrete return type of ``SHA256/hash(data:)`` and ``SHA256/taggedHash(tag:data:)``.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public typealias SHA256Digest = HashDigest
 
-/// A struct representing a hash digest.
+/// 32-byte SHA-256 digest conforming to `Digest` so it can be passed directly to secp256k1 signing and verification APIs such as ``P256K/Signing/PrivateKey/signature(for:)-2rpq9`` and ``P256K/Schnorr/PrivateKey/signature(for:)``.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public struct HashDigest: Digest {
     let bytes: (UInt64, UInt64, UInt64, UInt64)
 
-    /// Initializes a hash digest from an array of bytes.
+    /// Creates a ``HashDigest`` from a 32-byte array, storing the bytes as four packed `UInt64` limbs.
     ///
-    /// - Parameter output: An array of bytes to create the hash digest.
+    /// - Parameter output: Exactly 32 bytes; behaviour is undefined if `output.count < 32`.
     public init(_ output: [UInt8]) {
         let first = output[0..<8].withUnsafeBytes { $0.load(as: UInt64.self) }
         let second = output[8..<16].withUnsafeBytes { $0.load(as: UInt64.self) }
@@ -54,16 +54,16 @@ public struct HashDigest: Digest {
         self.bytes = (first, second, third, forth)
     }
 
-    /// The byte count of the hash digest.
+    /// The number of bytes in a SHA-256 digest: always 32.
     public static var byteCount: Int {
         get { SHA256.digestByteCount }
         set { fatalError("Cannot set SHA256.byteCount") }
     }
 
-    /// Executes a closure while passing an `UnsafeRawBufferPointer`.
+    /// Calls `body` with an unsafe pointer to the digest's 32 raw bytes.
     ///
-    /// - Parameter body: A closure that takes an `UnsafeRawBufferPointer` as its argument.
-    /// - Returns: The value returned from the closure.
+    /// - Parameter body: A closure receiving a bounds-checked `UnsafeRawBufferPointer` of exactly `byteCount` bytes.
+    /// - Returns: The value returned by `body`.
     public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
         try Swift.withUnsafeBytes(of: bytes) {
             let boundsCheckedPtr = UnsafeRawBufferPointer(
@@ -86,14 +86,14 @@ public struct HashDigest: Digest {
         return array.prefix(upTo: Self.byteCount)
     }
 
-    /// A string representation of the hash digest.
+    /// A human-readable hex string representation of the digest, e.g. `"SHA256 digest: aabbcc..."`.
     public var description: String {
         "SHA256 digest: \(toArray().hexString)"
     }
 
-    /// Hashes the hash digest into the hasher.
+    /// Feeds the digest bytes into a Swift `Hasher` to support `Hashable` conformance.
     ///
-    /// - Parameter hasher: An inout hasher.
+    /// - Parameter hasher: The hasher to combine bytes into.
     public func hash(into hasher: inout Hasher) {
         withUnsafeBytes { hasher.combine(bytes: $0) }
     }

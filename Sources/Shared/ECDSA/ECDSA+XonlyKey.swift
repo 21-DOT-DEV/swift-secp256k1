@@ -18,35 +18,33 @@ public import Foundation
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing {
-    /// The corresponding x-only public key for the secp256k1 curve.
+    /// The 32-byte x-only form of a secp256k1 ``P256K/Signing/PublicKey``, as defined by BIP-340: the X coordinate of the public key point with implicit even-Y parity unless ``parity`` is `true`.
     struct XonlyKey: Sendable {
-        /// Generated secp256k1 x-only public key.
+        /// The internal backing x-only key implementation.
         private let baseKey: XonlyKeyImplementation
 
-        /// The secp256k1 x-only public key object.
+        /// The 32-byte X coordinate of this x-only public key.
         public var bytes: [UInt8] {
             baseKey.bytes
         }
 
-        /// A boolean that indicates the point's parity.
+        /// The Y-coordinate parity of the underlying secp256k1 public key, as returned by `secp256k1_xonly_pubkey_from_pubkey`.
         ///
-        /// Set to `true` if the point encoded by the x-only public key is the negation of the public key,
-        /// and set to `false` otherwise.
+        /// `false` means the Y coordinate is even (the canonical BIP-340 form); `true` means it is odd
+        /// (the public key point is the negation of the even-Y point with the same X coordinate).
         public var parity: Bool {
             baseKey.keyParity.boolValue
         }
 
-        /// Generates a secp256k1 x-only public key.
-        ///
-        /// - Parameter baseKey: Generated secp256k1 x-only public key.
+        /// Creates a ``XonlyKey`` from a validated backing implementation.
         init(baseKey: XonlyKeyImplementation) {
             self.baseKey = baseKey
         }
 
-        /// Generates a secp256k1 x-only public key from a raw representation and key parity.
+        /// Creates a ``XonlyKey`` from a 32-byte X-coordinate and its Y-coordinate parity.
         ///
-        /// - Parameter data: A data representation of the x-only public key.
-        /// - Parameter keyParity: The key parity as an `Int32`.
+        /// - Parameter data: The 32-byte X coordinate of the x-only public key.
+        /// - Parameter keyParity: The Y-coordinate parity as `Int32`: `0` = even, `1` = odd.
         public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32) {
             self.baseKey = XonlyKeyImplementation(dataRepresentation: data.bytes, keyParity: keyParity)
         }
