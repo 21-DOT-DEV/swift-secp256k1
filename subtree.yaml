@@ -33,8 +33,8 @@ subtrees:
 - name: swift-crypto
   remote: https://github.com/apple/swift-crypto.git
   prefix: Vendor/swift-crypto
-  commit: fa308c07a6fa04a727212d793e761460e41049c3
-  tag: 4.3.0
+  commit: bb4ba815dab96d4edc1e0b86d7b9acf9ff973a84
+  tag: 4.3.1
   squash: true
   extractions:
   - from:
