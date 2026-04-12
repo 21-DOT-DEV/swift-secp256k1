@@ -30,7 +30,7 @@ public import Foundation
                 baseKey.bytes
             }
 
-            /// Schnorr x-only public key are implicit of the point being even, therefore this will always return `false`.`
+            /// Schnorr x-only public key parity is implicitly even, therefore this always returns `false`.
             public var parity: Bool {
                 baseKey.keyParity.boolValue
             }
