@@ -158,11 +158,11 @@ public import Foundation
 
             /// Creates a ``PartialSignature`` from raw partial signature bytes and session data.
             ///
-            /// - Parameter dataRepresentation: Exactly 64 bytes of partial signature data from `secp256k1_musig_partial_sig_serialize`.
+            /// - Parameter dataRepresentation: The serialized partial signature data (36 bytes from `secp256k1_musig_partial_sig_serialize`).
             /// - Parameter session: The 133-byte `secp256k1_musig_session` state.
-            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `dataRepresentation` is not 64 bytes.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count does not match the expected partial signature length.
             public init<D: DataProtocol>(dataRepresentation: D, session: D) throws {
-                guard dataRepresentation.count == P256K.ByteLength.signature else {
+                guard dataRepresentation.count == P256K.ByteLength.partialSignature else {
                     throw secp256k1Error.incorrectParameterSize
                 }
 
