@@ -11,6 +11,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+      - name: Enable development dependencies
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: git tag -d "$TAG_NAME" 2>/dev/null || true
       - name: Generate Xcode project
         run: swift package --disable-sandbox tuist generate -p Projects/ --no-open
       - name: Archive & Create XCFramework
@@ -109,8 +113,10 @@ jobs:
           # Create zip with maximum compression including license files alongside the XCFramework
           7z a -tzip -mx=9 P256K.xcframework.zip P256K.xcframework LICENSE "COPYING-libsecp256k1"
       - name: Upload XCFramework
+        env:
+          TAG_NAME: ${{ github.ref_name }}
         run: |
-          gh release upload ${{ github.ref_name }} P256K.xcframework.zip
+          gh release upload "$TAG_NAME" P256K.xcframework.zip
       - name: Deploy to Cocoapods
         run: |
           # Install Cocoapods
