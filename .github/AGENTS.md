@@ -11,7 +11,7 @@ This directory contains GitHub configuration and CI workflows.
 ## Workflow conventions
 
 - Preserve least privilege defaults (this repo commonly uses `permissions: {}` at workflow and job levels).
-- Prefer `env:` blocks over inline interpolation inside shell scripts.
+- All workflows use `env:` blocks for context values — no inline `${{ }}` interpolation in `run:` scripts.
 - Avoid fragile shell output capture for UTF-8/multiline content; prefer temp files and tools like `jq` reading from files.
 
 ## Validation

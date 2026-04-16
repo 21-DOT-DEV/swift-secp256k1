@@ -23,4 +23,5 @@ xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme <TargetName>
 
 ## Notes
 
+- Tuist is a conditional dev dependency — `swift package tuist ...` commands only work in a non-tagged checkout (see root `AGENTS.md` → Non-obvious patterns).
 - Prefer updating `Projects/README.md` if the workflow changes.

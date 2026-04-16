@@ -173,6 +173,8 @@ jobs:
 
       - name: Debug state after update
         if: always() && steps.report.outputs.branch_name && steps.existing.outputs.skip != 'true'
+        env:
+          SUBTREE_NAME: ${{ inputs.subtree_name }}
         run: |
           echo "::group::git log after update (last 8 first-parent)"
           git log --first-parent --oneline -8
@@ -183,7 +185,7 @@ jobs:
           echo "::endgroup::"
 
           echo "::group::subtree.yaml after update"
-          grep -A6 "name: ${{ inputs.subtree_name }}" subtree.yaml || echo "not found"
+          grep -A6 "name: $SUBTREE_NAME" subtree.yaml || echo "not found"
           echo "::endgroup::"
 
           echo "::group::working tree status"

@@ -15,14 +15,10 @@ This directory contains vendored upstream sources managed by `subtree.yaml`.
 - Verify the subtree entry in `subtree.yaml` (remote/tag/commit) before editing.
 - Ensure changes remain upstream-syncable.
 
-## Extractions (Vendor -> Sources)
+## Extractions (Vendor → Sources)
 
-This repo extracts selected files from Vendor into Sources. Before changing anything here, check `subtree.yaml`.
+This file is the canonical reference for extraction mappings. The subtree CLI uses `subtree.yaml` to extract selected files from Vendor into Sources:
 
-- `Vendor/secp256k1` -> `Sources/libsecp256k1/`
-- `Vendor/secp256k1-zkp` -> `Sources/libsecp256k1_zkp/`
-- `Vendor/swift-crypto` -> `Sources/Shared/swift-crypto/`
-
-## Validation
-
-- Run `swift test` after any Vendor-related change.
+- `Vendor/secp256k1` → `Sources/libsecp256k1/`
+- `Vendor/secp256k1-zkp` → `Sources/libsecp256k1_zkp/`
+- `Vendor/swift-crypto` → `Sources/Shared/swift-crypto/`

@@ -52,15 +52,7 @@ let package = Package(
             "rangeproof", "schnorrsigHalfagg", "surjectionproof", "whitelist"
         ])
     ],
-    dependencies: [
-        // Dependencies used for package development
-        .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "2.1.5"),
-        .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.180.0"),
-        .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.61.0"),
-        .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.63.2"),
-        .package(url: "https://github.com/21-DOT-DEV/swift-plugin-subtree.git", exact: "0.0.13"),
-        .package(url: "https://github.com/swiftlang/swift-docc-plugin", exact: "1.4.6")
-    ],
+    dependencies: Package.Dependency.developmentDependencies,
     targets: [
         // MARK: - Build Plugins
 
@@ -115,6 +107,24 @@ let package = Package(
     swiftLanguageModes: [.v6],
     cLanguageStandard: .c89
 )
+
+extension Package.Dependency {
+    /// Development-only dependencies, excluded at tagged releases.
+    ///
+    /// When resolved at a tagged release, development tools (formatters, linters, etc.)
+    /// are excluded so consumers aren't forced to download them.
+    static var developmentDependencies: [Package.Dependency] {
+        guard Context.gitInformation?.currentTag == nil else { return [] }
+        return [
+            .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "2.1.5"),
+            .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.178.1"),
+            .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.60.1"),
+            .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.63.2"),
+            .package(url: "https://github.com/21-DOT-DEV/swift-plugin-subtree.git", exact: "0.0.13"),
+            .package(url: "https://github.com/swiftlang/swift-docc-plugin", exact: "1.4.6")
+        ]
+    }
+}
 
 extension PackageDescription.CSetting {
     /// Basic config values that are universal and require no dependencies.
