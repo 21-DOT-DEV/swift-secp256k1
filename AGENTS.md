@@ -8,6 +8,7 @@ A Swift 6.1 wrapper around libsecp256k1 (and secp256k1-zkp) for the Bitcoin and 
 - Test: `swift test`
 - Format: `swift package swiftformat .` (dev checkout only)
 - Lint: `swift package swiftlint` (dev checkout only)
+- Install Lefthook hooks (one-time, dev checkout only): `lefthook install`
 
 ## Non-obvious patterns
 
@@ -16,11 +17,19 @@ A Swift 6.1 wrapper around libsecp256k1 (and secp256k1-zkp) for the Bitcoin and 
 - **SharedSourcesPlugin**: Copies `Sources/Shared/*.swift` into both P256K and ZKP build directories. Changes to shared files affect both targets.
 - **Extraction flow**: Vendor → Sources via subtree CLI. Do not edit extracted paths directly; changes are overwritten on next extraction. See `Vendor/AGENTS.md`.
 
+## Code Style
+
+Code is formatted and linted automatically via pre-commit hooks:
+
+- **SwiftFormat** — `.swiftformat` config (4-space indentation, LF line breaks, alphabetized imports)
+- **SwiftLint** — `.swiftlint.yml` config (140-char line length, extensive opt-in rules)
+- **Lefthook** — runs both tools as git hooks. After cloning, run `lefthook install` to activate.
+
 ## Boundaries
 
 - **Never**: emit private keys or sensitive material; weaken constant-time code in vendored C sources; edit files under `Vendor/` directly; bypass Lefthook formatting/linting hooks.
 - **Ask first**: add new third-party dependencies; broaden CI permissions.
-- See [CONTRIBUTING.md](CONTRIBUTING.md) for code style, branching, and commit guidelines. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
+- See the [21-DOT-DEV contributing guidelines](https://github.com/21-DOT-DEV/.github/blob/main/CONTRIBUTING.md) for branching and commit guidelines. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## Scoped guidance
 

@@ -321,7 +321,7 @@ For information on reporting security vulnerabilities, see [SECURITY.md](SECURIT
 
 ## Contributing
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started. For AI-assisted development guidance, see [AGENTS.md](AGENTS.md).
+Contributions are welcome. Please read the [21-DOT-DEV contributing guidelines](https://github.com/21-DOT-DEV/.github/blob/main/CONTRIBUTING.md) for general workflow, and [AGENTS.md](AGENTS.md) for project-specific code style (SwiftFormat, SwiftLint, Lefthook) and AI-assisted development guidance.
 
 ## License
 
