@@ -20,8 +20,8 @@ This package is pre-1.0 ([SemVer major version zero](https://semver.org/#spec-it
 
 | Version | Supported          |
 |---------|--------------------|
-| 0.22.x  | :white_check_mark: |
-| < 0.22  | :x:                |
+| 0.23.x  | :white_check_mark: |
+| < 0.23  | :x:                |
 
 ## Upstream Dependencies
 
