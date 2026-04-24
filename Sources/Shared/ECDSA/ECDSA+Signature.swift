@@ -20,21 +20,41 @@ public import Foundation
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing {
-    /// 64-byte secp256k1 ECDSA signature in libsecp256k1 internal format, convertible to and from DER (variable-length, up to 72 bytes) and compact (exactly 64 bytes) representations.
+    /// 64-byte secp256k1 ECDSA signature in libsecp256k1 internal format, convertible to and
+    /// from DER (variable-length, up to 72 bytes) and compact (exactly 64 bytes)
+    /// representations.
     ///
-    /// All signatures produced by ``PrivateKey/signature(for:)-2bdso`` are automatically normalized
-    /// to lower-S form by `secp256k1_ecdsa_sign`. This normalization is required because
-    /// `secp256k1_ecdsa_verify` only accepts lower-S signatures; a non-normalized signature will
-    /// always fail verification.
+    /// ## Overview
     ///
-    /// ## Serialization
+    /// All signatures produced by the `signature(for:)` overloads on ``PrivateKey`` are
+    /// automatically normalized to lower-S form by `secp256k1_ecdsa_sign` per
+    /// [BIP-146](https://github.com/bitcoin/bips/blob/master/bip-0146.mediawiki). This
+    /// normalization is required because `secp256k1_ecdsa_verify` only accepts lower-S
+    /// signatures; a non-normalized signature will always fail verification.
     ///
-    /// - ``compactRepresentation``: 64 bytes, `r || s` in big-endian. Use for Bitcoin witness
-    ///   fields and Nostr events.
-    /// - ``derRepresentation``: Variable-length DER encoding (up to 72 bytes). Use for
-    ///   Bitcoin legacy script and standard X.509 / TLS contexts.
+    /// The internal 64-byte `data` buffer is the opaque `secp256k1_ecdsa_signature` struct
+    /// body declared in
+    /// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h).
+    /// Its byte layout is **not** a stable wire format across libsecp256k1 versions — use
+    /// ``compactRepresentation`` or ``derRepresentation`` for persistence / transmission.
+    ///
+    /// ## Topics
+    ///
+    /// ### Construction
+    /// - ``init(dataRepresentation:)``
+    /// - ``init(compactRepresentation:)``
+    /// - ``init(derRepresentation:)``
+    ///
+    /// ### Serialized Forms
+    /// - ``compactRepresentation``
+    /// - ``derRepresentation``
     struct ECDSASignature: ContiguousBytes, NISTECDSASignature, CompactSignature {
-        /// The 64-byte libsecp256k1 internal representation of the signature (`r || s` in big-endian).
+        /// The 64-byte opaque `secp256k1_ecdsa_signature` struct buffer.
+        ///
+        /// The internal layout is not a stable wire format — use ``compactRepresentation``
+        /// or ``derRepresentation`` for cross-process persistence. The bytes here are
+        /// retained across Swift-layer operations to avoid repeat parsing; the upstream
+        /// struct stores the `(r, s)` pair in a version-specific packed form.
         public var dataRepresentation: Data
 
         /// Creates an ``ECDSASignature`` from a 64-byte raw representation.
@@ -106,7 +126,12 @@ public extension P256K.Signing {
             try dataRepresentation.withUnsafeBytes(body)
         }
 
-        /// The 64-byte compact representation of the signature (`r || s` in big-endian), produced by `secp256k1_ecdsa_signature_serialize_compact`.
+        /// The 64-byte compact representation of the signature (`r || s` in big-endian),
+        /// produced by `secp256k1_ecdsa_signature_serialize_compact`.
+        ///
+        /// Stable wire format suitable for Bitcoin witness fields, Nostr events, and other
+        /// contexts that expect a fixed-length signature. The two 32-byte halves are the
+        /// big-endian encodings of the `r` and `s` scalars respectively.
         public var compactRepresentation: Data {
             let context = P256K.Context.rawRepresentation
             var signature = secp256k1_ecdsa_signature()
@@ -125,7 +150,13 @@ public extension P256K.Signing {
             return Data(bytes: &compactSignature, count: P256K.ByteLength.signature)
         }
 
-        /// The variable-length DER-encoded representation of the signature (up to 72 bytes), produced by `secp256k1_ecdsa_signature_serialize_der`.
+        /// The variable-length DER-encoded representation of the signature (up to 72
+        /// bytes), produced by `secp256k1_ecdsa_signature_serialize_der`.
+        ///
+        /// ASN.1 DER encoding defined by SEC1 § 4.1 — the standard wire format for ECDSA
+        /// signatures in TLS, X.509 certificates, and pre-SegWit Bitcoin script. Typical
+        /// output is 70–72 bytes; the upper bound of 72 reflects the maximum DER length
+        /// including two `INTEGER` tags and length octets.
         public var derRepresentation: Data {
             let context = P256K.Context.rawRepresentation
             var signature = secp256k1_ecdsa_signature()
@@ -155,7 +186,7 @@ extension P256K.Signing.PrivateKey: DigestSigner {
     /// Generates a lower-S normalized ECDSA signature over the secp256k1 elliptic curve using RFC 6979 deterministic nonce generation.
     ///
     /// - Parameter digest: The pre-computed message digest to sign.
-    /// - Returns: An ``ECDSASignature`` in lower-S normalized form, ready for verification by ``P256K/Signing/PublicKey/isValidSignature(_:for:)-6vcl1``.
+    /// - Returns: An ``ECDSASignature`` in lower-S normalized form, ready for verification via the `isValidSignature(_:for:)` overloads on ``P256K/Signing/PublicKey``.
     public func signature<D: Digest>(for digest: D) -> P256K.Signing.ECDSASignature {
         let context = P256K.Context.rawRepresentation
         var signature = secp256k1_ecdsa_signature()

@@ -62,3 +62,15 @@ jobs:
             build \
             -scheme swift-secp256k1-Package \
             -destination generic/platform=visionOS
+
+  docc:
+    name: DocC Validation
+    runs-on: macos-26
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Validate P256K DocC
+        run: swift package generate-documentation --target P256K --analyze --warnings-as-errors
+      - name: Validate ZKP DocC
+        run: swift package generate-documentation --target ZKP --analyze --warnings-as-errors

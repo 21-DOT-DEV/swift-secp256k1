@@ -22,13 +22,34 @@ public import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.Schnorr {
-        /// 64-byte BIP-340 Schnorr signature over the secp256k1 elliptic curve, produced by `secp256k1_schnorrsig_sign_custom` and verified by `secp256k1_schnorrsig_verify`.
+        /// 64-byte
+        /// [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr
+        /// signature over the secp256k1 elliptic curve, produced by
+        /// `secp256k1_schnorrsig_sign_custom` and verified by `secp256k1_schnorrsig_verify`
+        /// (both declared in
+        /// [`Vendor/secp256k1/include/secp256k1_schnorrsig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h)).
         ///
-        /// BIP-340 Schnorr signatures always have a fixed 64-byte encoding: the 32-byte `R.x`
-        /// coordinate followed by 32-byte scalar `s`. There is no DER encoding or alternative
-        /// format. Unlike ECDSA, Schnorr signatures have a unique representation.
+        /// ## Overview
+        ///
+        /// BIP-340 Schnorr signatures always have a fixed 64-byte encoding: the 32-byte
+        /// `R.x` coordinate of the nonce point followed by the 32-byte scalar `s`. There is
+        /// no DER encoding or alternative format. Unlike ECDSA, Schnorr signatures have a
+        /// **unique** representation for a given `(message, key, nonce)` triple — there is
+        /// no `(r, ±s)` symmetry to normalize.
+        ///
+        /// ## Topics
+        ///
+        /// ### Construction
+        /// - ``init(dataRepresentation:)``
+        ///
+        /// ### Serialization
+        /// - ``dataRepresentation``
         struct SchnorrSignature: ContiguousBytes, DataSignature {
             /// The 64-byte BIP-340 Schnorr signature (`R.x || s` in big-endian).
+            ///
+            /// Stable wire format suitable for Bitcoin Taproot witnesses, Nostr events, and
+            /// any other context consuming BIP-340 signatures. The two 32-byte halves are
+            /// the big-endian X-coordinate of the nonce point `R` and the scalar `s`.
             public var dataRepresentation: Data
 
             /// Creates a ``SchnorrSignature`` from a 64-byte raw representation.

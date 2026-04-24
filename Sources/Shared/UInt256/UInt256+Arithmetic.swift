@@ -8,6 +8,9 @@
 //  See the accompanying file LICENSE for information
 //
 
+// `BinaryInteger` conformance for `UInt256`. Operator docs inherit from the Swift
+// standard library; see `UInt256` for the two-limb contract and timing caveat.
+
 #if Xcode || ENABLE_UINT256
 
     // MARK: - BinaryInteger

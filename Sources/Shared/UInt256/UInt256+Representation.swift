@@ -8,6 +8,9 @@
 //  See the accompanying file LICENSE for information
 //
 
+// `Equatable` / `Hashable` / `Comparable` / `Strideable` / string / `Numeric`
+// conformances for `UInt256` / `Int256`. Docs inherit from the Swift standard library.
+
 #if Xcode || ENABLE_UINT256
 
     public import Foundation

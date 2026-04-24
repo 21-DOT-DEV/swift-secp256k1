@@ -20,11 +20,16 @@ import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.MuSig.PublicKey {
-        /// Verifies one signer's ``P256K/Schnorr/PartialSignature`` against this aggregate public key using `secp256k1_musig_partial_sig_verify`.
+        /// Verifies one signer's ``P256K/Schnorr/PartialSignature`` against this aggregate
+        /// public key using `secp256k1_musig_partial_sig_verify` (declared in
+        /// [`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)).
         ///
-        /// Partial signature verification is optional in regular MuSig2 sessions — if any partial
-        /// signature is wrong, the final ``P256K/MuSig/AggregateSignature`` will simply fail to
-        /// verify. Call this method to identify *which* signer produced an invalid partial signature.
+        /// Partial signature verification is optional in regular
+        /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) MuSig2
+        /// sessions — if any partial signature is wrong, the final
+        /// ``P256K/MuSig/AggregateSignature`` will simply fail to verify. Call this method
+        /// to identify *which* signer produced an invalid partial signature, which matters
+        /// when you need to attribute failure and evict a faulty cosigner.
         ///
         /// - Parameter partialSignature: The signer's ``P256K/Schnorr/PartialSignature`` to verify.
         /// - Parameter publicKey: The individual signer's ``P256K/Schnorr/PublicKey`` (not the aggregate).
@@ -65,16 +70,22 @@ import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.Schnorr.PrivateKey {
-        /// Produces a 36-byte ``P256K/Schnorr/PartialSignature`` via `secp256k1_musig_partial_sign`, consuming and zeroing the secret nonce to prevent reuse.
+        /// Produces a ``P256K/Schnorr/PartialSignature`` via `secp256k1_musig_partial_sign`,
+        /// consuming and zeroing the secret nonce to prevent reuse. The resulting partial
+        /// signature is an opaque 36-byte in-memory struct; its stable wire format is
+        /// 32 bytes (see ``P256K/Schnorr/PartialSignature/dataRepresentation``).
         ///
-        /// > Warning: **The secret nonce is zeroed after this call.** `secp256k1_musig_partial_sign`
-        /// > overwrites `secureNonce` with zeros as a best-effort defence against nonce reuse;
-        /// > if `secureNonce` was copied beforehand, that copy must never be used again.
-        /// > Nonce reuse leaks the secret signing key.
+        /// > Warning: **The secret nonce is zeroed after this call.**
+        /// > `secp256k1_musig_partial_sign` overwrites `secureNonce` with zeros as a
+        /// > best-effort defence against nonce reuse. Because ``P256K/Schnorr/SecureNonce``
+        /// > is `~Copyable`, the Swift layer additionally prevents static misuse. Nonce
+        /// > reuse leaks the secret signing key.
         ///
         /// This method does **not** verify the output partial signature, deviating from the
-        /// BIP-327 specification. Call ``P256K/MuSig/PublicKey/isValidSignature(_:publicKey:nonce:for:)``
-        /// afterwards to detect computation errors.
+        /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)
+        /// specification. Call
+        /// ``P256K/MuSig/PublicKey/isValidSignature(_:publicKey:nonce:for:)`` afterwards to
+        /// detect computation errors.
         ///
         /// - Parameter digest: The message digest to sign.
         /// - Parameter pubnonce: This signer's own public nonce from nonce generation.

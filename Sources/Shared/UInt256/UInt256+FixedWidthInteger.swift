@@ -8,6 +8,9 @@
 //  See the accompanying file LICENSE for information
 //
 
+// `FixedWidthInteger` + `UnsignedInteger` conformance for `UInt256`. Operator docs
+// inherit from the Swift standard library; see `UInt256` for the two-limb contract.
+
 #if Xcode || ENABLE_UINT256
 
     // MARK: - FixedWidthInteger

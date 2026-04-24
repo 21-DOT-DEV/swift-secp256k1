@@ -1,0 +1,174 @@
+name: DocC Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag to upload the DocC archives to (e.g. 0.18.0 or 0.18.0-prerelease-0). The release must already exist.'
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: docc-release-${{ github.event.inputs.release_tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  docc:
+    name: Build DocC Archives
+    runs-on: macos-26
+    timeout-minutes: 30
+    permissions:
+      contents: write  # for gh release upload
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ github.event.inputs.release_tag || github.ref_name }}
+      DEVELOPER_DIR: "/Applications/Xcode_26.4.app/Contents/Developer"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          ref: ${{ github.event.inputs.release_tag || github.ref }}
+          fetch-depth: 0  # ensure tags are fetched so we can delete them below
+
+      - name: Enable development dependencies
+        # Delete ALL tags at HEAD so Context.gitInformation?.currentTag is nil,
+        # which flips the `developmentDependencies` guard in Package.swift and
+        # includes swift-docc-plugin. Single-tag deletion fails when a commit
+        # has sibling tags (e.g., 0.18.0 + 0.18.0-prerelease-0), causing
+        # "Unknown subcommand or plugin name 'generate-documentation'".
+        run: git tag --points-at HEAD | xargs -r -n 1 git tag -d
+
+      - name: Echo toolchain versions
+        run: |
+          {
+            echo "### Toolchain"
+            echo ""
+            echo '```'
+            swift --version
+            xcodebuild -version
+            xcrun docc --version 2>/dev/null || echo "docc --version: unsupported by this docc build"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build package
+        run: swift build
+
+      - name: Build P256K DocC Archive
+        env:
+          SOURCE_SERVICE_BASE_URL: "https://github.com/${{ github.repository }}/blob/${{ github.event.inputs.release_tag || github.ref_name }}"
+        run: |
+          mkdir -p docs
+          swift package \
+            --allow-writing-to-directory ./docs \
+            generate-documentation \
+            --target P256K \
+            --analyze \
+            --warnings-as-errors \
+            --enable-experimental-markdown-output \
+            --transform-for-static-hosting \
+            --experimental-transform-for-static-hosting-with-content \
+            --source-service github \
+            --source-service-base-url "$SOURCE_SERVICE_BASE_URL" \
+            --checkout-path "$GITHUB_WORKSPACE" \
+            --output-path ./docs/P256K.doccarchive
+
+      - name: Sanity-check P256K archive
+        run: |
+          test -d ./docs/P256K.doccarchive
+          test -f ./docs/P256K.doccarchive/metadata.json
+
+          BUNDLE_ID=$(jq -r '.bundleID // empty' ./docs/P256K.doccarchive/metadata.json)
+          echo "P256K bundle ID: ${BUNDLE_ID}"
+          [ -n "$BUNDLE_ID" ] || { echo "::error::P256K metadata.json missing bundleID"; exit 1; }
+
+          MD_COUNT=$(find ./docs/P256K.doccarchive -name '*.md' | wc -l | tr -d ' ')
+          echo "P256K markdown file count: ${MD_COUNT}"
+          [ "$MD_COUNT" -gt 0 ] || { echo "::error::No P256K .md files found; --enable-experimental-markdown-output may have regressed"; exit 1; }
+
+      - name: Smoke-test P256K merge + static hosting
+        run: |
+          xcrun docc merge ./docs/P256K.doccarchive \
+            --output-path /tmp/p256k-merge-test.doccarchive
+          xcrun docc process-archive transform-for-static-hosting \
+            /tmp/p256k-merge-test.doccarchive \
+            --output-path /tmp/p256k-merge-test-static
+          test -f /tmp/p256k-merge-test-static/index.html
+          test -d /tmp/p256k-merge-test-static/documentation/p256k
+
+      - name: Build ZKP DocC Archive
+        env:
+          SOURCE_SERVICE_BASE_URL: "https://github.com/${{ github.repository }}/blob/${{ github.event.inputs.release_tag || github.ref_name }}"
+        run: |
+          swift package \
+            --allow-writing-to-directory ./docs \
+            generate-documentation \
+            --target ZKP \
+            --analyze \
+            --warnings-as-errors \
+            --enable-experimental-markdown-output \
+            --transform-for-static-hosting \
+            --experimental-transform-for-static-hosting-with-content \
+            --source-service github \
+            --source-service-base-url "$SOURCE_SERVICE_BASE_URL" \
+            --checkout-path "$GITHUB_WORKSPACE" \
+            --output-path ./docs/ZKP.doccarchive
+
+      - name: Sanity-check ZKP archive
+        run: |
+          test -d ./docs/ZKP.doccarchive
+          test -f ./docs/ZKP.doccarchive/metadata.json
+
+          BUNDLE_ID=$(jq -r '.bundleID // empty' ./docs/ZKP.doccarchive/metadata.json)
+          echo "ZKP bundle ID: ${BUNDLE_ID}"
+          [ -n "$BUNDLE_ID" ] || { echo "::error::ZKP metadata.json missing bundleID"; exit 1; }
+
+          MD_COUNT=$(find ./docs/ZKP.doccarchive -name '*.md' | wc -l | tr -d ' ')
+          echo "ZKP markdown file count: ${MD_COUNT}"
+          [ "$MD_COUNT" -gt 0 ] || { echo "::error::No ZKP .md files found"; exit 1; }
+
+      - name: Smoke-test ZKP merge + static hosting
+        run: |
+          xcrun docc merge ./docs/ZKP.doccarchive \
+            --output-path /tmp/zkp-merge-test.doccarchive
+          xcrun docc process-archive transform-for-static-hosting \
+            /tmp/zkp-merge-test.doccarchive \
+            --output-path /tmp/zkp-merge-test-static
+          test -f /tmp/zkp-merge-test-static/index.html
+          test -d /tmp/zkp-merge-test-static/documentation/zkp
+
+      - name: Zip both archives
+        run: |
+          cp LICENSE docs/LICENSE
+          cd docs
+          7z a -tzip -mx=9 P256K.doccarchive.zip P256K.doccarchive LICENSE
+          7z a -tzip -mx=9 ZKP.doccarchive.zip   ZKP.doccarchive   LICENSE
+
+      - name: Upload to Release
+        run: |
+          gh release upload "$RELEASE_TAG" docs/P256K.doccarchive.zip --clobber
+          gh release upload "$RELEASE_TAG" docs/ZKP.doccarchive.zip   --clobber
+
+      - name: Write step summary
+        # GitHub computes + exposes the asset SHA-256 automatically (visible on
+        # the release page + via `gh release view --json assets` .digest field).
+        # We hash inline here only for display in this job's step summary.
+        run: |
+          P256K_SIZE=$(ls -lh docs/P256K.doccarchive.zip | awk '{print $5}')
+          P256K_SHA=$(shasum -a 256 docs/P256K.doccarchive.zip | awk '{print $1}')
+          ZKP_SIZE=$(ls -lh docs/ZKP.doccarchive.zip | awk '{print $5}')
+          ZKP_SHA=$(shasum -a 256 docs/ZKP.doccarchive.zip | awk '{print $1}')
+          {
+            echo ""
+            echo "### DocC Release"
+            echo ""
+            echo "- **Release**: \`$RELEASE_TAG\`"
+            echo ""
+            echo "| Archive | Size | SHA-256 |"
+            echo "|---|---|---|"
+            echo "| \`P256K.doccarchive.zip\` | $P256K_SIZE | \`$P256K_SHA\` |"
+            echo "| \`ZKP.doccarchive.zip\` | $ZKP_SIZE | \`$ZKP_SHA\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -37,7 +37,7 @@ import Foundation
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public typealias SHA256Digest = HashDigest
 
-/// 32-byte SHA-256 digest conforming to `Digest` so it can be passed directly to secp256k1 signing and verification APIs such as ``P256K/Signing/PrivateKey/signature(for:)-2rpq9`` and ``P256K/Schnorr/PrivateKey/signature(for:)``.
+/// 32-byte SHA-256 digest conforming to `Digest` so it can be passed directly to secp256k1 signing and verification APIs (the `signature(for:)` overloads on ``P256K/Signing/PrivateKey`` and ``P256K/Schnorr/PrivateKey`` that take a `Digest`).
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public struct HashDigest: Digest {
     let bytes: (UInt64, UInt64, UInt64, UInt64)

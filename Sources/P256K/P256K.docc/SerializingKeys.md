@@ -6,7 +6,11 @@
 
 Import and export keys in raw bytes, PEM, DER, and other standard formats.
 
-## Raw Bytes
+## Overview
+
+Key serialization comes up in wallet storage, protocol interop (`EC PRIVATE KEY` / `PRIVATE KEY` PEM envelopes, X.509 SubjectPublicKeyInfo DER), and on-the-wire Bitcoin/Lightning witness data. The sections below cover each supported format in the order you will typically encounter them.
+
+### Raw Bytes
 
 The most common serialization. Use `dataRepresentation` to export and `init(dataRepresentation:format:)` to import:
 
@@ -28,7 +32,7 @@ let privKeyData = privateKey.dataRepresentation  // 32 bytes
 let restored = try P256K.Signing.PrivateKey(dataRepresentation: privKeyData)
 ```
 
-## PEM Encoding
+### PEM Encoding
 
 Import keys from PEM-encoded strings. Both SEC1 (`EC PRIVATE KEY`) and PKCS#8 (`PRIVATE KEY`) formats are supported:
 
@@ -49,7 +53,7 @@ Public keys use the `PUBLIC KEY` PEM type:
 let publicKey = try P256K.Signing.PublicKey(pemRepresentation: publicKeyPEM)
 ```
 
-## DER Encoding
+### DER Encoding
 
 Import from DER-encoded binary data:
 
@@ -65,7 +69,7 @@ let signature = try P256K.Signing.ECDSASignature(derRepresentation: derData)
 let derBytes = signature.derRepresentation
 ```
 
-## Compressed vs Uncompressed
+### Compressed vs Uncompressed
 
 Specify the format when creating keys:
 
@@ -85,7 +89,7 @@ Convert a compressed public key to its uncompressed form:
 let fullBytes = compressedPublicKey.uncompressedRepresentation  // 65 bytes
 ```
 
-## X-Only Keys
+### X-Only Keys
 
 Schnorr signatures (BIP-340) use 32-byte x-only public keys with implicit even parity:
 
@@ -104,7 +108,7 @@ let xonly = ecdsaPublicKey.xonly
 let fullKey = P256K.Signing.PublicKey(xonlyKey: xonly)
 ```
 
-## Format Comparison
+### Format Comparison
 
 | Format | Size | Prefix | Use Case |
 |--------|------|--------|----------|

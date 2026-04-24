@@ -18,46 +18,107 @@ public import Foundation
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing {
-    /// secp256k1 ECDSA public key for verifying ``ECDSASignature`` values, available in compressed (33-byte) or uncompressed (65-byte) serialized form.
+    /// secp256k1 ECDSA public key for verifying ``ECDSASignature`` values, available in
+    /// compressed (33-byte) or uncompressed (65-byte) serialized form.
     ///
-    /// Obtain a public key from its companion ``PrivateKey/publicKey`` property, or by deserializing
-    /// a compressed (33-byte), uncompressed (65-byte), PEM, DER, or ANSI X9.63 representation.
-    /// The serialization format is preserved and reported by the ``format`` property.
+    /// ## Overview
+    ///
+    /// Obtain a public key from its companion ``PrivateKey/publicKey`` property, or by
+    /// deserializing a compressed (33-byte), uncompressed (65-byte), PEM, DER, or ANSI
+    /// X9.63 representation. The serialization format is preserved and reported by the
+    /// ``format`` property. Parsing goes through `secp256k1_ec_pubkey_parse` (declared in
+    /// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)),
+    /// which rejects off-curve points and wrong-length encodings.
+    ///
+    /// ## Topics
+    ///
+    /// ### Construction
+    /// - ``init(dataRepresentation:format:)``
+    /// - ``init(xonlyKey:)``
+    /// - ``init(pemRepresentation:)``
+    /// - ``init(derRepresentation:)``
+    /// - ``init(x963Representation:)``
+    ///
+    /// ### Serialized Forms
+    /// - ``dataRepresentation``
+    /// - ``uncompressedRepresentation``
+    /// - ``format``
+    /// - ``xonly``
+    ///
+    /// ### Algebra
+    /// - ``negation``
     struct PublicKey: Sendable {
-        /// The internal backing public key implementation.
+        /// The internal `PublicKeyImplementation` backing this verifying key.
+        ///
+        /// Kept `internal` — the backing type wraps the 64-byte upstream `secp256k1_pubkey`
+        /// struct plus the serialization format; consumers never see the raw C handle
+        /// through the public API.
         let baseKey: PublicKeyImplementation
 
         /// The serialized public key bytes in the key's ``format``.
+        ///
+        /// Internal-visibility accessor used by Swift-side verify helpers that want to
+        /// avoid the `Data` allocation; external callers use ``dataRepresentation`` for
+        /// the `Data` form.
         var bytes: [UInt8] {
             baseKey.bytes
         }
 
         /// The serialized public key bytes as `Data`, in the key's ``format``.
+        ///
+        /// Suitable for transmission and persistence. Produced via
+        /// `secp256k1_ec_pubkey_serialize` with the flag corresponding to the stored
+        /// ``format`` (see ``P256K/Format/rawValue``).
         public var dataRepresentation: Data {
             baseKey.dataRepresentation
         }
 
-        /// The 32-byte x-only public key (X coordinate only) derived from this key for use with Schnorr signature verification.
+        /// The 32-byte x-only public key (X coordinate only) derived from this key for use
+        /// with Schnorr signature verification.
+        ///
+        /// Computed on every access via `secp256k1_xonly_pubkey_from_pubkey`. Useful when a
+        /// workflow needs to pivot from ECDSA-era verification to Taproot-era BIP-340
+        /// verification against the same underlying public point.
         public var xonly: XonlyKey {
             XonlyKey(baseKey: baseKey.xonly)
         }
 
-        /// The serialization format of this public key: `.compressed` (33 bytes) or `.uncompressed` (65 bytes).
+        /// The serialization format of this public key: `.compressed` (33 bytes) or
+        /// `.uncompressed` (65 bytes).
+        ///
+        /// Inherited from the `format:` argument at construction time. See
+        /// ``P256K/Format`` for the SEC1 encoding details and upstream `#define` mapping.
         public var format: P256K.Format {
             baseKey.format
         }
 
-        /// A new ``PublicKey`` that is the additive inverse of this key on the secp256k1 curve, produced by `secp256k1_ec_pubkey_negate`.
+        /// A new ``PublicKey`` that is the additive inverse of this key on the secp256k1
+        /// curve, produced by `secp256k1_ec_pubkey_negate`.
+        ///
+        /// The inverse is the point `-P = (x, -y mod p)`: same X coordinate, flipped Y
+        /// parity. Satisfies `self + negation` is the point at infinity. Used in BIP-32
+        /// derivation schemes and in manual verification of aggregation properties.
         public var negation: Self {
             Self(baseKey: baseKey.negation)
         }
 
-        /// The 65-byte uncompressed serialization of this public key (0x04 prefix + 32-byte X + 32-byte Y), regardless of the key's stored ``format``.
+        /// The 65-byte uncompressed serialization of this public key (`0x04` prefix +
+        /// 32-byte X + 32-byte Y), regardless of the key's stored ``format``.
+        ///
+        /// Always returns the uncompressed SEC1 form via
+        /// `secp256k1_ec_pubkey_serialize` with `SECP256K1_EC_UNCOMPRESSED`. Useful when
+        /// interoperating with systems that require the full `(x, y)` point encoding.
         public var uncompressedRepresentation: Data {
             baseKey.uncompressedRepresentation
         }
 
         /// Creates a public key from a validated backing implementation.
+        ///
+        /// Internal-visibility constructor used by factory methods that have already
+        /// validated the backing implementation (e.g. ``negation``,
+        /// ``PrivateKey/publicKey``); consumers use the public initializers below.
+        ///
+        /// - Parameter baseKey: A validated `PublicKeyImplementation`.
         init(baseKey: PublicKeyImplementation) {
             self.baseKey = baseKey
         }
