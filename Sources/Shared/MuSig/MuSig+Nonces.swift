@@ -23,13 +23,32 @@ public import Foundation
         /// The byte length of a serialized MuSig2 aggregated nonce: 66 bytes (two 33-byte compressed points in BIP-327 wire format).
         static let aggregatedNonceByteCount = 66
 
-        /// 66-byte aggregated MuSig2 public nonce produced by `secp256k1_musig_nonce_agg` from all signers' individual public nonces, required before any partial signing can occur.
+        /// 66-byte aggregated MuSig2 public nonce produced by `secp256k1_musig_nonce_agg`
+        /// from all signers' individual public nonces, required before any partial signing
+        /// can occur.
         ///
-        /// The aggregated nonce is computed once from all signers' ``P256K/Schnorr/Nonce`` values
-        /// and then shared with every signer before they call
+        /// ## Overview
+        ///
+        /// Aggregation is specified in
+        /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) and
+        /// implemented in
+        /// [`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
+        /// The aggregated nonce is computed once from all signers' ``P256K/Schnorr/Nonce``
+        /// values and then shared with every signer before they call
         /// ``P256K/Schnorr/PrivateKey/partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)``.
-        /// An untrusted aggregator may compute the aggregate nonce; if the result is wrong, the
-        /// final signature will simply be invalid rather than leaking key material.
+        /// An untrusted aggregator may compute the aggregate nonce; if the result is wrong,
+        /// the final signature will simply be invalid rather than leaking key material.
+        ///
+        /// ## Topics
+        ///
+        /// ### Construction
+        /// - ``init(dataRepresentation:)``
+        /// - ``init(aggregating:)``
+        /// - ``generate(secretKey:publicKey:msg32:extraInput32:)``
+        /// - ``generate(sessionID:secretKey:publicKey:msg32:extraInput32:)``
+        ///
+        /// ### Serialization
+        /// - ``dataRepresentation``
         struct Nonce: ContiguousBytes, Sequence {
             /// The raw 66-byte `secp256k1_musig_aggnonce` struct bytes.
             let aggregatedNonce: Data

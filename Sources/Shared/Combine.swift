@@ -18,17 +18,30 @@ import Foundation
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing.PublicKey {
-    /// Creates a new ``PublicKey`` by adding this key together with `pubkeys` via `secp256k1_ec_pubkey_combine`, equivalent to point addition on the secp256k1 curve.
+    /// Creates a new ``PublicKey`` by adding this key together with `pubkeys` via
+    /// `secp256k1_ec_pubkey_combine` (declared in
+    /// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)),
+    /// equivalent to point addition on the secp256k1 curve.
     ///
-    /// Point addition is the basis for unhardened BIP-32 child public key derivation and for
-    /// constructing multisig output keys without revealing individual private keys. The result
-    /// equals `G × (sk₀ + sk₁ + … + skₙ)` if each input key was derived from its corresponding
-    /// private key, making it useful for verifying that a set of keys sums to a known aggregate.
+    /// Point addition is the basis for unhardened
+    /// [BIP-32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) child public-
+    /// key derivation and for constructing multisig output keys without revealing individual
+    /// private keys. The result equals `G × (sk₀ + sk₁ + … + skₙ)` if each input key was
+    /// derived from its corresponding private key, making it useful for verifying that a set
+    /// of keys sums to a known aggregate.
     ///
-    /// - Parameter pubkeys: Additional ``PublicKey`` values to combine with this key; must contain at least one key.
-    /// - Parameter format: The serialization format of the returned ``PublicKey``; defaults to `.compressed`.
+    /// > Important: Use ``P256K/MuSig/aggregate(_:)`` instead when you need a BIP-327
+    /// > MuSig2 aggregate key for collaborative signing — MuSig2 aggregation is **not** plain
+    /// > point addition, and using `combine` in its place produces a key that no participant
+    /// > can sign against.
+    ///
+    /// - Parameter pubkeys: Additional ``PublicKey`` values to combine with this key; must
+    ///   contain at least one key. (Upstream requires `n ≥ 1`.)
+    /// - Parameter format: The serialization format of the returned ``PublicKey``; defaults
+    ///   to `.compressed`.
     /// - Returns: A new ``PublicKey`` equal to the elliptic-curve sum of all input keys.
-    /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ec_pubkey_combine` fails (e.g., all keys cancel to the point at infinity).
+    /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ec_pubkey_combine`
+    ///   fails (e.g., all keys cancel to the point at infinity).
     func combine(_ pubkeys: [Self], format: P256K.Format = .compressed) throws -> Self {
         let context = P256K.Context.rawRepresentation
         let allPubKeys = [self] + pubkeys

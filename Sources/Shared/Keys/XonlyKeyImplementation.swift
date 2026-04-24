@@ -23,21 +23,42 @@
     import libsecp256k1
 #endif
 
-/// Internal backing implementation for a secp256k1 x-only public key (BIP-340), storing the 32-byte X coordinate, key parity, and an optional MuSig2 aggregation cache.
+/// Internal backing implementation for a secp256k1 x-only public key
+/// ([BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)), storing
+/// the 32-byte X coordinate, key parity, and an optional MuSig2 aggregation cache.
 ///
-/// An x-only public key encodes a curve point whose Y coordinate is even. It is serialized as
-/// only its 32-byte X coordinate. The `keyParity` value records whether the full public key's Y
-/// coordinate required negation to produce the even-Y form, which is needed for certain Taproot
-/// tweaking operations.
+/// ## Overview
+///
+/// An x-only public key encodes a curve point whose Y coordinate is even. It is
+/// serialized as only its 32-byte X coordinate. The `keyParity` value records whether
+/// the original full public key's Y coordinate required negation to produce the even-Y
+/// form — needed for BIP-341 Taproot tweaking operations
+/// ([`Vendor/secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h)).
+///
+/// Kept `@usableFromInline` so it can back the public Schnorr / ECDH / MuSig / Signing
+/// x-only key types across `Sources/Shared/*` without widening the public API surface.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 @usableFromInline struct XonlyKeyImplementation: Sendable {
-    /// The 32-byte X coordinate of the x-only public key, as output by `secp256k1_xonly_pubkey_serialize`.
+    /// The 32-byte X coordinate of the x-only public key, as output by
+    /// `secp256k1_xonly_pubkey_serialize`.
+    ///
+    /// Stable wire format suitable for persistence and transmission as a BIP-340-style
+    /// key identifier.
     @usableFromInline let bytes: [UInt8]
 
-    /// Parity of the original public key's Y coordinate before x-only conversion: 0 if Y was even, 1 if Y was odd (negated). Returned by `secp256k1_xonly_pubkey_from_pubkey`.
+    /// Parity of the original public key's Y coordinate before x-only conversion:
+    /// `0` if Y was even, `1` if Y was odd (negated). Returned by
+    /// `secp256k1_xonly_pubkey_from_pubkey`.
+    ///
+    /// Required to reconstruct the full `(x, y)` point from the x-only form and
+    /// consulted during BIP-341 Taproot tweak verification.
     @usableFromInline let keyParity: Int32
 
-    /// Serialized MuSig2 public key aggregation cache. Empty for non-aggregated keys.
+    /// Serialized MuSig2 public-key aggregation cache. Empty for non-aggregated keys.
+    ///
+    /// Holds the 197-byte opaque `secp256k1_musig_keyagg_cache` struct body required
+    /// for continued signing / tweaking against this aggregate. Not a stable
+    /// serialization format — treat as a within-process session token.
     @usableFromInline let cache: [UInt8]
 
     /// The 32-byte X coordinate as `Data`.

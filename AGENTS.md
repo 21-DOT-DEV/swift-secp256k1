@@ -16,6 +16,8 @@ A Swift 6.1 wrapper around libsecp256k1 (and secp256k1-zkp) for the Bitcoin and 
 - **Xcode trait workaround**: Xcode does not resolve `.when(traits:)` for Swift settings. Source files use `#if Xcode || ENABLE_MODULE_*` guards — preserve these when editing.
 - **SharedSourcesPlugin**: Copies `Sources/Shared/*.swift` into both P256K and ZKP build directories. Changes to shared files affect both targets.
 - **Extraction flow**: Vendor → Sources via subtree CLI. Do not edit extracted paths directly; changes are overwritten on next extraction. See `Vendor/AGENTS.md`.
+- **Cross-archive DocC xrefs**: `SharedSourcesPlugin` copies the same source into P256K and ZKP archives, so disambiguation hashes (`signature(for:)-XXXXX`) differ per archive. Prefer unqualified `` `signature(for:)` `` code spans in `///` doc comments over symbol xrefs that would need per-archive hashes. See precedent in `Sources/Shared/HashDigest.swift`, `Sources/Shared/ECDSA/ECDSA+Signature.swift`.
+- **No `Snippets/` directory**: SwiftPM auto-discovered snippets (SE-0356) link every library product of the package. With two C-binding products (`libsecp256k1`, `libsecp256k1_zkp`) compiled from the same upstream source tree, any snippet produces duplicate C symbols at link time. Scoped snippet dependencies are a future direction per SE-0356; until SwiftPM ships them, documentation examples live as fenced ` ```swift` blocks inside catalog articles. Parked snippet sources from prior DocC work remain at `/tmp/swift-secp256k1-snippets-pending/P256K/` for future re-integration.
 
 ## Code Style
 

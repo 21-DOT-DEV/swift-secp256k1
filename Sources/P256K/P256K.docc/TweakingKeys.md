@@ -6,7 +6,11 @@
 
 Derive child keys using additive and multiplicative tweaks for BIP-32 key derivation and BIP-341 Taproot.
 
-## ECDSA Key Tweaking
+## Overview
+
+Tweaking combines an existing key pair with a scalar offset to produce a new key pair while preserving the linear relationship between private and public halves. This is the algebraic foundation of [BIP-32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki) hierarchical deterministic wallets and [BIP-341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki) Taproot output-key derivation. The sections below cover each signature family's tweak API.
+
+### ECDSA Key Tweaking
 
 Tweak an ECDSA private key by adding a scalar, producing a new key pair. This is the basis of BIP-32 hierarchical deterministic key derivation:
 
@@ -31,7 +35,7 @@ let tweakedPublicKey = try publicKey.add(Array(tweak))
 let tweakedByMul = try publicKey.multiply(Array(tweak))
 ```
 
-## Schnorr Key Tweaking
+### Schnorr Key Tweaking
 
 Schnorr keys use x-only (32-byte) public keys with implicit even parity. Tweaking a Schnorr key handles the parity adjustment automatically:
 
@@ -48,7 +52,7 @@ X-only public keys can also be tweaked directly:
 let tweakedXonly = try schnorrKey.xonly.add(Array(tweak))
 ```
 
-## Taproot Output Key Construction
+### Taproot Output Key Construction
 
 BIP-341 Taproot derives an output key from an internal key using a tagged hash tweak. For a key-path-only output (no script tree):
 
@@ -78,7 +82,7 @@ let tweakHash = SHA256.taggedHash(
 let outputKey = try internalKey.add(Array(tweakHash))
 ```
 
-## MuSig Aggregate Key Tweaking
+### MuSig Aggregate Key Tweaking
 
 Aggregated MuSig2 keys can be tweaked for BIP-32 derivation or Taproot:
 

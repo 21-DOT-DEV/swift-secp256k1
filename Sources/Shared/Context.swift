@@ -14,12 +14,14 @@
     import libsecp256k1
 #endif
 
-/// Context management for the secp256k1 elliptic curve used in ECDSA signing, Schnorr signatures, and key generation.
+/// Context management for the secp256k1 elliptic curve used in ECDSA signing, Schnorr signatures,
+/// and key generation.
 ///
 /// This extension provides the ``Context`` structure, which manages the lifecycle and randomization
-/// of the `secp256k1` context object that all cryptographic operations in the library depend on,
+/// of the `secp256k1_context` object that all cryptographic operations in the library depend on,
 /// including ECDSA signature creation and verification, Schnorr signature operations, public key
-/// generation, and elliptic curve Diffie-Hellman (ECDH) key agreement.
+/// generation, and ECDH key agreement. The upstream reference is
+/// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h).
 ///
 /// Use ``Context/rawRepresentation`` to access the shared, pre-initialized context for standard
 /// operations, or call ``Context/create()`` to create a fresh, independently randomized context.
@@ -30,11 +32,13 @@
 /// during operations that multiply a secret scalar with the elliptic curve base point, such as
 /// ECDSA signing, Schnorr signing, and public key generation. This protection is only effective
 /// when the context is randomized after creation, which ``Context/create()`` handles automatically
-/// using cryptographically secure random bytes.
+/// using 32 bytes of cryptographically secure randomness drawn via `SecureBytes`.
 ///
-/// The ECDH module relies on a different kind of elliptic curve point multiplication and does not
-/// currently benefit from this enhanced side-channel protection, even when using a randomized
-/// context.
+/// Per the upstream `secp256k1_context_randomize` documentation:
+/// *"A notable exception to that rule is the ECDH module, which relies on a different kind of
+/// elliptic curve point multiplication and thus does not benefit from enhanced protection against
+/// side-channel leakage currently."* Consumers needing hardened ECDH should look beyond context
+/// randomization.
 ///
 /// ## Thread Safety
 ///
@@ -84,6 +88,14 @@ public extension P256K {
     /// point, including ECDSA signing, Schnorr signing, and public key generation. The ECDH module
     /// uses a different kind of point multiplication and does not currently benefit from context
     /// randomization.
+    ///
+    /// ## Topics
+    ///
+    /// ### Shared Context
+    /// - ``rawRepresentation``
+    ///
+    /// ### Construction
+    /// - ``create()``
     struct Context: Sendable {
         /// The shared secp256k1 context, created and randomized at initialization for use across all P256K cryptographic operations.
         ///
@@ -105,8 +117,8 @@ public extension P256K {
         /// Creates a new secp256k1 context and randomizes it with cryptographically secure bytes for side-channel protection.
         ///
         /// This method allocates a new secp256k1 context using `secp256k1_context_create` with the
-        /// ``rawValue`` flags, then calls `secp256k1_context_randomize` with 32 bytes of secure
-        /// randomness from ``SecureBytes``. Randomization seeds an internal counter that blinds
+        /// context's `rawValue` flags, then calls `secp256k1_context_randomize` with 32 bytes of secure
+        /// randomness from the internal `SecureBytes` wrapper. Randomization seeds an internal counter that blinds
         /// intermediate values during secret scalar multiplication with the elliptic curve base
         /// point, protecting ECDSA signing, Schnorr signing, and public key generation against
         /// timing and power analysis attacks.

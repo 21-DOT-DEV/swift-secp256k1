@@ -23,22 +23,58 @@
     import libsecp256k1
 #endif
 
-/// Internal backing implementation for a validated secp256k1 public key, storing serialized bytes, the derived x-only key, key parity, and an optional MuSig2 aggregation cache.
+/// Internal backing implementation for a validated secp256k1 public key, storing
+/// serialized bytes, the derived x-only key, key parity, and an optional MuSig2
+/// aggregation cache.
+///
+/// Kept `@usableFromInline` so it can back the public signing / Schnorr / ECDH / MuSig /
+/// Recovery public-key types across `Sources/Shared/*` without widening the public API
+/// surface. All derived forms (x-only, uncompressed, parsed `secp256k1_pubkey`) are
+/// reachable through this single backing type.
+///
+/// Upstream C symbols referenced here are declared in
+/// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h),
+/// [`Vendor/secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h),
+/// and (for the aggregation cache)
+/// [`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 @usableFromInline struct PublicKeyImplementation: Sendable {
-    /// Serialized secp256k1 public key bytes in the key's ``P256K/Format``, as output by `secp256k1_ec_pubkey_serialize`.
+    /// Serialized secp256k1 public key bytes in the key's ``P256K/Format``, as output by
+    /// `secp256k1_ec_pubkey_serialize`.
+    ///
+    /// Length matches ``format`` (33 bytes for compressed, 65 for uncompressed). Cached
+    /// at construction so downstream operations don't re-serialize on every access.
     @usableFromInline let bytes: [UInt8]
 
-    /// Serialized x-only public key bytes (32-byte X coordinate), as output by `secp256k1_xonly_pubkey_serialize`.
+    /// Serialized x-only public key bytes (32-byte X coordinate), as output by
+    /// `secp256k1_xonly_pubkey_serialize`.
+    ///
+    /// Cached at construction so Schnorr / BIP-340 / Taproot workflows can reach the
+    /// x-only form without a re-derivation step. Pair with ``keyParity`` to reconstruct
+    /// the full `(x, y)` point.
     @usableFromInline let xonlyBytes: [UInt8]
 
-    /// Parity of the public key's Y coordinate: 0 if Y is even, 1 if Y is odd, as returned by `secp256k1_xonly_pubkey_from_pubkey`.
+    /// Parity of the public key's Y coordinate: `0` if Y is even, `1` if Y is odd, as
+    /// returned by `secp256k1_xonly_pubkey_from_pubkey`.
+    ///
+    /// Needed to reconstruct the full `(x, y)` point from the x-only representation and
+    /// consulted during BIP-341 Taproot tweak verification.
     @usableFromInline let keyParity: Int32
 
-    /// A key format representation of the backing public key
+    /// Serialization format of ``bytes``: compressed (33 bytes) or uncompressed
+    /// (65 bytes).
+    ///
+    /// Fixed at construction time; public accessors that return ``bytes`` as `Data`
+    /// respect this choice without re-serializing into the alternative form.
     @usableFromInline let format: P256K.Format
 
-    /// Serialized MuSig2 public key aggregation cache, populated when this key was created as part of an aggregate key computation. Empty for non-aggregated keys.
+    /// Serialized MuSig2 public-key aggregation cache, populated when this key was
+    /// created as part of an aggregate key computation. Empty for non-aggregated keys.
+    ///
+    /// Holds the 197-byte opaque `secp256k1_musig_keyagg_cache` struct body required to
+    /// continue signing / tweaking against this aggregate. The bytes are **not** a
+    /// stable serialization format across libsecp256k1 versions — treat as a
+    /// within-process session token.
     @usableFromInline let cache: [UInt8]
 
     /// The x-only public key derived from this public key, used for Schnorr signature verification.

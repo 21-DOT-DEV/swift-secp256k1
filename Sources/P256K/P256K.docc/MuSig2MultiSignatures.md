@@ -10,7 +10,7 @@ Create a single Schnorr signature from multiple independent signers using the BI
 
 MuSig2 allows multiple parties to produce a single compact Schnorr signature that verifies against an aggregated public key. No observer can distinguish a MuSig2 signature from a regular Schnorr signature. This guide walks through the complete signing protocol.
 
-## Aggregating Public Keys
+### Aggregating Public Keys
 
 Each signer generates a Schnorr key pair. The public keys are then aggregated into a single ``P256K/MuSig/PublicKey``:
 
@@ -28,7 +28,7 @@ let aggregate = try P256K.MuSig.aggregate([
 
 Key aggregation is order-independent -- the same aggregate is produced regardless of the order the public keys are provided.
 
-## Generating Nonces
+### Generating Nonces
 
 Each signer independently generates a nonce pair. The `generate` function returns a ``P256K/Schnorr/SecureNonce`` (the secret nonce) and a public nonce:
 
@@ -45,7 +45,7 @@ let aliceNonce = try P256K.MuSig.Nonce.generate(
 
 > Warning: A `SecureNonce` is `~Copyable` by design. Using the same secret nonce in two different signing sessions **leaks the signing key**. The type system prevents accidental reuse.
 
-## Aggregating Nonces
+### Aggregating Nonces
 
 Each signer shares their public nonce. Once all public nonces are collected, aggregate them:
 
@@ -55,7 +55,7 @@ let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [
 ])
 ```
 
-## Creating Partial Signatures
+### Creating Partial Signatures
 
 Each signer creates a partial signature using their private key, their secret nonce, and the aggregated nonce:
 
@@ -69,7 +69,7 @@ let alicePartial = try alice.partialSignature(
 )
 ```
 
-## Aggregating Signatures
+### Aggregating Signatures
 
 Once all partial signatures are collected, aggregate them into the final Schnorr signature:
 
@@ -79,7 +79,7 @@ let finalSignature = try P256K.MuSig.aggregateSignatures([
 ])
 ```
 
-## Verification
+### Verification
 
 The final signature verifies against the aggregated x-only public key, just like any BIP-340 Schnorr signature:
 
