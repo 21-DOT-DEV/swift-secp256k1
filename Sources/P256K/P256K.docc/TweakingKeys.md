@@ -95,3 +95,9 @@ let derivedKey = try aggregate.add(Array(tweak))
 // Taproot: tweak the x-only aggregate key
 let taprootOutput = try aggregate.xonly.add(Array(tweakHash))
 ```
+
+## See Also
+
+- <doc:MuSig2MultiSignatures>
+- ``P256K/Schnorr``
+- ``P256K/Signing``
