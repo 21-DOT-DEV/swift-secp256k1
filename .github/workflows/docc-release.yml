@@ -76,6 +76,15 @@ jobs:
             --checkout-path "$GITHUB_WORKSPACE" \
             --output-path ./docs/P256K.doccarchive
 
+      - name: Rewrite SharedSourcesPlugin paths in P256K archive
+        # SharedSourcesPlugin (Plugins/SharedSourcesPlugin/Plugin.swift) `cp`s
+        # Sources/Shared/*.swift into each target's plugin work directory, so
+        # DocC's symbol-graph extractor records the COPIED path. Combined with
+        # --source-service-base-url above, that produces 404 GitHub links for
+        # every Shared/ symbol. Rewrite to canonical Sources/Shared/<...>.swift
+        # paths and assert zero remaining ghosts before sanity-checking.
+        run: swift Scripts/rewrite-docc-shared-paths.swift ./docs/P256K.doccarchive ./Sources/Shared
+
       - name: Sanity-check P256K archive
         run: |
           test -d ./docs/P256K.doccarchive
@@ -116,6 +125,10 @@ jobs:
             --source-service-base-url "$SOURCE_SERVICE_BASE_URL" \
             --checkout-path "$GITHUB_WORKSPACE" \
             --output-path ./docs/ZKP.doccarchive
+
+      - name: Rewrite SharedSourcesPlugin paths in ZKP archive
+        # See P256K rewrite step above for context.
+        run: swift Scripts/rewrite-docc-shared-paths.swift ./docs/ZKP.doccarchive ./Sources/Shared
 
       - name: Sanity-check ZKP archive
         run: |

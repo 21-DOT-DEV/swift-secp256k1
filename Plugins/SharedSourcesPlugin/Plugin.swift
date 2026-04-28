@@ -24,7 +24,12 @@ struct SharedSourcesPlugin: BuildToolPlugin {
             // TODO: Windows support (robocopy or xcopy)
             return []
         #else
-            // Flatten all .swift files from Sources/Shared (including subdirectories) into output
+            // Flatten all .swift files from Sources/Shared (including subdirectories) into output.
+            //
+            // Note: `cp` (not `ln -s`) is intentional. Tested 2026-04-27: with symlinks,
+            // swift-symbolgraph-extract still records the symlink path (not the target),
+            // so DocC source-service URLs remain broken. The fix lives downstream in
+            // Scripts/rewrite-docc-shared-paths.swift, run by docc-release.yml.
             return [
                 .prebuildCommand(
                     displayName: "Copy shared sources to \(target.name)",
