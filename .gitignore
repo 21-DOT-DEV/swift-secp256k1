@@ -32,6 +32,9 @@ DerivedData/
 *.swiftmodule
 *.swiftsourceinfo
 
+## DocC release archives (built by .github/workflows/docc-release.yml)
+docs/
+
 ## App packaging
 *.ipa
 *.dSYM.zip
