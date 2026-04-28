@@ -4,7 +4,7 @@
     @TitleHeading("Framework")
 }
 
-Zero-knowledge proof primitives for the secp256k1 curve — adaptor signatures, range proofs, surjection proofs, and MuSig2 half-aggregation — layered on Blockstream's `secp256k1-zkp` fork of `libsecp256k1`.
+Swift bindings for Blockstream's `secp256k1-zkp` fork of `libsecp256k1`, adding zero-knowledge proof primitives — range proofs, surjection proofs, ECDSA and BIP-340 adaptor signatures, MuSig2 half-aggregation, and Bulletproofs++ — that drive Blockstream's [Liquid Network](https://liquid.net/).
 
 ## Overview
 
@@ -14,11 +14,18 @@ Zero-knowledge proof primitives for the secp256k1 curve — adaptor signatures, 
 
 > Note: The ZKP-exclusive zero-knowledge surface is C-only at present — Swift wrappers for range proofs, surjection proofs, adaptor signatures, and MuSig2 half-aggregation will be added incrementally. The shared surface listed below is fully supported today.
 
+### Where to start
+
+Picking between `ZKP` and ``P256K``? Read <doc:ChoosingP256KvsZKP> for the decision boundary and the trait-by-trait breakdown. The shared cryptographic surface (ECDSA, Schnorr, MuSig2, ECDH, recoverable signatures, hashing) is documented in `P256K`'s catalog — see [Getting Started](https://docs.21.dev/documentation/p256k/gettingstarted) for a task-oriented walkthrough that applies equally to both products.
+
 ## Topics
+
+### Guides
+
+- <doc:ChoosingP256KvsZKP>
 
 ### Essentials
 
-- <doc:ChoosingP256KvsZKP>
 - ``P256K``
 - ``P256K/Context``
 - ``P256K/Format``

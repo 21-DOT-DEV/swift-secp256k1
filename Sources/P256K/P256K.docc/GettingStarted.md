@@ -135,8 +135,12 @@ let bobSharedSecret = bobPrivateKey.sharedSecretFromKeyAgreement(with: alicePubl
 
 > Note: Context randomization does not provide side-channel protection for ECDH. The ECDH module uses a different kind of elliptic curve point multiplication that does not currently benefit from base point blinding.
 
-### Next Steps
+## See Also
 
-- **MuSig2 multi-signatures**: Use ``P256K/MuSig`` to aggregate public keys and produce a single Schnorr signature from multiple independent signers, as defined by BIP-327.
-- **ECDSA key recovery**: Use ``P256K/Recovery`` to recover a public key from a recoverable ECDSA signature and recovery ID.
-- **Zero-knowledge proofs**: Import the `ZKP` module for range proofs, surjection proofs, and adaptor signatures built on the `libsecp256k1-zkp` library.
+- <doc:EllipticCurveDiffieHellman>
+- <doc:SilentPayments>
+- <doc:MuSig2MultiSignatures>
+- <doc:TweakingKeys>
+- <doc:RecoveringPublicKeys>
+- <doc:SerializingKeys>
+- <doc:SecurityConsiderations>

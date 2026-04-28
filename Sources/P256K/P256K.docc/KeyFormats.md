@@ -81,3 +81,9 @@ The `rawValue` maps directly to the flag passed to the underlying C library's se
 - **Default to compressed** for all new applications. It is the standard for Bitcoin, smaller, and fully supported.
 - **Use x-only** when working with Schnorr signatures, Taproot, or MuSig2.
 - **Use uncompressed** only when required by a legacy protocol or for compatibility with systems that expect the `0x04` prefix.
+
+## See Also
+
+- <doc:SerializingKeys>
+- <doc:GettingStarted>
+- ``P256K/Format``

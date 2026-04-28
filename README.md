@@ -149,6 +149,8 @@ let signature = privateKey.signature(for: messageData)
 print(signature.derRepresentation.base64EncodedString())
 ```
 
+*→ Full API: [docs.21.dev/documentation/p256k/p256k/signing](https://docs.21.dev/documentation/p256k/p256k/signing)*
+
 ### Schnorr
 ```swift
 // Strict BIP340 mode is disabled by default for Schnorr signatures with variable length messages
@@ -162,6 +164,8 @@ var messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9
 let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 ```
 
+*→ Full API: [docs.21.dev/documentation/p256k/p256k/schnorr](https://docs.21.dev/documentation/p256k/p256k/schnorr)*
+
 ### Tweak
 
 ```swift
@@ -172,6 +176,8 @@ let tweak = try! "5f0da318c6e02f653a789950e55756ade9f194e1ec228d7f368de1bd821322
 let tweakedPrivateKey = try! privateKey.add(tweak)
 let tweakedPublicKeyKey = try! privateKey.publicKey.add(tweak)
 ```
+
+*→ Full API: [docs.21.dev/documentation/p256k/tweakingkeys](https://docs.21.dev/documentation/p256k/tweakingkeys)*
 
 ### Elliptic Curve Diffie Hellman
 
@@ -185,6 +191,8 @@ let sharedSecret = privateKey.sharedSecretFromKeyAgreement(with: publicKey, form
 // By default, libsecp256k1 hashes the x-coordinate with version information.
 let symmetricKey = SHA256.hash(data: sharedSecret.bytes)
 ```
+
+*→ Full guide: [docs.21.dev/documentation/p256k/ellipticcurvediffiehellman](https://docs.21.dev/documentation/p256k/ellipticcurvediffiehellman)*
 
 ### Silent Payments Scheme
 
@@ -213,6 +221,8 @@ let schnorrPrivate = try! P256K.Schnorr.PrivateKey(dataRepresentation: sharedSec
 let xonlyTweak2 = try! schnorrPrivate.xonly.add(privateSign1.publicKey.xonly.bytes)
 ```
 
+*→ Full guide: [docs.21.dev/documentation/p256k/silentpayments](https://docs.21.dev/documentation/p256k/silentpayments)* — BIP-352 walkthrough with sender derivation, receiver scanning, scan/spend key separation, and tagged-hash specifics.
+
 ### Recovery
 
 ```swift
@@ -229,6 +239,8 @@ let publicKey = P256K.Recovery.PublicKey(messageData, signature: recoverySignatu
 let signature = recoverySignature.normalize
 ```
 
+*→ Full API: [docs.21.dev/documentation/p256k/p256k/recovery](https://docs.21.dev/documentation/p256k/p256k/recovery)*
+
 ### Combine Public Keys
 
 ```swift
@@ -238,6 +250,8 @@ let publicKey = try! P256K.Signing.PrivateKey().publicKey
 // The Combine API arguments are an array of PublicKey objects and an optional format 
 publicKey.combine([privateKey.publicKey], format: .uncompressed)
 ```
+
+*→ Full API: [docs.21.dev/documentation/p256k/p256k/signing/publickey](https://docs.21.dev/documentation/p256k/p256k/signing/publickey)*
 
 ### PEM Key Format
 
@@ -253,6 +267,8 @@ oUQDQgAEt2uDn+2GqqYs/fmkBr5+rCQ3oiFSIJMAcjHIrTDS6HEELgguOatmFBOp
 // Import keys generated from OpenSSL
 let privateKey = try! P256K.Signing.PrivateKey(pemRepresentation: privateKeyString)
 ```
+
+*→ Full API: [docs.21.dev/documentation/p256k/serializingkeys](https://docs.21.dev/documentation/p256k/serializingkeys)*
 
 ### MuSig2
 
@@ -314,6 +330,8 @@ let isValid = aggregateKey.isValidSignature(
 
 print("Is valid MuSig signature: \(isValid)")
 ```
+
+*→ Full API: [docs.21.dev/documentation/p256k/musig2multisignatures](https://docs.21.dev/documentation/p256k/musig2multisignatures)*
 
 ## Security
 

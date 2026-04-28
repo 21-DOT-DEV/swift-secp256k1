@@ -73,3 +73,9 @@ standardSignature.derRepresentation    // DER-encoded
 ```
 
 > Important: The converted signature is **not guaranteed to be lower-S normalized** and may fail `secp256k1_ecdsa_verify`. If your application requires lower-S form (e.g., Bitcoin Core's BIP-62 rule 6), pass the result through `secp256k1_ecdsa_signature_normalize` before verifying.
+
+## See Also
+
+- <doc:GettingStarted>
+- <doc:SecurityConsiderations>
+- ``P256K/Recovery``
