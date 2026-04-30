@@ -36,6 +36,9 @@ This package uses Swift Package Manager. To add it to your project:
 2. Enter the package URL: `https://github.com/21-DOT-DEV/swift-secp256k1`
 3. Select the desired version
 
+> [!NOTE]
+> This package ships a Swift Package build tool plugin (`SharedSourcesPlugin`), which Xcode requires you to trust before it will run. For CI or non-interactive builds, pass `-skipPackagePluginValidation` to `xcodebuild`. See the [Swift Forums discussion](https://forums.swift.org/t/telling-xcode-14-beta-4-to-trust-build-tool-plugins-programatically/59305) for more info.
+
 ### Using Package.swift (Recommended)
 
 Add the following to your `Package.swift` file:
