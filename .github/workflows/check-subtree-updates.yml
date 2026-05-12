@@ -1,8 +1,8 @@
 name: Check Subtree Updates
 
 on:
-  schedule:
-    - cron: '0 6,18 * * *'
+  # Scheduled runs disabled to cap GitHub Actions usage. Re-add a
+  # `schedule:` block here if you want cron-driven update checks again.
   workflow_dispatch:
 
 permissions: {}
