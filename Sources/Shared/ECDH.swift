@@ -154,6 +154,11 @@ public import Foundation
                 ///
                 /// - Parameters:
                 ///   - derRepresentation: A DER-encoded representation of the key.
+                /// - Throws: `CryptoKitASN1Error` if `derRepresentation` is not a valid
+                ///   `SubjectPublicKeyInfo` DER encoding; `CryptoKitError.incorrectParameterSize`
+                ///   if the embedded key is neither 33 nor 65 bytes;
+                ///   ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ec_pubkey_parse`
+                ///   rejects the bytes (off-curve point or wrong-length encoding).
                 public init<Bytes: RandomAccessCollection>(derRepresentation: Bytes) throws where Bytes.Element == UInt8 {
                     let bytes = Array(derRepresentation)
                     let parsed = try ASN1.SubjectPublicKeyInfo(asn1Encoded: bytes)
@@ -217,6 +222,9 @@ public import Foundation
                 /// BIP-340 verifiers operate against the even-Y representative of a point,
                 /// so the parity bit is tracked separately. `true` means the original
                 /// pubkey had odd Y and had its sign flipped during x-only conversion.
+                ///
+                /// - Returns: `true` if the original public key's Y coordinate is odd,
+                ///   `false` if even.
                 public var parity: Bool {
                     baseKey.keyParity.boolValue
                 }

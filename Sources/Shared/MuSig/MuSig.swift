@@ -100,7 +100,7 @@ public import Foundation
             /// - ``init(xonlyKey:)``
             /// - ``init(dataRepresentation:format:cache:)``
             public struct PublicKey {
-                /// The internal ``PublicKeyImplementation`` backing this aggregate, produced
+                /// The internal `PublicKeyImplementation` backing this aggregate, produced
                 /// by `secp256k1_musig_pubkey_agg` and carrying the 197-byte
                 /// `secp256k1_musig_keyagg_cache` required for signing sessions.
                 ///
@@ -169,7 +169,7 @@ public import Foundation
                 /// via ``init(xonlyKey:)`` or ``init(dataRepresentation:format:cache:)``
                 /// instead.
                 ///
-                /// - Parameter baseKey: A ``PublicKeyImplementation`` produced by the upstream
+                /// - Parameter baseKey: A `PublicKeyImplementation` produced by the upstream
                 ///   C aggregation call, with its 197-byte keyagg cache populated.
                 init(baseKey: PublicKeyImplementation) {
                     self.baseKey = baseKey
@@ -225,7 +225,7 @@ public import Foundation
             /// ### Reconstruction
             /// - ``init(dataRepresentation:keyParity:cache:)``
             public struct XonlyKey: Equatable {
-                /// The internal ``XonlyKeyImplementation`` backing this aggregate x-only key.
+                /// The internal `XonlyKeyImplementation` backing this aggregate x-only key.
                 ///
                 /// Kept `private` — the backing type is an internal convenience over the
                 /// upstream `secp256k1_xonly_pubkey` struct; consumers never see or manipulate
@@ -270,7 +270,7 @@ public import Foundation
                 /// ``PublicKey/xonly`` accessor; consumers reconstruct via the public
                 /// initializer below.
                 ///
-                /// - Parameter baseKey: A ``XonlyKeyImplementation`` produced by the upstream
+                /// - Parameter baseKey: A `XonlyKeyImplementation` produced by the upstream
                 ///   C conversion from an aggregate `secp256k1_pubkey`.
                 init(baseKey: XonlyKeyImplementation) {
                     self.baseKey = baseKey

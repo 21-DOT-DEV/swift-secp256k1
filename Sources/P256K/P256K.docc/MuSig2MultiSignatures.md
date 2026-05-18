@@ -4,15 +4,17 @@
     @TitleHeading("How-to Guide")
 }
 
-Create a single Schnorr signature from multiple independent signers using the BIP-327 MuSig2 protocol.
+Combine partial contributions from a fixed group of co-signers into a single Schnorr signature using the [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) MuSig2 protocol.
 
 ## Overview
 
-MuSig2 allows multiple parties to produce a single compact Schnorr signature that verifies against an aggregated public key. No observer can distinguish a MuSig2 signature from a regular Schnorr signature. This guide walks through the complete signing protocol.
+MuSig2 ([BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki); originally introduced by [Nick, Ruffing, and Seurin (CRYPTO 2021)](https://eprint.iacr.org/2020/1261)) lets a fixed group of parties produce a single compact [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr signature that verifies against one aggregate group key. The result is indistinguishable on chain from a regular Schnorr signature — a Taproot spend using MuSig2 leaves the same fee footprint, the same witness size, and the same privacy properties as a single-key spend.
 
-### Aggregating Public Keys
+The protocol runs in two communication rounds. The first round exchanges fresh per-session commitments so that every participant binds themselves to a unique randomness draw before learning anyone else's contribution; the second round exchanges partial responses keyed to the agreed-upon message. The two-round split is what makes the scheme provably secure under the OMDL assumption ([Nick, Ruffing, and Seurin, §5](https://eprint.iacr.org/2020/1261)) — even if some co-signers are dishonest, they cannot extract the others' long-term keys. The sections below walk through every step end-to-end.
 
-Each signer generates a Schnorr key pair. The public keys are then aggregated into a single ``P256K/MuSig/PublicKey``:
+### Aggregating Keys
+
+Each party derives a Schnorr key pair. Their verifying halves combine into a single ``P256K/MuSig/PublicKey``:
 
 ```swift
 import P256K
@@ -26,11 +28,11 @@ let aggregate = try P256K.MuSig.aggregate([
 ])
 ```
 
-Key aggregation is order-independent -- the same aggregate is produced regardless of the order the public keys are provided.
+Key aggregation is order-independent — the same aggregate is produced regardless of the order in which the inputs are provided.
 
-### Generating Nonces
+### Round 1: Generating Nonces
 
-Each signer independently generates a nonce pair. The `generate` function returns a ``P256K/Schnorr/SecureNonce`` (the secret nonce) and a public nonce:
+Each party independently draws a fresh nonce pair for the upcoming session. The `generate` function returns a ``P256K/Schnorr/SecureNonce`` (kept private to the caller) and a sharable pubnonce value:
 
 ```swift
 let message = "Hello, MuSig!".data(using: .utf8)!
@@ -43,11 +45,11 @@ let aliceNonce = try P256K.MuSig.Nonce.generate(
 )
 ```
 
-> Warning: A `SecureNonce` is `~Copyable` by design. Using the same secret nonce in two different signing sessions **leaks the signing key**. The type system prevents accidental reuse.
+> Warning: A `SecureNonce` is `~Copyable` by design. Reusing one across two signing sessions **leaks the long-term private key**. The type system surfaces accidental reuse as a compile-time error.
 
-### Aggregating Nonces
+### Round 1 (continued): Aggregating Pubnonces
 
-Each signer shares their public nonce. Once all public nonces are collected, aggregate them:
+Each party broadcasts their sharable pubnonce. Once every contribution has been collected, aggregate them:
 
 ```swift
 let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [
@@ -55,9 +57,9 @@ let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [
 ])
 ```
 
-### Creating Partial Signatures
+### Round 2: Partial Signatures
 
-Each signer creates a partial signature using their private key, their secret nonce, and the aggregated nonce:
+Each party produces a partial signature using their long-term private key, their own secret half from the prior round, and the aggregated commitment:
 
 ```swift
 let alicePartial = try alice.partialSignature(
@@ -81,7 +83,7 @@ let finalSignature = try P256K.MuSig.aggregateSignatures([
 
 ### Verification
 
-The final signature verifies against the aggregated x-only public key, just like any BIP-340 Schnorr signature:
+The final signature verifies against the aggregated x-only verifying key, just like any [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr signature:
 
 ```swift
 let isValid = aggregate.xonly.isValidSignature(finalSignature, for: messageHash)

@@ -8,14 +8,14 @@ When to reach for ``P256K`` (vanilla secp256k1 for Bitcoin, Lightning, Nostr) ve
 
 ## Overview
 
-The package ships two products that wrap two distinct C libraries: `P256K` wraps upstream [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1), while `ZKP` wraps the [BlockstreamResearch/secp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp) fork of upstream [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1). The fork adds zero-knowledge proof primitives that the upstream library deliberately scopes out: range proofs (*Confidential Transactions*), surjection proofs (asset-swap unlinkability), ECDSA and BIP-340 adaptor signatures (atomic swaps and scriptless scripts), MuSig2 half-aggregation, and Bulletproofs++ (`bppp` trait). The decision between them is driven by which **set of opt-in traits** you need.
+The package ships two products that wrap two distinct C libraries: `P256K` wraps upstream `bitcoin-core/secp256k1`, while `ZKP` wraps the `BlockstreamResearch/secp256k1-zkp` fork of the same upstream codebase. The fork adds zero-knowledge proof primitives that the upstream library deliberately scopes out: range proofs (*Confidential Transactions*), surjection proofs (asset-swap unlinkability), ECDSA and BIP-340 adaptor signatures (atomic swaps and scriptless scripts), MuSig2 half-aggregation, and Bulletproofs++ (`bppp` trait). The decision between them is driven by which **set of opt-in traits** you need.
 
 ### The two products
 
-Two trait tables live in `Package.swift` (see [the full declaration on GitHub](https://github.com/21-DOT-DEV/swift-secp256k1/blob/main/Package.swift)):
+Two trait tables live in `Package.swift`:
 
 - **`moduleDefines`** — six traits that gate upstream secp256k1 modules: `ecdh`, `ellswift`, `musig`, `recovery`, `schnorrsig`, and `uint256`. Each one maps to an `ENABLE_MODULE_*` define on the C compilation.
-- **`zkpModuleDefines`** — eight ZKP-only traits that gate the Blockstream fork's additional modules. The first seven are `bppp`, `ecdsaAdaptor`, `ecdsaS2C`, `generator`, `rangeproof`, `schnorrsigHalfagg`, and `surjectionproof`. The eighth trait gates Blockstream's allow-list-ring-signature module (identifier preserved verbatim in the upstream fork's public API; see the `zkpModuleDefines` entry in `Package.swift` and the [BlockstreamResearch/secp256k1-zkp module layout](https://github.com/BlockstreamResearch/secp256k1-zkp)).
+- **`zkpModuleDefines`** — eight ZKP-only traits that gate the Blockstream fork's additional modules. The first seven are `bppp`, `ecdsaAdaptor`, `ecdsaS2C`, `generator`, `rangeproof`, `schnorrsigHalfagg`, and `surjectionproof`. The eighth trait gates Blockstream's allow-list-ring-signature module (identifier preserved verbatim in the upstream fork's public API; see the `zkpModuleDefines` entry in `Package.swift`).
 
 Default-enabled traits for `P256K` are `ecdh`, `musig`, `recovery`, and `schnorrsig` (Package.swift `traits:` block). The `zkp` aggregate trait additionally enables every flag in `zkpModuleDefines` plus `ellswift`, mapping cleanly to the Liquid Network's confidential-transaction feature surface.
 
@@ -24,12 +24,12 @@ Default-enabled traits for `P256K` are `ecdh`, `musig`, `recovery`, and `schnorr
 `P256K` is the default choice for Bitcoin, Lightning, Nostr, and any other application that uses vanilla secp256k1 cryptography. Concretely:
 
 - **Bitcoin signing**: ECDSA with RFC 6979 deterministic nonces is the legacy script-signature scheme; `P256K.Signing.PrivateKey` produces lower-S-normalized signatures that pass `secp256k1_ecdsa_verify` without further processing.
-- **Taproot signing**: BIP-340 Schnorr signatures (`P256K.Schnorr.PrivateKey`) are the v1 witness program signature scheme defined in [BIP-341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki). Cite [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) for the signature construction itself.
+- **Taproot signing**: BIP-340 Schnorr signatures (`P256K.Schnorr.PrivateKey`) are the v1 witness program signature scheme defined in [BIP-341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki). The construction itself is specified in BIP-340.
 - **Multi-signature aggregation**: BIP-327 MuSig2 (`P256K.MuSig`) aggregates N signatures into a single 64-byte Schnorr signature, indistinguishable on-chain from a single-key spend. See [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki).
 - **Nostr events**: NIP-01 signs events with a 32-byte x-only key (BIP-340 Schnorr); the `xonly` accessor on every Schnorr key returns the right shape.
-- **Recoverable signatures**: Bitcoin signed-message workflows ([BIP-137](https://github.com/bitcoin/bips/blob/master/bip-0137.mediawiki), [BIP-322](https://github.com/bitcoin/bips/blob/master/bip-0322.mediawiki)) use recoverable ECDSA (`P256K.Recovery`) so verifiers can recover the public key from the 65-byte `signature || recoveryId` payload alone, eliminating one round trip in address-discovery flows.
+- **Recoverable signatures**: Bitcoin signed-message workflows (BIP-137, BIP-322) use recoverable ECDSA (`P256K.Recovery`) so verifiers can recover the public key from the 65-byte `signature || recoveryId` payload alone, eliminating one round trip in address-discovery flows.
 
-The bitcoin-core README at [github.com/bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1) describes the upstream library's stability guarantees and threat model — `P256K` inherits those guarantees.
+The bitcoin-core/secp256k1 README describes the upstream library's stability guarantees and threat model — `P256K` inherits those guarantees.
 
 ### When to reach for ZKP
 
@@ -49,7 +49,7 @@ If your application uses any of these primitives — even just one — `import Z
 
 ### Stability guarantees
 
-Both products are pre-1.0 — major-version zero per [SemVer 2.0 §4](https://semver.org/#spec-item-4): "Major version zero (`0.y.z`) is for initial development. Anything MAY change at any time. The public API SHOULD NOT be considered stable." Pin `exact:` versions in `Package.swift` to avoid surprise migrations. `P256K` is the planned long-term stability surface; `ZKP` tracks Blockstream's `secp256k1-zkp` fork, which itself tracks Bitcoin Core's stability cadence on the shared surface and Blockstream's research cadence on the proof-primitive surface.
+Both products are pre-1.0 — major-version zero per SemVer 2.0 §4: "Major version zero (`0.y.z`) is for initial development. Anything MAY change at any time. The public API SHOULD NOT be considered stable." Pin `exact:` versions in `Package.swift` to avoid surprise migrations. `P256K` is the planned long-term stability surface; `ZKP` tracks Blockstream's `secp256k1-zkp` fork, which itself tracks Bitcoin Core's stability cadence on the shared surface and Blockstream's research cadence on the proof-primitive surface.
 
 ### Mixing products
 
@@ -77,9 +77,3 @@ let signingKey = try P256K.Signing.PrivateKey()
 
 - ``P256K``
 - ``ZKP``
-- [bitcoin-core/secp256k1 README](https://github.com/bitcoin-core/secp256k1/blob/master/README.md)
-- [BlockstreamResearch/secp256k1-zkp README](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/README.md)
-- [BIP-340: Schnorr Signatures for secp256k1](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)
-- [BIP-327: MuSig2 for BIP-340 Schnorr signatures](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)
-- [BIP-341: Taproot — SegWit version 1 spending rules](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)
-- [Liquid Network](https://liquid.net/)

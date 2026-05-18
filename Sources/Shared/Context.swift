@@ -86,8 +86,8 @@ public extension P256K {
     ///
     /// Randomization protects operations that multiply a secret scalar with the elliptic curve base
     /// point, including ECDSA signing, Schnorr signing, and public key generation. The ECDH module
-    /// uses a different kind of point multiplication and does not currently benefit from context
-    /// randomization.
+    /// (``P256K/KeyAgreement``) uses a different kind of point multiplication and does not currently
+    /// benefit from context randomization.
     ///
     /// ## Topics
     ///

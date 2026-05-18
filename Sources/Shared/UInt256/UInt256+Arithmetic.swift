@@ -244,6 +244,13 @@
 
     // MARK: - Words structs
 
+    /// The `BinaryInteger.Words` witness for ``UInt256``: a 4-element
+    /// `RandomAccessCollection` exposing the value as four little-endian `UInt` words
+    /// (`Element = UInt`, `Index = Int`).
+    ///
+    /// Surfaced through ``UInt256/words`` to satisfy `BinaryInteger`. The leading
+    /// underscore marks the struct as an implementation detail — construct it only
+    /// indirectly via `UInt256.words`, never with the synthesized memberwise init.
     @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
     public struct _UInt256Words: RandomAccessCollection {
         public typealias Element = UInt
@@ -278,6 +285,13 @@
         }
     }
 
+    /// The `BinaryInteger.Words` witness for ``Int256``: a 4-element
+    /// `RandomAccessCollection` exposing the two's-complement representation as four
+    /// little-endian `UInt` words (`Element = UInt`, `Index = Int`).
+    ///
+    /// Surfaced through ``Int256/words`` to satisfy `BinaryInteger`. The leading
+    /// underscore marks the struct as an implementation detail — construct it only
+    /// indirectly via `Int256.words`, never with the synthesized memberwise init.
     @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
     public struct _Int256Words: RandomAccessCollection {
         public typealias Element = UInt

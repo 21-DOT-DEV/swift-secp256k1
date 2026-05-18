@@ -8,7 +8,13 @@ Import and export keys in raw bytes, PEM, DER, and other standard formats.
 
 ## Overview
 
-Key serialization comes up in wallet storage, protocol interop (`EC PRIVATE KEY` / `PRIVATE KEY` PEM envelopes, X.509 SubjectPublicKeyInfo DER), and on-the-wire Bitcoin/Lightning witness data. The sections below cover each supported format in the order you will typically encounter them.
+Key serialization comes up in wallet storage, protocol interop, and on-the-wire Bitcoin/Lightning witness data. Three encoding families show up most often:
+
+- **Raw compressed/uncompressed point encoding** — the SEC 1 layouts ([SEC 1: Elliptic Curve Cryptography v2 §2.3](https://www.secg.org/sec1-v2.pdf)) used everywhere in Bitcoin and Lightning witness data.
+- **PEM** — the textual wrapper defined in [RFC 7468](https://datatracker.ietf.org/doc/html/rfc7468), framing a Base64-encoded DER body between `-----BEGIN …-----` / `-----END …-----` lines. Used by OpenSSL and most cross-language toolchains.
+- **DER** — the binary ASN.1 Distinguished Encoding Rules body sitting inside the PEM wrapper. The private-key shape follows either SEC 1 §C.4 (the `EC PRIVATE KEY` form) or [PKCS#8 / RFC 5958](https://datatracker.ietf.org/doc/html/rfc5958) (the algorithm-agnostic `PRIVATE KEY` form); the public-key shape is the [X.509 SubjectPublicKeyInfo from RFC 5280 §4.1](https://datatracker.ietf.org/doc/html/rfc5280#section-4.1) carrying a SEC 1 point.
+
+The sections below cover each supported format in the order you will typically encounter them.
 
 ### Raw Bytes
 
@@ -25,7 +31,7 @@ let restored = try P256K.Signing.PublicKey(
 )
 ```
 
-Private keys are always 32 bytes:
+Private keys are a fixed 32-octet scalar:
 
 ```swift
 let privKeyData = privateKey.dataRepresentation  // 32 bytes
@@ -91,7 +97,7 @@ let fullBytes = compressedPublicKey.uncompressedRepresentation  // 65 bytes
 
 ### X-Only Keys
 
-Schnorr signatures (BIP-340) use 32-byte x-only public keys with implicit even parity:
+Schnorr signatures ([BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)) use 32-byte x-only public keys with implicit even parity:
 
 ```swift
 let schnorrKey = try P256K.Schnorr.PrivateKey()
@@ -110,13 +116,13 @@ let fullKey = P256K.Signing.PublicKey(xonlyKey: xonly)
 
 ### Format Comparison
 
-| Format | Size | Prefix | Use Case |
-|--------|------|--------|----------|
-| Compressed | 33 bytes | `0x02` / `0x03` | Default, blockchain storage |
-| Uncompressed | 65 bytes | `0x04` | Legacy compatibility |
-| X-only | 32 bytes | None | BIP-340 Schnorr, Taproot |
-| DER (private) | ~118 bytes | ASN.1 | Interoperability |
-| PEM (private) | ~227 bytes | Base64 + header | Human-readable storage |
+| Format | Size (bytes) | Prefix | Use Case |
+|--------|--------------|--------|----------|
+| Compressed | 33 | `0x02` / `0x03` | Default, blockchain storage |
+| Uncompressed | 65 | `0x04` | Legacy compatibility |
+| X-only | 32 | None | BIP-340 Schnorr, Taproot |
+| DER (private) | ~118 | ASN.1 | Interoperability |
+| PEM (private) | ~227 | Base64 + header | Human-readable storage |
 
 ## See Also
 

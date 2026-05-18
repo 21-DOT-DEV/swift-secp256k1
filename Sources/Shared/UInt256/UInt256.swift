@@ -22,7 +22,10 @@
     /// `Swift.UInt128`
     /// limbs (low and high) rather than a byte array so that the compiler can emit native
     /// 128-bit operations on platforms that support them (ARM64 `add`/`adc` pairs on Apple
-    /// Silicon; LLVM-synthesized 128-bit intrinsics on Intel).
+    /// Silicon; LLVM-synthesized 128-bit intrinsics on Intel). The signed counterpart is
+    /// ``Int256``; cross between the two views with ``init(bitPattern:)`` (zero-cost; the
+    /// 256 bits are preserved verbatim), and use ``multipliedFullWidth(by:)`` for the
+    /// 256-by-256 to 512-bit products required by Barrett / Montgomery reduction.
     ///
     /// > Important: **This type is not a cryptographic scalar class.** It provides generic
     /// > integer arithmetic. Operations are not constant-time with respect to operand
@@ -79,7 +82,10 @@
     /// arithmetic is needed (e.g. certain BIP-32 child-key derivation intermediate steps
     /// or Miller-Rabin witness computations). The high limb is `Swift.Int128` so the sign
     /// bit lives in its natural position (bit 255); the low limb remains `UInt128` to keep
-    /// addition / subtraction carry logic uniform with the unsigned type.
+    /// addition / subtraction carry logic uniform with the unsigned type. Use
+    /// ``init(bitPattern:)`` to reinterpret the underlying bits as ``UInt256`` (zero-cost),
+    /// and ``addingReportingOverflow(_:)`` when callers need to detect signed overflow
+    /// without trapping.
     ///
     /// > Important: Same caveat as ``UInt256`` — operations are not constant-time and
     /// > must not be used for secret scalar arithmetic.

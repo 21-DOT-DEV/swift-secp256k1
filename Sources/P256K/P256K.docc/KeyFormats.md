@@ -8,15 +8,15 @@ Understand why secp256k1 has multiple key representations and when to use each o
 
 ## Overview
 
-secp256k1 public keys can be serialized in four distinct formats — compressed (33 bytes), uncompressed (65 bytes), x-only (32 bytes), and the internal libsecp256k1 `secp256k1_pubkey` structure. Each has a specific use case and interoperability story. This article explains the mathematical relationship between them, which format each Bitcoin / Lightning / Nostr protocol expects, and how to pick one for your application.
+secp256k1 public keys can be serialized in four distinct formats: compressed, uncompressed, x-only, and the internal libsecp256k1 `secp256k1_pubkey` structure. Each has a specific use case and interoperability story. The compressed and uncompressed encodings are specified in [SEC 1: Elliptic Curve Cryptography v2 §2.3.3](https://www.secg.org/sec1-v2.pdf); x-only encoding was introduced by [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) for Schnorr signatures. This article explains the mathematical relationship between them, which format each Bitcoin / Lightning / Nostr protocol expects, and how to pick one for your application.
 
 ### Elliptic Curve Points
 
-A secp256k1 public key is a point `(x, y)` on the elliptic curve. Both coordinates are 256-bit (32-byte) integers. Since the curve equation `y^2 = x^3 + 7` has exactly two solutions for each `x` value (one even, one odd), you only need the `x` coordinate plus a single bit to identify the point uniquely.
+A secp256k1 public key is a point `(x, y)` on the elliptic curve. Both coordinates are 256-bit integers. Since the curve equation `y^2 = x^3 + 7` has exactly two solutions for each `x` value (one even, one odd), you only need the `x` coordinate plus a single bit to identify the point uniquely.
 
-### Compressed Keys (33 bytes)
+### Compressed Keys
 
-The **compressed** format stores the x-coordinate with a one-byte prefix indicating the parity of y:
+The **compressed** form (33 octets) stores the x-coordinate with a one-octet prefix indicating the parity of y:
 
 - `0x02` -- y is even
 - `0x03` -- y is odd
@@ -29,9 +29,9 @@ key.publicKey.dataRepresentation.count    // 33
 key.publicKey.format                      // .compressed
 ```
 
-### Uncompressed Keys (65 bytes)
+### Uncompressed Keys
 
-The **uncompressed** format stores both coordinates with a `0x04` prefix:
+The **uncompressed** form (65 octets) stores both coordinates with a `0x04` prefix:
 
 ```swift
 let key = try P256K.Signing.PrivateKey(format: .uncompressed)
@@ -41,19 +41,19 @@ key.publicKey.format                      // .uncompressed
 
 Uncompressed keys are rarely used in modern Bitcoin but appear in legacy transactions and some non-Bitcoin protocols. P256K supports them for interoperability.
 
-### X-Only Keys (32 bytes)
+### X-Only Keys
 
-BIP-340 introduced **x-only** public keys for Schnorr signatures. These are simply the 32-byte x-coordinate with no prefix byte. The y-coordinate is implicitly defined as the **even** value.
+[BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) introduced **x-only** public keys for Schnorr signatures. These are the bare 32-octet x-coordinate with no prefix. The y-coordinate is implicitly defined as the **even** value.
 
 ```swift
 let schnorrKey = try P256K.Schnorr.PrivateKey()
 schnorrKey.xonly.bytes.count  // 32
 ```
 
-X-only keys save 1 byte per public key and simplify the Schnorr verification equation. They are used in:
-- BIP-340 Schnorr signatures
-- BIP-341 Taproot output keys
-- BIP-327 MuSig2 aggregate keys
+X-only keys save one octet per public key and simplify the Schnorr verification equation. They are used in:
+- [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr signatures
+- [BIP-341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki) Taproot output keys
+- [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) MuSig2 aggregate keys
 
 ### Key Parity
 
@@ -69,10 +69,10 @@ Parity matters when:
 
 ``P256K/Format`` controls key serialization:
 
-| Case | Value | Length | C Flag |
-|------|-------|--------|--------|
-| `.compressed` | `0x0202` | 33 bytes | `SECP256K1_EC_COMPRESSED` |
-| `.uncompressed` | `0x0604` | 65 bytes | `SECP256K1_EC_UNCOMPRESSED` |
+| Case | Value | Length (bytes) | C Flag |
+|------|-------|----------------|--------|
+| `.compressed` | `0x0202` | 33 | `SECP256K1_EC_COMPRESSED` |
+| `.uncompressed` | `0x0604` | 65 | `SECP256K1_EC_UNCOMPRESSED` |
 
 The `rawValue` maps directly to the flag passed to the underlying C library's serialization functions.
 

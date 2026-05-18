@@ -73,6 +73,9 @@ public import Foundation
             /// > and are **not** a stable serialization format across libsecp256k1
             /// > versions. Treat as a within-process session token; use
             /// > ``P256K/Schnorr/PublicKey/dataRepresentation`` for persistence.
+            ///
+            /// - Returns: The cached `secp256k1_pubkey` bytes, or empty `Data` if no cache
+            ///   was supplied to ``init(dataRepresentation:keyParity:cache:)``.
             public var cache: Data {
                 Data(baseKey.cache)
             }

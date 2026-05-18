@@ -14,7 +14,7 @@ Elliptic Curve Diffie-Hellman (ECDH) is the elliptic-curve form of the original 
 S = a·B = a·(b·G) = b·(a·G) = b·A
 ```
 
-Neither party transmits a secret. An eavesdropper observing only the public keys `A` and `B` cannot derive `S` without solving the [elliptic curve discrete logarithm problem](https://en.wikipedia.org/wiki/Elliptic-curve_cryptography#Rationale), which is computationally infeasible on secp256k1 at the 128-bit security level.
+Neither party transmits a secret. An eavesdropper observing only the public keys `A` and `B` cannot derive `S` without solving the elliptic curve discrete logarithm problem, which is computationally infeasible on secp256k1 at the 128-bit security level.
 
 This package implements ECDH on the secp256k1 curve via libsecp256k1's [`secp256k1_ecdh`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_ecdh.h) function. ECDH on secp256k1 is the building block for several open-protocol stacks:
 
@@ -92,9 +92,9 @@ let tagged = SHA256.taggedHash(
 
 | Protocol | Spec | What ECDH derives |
 |---|---|---|
-| BIP-352 Silent Payments | [BIP-352](https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki) | Per-output destination tweak |
-| Nostr NIP-04 | [NIP-04](https://github.com/nostr-protocol/nips/blob/master/04.md) | AES-CBC encryption key for DMs |
-| Lightning Noise XK | [BOLT 8](https://github.com/lightning/bolts/blob/master/08-transport.md) | ChaCha20-Poly1305 transport keys |
+| BIP-352 Silent Payments | BIP-352 | Per-output destination tweak |
+| Nostr NIP-04 | NIP-04 | AES-CBC encryption key for DMs |
+| Lightning Noise XK | BOLT 8 | ChaCha20-Poly1305 transport keys |
 | ECIES (generic) | [SEC 1 §5.1](https://www.secg.org/sec1-v2.pdf) | Symmetric encryption + MAC keys |
 
 For the BIP-352 case specifically, see the dedicated <doc:SilentPayments> guide — the protocol layers an input hash, a counter, and BIP-340 tagged hashing on top of the basic ECDH primitive.
@@ -107,19 +107,11 @@ ECDH multiplication uses a different curve-arithmetic path than ECDSA/Schnorr si
 
 #### Authenticate the peer's public key
 
-ECDH alone provides confidentiality against passive eavesdroppers but says nothing about who you exchanged secrets with. A man-in-the-middle who substitutes their own public key for `B` derives a shared secret with Alice, and separately derives a different shared secret with Bob, then proxies traffic between them. Always pair ECDH with peer-key authentication — typically via a signature, a certificate, or out-of-band fingerprint verification (the [Noise framework](https://noiseprotocol.org/) integrates both).
+ECDH alone provides confidentiality against passive eavesdroppers but says nothing about who you exchanged secrets with. A man-in-the-middle who substitutes their own public key for `B` derives a shared secret with Alice, and separately derives a different shared secret with Bob, then proxies traffic between them. Always pair ECDH with peer-key authentication — typically via a signature, a certificate, or out-of-band fingerprint verification (the Noise Protocol Framework integrates both).
 
 #### Static vs ephemeral keys
 
 ECDH keys can be **static** (long-lived, like a Nostr identity) or **ephemeral** (single-session, like Noise XK's `e` keys). Ephemeral keys provide forward secrecy: compromising a long-term key after the fact does not let an attacker decrypt past sessions. Use ephemeral keys for transport encryption; reserve static keys for identity and signature operations.
-
-### Further Reading
-
-- [BIP-352: Silent Payments specification](https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki)
-- [Nostr NIP-04: Encrypted Direct Message](https://github.com/nostr-protocol/nips/blob/master/04.md)
-- [BOLT 8: Encrypted and Authenticated Transport](https://github.com/lightning/bolts/blob/master/08-transport.md)
-- [SEC 1: Elliptic Curve Cryptography v2](https://www.secg.org/sec1-v2.pdf) (sections 3.3 and 5.1)
-- [Noise Protocol Framework](https://noiseprotocol.org/)
 
 ## See Also
 
