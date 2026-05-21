@@ -110,6 +110,9 @@ For multiple inputs, sum the input private keys (`a = a_1 + a_2 + ... + a_n`) be
 The receiver reconstructs the same shared secret using their scan key `b_scan` and the **summed input public key** `A` extracted from the candidate transaction. `B_spend` is the receiver's spend key — the base point that gets tweak-added to produce each `P_k`:
 
 ```swift
+import Foundation
+import P256K
+
 let bobScanKey: P256K.KeyAgreement.PrivateKey = /* b_scan */
 let bobSpendBytes: Data = /* B_spend as 33-byte compressed point */
 let bobSpendKey = try P256K.Signing.PublicKey(

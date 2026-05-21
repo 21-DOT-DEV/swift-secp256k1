@@ -4,7 +4,7 @@
     @TitleHeading("Explanation")
 }
 
-Understand why secp256k1 has multiple key representations and when to use each one.
+Understand why secp256k1 has multiple key representations — compressed, uncompressed, and x-only — and how ``P256K`` exposes each one for Bitcoin, Lightning, Nostr, and Taproot.
 
 ## Overview
 
@@ -24,6 +24,8 @@ The **compressed** form (33 octets) stores the x-coordinate with a one-octet pre
 This is the default format in P256K and the standard for Bitcoin since 2012:
 
 ```swift
+import P256K
+
 let key = try P256K.Signing.PrivateKey()  // compressed by default
 key.publicKey.dataRepresentation.count    // 33
 key.publicKey.format                      // .compressed
@@ -34,6 +36,8 @@ key.publicKey.format                      // .compressed
 The **uncompressed** form (65 octets) stores both coordinates with a `0x04` prefix:
 
 ```swift
+import P256K
+
 let key = try P256K.Signing.PrivateKey(format: .uncompressed)
 key.publicKey.dataRepresentation.count    // 65
 key.publicKey.format                      // .uncompressed
@@ -46,6 +50,8 @@ Uncompressed keys are rarely used in modern Bitcoin but appear in legacy transac
 [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) introduced **x-only** public keys for Schnorr signatures. These are the bare 32-octet x-coordinate with no prefix. The y-coordinate is implicitly defined as the **even** value.
 
 ```swift
+import P256K
+
 let schnorrKey = try P256K.Schnorr.PrivateKey()
 schnorrKey.xonly.bytes.count  // 32
 ```

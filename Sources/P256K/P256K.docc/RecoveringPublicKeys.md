@@ -19,6 +19,9 @@ The sections below walk through creating, serializing, and reconstructing keys f
 Use ``P256K/Recovery/PrivateKey`` to produce a recoverable ECDSA signature. Unlike a standard ECDSA signature, this variant embeds the additional ID that identifies which of up to four candidate verifying keys produced it:
 
 ```swift
+import Foundation
+import P256K
+
 let privateKey = try P256K.Recovery.PrivateKey(
     dataRepresentation: keyBytes
 )
@@ -32,6 +35,8 @@ let recoverySignature = privateKey.signature(for: message)
 Lift the signer's verifying key out of the message and signature in one step:
 
 ```swift
+import P256K
+
 let recoveredKey = P256K.Recovery.PublicKey(message, signature: recoverySignature)
 
 // The recovered key matches the original
@@ -41,6 +46,8 @@ recoveredKey.dataRepresentation == privateKey.publicKey.dataRepresentation
 You can also lift from a hash digest directly:
 
 ```swift
+import P256K
+
 let digest = SHA256.hash(data: message)
 let recoveredKey = P256K.Recovery.PublicKey(digest, signature: recoverySignature)
 ```
@@ -50,6 +57,8 @@ let recoveredKey = P256K.Recovery.PublicKey(digest, signature: recoverySignature
 The signature serializes as a compact 64-byte body plus a separate ID (0-3):
 
 ```swift
+import P256K
+
 let compact = recoverySignature.compactRepresentation
 // compact.signature -- 64-byte compact ECDSA signature
 // compact.recoveryId -- Int32 (0, 1, 2, or 3)
@@ -58,6 +67,8 @@ let compact = recoverySignature.compactRepresentation
 Reconstruct from the compact form:
 
 ```swift
+import P256K
+
 let restored = try P256K.Recovery.ECDSASignature(
     compactRepresentation: compactBytes,
     recoveryId: recoveryId
@@ -69,6 +80,8 @@ let restored = try P256K.Recovery.ECDSASignature(
 Use the ``P256K/Recovery/ECDSASignature/normalize`` property to drop the ID and obtain a standard ECDSA signature:
 
 ```swift
+import P256K
+
 let standardSignature = recoverySignature.normalize
 
 // Access standard formats
@@ -76,7 +89,7 @@ standardSignature.dataRepresentation   // 64-byte compact
 standardSignature.derRepresentation    // DER-encoded
 ```
 
-> Important: The converted signature is **not guaranteed to be lower-S normalized** and may fail `secp256k1_ecdsa_verify`. If your application requires lower-S form (e.g., Bitcoin Core's [BIP-62 rule 6](https://github.com/bitcoin/bips/blob/master/bip-0062.mediawiki#new-rules)), pass the result through `secp256k1_ecdsa_signature_normalize` before verifying.
+> Important: The converted signature is **not guaranteed to be lower-S normalized** and may fail `secp256k1_ecdsa_verify`. If your application requires lower-S form (e.g., Bitcoin Core's [BIP-146](https://github.com/bitcoin/bips/blob/master/bip-0146.mediawiki) LOW_S rule), pass the result through `secp256k1_ecdsa_signature_normalize` before verifying.
 
 ## See Also
 

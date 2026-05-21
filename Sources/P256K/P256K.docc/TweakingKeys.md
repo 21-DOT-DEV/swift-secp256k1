@@ -4,7 +4,7 @@
     @TitleHeading("How-to Guide")
 }
 
-Derive child keys with additive and multiplicative scalar offsets for BIP-32 key chaining and BIP-341 Taproot output construction.
+Derive child secp256k1 keys with ``P256K``'s additive and multiplicative scalar offsets — the primitive behind BIP-32 hierarchical derivation, BIP-341 Taproot output construction, BIP-327 MuSig2 key aggregation, and BIP-352 Silent Payments destination derivation.
 
 ## Overview
 
@@ -17,6 +17,8 @@ This algebra is the foundation of [BIP-32](https://github.com/bitcoin/bips/blob/
 Apply an additive scalar offset to an ECDSA private key, producing a new key pair. This is the basis of BIP-32 hierarchical deterministic key chaining:
 
 ```swift
+import P256K
+
 let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: keyBytes)
 let tweak = SHA256.hash(data: someData)
 
@@ -30,6 +32,8 @@ let tweakedByMul = try privateKey.multiply(Array(tweak))
 Public keys can be tweaked directly without the private key:
 
 ```swift
+import P256K
+
 // Additive: newPubKey = pubKey + tweak * G
 let tweakedPublicKey = try publicKey.add(Array(tweak))
 
@@ -42,6 +46,8 @@ let tweakedByMul = try publicKey.multiply(Array(tweak))
 Schnorr keys use x-only (32-byte) public keys with implicit even parity. The Schnorr API handles the parity adjustment automatically when an offset is applied:
 
 ```swift
+import P256K
+
 let schnorrKey = try P256K.Schnorr.PrivateKey(dataRepresentation: keyBytes)
 let tweak = SHA256.hash(data: someData)
 
@@ -51,6 +57,8 @@ let tweakedKey = try schnorrKey.add(Array(tweak))
 X-only public keys can also be tweaked directly:
 
 ```swift
+import P256K
+
 let tweakedXonly = try schnorrKey.xonly.add(Array(tweak))
 ```
 
@@ -59,6 +67,9 @@ let tweakedXonly = try schnorrKey.xonly.add(Array(tweak))
 BIP-341 Taproot computes an output key from an internal key using a tagged hash as the offset. For a key-path-only output (no script tree):
 
 ```swift
+import Foundation
+import P256K
+
 let internalKey = try P256K.Schnorr.PrivateKey(
     dataRepresentation: keyBytes
 ).xonly
@@ -76,6 +87,9 @@ let outputKey = try internalKey.add(Array(tweakHash))
 For outputs with a script tree, include the Merkle root in the offset:
 
 ```swift
+import Foundation
+import P256K
+
 // H_TapTweak(internalKey || merkleRoot)
 let tweakHash = SHA256.taggedHash(
     tag: "TapTweak".data(using: .utf8)!,
@@ -89,6 +103,8 @@ let outputKey = try internalKey.add(Array(tweakHash))
 Aggregated MuSig2 keys accept the same additive offsets for BIP-32 chaining or Taproot construction:
 
 ```swift
+import P256K
+
 let aggregate = try P256K.MuSig.aggregate(publicKeys)
 
 // BIP-32 style: tweak the full public key

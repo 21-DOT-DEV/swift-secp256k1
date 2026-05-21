@@ -4,7 +4,7 @@
     @TitleHeading("How-to Guide")
 }
 
-Import and export keys in raw bytes, PEM, DER, and other standard formats.
+Import and export ``P256K`` secp256k1 keys in raw bytes, PEM, DER, and X.509 SubjectPublicKeyInfo — the encodings Bitcoin, Lightning, OpenSSL toolchains, and PKCS#8-based wallet storage use.
 
 ## Overview
 
@@ -21,6 +21,8 @@ The sections below cover each supported format in the order you will typically e
 The most common serialization. Use `dataRepresentation` to export and `init(dataRepresentation:format:)` to import:
 
 ```swift
+import P256K
+
 // Export (33 bytes compressed, 65 bytes uncompressed)
 let keyData = publicKey.dataRepresentation
 
@@ -34,6 +36,8 @@ let restored = try P256K.Signing.PublicKey(
 Private keys are a fixed 32-octet scalar:
 
 ```swift
+import P256K
+
 let privKeyData = privateKey.dataRepresentation  // 32 bytes
 let restored = try P256K.Signing.PrivateKey(dataRepresentation: privKeyData)
 ```
@@ -43,6 +47,8 @@ let restored = try P256K.Signing.PrivateKey(dataRepresentation: privKeyData)
 Import keys from PEM-encoded strings. Both SEC1 (`EC PRIVATE KEY`) and PKCS#8 (`PRIVATE KEY`) formats are supported:
 
 ```swift
+import P256K
+
 let pemString = """
 -----BEGIN EC PRIVATE KEY-----
 MHQCAQEEIBXwHPDpec6b07GeLbnwetT0dvWzp0nV3MR+4pPKXIc7oAcGBSuBBAAK
@@ -56,6 +62,8 @@ let privateKey = try P256K.Signing.PrivateKey(pemRepresentation: pemString)
 Public keys use the `PUBLIC KEY` PEM type:
 
 ```swift
+import P256K
+
 let publicKey = try P256K.Signing.PublicKey(pemRepresentation: publicKeyPEM)
 ```
 
@@ -64,6 +72,8 @@ let publicKey = try P256K.Signing.PublicKey(pemRepresentation: publicKeyPEM)
 Import from DER-encoded binary data:
 
 ```swift
+import P256K
+
 let privateKey = try P256K.Signing.PrivateKey(derRepresentation: derBytes)
 let publicKey = try P256K.Signing.PublicKey(derRepresentation: derBytes)
 ```
@@ -71,6 +81,8 @@ let publicKey = try P256K.Signing.PublicKey(derRepresentation: derBytes)
 ECDSA signatures also support DER:
 
 ```swift
+import P256K
+
 let signature = try P256K.Signing.ECDSASignature(derRepresentation: derData)
 let derBytes = signature.derRepresentation
 ```
@@ -80,6 +92,8 @@ let derBytes = signature.derRepresentation
 Specify the format when creating keys:
 
 ```swift
+import P256K
+
 // Compressed (default): 33-byte public key with 0x02 or 0x03 prefix
 let compressed = try P256K.Signing.PrivateKey(format: .compressed)
 compressed.publicKey.dataRepresentation.count  // 33
@@ -100,6 +114,8 @@ let fullBytes = compressedPublicKey.uncompressedRepresentation  // 65 bytes
 Schnorr signatures ([BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)) use 32-byte x-only public keys with implicit even parity:
 
 ```swift
+import P256K
+
 let schnorrKey = try P256K.Schnorr.PrivateKey()
 let xonlyBytes = schnorrKey.xonly.bytes  // [UInt8], 32 bytes
 ```
@@ -107,6 +123,8 @@ let xonlyBytes = schnorrKey.xonly.bytes  // [UInt8], 32 bytes
 Convert between full public keys and x-only:
 
 ```swift
+import P256K
+
 // Full key to x-only
 let xonly = ecdsaPublicKey.xonly
 
@@ -126,6 +144,7 @@ let fullKey = P256K.Signing.PublicKey(xonlyKey: xonly)
 
 ## See Also
 
+- <doc:CryptoKitP256AndSecp256k1>
 - <doc:KeyFormats>
 - <doc:GettingStarted>
 - ``P256K/Format``

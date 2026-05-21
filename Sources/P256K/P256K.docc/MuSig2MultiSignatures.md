@@ -35,6 +35,9 @@ Key aggregation is order-independent — the same aggregate is produced regardle
 Each party independently draws a fresh nonce pair for the upcoming session. The `generate` function returns a ``P256K/Schnorr/SecureNonce`` (kept private to the caller) and a sharable pubnonce value:
 
 ```swift
+import Foundation
+import P256K
+
 let message = "Hello, MuSig!".data(using: .utf8)!
 let messageHash = SHA256.hash(data: message)
 
@@ -52,6 +55,8 @@ let aliceNonce = try P256K.MuSig.Nonce.generate(
 Each party broadcasts their sharable pubnonce. Once every contribution has been collected, aggregate them:
 
 ```swift
+import P256K
+
 let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [
     aliceNonce.pubnonce, bobNonce.pubnonce, carolNonce.pubnonce
 ])
@@ -62,6 +67,8 @@ let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [
 Each party produces a partial signature using their long-term private key, their own secret half from the prior round, and the aggregated commitment:
 
 ```swift
+import P256K
+
 let alicePartial = try alice.partialSignature(
     for: messageHash,
     pubnonce: aliceNonce.pubnonce,
@@ -76,6 +83,8 @@ let alicePartial = try alice.partialSignature(
 Once all partial signatures are collected, aggregate them into the final Schnorr signature:
 
 ```swift
+import P256K
+
 let finalSignature = try P256K.MuSig.aggregateSignatures([
     alicePartial, bobPartial, carolPartial
 ])
@@ -86,12 +95,16 @@ let finalSignature = try P256K.MuSig.aggregateSignatures([
 The final signature verifies against the aggregated x-only verifying key, just like any [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr signature:
 
 ```swift
+import P256K
+
 let isValid = aggregate.xonly.isValidSignature(finalSignature, for: messageHash)
 ```
 
 You can also verify individual partial signatures before aggregation:
 
 ```swift
+import P256K
+
 let isPartialValid = aggregate.isValidSignature(
     alicePartial,
     publicKey: alice.publicKey,

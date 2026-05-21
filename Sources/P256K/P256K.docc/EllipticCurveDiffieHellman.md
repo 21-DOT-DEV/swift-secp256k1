@@ -44,6 +44,8 @@ let bobPublicKey = bobPrivateKey.publicKey
 Each party calls `sharedSecretFromKeyAgreement(with:)` with the other party's public key. Both produce identical output:
 
 ```swift
+import P256K
+
 let aliceShared = alicePrivateKey.sharedSecretFromKeyAgreement(with: bobPublicKey)
 let bobShared = bobPrivateKey.sharedSecretFromKeyAgreement(with: alicePublicKey)
 
@@ -57,6 +59,8 @@ The returned ``SharedSecret`` wraps the **raw serialized EC point** in compresse
 The default is `.compressed` (33 bytes). For protocols that mandate the full point (uncompressed SEC1 encoding, 65 bytes: `0x04` prefix + 32-byte x + 32-byte y):
 
 ```swift
+import P256K
+
 let sharedUncompressed = alicePrivateKey.sharedSecretFromKeyAgreement(
     with: bobPublicKey,
     format: .uncompressed
@@ -73,6 +77,8 @@ The raw shared point should not be used directly as a symmetric key. Always run 
 **SHA-256 (simplest, suitable for ad-hoc symmetric key derivation):**
 
 ```swift
+import P256K
+
 let symmetricKey = SHA256.hash(data: aliceShared.bytes)
 // 32-byte key suitable for AES-256 or ChaCha20
 ```
@@ -80,6 +86,9 @@ let symmetricKey = SHA256.hash(data: aliceShared.bytes)
 **BIP-340 tagged SHA-256 (for protocols like BIP-352 that specify a domain-separation tag):**
 
 ```swift
+import Foundation
+import P256K
+
 let tagged = SHA256.taggedHash(
     tag: "BIP0352/SharedSecret".data(using: .utf8)!,
     data: aliceShared.bytes
@@ -115,6 +124,7 @@ ECDH keys can be **static** (long-lived, like a Nostr identity) or **ephemeral**
 
 ## See Also
 
+- <doc:CryptoKitP256AndSecp256k1>
 - <doc:GettingStarted>
 - <doc:SilentPayments>
 - <doc:SecurityConsiderations>
