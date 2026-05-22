@@ -54,12 +54,14 @@ protocol DiffieHellmanKeyAgreement: Sendable {
     func sharedSecretFromKeyAgreement(with publicKeyShare: PublicKey) -> SharedSecret
 }
 
-/// A key agreement result from which you can derive a symmetric cryptographic
-/// key.
+/// A key agreement result from which you can derive a symmetric cryptographic key.
 ///
-/// Generate a shared secret by calling your private key's
-/// `sharedSecretFromKeyAgreement(publicKeyShare:)` method with the public key
-/// from another party.
+/// Generate a shared secret by calling
+/// ``P256K/KeyAgreement/PrivateKey/sharedSecretFromKeyAgreement(with:format:)``
+/// on a private key with the public key from another party, then access the raw
+/// serialized EC point via ``withUnsafeBytes(_:)``. The byte layout follows the
+/// requested ``P256K/KeyAgreement`` format — 33 bytes when compressed,
+/// 65 bytes when uncompressed.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public struct SharedSecret: ContiguousBytes, Sendable {
     var ss: SecureBytes

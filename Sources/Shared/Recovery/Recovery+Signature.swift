@@ -122,6 +122,9 @@ public import Foundation
             /// > Important: The converted signature is **not guaranteed to be lower-S normalized**
             /// > and may fail `secp256k1_ecdsa_verify`. If normalized form is required, pass the
             /// > result through `secp256k1_ecdsa_signature_normalize` before verifying.
+            ///
+            /// - Returns: A ``P256K/Signing/ECDSASignature`` holding the converted
+            ///   (non-recoverable) signature. Lower-S normalization is **not** applied.
             public var normalize: P256K.Signing.ECDSASignature {
                 let context = P256K.Context.rawRepresentation
                 var normalizedSignature = secp256k1_ecdsa_signature()
@@ -194,6 +197,7 @@ public import Foundation
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension P256K.Recovery.PrivateKey: DigestSigner {
+        /// The signature type produced by signing with this private key.
         public typealias Signature = P256K.Recovery.ECDSASignature
 
         /// Generates a recoverable ECDSA signature from a pre-computed digest via `secp256k1_ecdsa_sign_recoverable` with RFC 6979 deterministic nonce generation.

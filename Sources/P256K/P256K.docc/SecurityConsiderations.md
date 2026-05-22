@@ -14,9 +14,9 @@ P256K layers a Swift API over [bitcoin-core/secp256k1](https://github.com/bitcoi
 
 Every cryptographic operation in P256K depends on a secp256k1 context managed by ``P256K/Context``. The shared context is created and **randomized** once at process startup using OS-provided entropy.
 
-Randomization seeds a blinding factor that protects **ECDSA signing**, **Schnorr signing**, and **public key generation** against timing and power analysis attacks. The blinding factor is applied to the base point multiplication, making the internal computation pattern independent of the secret key.
+Randomization seeds a blinding factor that protects **ECDSA signing**, **Schnorr signing**, and **public key generation** against timing and power analysis attacks. The blinding factor is applied to the base point multiplication, making the internal computation pattern independent of the secret key. The technique is the standard countermeasure for side-channel attacks on scalar multiplication ([Coron 1999](https://link.springer.com/chapter/10.1007/3-540-48059-5_25), the foundational reference adopted by libsecp256k1).
 
-> Note: ECDH key agreement uses a different kind of elliptic curve point multiplication and does **not** currently benefit from context randomization.
+> Note: ECDH multiplies the peer's public key, which is a variable point rather than the fixed generator, so it relies on libsecp256k1's separate constant-time variable-base routine rather than base-point blinding from context randomization.
 
 ### Nonce Reuse
 
@@ -45,7 +45,7 @@ let partial = try privateKey.partialSignature(
 
 ### ECDSA and Schnorr Nonces
 
-For standard (non-MuSig) ECDSA and Schnorr signing, P256K uses deterministic nonce generation (RFC 6979 for ECDSA, BIP-340 for Schnorr) by default, which eliminates the risk of random nonce reuse entirely.
+For standard (non-MuSig) ECDSA and Schnorr signing, P256K uses deterministic nonce generation ([RFC 6979](https://datatracker.ietf.org/doc/html/rfc6979) for ECDSA, [BIP-340 §3.2](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#default-signing) for Schnorr) by default, which eliminates the risk of random nonce reuse entirely.
 
 ### Constant-Time Comparison
 
@@ -69,7 +69,7 @@ P256K uses `SecureBytes` internally for private key storage. When a `SecureBytes
 
 An ECDSA signature `(r, s)` has a counterpart `(r, n - s)` that is also valid for the same message and public key. This **malleability** can cause problems in systems that use the signature as a unique transaction identifier (e.g., Bitcoin before SegWit).
 
-P256K enforces **lower-S normalization** (BIP-62 rule 6): `secp256k1_ecdsa_verify` only accepts signatures where `s` is in the lower half of the curve order. The `signature(for:)` overloads on ``P256K/Signing/PrivateKey`` always produce normalized signatures, and the `normalize` property on a recoverable signature (``P256K/Recovery/ECDSASignature``) converts it to the canonical form.
+P256K enforces **lower-S normalization** ([BIP-146](https://github.com/bitcoin/bips/blob/master/bip-0146.mediawiki)): `secp256k1_ecdsa_verify` only accepts signatures where `s` is in the lower half of the curve order. The `signature(for:)` overloads on ``P256K/Signing/PrivateKey`` always produce normalized signatures, and the `normalize` property on a recoverable signature (``P256K/Recovery/ECDSASignature``) converts it to the canonical form.
 
 ## See Also
 

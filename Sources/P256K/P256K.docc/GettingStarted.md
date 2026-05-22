@@ -12,7 +12,7 @@ This guide walks through the four most common P256K workflows end-to-end: adding
 
 ### Adding P256K to Your Project
 
-Add `swift-secp256k1` as a Swift Package Manager dependency in your `Package.swift`:
+Add `swift-secp256k1` as a [Swift Package Manager](https://www.swift.org/documentation/package-manager/) dependency in your `Package.swift`:
 
 ```swift
 // Package.swift
@@ -40,13 +40,15 @@ import P256K
 
 Every cryptographic operation in P256K depends on a secp256k1 context object managed by ``P256K/Context``. The library provides a shared context via `P256K.Context.rawRepresentation` that is created and randomized automatically at process startup. You do not need to create or manage a context for standard use — the library handles this internally for every signing, verification, and key generation call.
 
-Context randomization seeds a blinding factor that protects ECDSA signing, Schnorr signing, and public key generation against timing and power analysis attacks. ECDH key agreement uses a different kind of elliptic curve point multiplication and does not currently benefit from context randomization.
+Context randomization seeds a blinding factor that protects ECDSA signing, Schnorr signing, and key generation against timing and power analysis attacks. ECDH key agreement uses a different kind of elliptic curve point multiplication and does not currently benefit from context randomization.
 
 ### Generating Key Pairs
 
-To create an ECDSA key pair, initialize a ``P256K/Signing/PrivateKey``. The private key generates the associated public key on demand:
+To create an ECDSA key pair, initialize a ``P256K/Signing/PrivateKey``. The private half derives its verifying counterpart on demand:
 
 ```swift
+import P256K
+
 // Generate a random ECDSA key pair
 let privateKey = try P256K.Signing.PrivateKey()
 let publicKey = privateKey.publicKey
@@ -55,9 +57,11 @@ let publicKey = privateKey.publicKey
 let privateKeyBytes = privateKey.dataRepresentation
 ```
 
-To create a Schnorr key pair for BIP-340 compatible signatures, initialize a ``P256K/Schnorr/PrivateKey``. Schnorr verification uses an x-only public key:
+To create a Schnorr key pair for [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) compatible signatures, initialize a ``P256K/Schnorr/PrivateKey``. Schnorr verification uses an x-only verifying key:
 
 ```swift
+import P256K
+
 // Generate a random Schnorr key pair (BIP-340)
 let schnorrPrivateKey = try P256K.Schnorr.PrivateKey()
 let xonlyPublicKey = schnorrPrivateKey.xonly
@@ -65,10 +69,11 @@ let xonlyPublicKey = schnorrPrivateKey.xonly
 
 ### Signing and Verifying with ECDSA
 
-``P256K/Signing/PrivateKey`` signs arbitrary data directly. SHA-256 is applied internally before calling `secp256k1_ecdsa_sign`. The resulting 64-byte signature is in normalized lower-S form, which is the only form accepted by `secp256k1_ecdsa_verify`:
+``P256K/Signing/PrivateKey`` signs arbitrary data directly. SHA-256 is applied internally before calling [`secp256k1_ecdsa_sign`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h). The resulting 64-byte signature is in normalized lower-S form ([BIP-62 rule 6](https://github.com/bitcoin/bips/blob/master/bip-0062.mediawiki#new-rules)), which is the only form accepted by `secp256k1_ecdsa_verify`:
 
 ```swift
 import Foundation
+import P256K
 
 let privateKey = try P256K.Signing.PrivateKey()
 let message = "Hello, secp256k1!".data(using: .utf8)!
@@ -84,6 +89,8 @@ print(isValid) // true
 To serialize or parse a signature in DER or compact (64-byte) format:
 
 ```swift
+import P256K
+
 // DER-encoded signature (variable length, ~70 bytes)
 let derSignature = signature.derRepresentation
 
@@ -96,9 +103,12 @@ let parsed = try P256K.Signing.ECDSASignature(compactRepresentation: compactSign
 
 ### Signing and Verifying with Schnorr
 
-``P256K/Schnorr/PrivateKey`` signs hash digests and produces 64-byte Schnorr signatures as defined by BIP-340. Schnorr signatures are verified using an ``P256K/Schnorr/XonlyKey``, which contains only the x-coordinate of the public key:
+``P256K/Schnorr/PrivateKey`` signs hash digests and produces 64-byte Schnorr signatures as defined by BIP-340. Schnorr signatures are verified using an ``P256K/Schnorr/XonlyKey``, which holds only the x-coordinate of the verifying key:
 
 ```swift
+import Foundation
+import P256K
+
 let schnorrKey = try P256K.Schnorr.PrivateKey()
 let message = "Hello, secp256k1!".data(using: .utf8)!
 
@@ -115,9 +125,11 @@ print(isValid) // true
 
 ### Performing ECDH Key Agreement
 
-``P256K/KeyAgreement/PrivateKey`` performs Elliptic Curve Diffie-Hellman (ECDH) key agreement using `secp256k1_ecdh`. Both parties derive an identical ``SharedSecret`` from their own private key and the other party's public key, without transmitting the secret:
+``P256K/KeyAgreement/PrivateKey`` performs Elliptic Curve Diffie-Hellman (ECDH) key agreement using `secp256k1_ecdh`. Both parties derive an identical ``SharedSecret`` from their own private key and the other party's verifying key, without transmitting the secret:
 
 ```swift
+import P256K
+
 // Alice and Bob each generate a key pair
 let alicePrivateKey = try P256K.KeyAgreement.PrivateKey()
 let bobPrivateKey = try P256K.KeyAgreement.PrivateKey()
@@ -137,6 +149,7 @@ let bobSharedSecret = bobPrivateKey.sharedSecretFromKeyAgreement(with: alicePubl
 
 ## See Also
 
+- <doc:CryptoKitP256AndSecp256k1>
 - <doc:EllipticCurveDiffieHellman>
 - <doc:SilentPayments>
 - <doc:MuSig2MultiSignatures>

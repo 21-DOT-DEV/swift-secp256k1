@@ -147,6 +147,12 @@ public extension P256K.Signing {
         ///
         /// - Parameters:
         ///   - pemRepresentation: A PEM representation of the key.
+        /// - Throws: `CryptoKitASN1Error.invalidPEMDocument` if `pemRepresentation` is not a
+        ///   valid PEM document or its type label is not `"PUBLIC KEY"`; `CryptoKitASN1Error`
+        ///   cases for malformed ASN.1 inside the PEM body;
+        ///   `CryptoKitError.incorrectParameterSize` if the embedded key is neither 33 nor
+        ///   65 bytes; ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ec_pubkey_parse`
+        ///   rejects the bytes.
         public init(pemRepresentation: String) throws {
             let pem = try ASN1.PEMDocument(pemString: pemRepresentation)
             guard pem.type == "PUBLIC KEY" else {
@@ -159,6 +165,11 @@ public extension P256K.Signing {
         ///
         /// - Parameters:
         ///   - derRepresentation: A DER-encoded representation of the key.
+        /// - Throws: `CryptoKitASN1Error` if `derRepresentation` is not a valid
+        ///   `SubjectPublicKeyInfo` DER encoding; `CryptoKitError.incorrectParameterSize`
+        ///   if the embedded key is neither 33 nor 65 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ec_pubkey_parse`
+        ///   rejects the bytes.
         public init<Bytes: RandomAccessCollection>(derRepresentation: Bytes) throws where Bytes.Element == UInt8 {
             let bytes = Array(derRepresentation)
             let parsed = try ASN1.SubjectPublicKeyInfo(asn1Encoded: bytes)
