@@ -91,6 +91,7 @@
             description
         }
 
+        /// Reflects this value's two `UInt128` limbs to `Mirror` consumers.
         public var customMirror: Mirror {
             Mirror(self, unlabeledChildren: EmptyCollection<Void>())
         }
@@ -106,6 +107,7 @@
             description
         }
 
+        /// Reflects this value's `UInt128` / `Int128` limbs to `Mirror` consumers.
         public var customMirror: Mirror {
             Mirror(self, unlabeledChildren: EmptyCollection<Void>())
         }
@@ -115,6 +117,7 @@
 
     @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
     extension UInt256: ExpressibleByIntegerLiteral {
+        /// The literal type used to build a ``UInt256`` from Swift's integer-literal syntax.
         public typealias IntegerLiteralType = StaticBigInt
 
         public init(integerLiteral source: StaticBigInt) {
@@ -129,6 +132,7 @@
 
     @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
     extension Int256: ExpressibleByIntegerLiteral {
+        /// The literal type used to build an ``Int256`` from Swift's integer-literal syntax.
         public typealias IntegerLiteralType = StaticBigInt
 
         public init(integerLiteral source: StaticBigInt) {
@@ -181,6 +185,7 @@
 
     @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
     extension UInt256: RawRepresentable {
+        /// The 32-byte big-endian `Data` serialization used by `RawRepresentable`.
         public typealias RawValue = Data
 
         public init?(rawValue data: Data) {

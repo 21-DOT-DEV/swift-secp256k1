@@ -4,11 +4,11 @@
     @TitleHeading("Framework")
 }
 
-Swift bindings for Blockstream's `secp256k1-zkp` fork of `libsecp256k1`, adding zero-knowledge proof primitives — range proofs, surjection proofs, ECDSA and BIP-340 adaptor signatures, MuSig2 half-aggregation, and Bulletproofs++ — that drive Blockstream's [Liquid Network](https://liquid.net/).
+Swift bindings for Blockstream's `secp256k1-zkp` fork of `libsecp256k1`, adding zero-knowledge proof primitives — range proofs, surjection proofs, ECDSA and [BIP-340][bip-340] adaptor signatures, MuSig2 half-aggregation, and Bulletproofs++ — that drive Blockstream's [Liquid Network][liquid-net].
 
 ## Overview
 
-`ZKP` wraps the [BlockstreamResearch/secp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp) fork of upstream [bitcoin-core/secp256k1](https://github.com/bitcoin-core/secp256k1). The downstream codebase adds zero-knowledge proof primitives that upstream deliberately scopes out: range proofs (*Confidential Transactions*), surjection proofs (asset-swap unlinkability), ECDSA and BIP-340 adaptor signatures (atomic swaps and scriptless scripts), MuSig2 half-aggregation, and Bulletproofs++ (`bppp` trait). Blockstream's [Liquid Network](https://liquid.net/) — the canonical consumer — depends on it for the confidential-asset transaction format.
+`ZKP` wraps the [BlockstreamResearch/secp256k1-zkp][secp256k1-zkp] fork of upstream [bitcoin-core/secp256k1][libsecp256k1]. The downstream codebase adds zero-knowledge proof primitives that upstream deliberately scopes out: range proofs (*Confidential Transactions*), surjection proofs (asset-swap unlinkability), ECDSA and BIP-340 adaptor signatures (atomic swaps and scriptless scripts), MuSig2 half-aggregation, and Bulletproofs++ (`bppp` trait). Blockstream's [Liquid Network][liquid-net] — the canonical consumer — depends on it for the confidential-asset transaction format.
 
 `ZKP` shares the same vanilla cryptographic surface as ``P256K`` via the package's `SharedSourcesPlugin` build-tool plugin: every type in `Sources/Shared/` (ECDSA, BIP-340 Schnorr, BIP-327 MuSig2, ECDH, recoverable signatures, SHA-256, tagged hashes) is compiled into both module targets. The two targets differ only in their underlying C library (`libsecp256k1` vs `libsecp256k1_zkp`) and the set of opt-in traits each enables. Read <doc:ChoosingP256KvsZKP> to decide which one fits your application.
 
@@ -16,7 +16,7 @@ Swift bindings for Blockstream's `secp256k1-zkp` fork of `libsecp256k1`, adding 
 
 ### Where to start
 
-Picking between `ZKP` and ``P256K``? Read <doc:ChoosingP256KvsZKP> for the decision boundary and the trait-by-trait breakdown of every zero-knowledge primitive — range proofs, surjection proofs, adaptor signatures, MuSig2 half-aggregation, and Bulletproofs++. The shared cryptographic surface (ECDSA, Schnorr, MuSig2, ECDH, recoverable signatures, hashing) is documented in `P256K`'s catalog — see [Getting Started](https://docs.21.dev/documentation/p256k/gettingstarted) for a task-oriented walkthrough that applies equally to both targets.
+Picking between `ZKP` and ``P256K``? Read <doc:ChoosingP256KvsZKP> for the decision boundary and the trait-by-trait breakdown of every zero-knowledge primitive — range proofs, surjection proofs, adaptor signatures, MuSig2 half-aggregation, and Bulletproofs++. The shared cryptographic surface (ECDSA, Schnorr, MuSig2, ECDH, recoverable signatures, hashing) is documented in `P256K`'s catalog — see [Getting Started][docs-getting-started] for a task-oriented walkthrough that applies equally to both targets.
 
 ## Topics
 
@@ -74,3 +74,9 @@ Picking between `ZKP` and ``P256K``? Read <doc:ChoosingP256KvsZKP> for the decis
 ### Errors
 
 - ``secp256k1Error``
+
+[bip-340]: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
+[docs-getting-started]: https://docs.21.dev/documentation/p256k/gettingstarted
+[libsecp256k1]: https://github.com/bitcoin-core/secp256k1
+[liquid-net]: https://liquid.net/
+[secp256k1-zkp]: https://github.com/BlockstreamResearch/secp256k1-zkp
