@@ -2,9 +2,14 @@
 
 # 🔐 swift-secp256k1
 
-Swift cryptography library for Bitcoin and Nostr. ECDSA, Schnorr Signatures, Elliptic Curve Diffie-Hellman, and zero-knowledge proofs. Uses Swift's C interoperability with [libsecp256k1](https://github.com/bitcoin-core/secp256k1).
+*Previously known as `GigaBitcoin/secp256k1.swift` (module renamed to `P256K`).*
+
+Swift cryptography library for Bitcoin and Nostr. ECDSA, Schnorr Signatures, Elliptic Curve Diffie-Hellman (ECDH), and zero-knowledge proofs on **secp256k1**, Bitcoin's elliptic curve. The `P256K` module wraps [libsecp256k1](https://github.com/bitcoin-core/secp256k1) from Bitcoin Core.
 
 🌐 [Project page](https://21.dev/packages/p256k/) · 📚 [Documentation](https://docs.21.dev/documentation/p256k/)
+
+> [!IMPORTANT]
+> **`secp256k1` is not Apple's `P256` curve.** CryptoKit's `P256` is NIST `secp256r1` (the `r` is for random); this library's `P256K` is `secp256k1` (the `k` is for Koblitz). Keys and signatures don't interoperate between the two. **CryptoSwift** and Apple's **CommonCrypto** also do not implement secp256k1. See [Why CryptoKit's P256 can't sign Bitcoin or Nostr](https://docs.21.dev/documentation/p256k/cryptokitp256andsecp256k1).
 
 ## Contents
 
@@ -28,29 +33,13 @@ Swift cryptography library for Bitcoin and Nostr. ECDSA, Schnorr Signatures, Ell
 
 ## Installation
 
-This package uses Swift Package Manager. To add it to your project:
-
-### Using Xcode
-
-1. Go to `File > Add Packages...`
-2. Enter the package URL: `https://github.com/21-DOT-DEV/swift-secp256k1`
-3. Select the desired version
-
-> [!NOTE]
-> This package ships a Swift Package build tool plugin (`SharedSourcesPlugin`), which Xcode requires you to trust before it will run. For CI or non-interactive builds, pass `-skipPackagePluginValidation` to `xcodebuild`. See the [Swift Forums discussion](https://forums.swift.org/t/telling-xcode-14-beta-4-to-trust-build-tool-plugins-programatically/59305) for more info.
-
-### Using Package.swift (Recommended)
-
-Add the following to your `Package.swift` file:
+Add `swift-secp256k1` to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", from: "0.23.0"),
+.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.23.0"),
 ```
 
-> [!WARNING]  
-> This package is pre-1.0 ([SemVer major version zero](https://semver.org/#spec-item-4)). The public API should not be considered stable and may change with any release. Pin a version using `exact:` to avoid unexpected breaking changes.
-
-Then, include `P256K` as a dependency in your target:
+Then include `P256K` as a target dependency:
 
 ```swift
 .target(name: "<target>", dependencies: [
@@ -58,66 +47,11 @@ Then, include `P256K` as a dependency in your target:
 ]),
 ```
 
-### Using CocoaPods ([version history](https://github.com/CocoaPods/Specs/tree/master/Specs/7/b/2/swift-secp256k1))
-
-Add the following to your `Podfile`:
-
-```ruby
-pod 'swift-secp256k1', '0.23.0'
-```
-
-> [!NOTE]
-> Swift Package Manager is the recommended way to add this package. CocoaPods support may be deprecated in a future release.
-
-### Try it out
-
-Use [Arena](https://github.com/finestructure/Arena) to try the package in a playground:
-
-```
-arena 21-DOT-DEV/swift-secp256k1
-```
+Using CocoaPods, evaluating in a playground first, or want the full Xcode + plugin-trust walkthrough? See [Getting Started](https://docs.21.dev/documentation/p256k/gettingstarted#Alternative-installation-methods).
 
 ## Package Traits
 
-This package uses [SE-0450 Package Traits](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md) (Swift 6.1+) to enable fine-grained module selection. By default, the following traits are enabled: `ecdh`, `musig`, `recovery`, and `schnorrsig`.
-
-To use only specific modules, specify traits in your dependency:
-
-```swift
-.package(
-    url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    from: "0.23.0",
-    traits: ["schnorrsig"]
-),
-```
-
-To enable all ZKP modules, use the `zkp` bundle trait:
-
-```swift
-.package(
-    url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    from: "0.23.0",
-    traits: ["zkp"]
-),
-```
-
-To use the `UInt256` and `Int256` fixed-width integer types, enable the `uint256` trait:
-
-```swift
-.package(
-    url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    from: "0.23.0",
-    traits: ["uint256"]
-),
-```
-
-> [!NOTE]
-> The `uint256` trait is opt-in and not enabled by default. The `UInt256` and `Int256` types require macOS 15, iOS 18, macCatalyst 18, watchOS 11, tvOS 18, or visionOS 2 and later.
-
-Available traits: `ecdh`, `ellswift`, `musig`, `recovery`, `schnorrsig`, `uint256`, `bppp`, `ecdsaAdaptor`, `ecdsaS2C`, `generator`, `rangeproof`, `schnorrsigHalfagg`, `surjectionproof`, `whitelist`, `zkp`.
-
-> [!NOTE]
-> Xcode does not currently resolve SwiftPM package trait conditions for Swift settings. As a workaround, all optional modules are compiled when building in Xcode. Package traits are fully supported when building with `swift build` from the command line.
+This package uses [SE-0450 Package Traits](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md) (Swift 6.1+) for module selection. The defaults — `ecdh`, `musig`, `recovery`, `schnorrsig` — cover most use cases. To opt into other modules (ZKP bundle, `uint256`, etc.), see [Choosing modules with package traits](https://docs.21.dev/documentation/p256k/gettingstarted#Choosing-modules-with-package-traits) in Getting Started.
 
 ## Swift Versions
 

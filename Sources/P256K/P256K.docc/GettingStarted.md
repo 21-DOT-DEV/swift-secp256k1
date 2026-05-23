@@ -1,24 +1,25 @@
 # Getting Started with secp256k1 in Swift
 
 @Metadata {
-    @TitleHeading("Article")
+    @TitleHeading("How-to Guide")
 }
 
-Learn how to generate keys, create ECDSA and Schnorr signatures, and perform ECDH key agreement using the P256K Swift library for the secp256k1 elliptic curve.
+Install P256K via Swift Package Manager, trust the SharedSourcesPlugin, and produce your first verified secp256k1 signature — the entry point for Swift developers building Bitcoin, Nostr, or Lightning Network functionality.
 
 ## Overview
 
-This guide walks through the four most common P256K workflows end-to-end: adding the package, generating ECDSA and Schnorr key pairs, signing and verifying under each scheme, and performing ECDH key agreement. Follow the sections in order on your first read; each later section builds on types introduced earlier.
+P256K wraps [Bitcoin Core's `libsecp256k1`][libsecp256k1] — the production secp256k1 implementation used by every full Bitcoin node — behind a type-safe Swift API styled after [`swift-crypto`][swift-crypto]. This article walks from an empty Swift project to a verified ECDSA signature against the package's defaults.
 
-### Adding P256K to Your Project
+The supported toolchain since version 0.22.0 is **Swift 6.1 / Xcode 16.3** or newer. Swift Package Manager is the primary installation path; CocoaPods is supported but may be deprecated in a future release, and [Arena][arena] lets you evaluate the package in a throwaway playground without adding it to a project.
 
-Add `swift-secp256k1` as a [Swift Package Manager](https://www.swift.org/documentation/package-manager/) dependency in your `Package.swift`:
+### Add P256K with Swift Package Manager
+
+Add `swift-secp256k1` as a dependency in your `Package.swift`:
 
 ```swift
 // Package.swift
 dependencies: [
-    // Pin with exact: because the API is pre-1.0 and not yet stable.
-    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1.git", exact: "0.18.0"),
+    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.23.0"),
 ],
 targets: [
     .target(
@@ -30,46 +31,19 @@ targets: [
 ]
 ```
 
-Then import the module in your Swift files:
+The pin uses `exact:` because the package is pre-1.0: under [SemVer §4][semver-4], any release below `1.0.0` is allowed to break the public API, so `exact:` ensures upgrades are deliberate rather than silent on `swift package update`.
+
+In Xcode, the equivalent flow is **File → Add Package Dependencies…**, pasting the repository URL `https://github.com/21-DOT-DEV/swift-secp256k1`, and picking the version. Both routes resolve to the same `Package.resolved` — Xcode and `swift build` share the dependency graph.
+
+Then import the module:
 
 ```swift
 import P256K
 ```
 
-### Understanding the Context
+### Your first signing operation
 
-Every cryptographic operation in P256K depends on a secp256k1 context object managed by ``P256K/Context``. The library provides a shared context via `P256K.Context.rawRepresentation` that is created and randomized automatically at process startup. You do not need to create or manage a context for standard use — the library handles this internally for every signing, verification, and key generation call.
-
-Context randomization seeds a blinding factor that protects ECDSA signing, Schnorr signing, and key generation against timing and power analysis attacks. ECDH key agreement uses a different kind of elliptic curve point multiplication and does not currently benefit from context randomization.
-
-### Generating Key Pairs
-
-To create an ECDSA key pair, initialize a ``P256K/Signing/PrivateKey``. The private half derives its verifying counterpart on demand:
-
-```swift
-import P256K
-
-// Generate a random ECDSA key pair
-let privateKey = try P256K.Signing.PrivateKey()
-let publicKey = privateKey.publicKey
-
-// Serialize the private key for storage
-let privateKeyBytes = privateKey.dataRepresentation
-```
-
-To create a Schnorr key pair for [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) compatible signatures, initialize a ``P256K/Schnorr/PrivateKey``. Schnorr verification uses an x-only verifying key:
-
-```swift
-import P256K
-
-// Generate a random Schnorr key pair (BIP-340)
-let schnorrPrivateKey = try P256K.Schnorr.PrivateKey()
-let xonlyPublicKey = schnorrPrivateKey.xonly
-```
-
-### Signing and Verifying with ECDSA
-
-``P256K/Signing/PrivateKey`` signs arbitrary data directly. SHA-256 is applied internally before calling [`secp256k1_ecdsa_sign`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h). The resulting 64-byte signature is in normalized lower-S form ([BIP-62 rule 6](https://github.com/bitcoin/bips/blob/master/bip-0062.mediawiki#new-rules)), which is the only form accepted by `secp256k1_ecdsa_verify`:
+With the dependency added, the smallest end-to-end check is an ECDSA sign-and-verify:
 
 ```swift
 import Foundation
@@ -78,74 +52,69 @@ import P256K
 let privateKey = try P256K.Signing.PrivateKey()
 let message = "Hello, secp256k1!".data(using: .utf8)!
 
-// Sign — SHA-256 is applied internally; no try required
+// Sign — SHA-256 is applied internally; signature(for:) is non-throwing.
 let signature = privateKey.signature(for: message)
 
-// Verify — returns true if the signature is valid
+// Verify against the matching public key.
 let isValid = privateKey.publicKey.isValidSignature(signature, for: message)
-print(isValid) // true
+print(isValid)  // true
 ```
 
-To serialize or parse a signature in DER or compact (64-byte) format:
+If `isValid` prints `true`, P256K is installed and operational. The returned ``P256K/Signing/ECDSASignature`` is automatically normalized to lower-S form per [BIP-146][bip-146] — the only form `secp256k1_ecdsa_verify` accepts. For persistence or transmission, use `signature.compactRepresentation` (exactly 64 bytes — Nostr events, Lightning) or `signature.derRepresentation` (variable-length DER — Bitcoin transaction scripts). The in-memory layout is opaque and not a stable wire format.
+
+For deeper signing material — DER encoding for Bitcoin transactions, BIP-340 Schnorr, ECDH key agreement, key recovery — see the cross-references at the end of this article.
+
+### Trust the SharedSourcesPlugin
+
+`swift-secp256k1` ships a SwiftPM build-tool plugin named `SharedSourcesPlugin` that wires shared C source files from `libsecp256k1` into the `P256K` target at build time. Xcode requires explicit user trust before running any third-party build-tool plugin, so the first build after adding the package surfaces a trust prompt.
+
+In Xcode, an alert appears noting the plugin must be trusted before it can run. Approve via the dialog's **Trust & Enable Plugin** action — or right-click the package in the Project Navigator and choose **Trust & Enable Plugin** from the context menu. Trust persists for that project and survives package re-resolves.
+
+> Important: For headless CI (GitHub Actions, Jenkins, Xcode Server — anything running `xcodebuild` without a UI), pass `-skipPackagePluginValidation` to the build command. Without the flag, the build fails with `"SharedSourcesPlugin" is disabled` and no plugin output is produced.
+
+Building from the command line with `swift build` does **not** require plugin trust — plugin validation is an Xcode UX gate, not a SwiftPM CLI gate. CI pipelines invoking `swift build` or `swift test` directly skip this concern entirely.
+
+> Note: Using Xcode Cloud? A separate `defaults write` workaround in `ci_post_clone.sh` is required because Xcode Cloud has no interactive trust prompt. See the [Swift Forums discussion][swift-forums-xcode14-trust] for the current recipe and known caveats.
+
+### Choosing modules with package traits
+
+P256K uses [SE-0450 Package Traits][se-0450] (Swift 6.1+) to let consumers select which secp256k1 modules compile in. By default, four traits are enabled: `ecdh`, `musig`, `recovery`, `schnorrsig`. Most use cases need nothing else.
+
+To opt into additional modules, pass `traits:` in your dependency declaration:
 
 ```swift
-import P256K
-
-// DER-encoded signature (variable length, ~70 bytes)
-let derSignature = signature.derRepresentation
-
-// Compact signature (always exactly 64 bytes: r || s)
-let compactSignature = signature.compactRepresentation
-
-// Round-trip from compact bytes
-let parsed = try P256K.Signing.ECDSASignature(compactRepresentation: compactSignature)
+.package(
+    url: "https://github.com/21-DOT-DEV/swift-secp256k1",
+    exact: "0.23.0",
+    traits: ["zkp"]
+),
 ```
 
-### Signing and Verifying with Schnorr
+The `zkp` bundle trait enables every zero-knowledge-proof module — `bppp`, `ecdsaAdaptor`, `ecdsaS2C`, `ellswift`, `generator`, `rangeproof`, `schnorrsigHalfagg`, `surjectionproof`, `whitelist`. The `uint256` trait — which exposes the `UInt256` and `Int256` fixed-width integer types — is opt-in and requires macOS 15, iOS 18, macCatalyst 18, watchOS 11, tvOS 18, or visionOS 2 or later. The authoritative list of available traits lives in `Package.swift` itself.
 
-``P256K/Schnorr/PrivateKey`` signs hash digests and produces 64-byte Schnorr signatures as defined by BIP-340. Schnorr signatures are verified using an ``P256K/Schnorr/XonlyKey``, which holds only the x-coordinate of the verifying key:
+> Note: Xcode does not currently resolve trait conditions for Swift settings; all optional modules compile when building in Xcode. Trait selection is enforced when building with `swift build` from the command line.
 
-```swift
-import Foundation
-import P256K
+### Alternative installation methods
 
-let schnorrKey = try P256K.Schnorr.PrivateKey()
-let message = "Hello, secp256k1!".data(using: .utf8)!
+#### CocoaPods
 
-// Hash the message before signing (BIP-340 uses tagged hashes in practice)
-let digest = SHA256.hash(data: message)
+Add the following to your `Podfile`:
 
-// Sign the digest — throws on failure
-let schnorrSignature = try schnorrKey.signature(for: digest)
-
-// Verify using the x-only public key
-let isValid = schnorrKey.xonly.isValidSignature(schnorrSignature, for: digest)
-print(isValid) // true
+```ruby
+pod 'swift-secp256k1', '0.23.0'
 ```
 
-### Performing ECDH Key Agreement
+CocoaPods consumes a pre-built `P256K.xcframework` produced by the release pipeline rather than building from source. Swift Package Manager remains the recommended path and receives feature parity first; CocoaPods support may be deprecated in a future release.
 
-``P256K/KeyAgreement/PrivateKey`` performs Elliptic Curve Diffie-Hellman (ECDH) key agreement using `secp256k1_ecdh`. Both parties derive an identical ``SharedSecret`` from their own private key and the other party's verifying key, without transmitting the secret:
+#### Try P256K without installing
 
-```swift
-import P256K
+[Arena][arena] generates a temporary Swift playground with the package pre-resolved — useful for evaluating P256K's API before committing to it in a project:
 
-// Alice and Bob each generate a key pair
-let alicePrivateKey = try P256K.KeyAgreement.PrivateKey()
-let bobPrivateKey = try P256K.KeyAgreement.PrivateKey()
-
-// Exchange public keys (these are safe to transmit publicly)
-let alicePublicKey = alicePrivateKey.publicKey
-let bobPublicKey = bobPrivateKey.publicKey
-
-// Each party computes the same shared secret independently
-let aliceSharedSecret = alicePrivateKey.sharedSecretFromKeyAgreement(with: bobPublicKey)
-let bobSharedSecret = bobPrivateKey.sharedSecretFromKeyAgreement(with: alicePublicKey)
-
-// aliceSharedSecret == bobSharedSecret
+```
+arena 21-DOT-DEV/swift-secp256k1
 ```
 
-> Note: Context randomization does not provide side-channel protection for ECDH. The ECDH module uses a different kind of elliptic curve point multiplication that does not currently benefit from base point blinding.
+The generated playground includes a starter import; the ECDSA snippet shown above works unchanged.
 
 ## See Also
 
@@ -153,7 +122,14 @@ let bobSharedSecret = bobPrivateKey.sharedSecretFromKeyAgreement(with: alicePubl
 - <doc:EllipticCurveDiffieHellman>
 - <doc:SilentPayments>
 - <doc:MuSig2MultiSignatures>
-- <doc:TweakingKeys>
+- <doc:WorkingWithKeys>
 - <doc:RecoveringPublicKeys>
-- <doc:SerializingKeys>
 - <doc:SecurityConsiderations>
+
+[arena]: https://github.com/finestructure/Arena
+[bip-146]: https://github.com/bitcoin/bips/blob/master/bip-0146.mediawiki
+[libsecp256k1]: https://github.com/bitcoin-core/secp256k1
+[se-0450]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md
+[semver-4]: https://semver.org/#spec-item-4
+[swift-crypto]: https://github.com/apple/swift-crypto
+[swift-forums-xcode14-trust]: https://forums.swift.org/t/telling-xcode-14-beta-4-to-trust-build-tool-plugins-programatically/59305

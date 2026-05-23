@@ -4,11 +4,11 @@
     @TitleHeading("How-to Guide")
 }
 
-Send Bitcoin to a reusable static address without on-chain linkability or sender–receiver interaction, using the [BIP-352](https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki) Silent Payments protocol.
+Send Bitcoin to a reusable static address without on-chain linkability or sender–receiver interaction, using the [BIP-352][bip-352] Silent Payments protocol.
 
 ## Overview
 
-[Silent Payments](https://bitcoinops.org/en/topics/silent-payments/) (BIP-352, Status: Complete, Version 1.0.2) lets a receiver publish a single static address while still receiving every payment to a fresh, unlinkable on-chain output. The sender derives the destination locally using ECDH between the receiver's published scan key and the sender's transaction inputs — no notification transactions, no out-of-band coordination, no on-chain footprint identifying the receiver.
+[Silent Payments][silent-payments-bitcoinops] (BIP-352, Status: Complete, Version 1.0.2) lets a receiver publish a single static address while still receiving every payment to a fresh, unlinkable on-chain output. The sender derives the destination locally using ECDH between the receiver's published scan key and the sender's transaction inputs — no notification transactions, no out-of-band coordination, no on-chain footprint identifying the receiver.
 
 This solves the long-standing tension between **address reuse** (privacy-degrading; reveals that the same wallet received multiple payments) and **interactive address generation** (often infeasible — donations, content monetization, recurring payroll). Existing alternatives such as BIP-47 PayNyms or stealth-address protocols require on-chain notification transactions that increase fees and reveal metadata. BIP-352 produces transactions indistinguishable from any other taproot spend.
 
@@ -37,7 +37,7 @@ The remaining refinement — labels (`B_m = B_spend + hash_BIP0352/Label(b_scan 
 
 ### Tagged Hashes
 
-BIP-352 specifies three [BIP-340-style tagged hashes](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#design) to prevent cross-protocol collisions, each computed as `SHA256(SHA256(tag) || SHA256(tag) || message)`:
+BIP-352 specifies three [BIP-340-style tagged hashes][bip-340-design] to prevent cross-protocol collisions, each computed as `SHA256(SHA256(tag) || SHA256(tag) || message)`:
 
 | Tag | Used for |
 |---|---|
@@ -103,7 +103,7 @@ let destinationXonly = destination.xonly.bytes  // [UInt8] of length 32
 // The taproot scriptPubKey is: OP_1 OP_PUSHBYTES_32 <destinationXonly>
 ```
 
-For multiple inputs, sum the input private keys (`a = a_1 + a_2 + ... + a_n`) before computing the input hash and the ECDH step. See <doc:TweakingKeys> for the additive-tweak primitives.
+For multiple inputs, sum the input private keys (`a = a_1 + a_2 + ... + a_n`) before computing the input hash and the ECDH step. See <doc:WorkingWithKeys> for the additive-tweak primitives.
 
 ### Receiver: Scanning for Incoming Payments
 
@@ -177,7 +177,7 @@ The scanning workflow needs `b_scan` (private) plus `B_spend` (public) — both 
 
 ### Address Encoding
 
-A BIP-352 address is a [Bech32m](https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki) encoding of `ser_P(B_scan) || ser_P(B_m)` (66 bytes total) with HRP `sp` (mainnet) or `tsp` (testnets), version `q` (= v0). The minimum address length is 117 characters; implementations should accept up to 1023 characters per the BIP-173 checksum-design recommendation.
+A BIP-352 address is a Bech32m (BIP-350) encoding of `ser_P(B_scan) || ser_P(B_m)` (66 bytes total) with HRP `sp` (mainnet) or `tsp` (testnets), version `q` (= v0). The minimum address length is 117 characters; implementations should accept up to 1023 characters per the BIP-173 checksum-design recommendation.
 
 `P256K` does not currently ship a Bech32m encoder. For end-to-end address handling, pair it with a Bech32m library or implement encoding per BIP-350.
 
@@ -198,14 +198,25 @@ The protocol explicitly leaves CoinJoin support and light-client filter design a
 
 For a complete BIP-352 implementation to compare against, study these:
 
-- [Bitcoin Core PR #28122](https://github.com/bitcoin/bitcoin/pull/28122) — the canonical reference implementation, written by the BIP authors.
-- [`silentpayments-rs`](https://github.com/cygnet3/silentpayments-rs) — Rust reference library used by silent-payments-light-client work.
+- [Bitcoin Core PR #28122][bitcoin-core-pr-28122] — the canonical reference implementation, written by the BIP authors.
+- [`silentpayments-rs`][silentpayments-rs] — Rust reference library used by silent-payments-light-client work.
 - Optech Silent Payments topic — running list of newsletter coverage, ecosystem deployments, and related research (see the Bitcoin Optech link above).
+
+### Specifications cited
+
+- **[BIP-350][bip-350]** — Bech32m address encoding used by Silent Payments addresses.
 
 ## See Also
 
 - <doc:EllipticCurveDiffieHellman>
-- <doc:TweakingKeys>
+- <doc:WorkingWithKeys>
 - <doc:SecurityConsiderations>
 - ``P256K/KeyAgreement``
 - ``P256K/Schnorr``
+
+[bip-340-design]: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki#design
+[bip-350]: https://github.com/bitcoin/bips/blob/master/bip-0350.mediawiki
+[bip-352]: https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki
+[bitcoin-core-pr-28122]: https://github.com/bitcoin/bitcoin/pull/28122
+[silent-payments-bitcoinops]: https://bitcoinops.org/en/topics/silent-payments/
+[silentpayments-rs]: https://github.com/cygnet3/silentpayments-rs

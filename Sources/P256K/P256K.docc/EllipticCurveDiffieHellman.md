@@ -8,7 +8,7 @@ Derive a shared secret between two parties over secp256k1 using ECDH key agreeme
 
 ## Overview
 
-Elliptic Curve Diffie-Hellman (ECDH) is the elliptic-curve form of the original [Diffie-Hellman key exchange](https://datatracker.ietf.org/doc/html/rfc2631) (1976). Two parties — Alice with key pair `(a, A)` and Bob with key pair `(b, B)`, where `A = a·G` and `B = b·G` — can each independently compute the same shared point:
+Elliptic Curve Diffie-Hellman (ECDH) is the elliptic-curve form of the original [Diffie-Hellman key exchange][rfc-2631] (1976). Two parties — Alice with key pair `(a, A)` and Bob with key pair `(b, B)`, where `A = a·G` and `B = b·G` — can each independently compute the same shared point:
 
 ```
 S = a·B = a·(b·G) = b·(a·G) = b·A
@@ -16,11 +16,11 @@ S = a·B = a·(b·G) = b·(a·G) = b·A
 
 Neither party transmits a secret. An eavesdropper observing only the public keys `A` and `B` cannot derive `S` without solving the elliptic curve discrete logarithm problem, which is computationally infeasible on secp256k1 at the 128-bit security level.
 
-This package implements ECDH on the secp256k1 curve via libsecp256k1's [`secp256k1_ecdh`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_ecdh.h) function. ECDH on secp256k1 is the building block for several open-protocol stacks:
+This package implements ECDH on the secp256k1 curve via libsecp256k1's [`secp256k1_ecdh`][libsecp256k1-ecdh] function. ECDH on secp256k1 is the building block for several open-protocol stacks:
 
-- **[BIP-352 Silent Payments](https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki)** — sender derives a unique destination output from receiver's static address (see <doc:SilentPayments>).
-- **[Nostr NIP-04](https://github.com/nostr-protocol/nips/blob/master/04.md)** — encrypted direct messages between Nostr identities (note: NIP-04 has known confidentiality limitations; NIP-44 supersedes it).
-- **[Lightning's Noise XK handshake](https://github.com/lightning/bolts/blob/master/08-transport.md)** — establishes the encrypted transport between Lightning Network peers.
+- **[BIP-352 Silent Payments][bip-352]** — sender derives a unique destination output from receiver's static address (see <doc:SilentPayments>).
+- **[Nostr NIP-04][nip-04]** — encrypted direct messages between Nostr identities (note: NIP-04 has known confidentiality limitations; NIP-44 supersedes it).
+- **[Lightning's Noise XK handshake][bolt-08]** — establishes the encrypted transport between Lightning Network peers.
 - **Hybrid encryption schemes** — ECIES variants combining ECDH with a symmetric AEAD.
 
 ### The Key Agreement Namespace
@@ -68,7 +68,7 @@ let sharedUncompressed = alicePrivateKey.sharedSecretFromKeyAgreement(
 // sharedUncompressed.bytes.count == 65
 ```
 
-Choose compressed unless interoperability with a protocol that requires uncompressed encoding (for example, some legacy ECIES variants, or specific OpenSSL-generated key material) forces the larger form. See <doc:KeyFormats> for the broader format-selection story.
+Choose compressed unless interoperability with a protocol that requires uncompressed encoding (for example, some legacy ECIES variants, or specific OpenSSL-generated key material) forces the larger form. See <doc:WorkingWithKeys> for the broader format-selection story.
 
 ### Deriving a Symmetric Key
 
@@ -104,7 +104,7 @@ let tagged = SHA256.taggedHash(
 | BIP-352 Silent Payments | BIP-352 | Per-output destination tweak |
 | Nostr NIP-04 | NIP-04 | AES-CBC encryption key for DMs |
 | Lightning Noise XK | BOLT 8 | ChaCha20-Poly1305 transport keys |
-| ECIES (generic) | [SEC 1 §5.1](https://www.secg.org/sec1-v2.pdf) | Symmetric encryption + MAC keys |
+| ECIES (generic) | [SEC 1 §5.1][sec1-v2] | Symmetric encryption + MAC keys |
 
 For the BIP-352 case specifically, see the dedicated <doc:SilentPayments> guide — the protocol layers an input hash, a counter, and BIP-340 tagged hashing on top of the basic ECDH primitive.
 
@@ -130,3 +130,10 @@ ECDH keys can be **static** (long-lived, like a Nostr identity) or **ephemeral**
 - <doc:SecurityConsiderations>
 - ``P256K/KeyAgreement``
 - ``SharedSecret``
+
+[bip-352]: https://github.com/bitcoin/bips/blob/master/bip-0352.mediawiki
+[bolt-08]: https://github.com/lightning/bolts/blob/master/08-transport.md
+[libsecp256k1-ecdh]: https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_ecdh.h
+[nip-04]: https://github.com/nostr-protocol/nips/blob/master/04.md
+[rfc-2631]: https://datatracker.ietf.org/doc/html/rfc2631
+[sec1-v2]: https://www.secg.org/sec1-v2.pdf

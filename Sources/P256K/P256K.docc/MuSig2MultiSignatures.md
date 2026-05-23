@@ -4,13 +4,13 @@
     @TitleHeading("How-to Guide")
 }
 
-Combine partial contributions from a fixed group of co-signers into a single Schnorr signature using the [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) MuSig2 protocol.
+Combine partial contributions from a fixed group of co-signers into a single Schnorr signature using the [BIP-327][bip-327] MuSig2 protocol.
 
 ## Overview
 
-MuSig2 ([BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki); originally introduced by [Nick, Ruffing, and Seurin (CRYPTO 2021)](https://eprint.iacr.org/2020/1261)) lets a fixed group of parties produce a single compact [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr signature that verifies against one aggregate group key. The result is indistinguishable on chain from a regular Schnorr signature — a Taproot spend using MuSig2 leaves the same fee footprint, the same witness size, and the same privacy properties as a single-key spend.
+MuSig2 ([BIP-327][bip-327]; originally introduced by [Nick, Ruffing, and Seurin (CRYPTO 2021)][musig2-paper]) lets a fixed group of parties produce a single compact [BIP-340][bip-340] Schnorr signature that verifies against one aggregate group key. The result is indistinguishable on chain from a regular Schnorr signature — a Taproot spend using MuSig2 leaves the same fee footprint, the same witness size, and the same privacy properties as a single-key spend.
 
-The protocol runs in two communication rounds. The first round exchanges fresh per-session commitments so that every participant binds themselves to a unique randomness draw before learning anyone else's contribution; the second round exchanges partial responses keyed to the agreed-upon message. The two-round split is what makes the scheme provably secure under the OMDL assumption ([Nick, Ruffing, and Seurin, §5](https://eprint.iacr.org/2020/1261)) — even if some co-signers are dishonest, they cannot extract the others' long-term keys. The sections below walk through every step end-to-end.
+The protocol runs in two communication rounds. The first round exchanges fresh per-session commitments so that every participant binds themselves to a unique randomness draw before learning anyone else's contribution; the second round exchanges partial responses keyed to the agreed-upon message. The two-round split is what makes the scheme provably secure under the OMDL assumption ([Nick, Ruffing, and Seurin, §5][musig2-paper]) — even if some co-signers are dishonest, they cannot extract the others' long-term keys. The sections below walk through every step end-to-end.
 
 ### Aggregating Keys
 
@@ -92,7 +92,7 @@ let finalSignature = try P256K.MuSig.aggregateSignatures([
 
 ### Verification
 
-The final signature verifies against the aggregated x-only verifying key, just like any [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr signature:
+The final signature verifies against the aggregated x-only verifying key, just like any [BIP-340][bip-340] Schnorr signature:
 
 ```swift
 import P256K
@@ -115,9 +115,11 @@ let isPartialValid = aggregate.isValidSignature(
 
 ## See Also
 
-- <doc:TweakingKeys>
+- <doc:WorkingWithKeys>
 - <doc:SilentPayments>
-- <doc:KeyFormats>
-- <doc:SerializingKeys>
 - ``P256K/Schnorr``
 - ``P256K/MuSig``
+
+[bip-327]: https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki
+[bip-340]: https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki
+[musig2-paper]: https://eprint.iacr.org/2020/1261

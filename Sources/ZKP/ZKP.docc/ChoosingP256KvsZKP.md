@@ -24,8 +24,8 @@ Default-enabled traits for `P256K` are `ecdh`, `musig`, `recovery`, and `schnorr
 `P256K` is the default choice for Bitcoin, Lightning, Nostr, and any other application that uses vanilla secp256k1 cryptography. Concretely:
 
 - **Bitcoin signing**: ECDSA with RFC 6979 deterministic nonces is the legacy script-signature scheme; `P256K.Signing.PrivateKey` produces lower-S-normalized signatures that pass `secp256k1_ecdsa_verify` without further processing.
-- **Taproot signing**: BIP-340 Schnorr signatures (`P256K.Schnorr.PrivateKey`) are the v1 witness program signature scheme defined in [BIP-341](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki). The construction itself is specified in BIP-340.
-- **Multi-signature aggregation**: BIP-327 MuSig2 (`P256K.MuSig`) aggregates N signatures into a single 64-byte Schnorr signature, indistinguishable on-chain from a single-key spend. See [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki).
+- **Taproot signing**: BIP-340 Schnorr signatures (`P256K.Schnorr.PrivateKey`) are the v1 witness program signature scheme defined in [BIP-341][bip-341]. The construction itself is specified in BIP-340.
+- **Multi-signature aggregation**: BIP-327 MuSig2 (`P256K.MuSig`) aggregates N signatures into a single 64-byte Schnorr signature, indistinguishable on-chain from a single-key spend. See [BIP-327][bip-327].
 - **Nostr events**: NIP-01 signs events with a 32-byte x-only key (BIP-340 Schnorr); the `xonly` accessor on every Schnorr key returns the right shape.
 - **Recoverable signatures**: Bitcoin signed-message workflows (BIP-137, BIP-322) use recoverable ECDSA (`P256K.Recovery`) so verifiers can recover the public key from the 65-byte `signature || recoveryId` payload alone, eliminating one round trip in address-discovery flows.
 
@@ -35,10 +35,10 @@ The bitcoin-core/secp256k1 README describes the upstream library's stability gua
 
 `ZKP` is the right choice when your application needs **zero-knowledge proof primitives** that the upstream library deliberately scopes out. Each ZKP-only trait corresponds to a research result or production protocol:
 
-- **Range proofs** (`rangeproof` trait): The original [Confidential Transactions](https://people.xiph.org/~greg/confidential_values.txt) construction by Greg Maxwell (Bitcoin core developer) — proves that a Pedersen-committed value lies in a specified range without revealing the value itself. The canonical consumer is the [Liquid Network](https://liquid.net/), Blockstream's federated sidechain.
-- **Bulletproofs++** (`bppp` trait): A more efficient range-proof construction by Liu et al. ([eprint/2022/510](https://eprint.iacr.org/2022/510)), reducing proof sizes versus original Bulletproofs while preserving the same security guarantees.
+- **Range proofs** (`rangeproof` trait): The original Confidential Transactions construction by Greg Maxwell (Bitcoin core developer) — proves that a Pedersen-committed value lies in a specified range without revealing the value itself. The canonical consumer is the [Liquid Network][liquid-net], Blockstream's federated sidechain. See Further reading for the original write-up.
+- **Bulletproofs++** (`bppp` trait): A more efficient range-proof construction by Liu et al., reducing proof sizes versus original Bulletproofs while preserving the same security guarantees. See Further reading for the IACR preprint.
 - **Surjection proofs** (`surjectionproof` trait): Prove that an output asset comes from one of N input assets without revealing which — the privacy backbone of Liquid's confidential-asset transactions.
-- **Adaptor signatures** (`ecdsaAdaptor` trait): The scriptless-script primitive by Andrew Poelstra et al., documented at [github.com/ElementsProject/scriptless-scripts](https://github.com/ElementsProject/scriptless-scripts). Adaptor signatures enable atomic swaps, payment channels with non-script-based payment proofs, and discreet log contracts (DLCs).
+- **Adaptor signatures** (`ecdsaAdaptor` trait): The scriptless-script primitive by Andrew Poelstra et al., documented at [github.com/ElementsProject/scriptless-scripts][scriptless-scripts]. Adaptor signatures enable atomic swaps, payment channels with non-script-based payment proofs, and discreet log contracts (DLCs).
 - **MuSig2 half-aggregation** (`schnorrsigHalfagg` trait): Compresses N Schnorr signatures over distinct messages into roughly N/2 + 1 group elements; useful when batch-verifying many independent BIP-340 signatures.
 
 If your application uses any of these primitives — even just one — `import ZKP` rather than `import P256K`. Mixed imports are technically possible but require fully-qualified `P256K.…` lookups to disambiguate the duplicated shared-source types.
@@ -73,7 +73,21 @@ import ZKP
 let signingKey = try P256K.Signing.PrivateKey()
 ```
 
+### Further reading
+
+Research-paper background for the zero-knowledge primitives discussed above:
+
+- **Confidential Transactions** ([people.xiph.org/~greg/confidential_values.txt][confidential-tx-maxwell]) — Greg Maxwell's original write-up of Pedersen-committed value range proofs.
+- **Bulletproofs++** ([eprint.iacr.org/2022/510][bulletproofs-pp]) — Liu, Nguyen, Yu, Au; IACR preprint introducing the construction behind the `bppp` trait.
+
 ## See Also
 
 - ``P256K``
 - ``ZKP``
+
+[bip-327]: https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki
+[bip-341]: https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki
+[bulletproofs-pp]: https://eprint.iacr.org/2022/510
+[confidential-tx-maxwell]: https://people.xiph.org/~greg/confidential_values.txt
+[liquid-net]: https://liquid.net/
+[scriptless-scripts]: https://github.com/ElementsProject/scriptless-scripts
