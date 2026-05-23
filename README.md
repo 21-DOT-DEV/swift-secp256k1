@@ -36,7 +36,7 @@ Swift cryptography library for Bitcoin and Nostr. ECDSA, Schnorr Signatures, Ell
 Add `swift-secp256k1` to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.23.0"),
+.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.23.2"),
 ```
 
 Then include `P256K` as a target dependency:
