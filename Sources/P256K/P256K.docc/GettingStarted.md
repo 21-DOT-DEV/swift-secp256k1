@@ -19,7 +19,7 @@ Add `swift-secp256k1` as a dependency in your `Package.swift`:
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.23.0"),
+    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.23.2"),
 ],
 targets: [
     .target(
@@ -85,7 +85,7 @@ To opt into additional modules, pass `traits:` in your dependency declaration:
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    exact: "0.23.0",
+    exact: "0.23.2",
     traits: ["zkp"]
 ),
 ```
@@ -101,7 +101,7 @@ The `zkp` bundle trait enables every zero-knowledge-proof module — `bppp`, `ec
 Add the following to your `Podfile`:
 
 ```ruby
-pod 'swift-secp256k1', '0.23.0'
+pod 'swift-secp256k1', '0.23.2'
 ```
 
 CocoaPods consumes a pre-built `P256K.xcframework` produced by the release pipeline rather than building from source. Swift Package Manager remains the recommended path and receives feature parity first; CocoaPods support may be deprecated in a future release.
