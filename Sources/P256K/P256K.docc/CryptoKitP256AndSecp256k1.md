@@ -91,17 +91,22 @@ let signature = try key.signature(for: messageData)
 The P256K equivalent uses ``P256K/Schnorr/PrivateKey``, signs under BIP-340, and exposes a 32-byte x-only verifying key via `xonly` — exactly the shape NIP-01 events and Taproot output keys require:
 
 ```swift
-// P256K — BIP-340 Schnorr over secp256k1, the scheme Nostr and Taproot use
+// P256K — BIP-340 Schnorr over secp256k1, the curve Nostr and Taproot use
 import P256K
 import Foundation
 
 let key = try P256K.Schnorr.PrivateKey()
-let digest = SHA256.hash(data: messageData)
-let signature = try key.signature(for: digest)
-let xonlyPublicKey = key.xonly.bytes   // 32 bytes — the Nostr pubkey
+
+// Nostr NIP-01: sign SHA256 of the serialized event
+let serializedEvent: Data = /* NIP-01 deterministic JSON serialization */
+let eventId = SHA256.hash(data: serializedEvent)
+let signature = try key.signature(for: eventId)
+let nostrPubkey = key.xonly.bytes   // 32 bytes — the npub
 ```
 
-Schnorr signing in P256K takes a pre-computed digest because BIP-340 uses tagged hashes in practice, and protocols (NIP-01, BIP-341) specify their own message-domain separators.
+Schnorr signing in P256K takes a pre-computed digest. BIP-340 accepts arbitrary-length messages but recommends domain separation via tagged hashing. Bitcoin's BIP-341 follows that recommendation with a `TapSighash` tagged hash; Nostr NIP-01 takes a simpler route — `SHA256(serialized event)`, no domain separator. Either way the message arrives at the signer as a fixed 32-byte digest, which is why P256K's Schnorr API takes a `Digest`.
+
+Taproot key-path spends use the same `signature(for: Digest)` call, with the digest constructed via `SHA256.taggedHash(tag: "TapSighash", ...)` per BIP-341 (linked under Standards and specifications below).
 
 #### ECDH: Lightning channel setup and Nostr direct messages
 
@@ -149,7 +154,7 @@ The curves, signature schemes, and message-domain protocols compared above are d
 
 - **NIST cryptographic standards** — [FIPS 186-5][fips-186-5] (Digital Signature Standard governing the NIST curves) and its parameter document **NIST SP 800-186** (curve parameters for NIST P-256).
 - **[SEC 2 v2 §2.4.1][sec2-v2]** — secp256k1 curve parameters; also contains the X9.62 verifiable-random procedure used for secp256r1.
-- **[Bitcoin BIPs catalog][bips-catalog]** — the relevant proposals are **BIP-137** (signed-message format), **BIP-146** (lower-S signature normalization), and **BIP-340** (Schnorr signatures over secp256k1).
+- **[Bitcoin BIPs catalog][bips-catalog]** — the relevant proposals are **BIP-137** (signed-message format), **BIP-146** (lower-S signature normalization), **BIP-340** (Schnorr signatures over secp256k1), and **BIP-341** (Taproot key-path spend; `TapSighash` tagged-hash construction).
 - **[Nostr NIPs catalog][nips-catalog]** — the relevant proposals are **NIP-01** (Nostr event signing), **NIP-04** (legacy direct-message encryption), and **NIP-44** (current direct-message encryption).
 - **[Lightning BOLT-08][bolt-08]** — Lightning encrypted-transport handshake (Noise XK).
 - **[`bitcoin-core/secp256k1`][libsecp256k1]** — upstream reference C implementation and threat model.
