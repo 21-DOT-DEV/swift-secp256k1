@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `WorkingWithKeys` DocC article consolidating the previous `KeyFormats`, `SerializingKeys`, and `TweakingKeys` articles into a single key-handling guide covering compressed/uncompressed/x-only encoding, PEM/DER serialization, and additive/multiplicative tweak operations (#1128)
 - `ECDSASigningAndBitcoinTransactions` DocC article covering DER and compact encoding, low-S normalization, and a BIP-143 sighash recipe (#1128)
-- Taproot key-path spend example using `SHA256.taggedHash(tag: "TapSighash", ...)` and BIP-341 reference in the Schnorr documentation
+- Taproot key-path spend example using `SHA256.taggedHash(tag: "TapSighash", ...)` and BIP-341 reference in the Schnorr documentation (#1128)
 - `SharedSourcesPlugin` trust note in the README installation section (#1106)
 
 ### Changed
