@@ -1,25 +1,27 @@
 # swift-secp256k1 Product Roadmap
 
-**Version**: v1.4.0  
-**Last Updated**: 2026-03-14  
+**Version**: v2.0.0  
+**Last Updated**: 2026-06-05  
 **Constitution**: [constitution.md](constitution.md)
 
 ---
 
 ## Vision & Goals
 
-Build the most reliable, secure, and developer-friendly Swift wrapper for secp256k1 elliptic curve cryptography, enabling Bitcoin, Lightning, and Nostr application development with zero runtime dependencies.
+Build the most reliable, secure, and developer-friendly Swift secp256k1 library — the elliptic-curve specialist for Bitcoin, Bitcoin Layer-2 (Lightning, ARK, Cube), Nostr, and Cashu — with zero runtime dependencies.
 
-**Target Audience**:
-- Bitcoin wallet developers
-- Lightning Network application builders
-- Nostr client developers
+**Target Audience** (ordered by strategic priority; see [Downstream Demand](#downstream-demand)):
+- Bitcoin wallet developers (ECDSA, Schnorr/Taproot, keys)
+- **Bitcoin Layer-2 / scaling developers — top strategic focus**: Lightning, ARK, and Cube (MuSig2/BIP-327, adaptor signatures, Taproot/x-only, BOLT11)
+- Nostr client & relay developers
+- Cashu ecash developers
+- AI-agent / machine-payment & decentralized-messaging developers (cryptographic identity)
 - Swift developers needing secp256k1 primitives
 
 **Core Value Proposition**:
 - Zero runtime dependencies (libsecp256k1 bindings only)
 - Swift Crypto-inspired API design
-- Comprehensive BIP compliance
+- Comprehensive BIP/NIP/NUT/BOLT compliance for the in-scope ecosystems
 - Cross-platform reliability (all Apple platforms + Linux)
 
 ---
@@ -28,36 +30,84 @@ Build the most reliable, secure, and developer-friendly Swift wrapper for secp25
 
 | Item | Description | Status |
 |------|-------------|--------|
-| **swift-crypto 4.2.0 Update** | Update vendored swift-crypto via subtree plugin from 3.11.1 to 4.2.0. Resolve breaking availability attribute changes in `Sources/Shared/` on case-by-case basis (e.g., `UInt256.swift` retains current attributes due to `StaticBigInt` dependency). | 🔜 Planned |
-| **UInt256 SecurityTests** | Add security test vectors for `UInt256`/`SIMDWordsInteger` to `Projects/Sources/SecurityTests/`. Cover: overflow detection, boundary correctness, power-of-two multiply paths, Codable parsing hardening. Use swift-testing framework with `*ReportingOverflow` pattern. | 🔜 Planned |
+| **Module-rename migration & version adoption** | Most downstream consumers are stranded on the legacy `secp256k1` product name and old pins (e.g., 0.12.2, 0.18.0, 0.19.0). Primitives added only to `P256K` cannot reach them. Provide a migration path / compatibility story so new APIs are actually adoptable — the single highest adoption lever. | 🔜 Planned |
+| **swift-crypto 4.2.0 Update** | Update vendored swift-crypto via subtree plugin from 3.11.1 to 4.2.0. Resolve breaking availability attribute changes in `Sources/Shared/` on a case-by-case basis (e.g., `UInt256.swift` retains current attributes due to `StaticBigInt` dependency). | 🔜 Planned |
+| **UInt256 SecurityTests** | Add security test vectors for `UInt256`/`SIMDWordsInteger` to `Projects/Sources/SecurityTests/`: overflow detection, boundary correctness, power-of-two multiply paths, Codable parsing hardening. _(The `SecurityTests` target exists with DER/InvalidCurve/PointValidation/ScalarValidation/SignatureMalleability/ZeroSignature/Nonce coverage; UInt256 vectors are still absent.)_ | 🔜 Planned |
 
 ---
 
-## Phases Overview
+## Package Separation: swift-secp256k1 ↔ swift-openssl
 
-| Phase | Name | Status | File |
-|-------|------|--------|------|
-| **0** | Tooling Foundation | ✅ Complete | [phase-0-tooling-foundation.md](roadmap/phase-0-tooling-foundation.md) |
-| **1** | Testing Foundation | ✅ Complete | [phase-1-testing-foundation.md](roadmap/phase-1-testing-foundation.md) |
-| **2** | CI & Quality Gates | 🔜 Planned | [phase-2-ci-quality-gates.md](roadmap/phase-2-ci-quality-gates.md) |
-| **3** | Documentation & DX | 🔜 Planned | [phase-3-documentation-dx.md](roadmap/phase-3-documentation-dx.md) |
-| **4** | Bitcoin Utility Primitives | 🔜 Planned | [phase-4-bitcoin-utility-primitives.md](roadmap/phase-4-bitcoin-utility-primitives.md) |
-| **5** | Applications | 🔜 Planned | [phase-5-applications.md](roadmap/phase-5-applications.md) |
-| **6** | Long-term: MACs & PRFs | 📋 Future | [phase-6-macs-prfs.md](roadmap/phase-6-macs-prfs.md) |
-| **7** | Long-term: KDFs | 📋 Future | [phase-7-kdfs.md](roadmap/phase-7-kdfs.md) |
-| **—** | Backlog | 📋 Future | [backlog.md](roadmap/backlog.md) |
+`swift-secp256k1` is the **secp256k1 EC specialist**; general-purpose crypto is sourced from the sibling **`swift-openssl`** package. The boundary is **priority + fallback**, not a wall: swift-secp256k1 grows the Bitcoin-relevant primitives at its own pace; swift-openssl is the comprehensive superset and the always-available fallback meanwhile.
+
+**Rule of thumb** — *Does it grow from the SHA-256/HMAC core already in libsecp256k1?*
+
+| Zone | Primitives | swift-secp256k1 | swift-openssl |
+|------|-----------|-----------------|---------------|
+| **A — EC only** (OpenSSL can't match Schnorr/MuSig2/recovery) | ECDSA + recovery, Schnorr/BIP-340, MuSig2, ECDH (raw point), x-only, key tweaks, adaptor sigs, DLEQ, FROST, ellswift, hash-to-curve, key representations | ✅ **only** | ❌ |
+| **B — overlap, high priority** (cheap SHA-2 tower; Bitcoin-essential) | HMAC-SHA256 *(expose existing C)*, SHA-512 → HMAC-SHA512 *(mirror)*, HKDF, PBKDF2-SHA512, double-SHA256, HMAC-DRBG *(RFC-6979 exists)* | ✅ **high** | ✅ (overlap) |
+| **C — overlap, low priority** (separate but Bitcoin-relevant; openssl fallback now) | RIPEMD-160 / HASH160, SipHash, SHA-512/256 | 🔜 **low** | ✅ (use meanwhile) |
+| **D — swift-openssl only** (separate + general; don't duplicate) | ChaCha20 / XChaCha20 / AES, scrypt, SHA-3 / Keccak, MurmurHash3 | ❌ | ✅ **only** |
+
+**Encodings** (Bech32 / Bech32m / NIP-19 TLV / BOLT11-12) live in swift-secp256k1 — OpenSSL doesn't provide them and they're bound to secp256k1 *outputs* (addresses, npubs). `base64` → Foundation.
+
+**Why this works:** libsecp256k1 already ships SHA-256, **HMAC-SHA256**, and an HMAC-SHA256-DRBG (RFC-6979) in C — so the whole SHA-2 tower (Zone B) is a thin shim/mirror, making swift-secp256k1 **self-sufficient for the Bitcoin core** (BIP-32 HMAC-SHA512, BIP-39 PBKDF2, BIP-340 tagged hashes) with zero new dependencies.
+
+**Composition** — protocols combining both live in consumer apps / companion packages, not in either core: **NIP-44** = ECDH + HKDF + HMAC *(here)* + ChaCha20 *(swift-openssl)*; **BIP-32/39** HD wallets; **Cashu** mint/wallet.
+
+---
+
+## Roadmap — Now / Next / Later
+
+Phases are **theme-based capability slices**, ordered by **downstream-consumer reach** (RICE: Reach ÷ Effort) with enablers pulled forward (WSJF), grouped into Now / Next / Later horizons — the further out, the more uncertain. "Reach" = how many in-scope cohorts hand-roll or need the capability.
+
+| Horizon | # | Phase | Reach (who needs it) | Status |
+|---------|---|-------|----------------------|--------|
+| **✅ Foundation** | 0 | [Tooling Foundation](roadmap/phase-0-tooling-foundation.md) | enabler | ✅ Complete |
+| | 1 | [Testing Foundation](roadmap/phase-1-testing-foundation.md) | enabler | ✅ Complete |
+| **🔵 Now** | 2 | [CI & Quality Gates](roadmap/phase-2-ci-quality-gates.md) | enabler | 🔜 Planned |
+| | 3 | [Documentation & DX](roadmap/phase-3-documentation-dx.md) | all | 🚧 In Progress |
+| | 4 | [Encodings](roadmap/phase-4-encodings.md) | ★★★★★ Nostr, Bitcoin, Lightning, ARK | 🔜 Planned |
+| | 5 | [SHA-2 Hash & MAC Tower](roadmap/phase-5-sha2-tower.md) | ★★★★☆ Lightning, Nostr, HD wallets | 🔜 Planned |
+| | 6 | [Adaptor & Threshold Signatures](roadmap/phase-6-adaptor-threshold-signatures.md) | ★★★★☆ Lightning / ARK / Cube (L2) | 🔜 Planned |
+| **🟡 Next** | 7 | [HD-Wallet & Key Derivation](roadmap/phase-7-hd-wallet-derivation.md) | ★★★★☆ wallets, Nostr (NIP-06), Cashu | 🔜 Planned |
+| | 8 | [Blind Signatures & DLEQ](roadmap/phase-8-blind-signatures-dleq.md) | ★★★☆☆ Cashu | 🔜 Planned |
+| | 9 | [Applications / L2 Showcase](roadmap/phase-9-applications.md) | demo / reference | 🔜 Planned |
+| **⚪ Later** | 10 | [secp256k1-Native Protocols](roadmap/phase-10-native-protocols.md) | ★★★☆☆ Bitcoin advanced | 📋 Future |
+| | 11 | [Forward-looking Signatures](roadmap/phase-11-forward-looking-signatures.md) | ★★☆☆☆ future | 📋 Future |
+| **—** | — | [Backlog](roadmap/backlog.md) | — | 📋 Future |
 
 ### Phase Summaries
 
-- **Phase 0** — SPM pre-build plugin enabling code sharing between P256K and ZKP targets from a single source
-- **Phase 1** — Test architecture under `Projects/`; BIP-340 Schnorr vectors, Wycheproof ECDSA/ECDH vectors, CVE regression tests, native secp256k1/zkp test suites
-- **Phase 2** — Coveralls code coverage (tiered: ≥90% critical, ≥70% overall), CodeQL security scanning, fuzz testing, exit tests for precondition failures
-- **Phase 3** — DocC setup at docs.21.dev with quickstart guide; 5 tutorials (ECDSA, Schnorr/BIP-340, Key Formats, ECDH, MuSig2); UInt256 audit and improvement
-- **Phase 4** — SHA-512 (zero-dep, constant-time), RIPEMD-160 / HASH160, Bech32/Bech32m encoding for Bitcoin (SegWit/Taproot), Lightning (BOLT11), and Nostr (NIP-19)
-- **Phase 5** — MuSig2 SwiftUI signing app on all Apple platforms; Bitcoin multi-sig wallet and Nostr shared-account user flows
-- **Phase 6** — HMAC-SHA512 (BIP-32), HMAC-SHA256, HKDF (BIP-151), SipHash (BIP-152/158), MurmurHash3 (BIP-37), HMAC-DRBG
-- **Phase 7** — PBKDF2-SHA512 for BIP-39 mnemonic-to-seed derivation; scrypt for BIP-38 encrypted private keys
-- **Backlog** — Data structures (Bloom filters, Golomb-coded sets, Merkle trees), CLI apps, additional primitives (tagged hashes, Base58Check, strict DER), Windows support
+- **Phase 0 — Tooling Foundation** ✅ — SPM pre-build plugin sharing code between P256K and ZKP targets from one source.
+- **Phase 1 — Testing Foundation** ✅ — Test architecture under `Projects/`: BIP-340 Schnorr, Wycheproof ECDSA/ECDH, MuSig2, CVE, and security vectors.
+- **Phase 2 — CI & Quality Gates** — Coveralls coverage (tiered), CodeQL, fuzzing, exit tests. *(Platform/benchmark CI exists; these deliverables not started.)*
+- **Phase 3 — Documentation & DX** 🚧 — DocC live at docs.21.dev (10 articles shipped); remaining: Key-Formats deep-dive, Schnorr/x-only article, interactive tutorials, UInt256 audit.
+- **Phase 4 — Encodings** — Bech32/Bech32m, NIP-19 + TLV, BOLT11/BOLT12, Base58Check/WIF. The highest-reach unbuilt work; every Nostr/Bitcoin/Lightning consumer hand-rolls it.
+- **Phase 5 — SHA-2 Hash & MAC Tower** — SHA-512, double-SHA256, HMAC-SHA256 (expose C), HMAC-SHA512 (mirror), HKDF, HMAC-DRBG. Cheap (cores in C); unblocks HD-wallet.
+- **Phase 6 — Adaptor & Threshold Signatures** — wrap the vendored `ecdsa_adaptor` C (Lightning PTLCs, ARK, Cube); FROST groundwork. The strategic L2 lever.
+- **Phase 7 — HD-Wallet & Key Derivation** — BIP-32 CKD + xpub/xprv serialization, BIP-39 (PBKDF2-SHA512 + wordlist), HASH160/RIPEMD-160 (low). Depends on Phase 5.
+- **Phase 8 — Blind Signatures & DLEQ** — Cashu BDHKE (hash-to-curve, DST `Secp256k1_HashToCurve_Cashu_`) + NUT-12 DLEQ. Re-verify constants before implementing.
+- **Phase 9 — Applications / L2 Showcase** — MuSig2 SwiftUI app re-aimed at L2 (ARK/Cube covenant signing, Lightning PTLC) + NIP-19 / BIP-137 samples.
+- **Phase 10 — secp256k1-Native Protocols** — Silent Payments (BIP-352), ellswift / BIP-324 v2 transport.
+- **Phase 11 — Forward-looking Signatures** — FROST threshold (draft), Schnorr half-aggregation.
+- **Backlog** — Data structures (Bloom/Golomb/Merkle), CLI apps, niche primitives, Windows support.
+
+---
+
+## Downstream Demand
+
+Priorities are informed by how downstream apps and libraries actually use the package across the Bitcoin, Lightning, Nostr, and Cashu ecosystems.
+
+**Cohort priority stack:**
+1. **Bitcoin + Bitcoin Layer-2** (Lightning, ARK, Cube) — strategic focus. ARK/Cube emulate covenants with MuSig2; Lightning uses MuSig2 + PTLC adaptor signatures. *(ARK/Cube are nascent in the public data — strategic bets, not raw count.)*
+2. **Nostr**, then **Cashu**, then **AI-agent / messaging**.
+
+**Key findings:**
+- **The EC-signature layer is already complete** (Schnorr, ECDSA + recovery, MuSig2, ECDH, x-only, tweaks) — it already covers BOLT11/12 signing, Lightning Sphinx ECDH, ARK/Cube MuSig2, NIP-01, and Cashu BDHKE point ops. The remaining work is **utility primitives** (encodings, hashing, MAC/KDF) — i.e., Phases 4–8.
+- **Module-era skew is the top adoption lever** — most consumers are stranded on the legacy `secp256k1` product name + old pins; primitives added only to `P256K` don't reach them.
+- **Most-used surfaces already ship but were roadmap-invisible** — key-format serialization (universal) and ECDH (Nostr/Cashu; Lightning Sphinx). Harden + document, don't rebuild.
+- **Adaptor signatures are vendored-C-only** — the `ZKP` tier is `Placeholder.swift`; Phase 6 wraps the existing C.
 
 ---
 
@@ -73,48 +123,37 @@ Build the most reliable, secure, and developer-friendly Swift wrapper for secp25
 | Build time | < 60 seconds clean build | 🔜 |
 | Zero runtime dependencies | Maintained | ✅ |
 
-**Note**: Adoption and grant-readiness metrics tracked in separate repository.
+**Note**: Adoption and grant-readiness metrics tracked in a separate repository.
 
 ---
 
 ## High-Level Dependencies
 
-```
-Phase 0 (SPM Plugin) ──► Phase 1 (Testing) ──► Phase 2 (CI/Quality)
-                                                      │
-                                                      ▼
-                              Phase 3 (Docs) ◄─── can overlap
-                                    │
-                                    ▼
-                        Phase 4 (Primitives) ──► Phase 5 (Apps)
-                                                      │
-                                                      ▼
-                                          Phase 6-7 (Long-term)
-```
-
-- **Phase 0** unblocks code sharing between P256K and ZKP
-- **Phase 1-2** must complete before adding new cryptographic code
-- **Phase 3** can partially overlap with Phase 2
-- **Phase 4** depends on testing/CI infrastructure
-- **Phase 5** demonstrates Phase 4 primitives in action
+- **Foundation (Phase 0 → 1)** ✅ unblocks all new cryptographic code.
+- **Phase 5 (SHA-2 Tower)** enables **Phase 7 (HD-Wallet)** (HMAC-SHA512/PBKDF2) and feeds **Phase 8 (DLEQ uses SHA-256)**.
+- **Phase 4 (Encodings)** feeds **Phase 7** (Base58Check for xpub/xprv) and **Phase 9** (address/invoice display).
+- **Phase 6 (Adaptor sigs)** enables **Phase 9** (PTLC demo) and the L2 strategy.
+- **Phase 2 (CI)** + **Phase 3 (Docs)** are continuous enabler tracks that overlap everything.
+- **Zone-D primitives** (ChaCha20, scrypt, AES, SHA-3) are **not** roadmap items — they come from swift-openssl (see Package Separation).
 
 ---
 
 ## Global Risks & Assumptions
 
 **Assumptions**:
-- Zero runtime dependency philosophy is maintained across all phases (libsecp256k1 bindings only)
-- Swift Package Manager remains the primary build system; Tuist used for `Projects/` only
-- All six Apple platforms + Linux continue as supported targets
+- Zero runtime dependency philosophy is maintained for `swift-secp256k1` (libsecp256k1 bindings only); general crypto is sourced from `swift-openssl`, not added as a dependency here.
+- Swift Package Manager remains the primary build system; Tuist used for `Projects/` only.
+- All six Apple platforms + Linux continue as supported targets.
 
 **Risks & Mitigations**:
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| Zero-dependency constraint limits implementation options | All hash/MAC/KDF primitives must be hand-rolled | Base on libsecp256k1 patterns; accept modest performance cost vs platform crypto |
-| Constant-time requirement for all crypto code | Significant verification burden per primitive | Adopt libsecp256k1's existing constant-time patterns; consider formal verification for critical paths |
-| Platform breadth (6 platforms) multiplies CI/testing effort | Slow CI, flaky platform-specific failures | Tiered CI: full matrix on release, subset on PRs |
-| Scope creep from BIP completeness pressure | Primitives expand into full protocol implementations | Strict scope: primitives only in Phases 4-7; full BIP protocols are separate packages/features |
+| Hand-rolling crypto under the zero-dependency constraint | Verification burden per primitive | Limit built-here crypto to the **SHA-2 tower** (Zone B — cores already in libsecp256k1 C); defer ciphers/scrypt/SHA-3 to swift-openssl (Zone D) |
+| Constant-time requirement for all crypto code | Significant verification burden | Adopt libsecp256k1's existing constant-time patterns; constant-time compare helpers for MAC verification |
+| Platform breadth (6 platforms) multiplies CI/testing effort | Slow CI, flaky failures | Tiered CI: full matrix on release, subset on PRs |
+| Scope creep from BIP/NIP/NUT completeness pressure | Primitives expand into full protocols | Strict scope: primitives + encodings only; full protocol stacks (NIP-44, BIP-39, Cashu) are composition in apps/companion packages |
+| Cashu constants (hash-to-curve / DLEQ) drift | Interop breakage | Re-verify against `cashubtc/nuts` primary specs before implementing Phase 8 |
 
 ---
 
@@ -122,8 +161,9 @@ Phase 0 (SPM Plugin) ──► Phase 1 (Testing) ──► Phase 2 (CI/Quality)
 
 | Version | Date | Change Type | Description |
 |---------|------|-------------|-------------|
-| v1.0.0 | 2025-12-03 | Initial | Initial roadmap with 8 phases + backlog |
-| v1.1.0 | 2025-12-12 | Added | High Priority Items section with Swift Version Compatibility Table |
-| v1.2.0 | 2025-12-14 | Completed | Swift Version Compatibility Table implemented in README.md |
-| v1.3.0 | 2025-12-26 | Updated | Phase 0 & 1 marked complete; added swift-crypto 4.2.0 update and UInt256 SecurityTests as high-priority items |
-| v1.4.0 | 2026-03-14 | Improved | Full overview refresh: added per-phase summaries, removed completed high-priority item, added Global Risks & Assumptions section |
+| v1.4.0 | 2026-03-14 | Improved | Full overview refresh: per-phase summaries, Global Risks & Assumptions section |
+| v1.5.0 | 2026-06-05 | Reprioritized | Downstream-demand refactor: verified completed statuses; 324-consumer analysis; reprioritized by measured demand; migration high-priority lever |
+| v1.6.0 | 2026-06-05 | Refocused | Strategic refocus on Bitcoin & Bitcoin Layer-2 (Lightning, ARK, Cube): re-elevated MuSig2 + adaptor sigs and sharpened scope to the Bitcoin / Nostr / Cashu ecosystems |
+| v1.7.0 | 2026-06-05 | Researched | Deep-research pass 1 (Bitcoin/L2): EC-signature layer confirmed complete; corrected 3 errors (adaptor sigs vendored-C-only; Sphinx = HMAC-SHA256 not HKDF; tagged-hash partial) |
+| v1.8.0 | 2026-06-05 | Researched | Deep-research pass 2 (Nostr/Cashu): NIP-44 exact construction, NIP-19 Bech32/TLV, Cashu BDHKE + NUT-12 DLEQ; corrected NIP-44 to bare ChaCha20 (not Poly1305 AEAD) |
+| **v2.0.0** | **2026-06-05** | **Restructured** | Re-architected into **12 demand-ordered, theme-based phases on Now/Next/Later horizons** (RICE/WSJF by downstream reach); added the centralized **Package Separation (swift-secp256k1 ↔ swift-openssl)** section (Zone A–D + priority/fallback rule); promoted ZKP-tier / BDHKE / Silent-Payments / ellswift / BIP-32-serialization from backlog to first-class phases; **folded the standalone `downstream-demand.md` + `foundational-toolkit-research.md` into this fileset (distilled) and removed them**; resolved ChaCha20 → sourced from swift-openssl (NIP-44 = composition) |

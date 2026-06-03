@@ -1,10 +1,11 @@
 # Phase 1: Testing Foundation
 
 **Goal**: Establish robust, exhaustive testing infrastructure for cryptographic correctness  
+**Horizon**: ✅ Foundation  
 **Status**: ✅ Complete  
 **Last Updated**: 2025-12-26  
 **Depends On**: Phase 0 (SPM Plugin)  
-**Blocks**: Phase 2 (CI), Phase 4 (new primitives)
+**Blocks**: Phase 2 (CI); all primitive phases (4–11)
 
 ---
 

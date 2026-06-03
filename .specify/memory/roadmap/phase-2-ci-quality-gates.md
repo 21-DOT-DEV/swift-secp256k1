@@ -1,10 +1,13 @@
 # Phase 2: CI & Quality Gates
 
 **Goal**: Establish continuous quality assurance with coverage, security scanning, fuzzing, and robust error testing  
+**Horizon**: 🔵 Now (continuous enabler)  
 **Status**: 🔜 Planned  
-**Last Updated**: 2025-12-03  
+**Last Updated**: 2026-06-05  
 **Depends On**: Phase 1 (Testing Foundation)  
-**Blocks**: Phase 4 (safe to add new primitives)
+**Blocks**: primitive phases (4–11) — safe to add new crypto code
+
+**Progress (2026-06-05)**: Platform CI (`apple-builds`, `docker-builds`), benchmark CI (`benchmark-main`/`benchmark-pr`), and release automation (`docc-release`, `xcframework-release`, subtree sync) already exist — but **none of this phase's actual deliverables are started**: no Coveralls/codecov coverage, no CodeQL, no fuzz target, no `#expect(exitsWith:)` exit tests. A rich `SecurityTests` target already exists under `Projects/` (DER, InvalidCurve, PointValidation, ScalarValidation, SignatureMalleability, ZeroSignature, Nonce), partially covering this phase's security-testing intent.
 
 ---
 

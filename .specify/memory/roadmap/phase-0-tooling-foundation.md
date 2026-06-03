@@ -1,9 +1,10 @@
 # Phase 0: Tooling Foundation
 
 **Goal**: Enable code sharing between P256K and ZKP products without duplication  
+**Horizon**: ✅ Foundation  
 **Status**: ✅ Complete  
 **Last Updated**: 2025-12-26  
-**Blocks**: Phase 1, Phase 4 (any code that benefits from sharing)
+**Blocks**: Phase 1; all primitive phases (4–11) that benefit from shared code
 
 ---
 
