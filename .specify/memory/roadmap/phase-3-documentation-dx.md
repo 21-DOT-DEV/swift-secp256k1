@@ -1,10 +1,32 @@
 # Phase 3: Documentation & Developer Experience
 
 **Goal**: Enable adoption through comprehensive documentation, tutorials, and improved API ergonomics  
-**Status**: 🔜 Planned  
-**Last Updated**: 2025-12-03  
+**Horizon**: 🔵 Now (continuous enabler)  
+**Status**: 🚧 In Progress  
+**Last Updated**: 2026-06-05  
 **Depends On**: Phase 2 (CI & Quality Gates) — can partially overlap  
-**Blocks**: Phase 5 (apps need documented APIs)
+**Blocks**: Phase 9 (apps need documented APIs)
+
+---
+
+## Progress (2026-06-05)
+
+DocC catalog is live; documentation currently exists as **articles** (not yet interactive `.tutorial`s). Built archives ship in `docs/` and `docc-release.yml` publishes to docs.21.dev. Per-feature status:
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Initial DocC Setup | ✅ Done | Catalog configured; `P256K`/`ZKP` landing pages; CI publishes |
+| Quickstart | ✅ Done (article) | `GettingStarted.md` |
+| Getting Started (ECDSA) | ✅ Done (article) | `ECDSASigningAndBitcoinTransactions.md` |
+| Schnorr (BIP-340) | 🟡 Partial | Covered within signing/keys articles; no dedicated Schnorr article |
+| Key Formats | 🟡 Partial — **reprioritized up** | `WorkingWithKeys.md`; expand to raw/compressed/DER/x963/PEM — the single most-used downstream surface |
+| ECDH | ✅ Done (article) | `EllipticCurveDiffieHellman.md` |
+| MuSig2 | ✅ Done (article) | `MuSig2MultiSignatures.md` |
+| Recovering Public Keys | ✅ Done (article) | `RecoveringPublicKeys.md`; Bitcoin message signing (BIP-137) |
+| Silent Payments | 📄 Doc-only | `SilentPayments.md` article exists but **no implementation** — see Phase 10 (Native Protocols) |
+| UInt256 Audit | 🔜 Planned | Source moved ZKP → `Sources/Shared/` (see corrected note below) |
+
+**Remaining**: deepen Key Formats; dedicated Schnorr/x-only article; UInt256 audit; optionally convert articles to interactive `.tutorial`s.
 
 ---
 
@@ -146,7 +168,7 @@ Advanced tutorial covering MuSig2 multi-party Schnorr signatures per BIP-327. Sm
 
 **Notes**:
 - Priority P3 (complete coverage)
-- May reference Phase 5 MuSig2 app as practical example
+- May reference Phase 9 MuSig2 app as practical example
 
 ---
 
@@ -166,7 +188,8 @@ Audit existing UInt256 implementation in ZKP for correctness, API ergonomics, an
 - Phase 2 coverage infrastructure (to measure current state)
 
 **Notes**:
-- Cross-reference current usage in `Sources/ZKP/UInt256.swift` and `Sources/ZKP/Asymmetric.swift`
+- **Updated 2026-06-05**: `UInt256` has been promoted from ZKP to `Sources/Shared/UInt256/` (now compiled into both `P256K` and `ZKP`). Cross-reference `Sources/Shared/UInt256/UInt256.swift` (+ `UInt256+Arithmetic/+FixedWidthInteger/+Modular/+Representation`), **not** the old `Sources/ZKP/UInt256.swift` path.
+- Pairs with the **UInt256 SecurityTests** high-priority item (security vectors not yet in `Projects/Sources/SecurityTests/`).
 - Consider: overflow behavior, constant-time properties, Swift Numerics alignment
 
 ---
@@ -184,11 +207,16 @@ DocC Setup ──► Quickstart ──► Getting Started (ECDSA)
                     └──► UInt256 Audit (parallel)
 ```
 
-**Priority order**:
-1. DocC Setup + Quickstart + Getting Started (ECDSA) — initial release
-2. Schnorr + Key Formats — fast follow
-3. ECDH + MuSig2 — complete coverage
-4. UInt256 Audit — can run in parallel
+**Priority order (revised 2026-06-05 — most articles shipped; remaining work, strategy-ordered)**:
+1. **Bitcoin L2 signing guide** — MuSig2 (BIP-327) covenant/pooled signing + Schnorr **adaptor signatures** (ZKP) for ARK / Cube / Lightning. The MuSig2 article ships; extend with adaptor-sig + L2 framing.
+2. Dedicated **Schnorr / BIP-340 + x-only + Taproot** article (L2, Nostr)
+3. **Key Formats deep-dive** — universal surface (raw/compressed/DER/x963/PEM)
+4. UInt256 audit (now in `Sources/Shared/`)
+5. Interactive `.tutorial` conversion (optional; current docs are articles)
+
+(`RecoveringPublicKeys.md` already ships — relevant to Bitcoin message signing (BIP-137); keep as-is.)
+
+_Original sequencing (for reference): DocC Setup + Quickstart + Getting Started → Schnorr + Key Formats → ECDH + MuSig2 → UInt256 Audit. Most of this is now shipped as articles._
 
 ---
 
