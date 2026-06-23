@@ -119,7 +119,7 @@ extension Package.Dependency {
             .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "2.1.9"),
             .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.200.5"),
             .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.61.1"),
-            .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.64.0"),
+            .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.64.1"),
             .package(url: "https://github.com/21-DOT-DEV/swift-plugin-subtree.git", exact: "0.0.15"),
             .package(url: "https://github.com/swiftlang/swift-docc-plugin", exact: "1.5.0")
         ]
