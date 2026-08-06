@@ -2,7 +2,9 @@
 
 ## Reporting a Vulnerability
 
-To report a security vulnerability in swift-secp256k1, please use [GitHub Security Advisories](https://github.com/21-DOT-DEV/swift-secp256k1/security/advisories).
+To report a security vulnerability in swift-secp256k1, either:
+- send an email to `security@21.dev`, or
+- use [GitHub Security Advisories](https://github.com/21-DOT-DEV/swift-secp256k1/security/advisories).
 
 **Do not file a public issue.**
 
