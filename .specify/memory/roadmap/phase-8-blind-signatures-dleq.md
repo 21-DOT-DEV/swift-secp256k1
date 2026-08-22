@@ -3,6 +3,7 @@
 **Goal**: Cashu's blind Diffie-Hellman key exchange (BDHKE) and NUT-12 discrete-log-equality proofs — secp256k1-native, for the ecash cohort  
 **Horizon**: 🟡 Next  
 **Status**: 🔜 Planned  
+**Funding**: Outside the 2026 funding window  
 **Reach**: ★★★☆☆ — Cashu (CashuSwift, macadamia, bitpoints, nutsack, CashuKit); every lib reimplements BDHKE  
 **Depends On**: SHA-256 + point ops (shipped); hash-to-curve  
 **Last Updated**: 2026-06-05

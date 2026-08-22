@@ -1,7 +1,7 @@
 # swift-secp256k1 Product Roadmap
 
-**Version**: v2.0.0  
-**Last Updated**: 2026-06-05  
+**Version**: v2.1.0  
+**Last Updated**: 2026-08-01  
 **Constitution**: [constitution.md](constitution.md)
 
 ---
@@ -33,6 +33,7 @@ Build the most reliable, secure, and developer-friendly Swift secp256k1 library 
 | **Module-rename migration & version adoption** | Most downstream consumers are stranded on the legacy `secp256k1` product name and old pins (e.g., 0.12.2, 0.18.0, 0.19.0). Primitives added only to `P256K` cannot reach them. Provide a migration path / compatibility story so new APIs are actually adoptable — the single highest adoption lever. | 🔜 Planned |
 | **swift-crypto 4.2.0 Update** | Update vendored swift-crypto via subtree plugin from 3.11.1 to 4.2.0. Resolve breaking availability attribute changes in `Sources/Shared/` on a case-by-case basis (e.g., `UInt256.swift` retains current attributes due to `StaticBigInt` dependency). | 🔜 Planned |
 | **UInt256 SecurityTests** | Add security test vectors for `UInt256`/`SIMDWordsInteger` to `Projects/Sources/SecurityTests/`: overflow detection, boundary correctness, power-of-two multiply paths, Codable parsing hardening. _(The `SecurityTests` target exists with DER/InvalidCurve/PointValidation/ScalarValidation/SignatureMalleability/ZeroSignature/Nonce coverage; UInt256 vectors are still absent.)_ | 🔜 Planned |
+| **Vendir migration** | Adopt vendir-driven vendoring (the pattern proven in swift-openssl), retiring `subtree.yaml`, the subtree CLI/plugin workflows, and most Dependabot configuration. Scheduled in Q1 of the 2026 funding window (shared 2026 roadmap). | 🔜 Planned |
 
 ---
 
@@ -73,9 +74,12 @@ Phases are **theme-based capability slices**, ordered by **downstream-consumer r
 | **🟡 Next** | 7 | [HD-Wallet & Key Derivation](roadmap/phase-7-hd-wallet-derivation.md) | ★★★★☆ wallets, Nostr (NIP-06), Cashu | 🔜 Planned |
 | | 8 | [Blind Signatures & DLEQ](roadmap/phase-8-blind-signatures-dleq.md) | ★★★☆☆ Cashu | 🔜 Planned |
 | | 9 | [Applications / L2 Showcase](roadmap/phase-9-applications.md) | demo / reference | 🔜 Planned |
+| | 9.5 | [Command-Line Tool](roadmap/phase-9.5-cli-tool.md) | ★★★☆☆ developers, scripting/CI | 🔜 Planned |
 | **⚪ Later** | 10 | [secp256k1-Native Protocols](roadmap/phase-10-native-protocols.md) | ★★★☆☆ Bitcoin advanced | 📋 Future |
 | | 11 | [Forward-looking Signatures](roadmap/phase-11-forward-looking-signatures.md) | ★★☆☆☆ future | 📋 Future |
 | **—** | — | [Backlog](roadmap/backlog.md) | — | 📋 Future |
+
+_Funding note (2026-08-01):_ Phases 3, 8, and 9 sit outside the current 2026 funding window; Phase 9.5 (Q5) and Phase 10's Silent Payments (Q1) are scheduled inside it, per the shared 2026 outreach roadmap.
 
 ### Phase Summaries
 
@@ -89,9 +93,10 @@ Phases are **theme-based capability slices**, ordered by **downstream-consumer r
 - **Phase 7 — HD-Wallet & Key Derivation** — BIP-32 CKD + xpub/xprv serialization, BIP-39 (PBKDF2-SHA512 + wordlist), HASH160/RIPEMD-160 (low). Depends on Phase 5.
 - **Phase 8 — Blind Signatures & DLEQ** — Cashu BDHKE (hash-to-curve, DST `Secp256k1_HashToCurve_Cashu_`) + NUT-12 DLEQ. Re-verify constants before implementing.
 - **Phase 9 — Applications / L2 Showcase** — MuSig2 SwiftUI app re-aimed at L2 (ARK/Cube covenant signing, Lightning PTLC) + NIP-19 / BIP-137 samples.
+- **Phase 9.5 — Command-Line Tool** — key generation, signing, verification, and address/npub encoding in the terminal; Homebrew distribution. Promoted from the backlog for the 2026 funding window.
 - **Phase 10 — secp256k1-Native Protocols** — Silent Payments (BIP-352), ellswift / BIP-324 v2 transport.
 - **Phase 11 — Forward-looking Signatures** — FROST threshold (draft), Schnorr half-aggregation.
-- **Backlog** — Data structures (Bloom/Golomb/Merkle), CLI apps, niche primitives, Windows support.
+- **Backlog** — Data structures (Bloom/Golomb/Merkle), niche primitives, Windows support.
 
 ---
 
@@ -133,6 +138,7 @@ Priorities are informed by how downstream apps and libraries actually use the pa
 - **Phase 5 (SHA-2 Tower)** enables **Phase 7 (HD-Wallet)** (HMAC-SHA512/PBKDF2) and feeds **Phase 8 (DLEQ uses SHA-256)**.
 - **Phase 4 (Encodings)** feeds **Phase 7** (Base58Check for xpub/xprv) and **Phase 9** (address/invoice display).
 - **Phase 6 (Adaptor sigs)** enables **Phase 9** (PTLC demo) and the L2 strategy.
+- **Phase 9.5 (CLI)** depends on **Phase 4** (address/npub encodings); MuSig2 ceremony mode rides shipped MuSig2.
 - **Phase 2 (CI)** + **Phase 3 (Docs)** are continuous enabler tracks that overlap everything.
 - **Zone-D primitives** (ChaCha20, scrypt, AES, SHA-3) are **not** roadmap items — they come from swift-openssl (see Package Separation).
 
@@ -167,3 +173,4 @@ Priorities are informed by how downstream apps and libraries actually use the pa
 | v1.7.0 | 2026-06-05 | Researched | Deep-research pass 1 (Bitcoin/L2): EC-signature layer confirmed complete; corrected 3 errors (adaptor sigs vendored-C-only; Sphinx = HMAC-SHA256 not HKDF; tagged-hash partial) |
 | v1.8.0 | 2026-06-05 | Researched | Deep-research pass 2 (Nostr/Cashu): NIP-44 exact construction, NIP-19 Bech32/TLV, Cashu BDHKE + NUT-12 DLEQ; corrected NIP-44 to bare ChaCha20 (not Poly1305 AEAD) |
 | **v2.0.0** | **2026-06-05** | **Restructured** | Re-architected into **12 demand-ordered, theme-based phases on Now/Next/Later horizons** (RICE/WSJF by downstream reach); added the centralized **Package Separation (swift-secp256k1 ↔ swift-openssl)** section (Zone A–D + priority/fallback rule); promoted ZKP-tier / BDHKE / Silent-Payments / ellswift / BIP-32-serialization from backlog to first-class phases; **folded the standalone `downstream-demand.md` + `foundational-toolkit-research.md` into this fileset (distilled) and removed them**; resolved ChaCha20 → sourced from swift-openssl (NIP-44 = composition) |
+| **v2.1.0** | **2026-08-01** | **MINOR** | 2026 funding-round alignment (shared 2026 outreach roadmap): promoted the CLI from backlog to **Phase 9.5** (scheduled Q5); added the **vendir migration** high-priority item (Q1); funding-window annotations — Phases 3/8/9 outside, Phase 10 Silent Payments pulled in (Q1) |
