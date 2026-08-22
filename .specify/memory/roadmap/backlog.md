@@ -42,14 +42,7 @@ General-purpose structures supporting specific BIPs (in-repo vs recommend-extern
 
 ## Deferred applications (CLIs)
 
-Complement the Phase 9 SwiftUI app:
-
-| App | Notes | Priority |
-|-----|-------|----------|
-| MuSig2 CLI | Command-line ceremony for scripting | Medium |
-| Address Generator | Key → address (Phase 4 Bech32) | Medium |
-| ECDSA Signing CLI | Basic signing/verification | Low |
-| Schnorr Verifier | Standalone verification utility | Low |
+**Promoted 2026-08-01**: the CLI tools (MuSig2 CLI, address generator, ECDSA signing CLI, Schnorr verifier) were promoted from this backlog to **Phase 9.5 — Command-Line Tool** for the 2026 funding window (Q5 of the shared 2026 roadmap). See [phase-9.5-cli-tool.md](phase-9.5-cli-tool.md).
 
 ---
 

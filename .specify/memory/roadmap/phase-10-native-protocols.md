@@ -3,6 +3,7 @@
 **Goal**: secp256k1-native protocol-level capabilities that are pure EC but go beyond single primitives  
 **Horizon**: ⚪ Later  
 **Status**: 📋 Future  
+**Funding**: Silent Payments pulled into the 2026 funding window (Q1 of the shared 2026 roadmap); ellswift / BIP-324 transport remains ⚪ Later  
 **Reach**: ★★★☆☆ — Bitcoin advanced  
 **Depends On**: Phase 4 (encodings), EC ops (shipped)  
 **Last Updated**: 2026-06-05

@@ -3,6 +3,7 @@
 **Goal**: Enable adoption through comprehensive documentation, tutorials, and improved API ergonomics  
 **Horizon**: 🔵 Now (continuous enabler)  
 **Status**: 🚧 In Progress  
+**Funding**: Outside the 2026 funding window (ongoing, unfunded)  
 **Last Updated**: 2026-06-05  
 **Depends On**: Phase 2 (CI & Quality Gates) — can partially overlap  
 **Blocks**: Phase 9 (apps need documented APIs)

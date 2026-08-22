@@ -3,6 +3,7 @@
 **Goal**: Demonstrate the library through Bitcoin-Layer-2-focused apps and reference samples that double as integration tests  
 **Horizon**: 🟡 Next  
 **Status**: 🔜 Planned  
+**Funding**: Outside the 2026 funding window  
 **Reach**: demo / reference (reduces the "everyone hand-rolls it" tax)  
 **Depends On**: Phase 6 (adaptor sigs), Phase 4 (encodings)  
 **Last Updated**: 2026-06-05
@@ -53,7 +54,7 @@ The things consumers currently hand-roll — each a small, copy-pasteable sample
 
 ## Backlog (future apps)
 
-CLI tools deferred to [backlog.md](backlog.md): MuSig2 CLI, ECDSA signing CLI, Schnorr verifier, address generator.
+CLI tools: **promoted to [Phase 9.5](phase-9.5-cli-tool.md)** (2026-08-01, 2026 funding window).
 
 ---
 
