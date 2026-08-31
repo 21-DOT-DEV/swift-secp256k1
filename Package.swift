@@ -116,7 +116,7 @@ extension Package.Dependency {
     static var developmentDependencies: [Package.Dependency] {
         guard Context.gitInformation?.currentTag == nil else { return [] }
         return [
-            .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "2.1.11"),
+            .package(url: "https://github.com/csjones/lefthook-plugin.git", exact: "2.1.12"),
             .package(url: "https://github.com/21-DOT-DEV/swift-plugin-tuist.git", exact: "4.203.4"),
             .package(url: "https://github.com/nicklockwood/SwiftFormat.git", exact: "0.62.1"),
             .package(url: "https://github.com/realm/SwiftLint.git", exact: "0.65.1"),
