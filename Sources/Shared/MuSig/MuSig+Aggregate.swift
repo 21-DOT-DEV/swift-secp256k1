@@ -62,7 +62,7 @@ public import Foundation
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            return P256K.MuSig.PublicKey(
+            return Self.PublicKey(
                 baseKey: PublicKeyImplementation(
                     validatedBytes: pubBytes,
                     format: format,
@@ -172,7 +172,7 @@ public import Foundation
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            return P256K.MuSig.AggregateSignature(Data(signature))
+            return Self.AggregateSignature(Data(signature))
         }
     }
 
