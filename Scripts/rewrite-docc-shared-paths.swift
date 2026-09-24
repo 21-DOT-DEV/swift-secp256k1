@@ -38,6 +38,9 @@
 //      1  usage error
 //      2  I/O failure or duplicate basenames in Sources/Shared/
 //      3  archive references a basename not present in Sources/Shared/
+//      4  zero occurrences rewritten — the plugin-output path shape drifted
+//         (or upstream stopped emitting it); audit links before shipping
+//      5  .build/plugins/outputs paths remain in the archive after rewriting
 //
 
 import Foundation
@@ -53,6 +56,15 @@ import Foundation
 /// path map built from `Sources/Shared/`.
 let brokenPathPattern = #/\.build(?:\\/|/)plugins(?:\\/|/)outputs(?:\\/|/)swift-secp256k1(?:\\/|/)[^/"#\\]+(?:\\/|/)destination(?:\\/|/)SharedSourcesPlugin(?:\\/|/)([^/"#\\]+\.swift)/#
 
+/// Catches *any* plugin-output path left in the archive after rewriting.
+///
+/// `brokenPathPattern` is precise but brittle: SPM controls the directory
+/// layout under `pluginWorkDirectoryURL` (e.g. the `destination` segment is
+/// internal, not contractual), so a toolchain update can silently zero out
+/// rewrites. This looser pattern scans post-rewrite output so a drifted
+/// shape fails the step instead of shipping broken "source" links.
+let residualGhostPattern = #/\.build(?:\\/|/)plugins(?:\\/|/)outputs/#
+
 // MARK: - Types
 
 struct ScriptError: Error, CustomStringConvertible {
@@ -63,6 +75,7 @@ struct RewriteStats {
     var filesScanned = 0
     var filesRewritten = 0
     var occurrencesRewritten = 0
+    var residualGhosts = 0
     var unmappedBasenames: Set<String> = []
 }
 
@@ -141,6 +154,7 @@ func rewriteArchive(at archive: URL, basenames: [String: String]) throws -> Rewr
             stats.filesRewritten += 1
             stats.occurrencesRewritten += fileOccurrences
         }
+        stats.residualGhosts += rewritten.matches(of: residualGhostPattern).count
     }
     return stats
 }
@@ -178,12 +192,28 @@ do {
     exit(2)
 }
 
-print("Scanned \(stats.filesScanned) JSON files; rewrote \(stats.filesRewritten) (\(stats.occurrencesRewritten) occurrences)")
+print("Scanned \(stats.filesScanned) JSON files; rewrote \(stats.filesRewritten) (\(stats.occurrencesRewritten) occurrences); residual plugin paths: \(stats.residualGhosts)")
 
+// Unmapped basenames are checked before the zero-rewrite guard: when every
+// match is unmapped, occurrencesRewritten is 0 but exit 3's missing-file
+// list is the accurate report — the pattern still works, the sources moved.
 if !stats.unmappedBasenames.isEmpty {
     let list = stats.unmappedBasenames.sorted().joined(separator: ", ")
     reportError("\(stats.unmappedBasenames.count) basename(s) referenced in archive but not found in \(args[2]): \(list)")
     exit(3)
+}
+
+// Sources/Shared holds dozens of files, so a healthy archive always has
+// broken paths to fix — zero rewrites means the pattern no longer matches
+// reality, not that the archive is clean.
+if stats.occurrencesRewritten == 0 {
+    reportError("0 occurrences rewritten — plugin-output path shape changed or is no longer emitted; audit the archive's source links and update brokenPathPattern or retire this step")
+    exit(4)
+}
+
+if stats.residualGhosts > 0 {
+    reportError("\(stats.residualGhosts) .build/plugins/outputs path(s) remain in the archive — a plugin path shape the rewrite pattern didn't cover")
+    exit(5)
 }
 
 print("Zero-ghost guard passed")

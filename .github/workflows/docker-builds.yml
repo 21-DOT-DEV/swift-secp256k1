@@ -11,7 +11,7 @@ jobs:
     name: Linux
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Build and test
         run: docker build .
 
@@ -19,7 +19,7 @@ jobs:
     name: WebAssembly
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Build for WebAssembly
         run: |
           docker run --pull=always --rm -v "$PWD:/workspace" -w /workspace \
@@ -37,7 +37,7 @@ jobs:
     name: Android
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Build for Android
         run: |
           docker run --pull=always --rm -v "$PWD:/workspace" -w /workspace \

@@ -3,7 +3,7 @@ Pod::Spec.new do |s|
     # ―――  Spec Metadata  ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
 
     s.name                  = "swift-secp256k1"
-    s.version               = ENV["POD_VERSION"] || "0.21.1" #fallback to first version
+    s.version               = ENV["POD_VERSION"].to_s.empty? ? "0.21.1" : ENV["POD_VERSION"] #fallback to first version
     s.summary               = "P256K: Elliptic curve public key cryptography, ECDH, and Schnorr Signatures for Bitcoin."
     s.description           = "Open-source library for a substantial portion of the APIs of libsecp256k1. Written in Swift for native iOS, macOS, tvOS, watchOS, and visionOS."
     s.homepage              = "https://github.com/21-DOT-DEV/swift-secp256k1"
@@ -29,7 +29,7 @@ Pod::Spec.new do |s|
 
     s.source = {
         :http => "https://github.com/21-DOT-DEV/swift-secp256k1/releases/download/#{s.version}/P256K.xcframework.zip",
-        :sha256 => ENV['XCFRAMEWORK_SHA'] || "3ca84fda7c1680923119a908fa27429382a65328c0c7a3a76534362344fde0f8"  #fallback to first version sha
+        :sha256 => ENV['XCFRAMEWORK_SHA'].to_s.empty? ? "3ca84fda7c1680923119a908fa27429382a65328c0c7a3a76534362344fde0f8" : ENV['XCFRAMEWORK_SHA']  #fallback to first version sha
     }
 
     # ――― Project Settings ――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
