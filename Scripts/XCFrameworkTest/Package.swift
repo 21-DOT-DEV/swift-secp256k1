@@ -12,14 +12,14 @@
 // this manifest exists only to exercise the prebuilt binary, so `swift test`
 // runs without --traits.
 //
-// The libsecp256k1 C target stays declared for two reasons: the binary's
-// swiftinterface still `import`s it (without the clang module, test compile
-// fails with "unable to resolve module dependency"), and P256K.framework is
-// static — it references the C module's symbols without containing them, so
-// linking the test bundle fails unless they are built here. Every optional
-// module is defined unconditionally because the Xcode-built framework was
-// compiled with all of them (Xcode ignores `.when(traits:)`), matching what
-// the old `swift test --traits …` invocation produced.
+// The libsecp256k1 C target stays declared because P256K.framework is static
+// — it references the C module's symbols without containing them, so linking
+// the test bundle fails unless they are built here. (The binary's
+// swiftinterface does `import libsecp256k1` when emitted, but the pipeline's
+// fix-p256k-module-interfaces.sh strips it before this manifest runs — the
+// import resolves to nothing consumers can provide.) Every optional module
+// is defined unconditionally because the Xcode-built framework was compiled
+// with all of them (Xcode ignores `.when(traits:)`).
 
 import PackageDescription
 
