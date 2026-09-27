@@ -119,6 +119,53 @@ DYLIB_INSTALL_NAME_BASE = @rpath
 LD_NO_PIE = NO
 
 
+// Perform Single-Object Prelink
+//
+// Merge the target's objects — plus PRELINK_LIBS — into a single relocatable
+// object via `ld -r`, which Libtool then archives as the framework binary.
+// Tuist 4.203.x wires `.package(product:)` as a build-only
+// packageProductDependencies entry (tuist/tuist#11967 made package products
+// build-only for static targets; earlier Tuist folded them in), so
+// libsecp256k1's objects no longer reach this static framework's archive and
+// the vendored artifact loses every C symbol (the podspec ships only
+// P256K.xcframework). The package product still builds a relinkable object at
+// BUILT_PRODUCTS_DIR; prelinking folds it back in inside Xcode's own link
+// pipeline.
+
+GENERATE_MASTER_OBJECT_FILE = YES
+
+
+// Prelink Libraries
+//
+// Additional object files merged into the master object by the single-object
+// prelink. The package product builds libsecp256k1.o here for every
+// configuration (Release, Release-iphoneos, …) via BUILT_PRODUCTS_DIR.
+
+PRELINK_LIBS = $(BUILT_PRODUCTS_DIR)/libsecp256k1.o
+
+
+// Single-Object Prelink Flags
+//
+// Extra arguments to the prelink `ld -r`. -unexported_symbols_list marks the
+// C symbols private extern for the remainder of that link, and because
+// KEEP_PRIVATE_EXTERNS stays NO the emitted master object demotes them to
+// local (non-external) symbols — still resolvable by the Swift objects merged
+// alongside them, but absent from the interface a consumer links against.
+
+PRELINK_FLAGS = -unexported_symbols_list $(SRCROOT)/Resources/P256K/hidden-symbols.txt
+
+
+// Keep Private Externs
+//
+// Must stay NO. YES would keep the C symbols as private externs in the
+// archive, and private externs still occupy the consumer's linkage-unit
+// symbol table — a consumer that also links secp256k1 would get duplicate
+// symbol errors (the very collision -ObjC/-all_load risks). Demoting them to
+// local symbols is what makes the fold collision-safe.
+
+KEEP_PRIVATE_EXTERNS = NO
+
+
 //********************************************//
 //*               Packaging                  *//
 //********************************************//
