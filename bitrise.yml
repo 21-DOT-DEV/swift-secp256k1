@@ -188,9 +188,11 @@ workflows:
             # interface script rewrites and asserts on.
             cp Scripts/XCFrameworkTest/Package.swift Package.swift
 
-            # Force the parseable-interface path: the same toolchain that
-            # built the framework can satisfy `import P256K` from the binary
-            # .swiftmodule and never read the shipped .swiftinterface text.
+            # Distribution-built frameworks ship only .swiftinterface files,
+            # so the interface path is the only load path; the env var is
+            # belt-and-suspenders in case a serialized .swiftmodule ever
+            # lands in the artifact and same-toolchain resolution short-
+            # circuits the interface parse.
             SWIFT_FORCE_MODULE_LOADING=only-interface swift test --traits ecdh,musig,recovery,schnorrsig,uint256
   PULL-PACKAGE-FILES:
     steps:
