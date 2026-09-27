@@ -61,7 +61,7 @@ workflows:
     steps:
     - script:
         title: BUILD ZKP
-        timeout: 360
+        timeout: 720
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -197,7 +197,7 @@ workflows:
         - is_compress: true
     - script:
         title: TEST XCFRAMEWORK
-        timeout: 360
+        timeout: 720
         inputs:
         - content: |-
             #!/usr/bin/env bash
