@@ -102,7 +102,7 @@ workflows:
         - content: |-
             #!/usr/bin/env bash
             # fail if any commands fails; debug log
-            set -ex
+            set -exo pipefail
 
             # Define workspace and scheme
             WORKSPACE='Projects/XCFramework.xcworkspace'
@@ -128,15 +128,12 @@ workflows:
               echo "Archiving for $PLATFORM..."
 
               # Run xcodebuild archive for each platform
-              xcodebuild archive \
+              if xcodebuild archive \
                 -workspace "$WORKSPACE" \
                 -scheme "$SCHEME" \
                 -configuration "$CONFIGURATION" \
                 -destination "generic/platform=$PLATFORM" \
-                -archivePath "$ARCHIVE_DIR/P256K-$PLATFORM.xcarchive"| xcbeautify
-
-              # Check if archive command was successful
-              if [ $? -eq 0 ]; then
+                -archivePath "$ARCHIVE_DIR/P256K-$PLATFORM.xcarchive" | xcbeautify; then
                 echo "$PLATFORM archive created successfully."
               else
                 echo "Failed to archive for $PLATFORM. Exiting."
