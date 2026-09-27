@@ -5,9 +5,15 @@ on:
 jobs:
   macos:
     name: Build XCFramework
-    runs-on: macos-26
+    runs-on: xcode-27
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The xcode-27 label pins the image; DEVELOPER_DIR pins the 27.0
+      # toolchain inside it so the release toolchain can't drift when the
+      # image's default moves to a 27.x point release. Xcode 27's emitter
+      # produces the P256K::P256K selector spelling natively — the shared
+      # interface script runs as a no-op verifier on this toolchain.
+      DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
     steps:
       - name: Checkout
         uses: actions/checkout@v7

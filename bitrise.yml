@@ -4,7 +4,9 @@ default_step_lib_source: 'https://github.com/bitrise-io/bitrise-steplib.git'
 project_type: other
 meta:
   bitrise.io:
-    stack: osx-xcode-26.5.x
+    # Xcode 27 emits the P256K::P256K module-selector spelling natively
+    # (swiftlang#56573); the interface script remains as pre-27 shim/verifier.
+    stack: osx-xcode-27.0.x
     machine_type_id: g2.mac.medium
 trigger_map:
 - push_branch: main
