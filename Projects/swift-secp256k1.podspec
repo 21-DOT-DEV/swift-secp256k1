@@ -36,6 +36,8 @@ Pod::Spec.new do |s|
   
     s.requires_arc = true
     s.module_name = "P256K"
+    # Language mode (SWIFT_VERSION accepts 4.0/4.2/5.0/6.0), not the toolchain.
+    # Consuming the prebuilt XCFramework needs Swift 6.3+ toolchains; see README.
     s.swift_version = "6.0"
     s.vendored_frameworks = "P256K.xcframework"
 

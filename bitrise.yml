@@ -5,7 +5,7 @@ project_type: other
 meta:
   bitrise.io:
     # Xcode 27 emits the P256K::P256K module-selector spelling natively
-    # (swiftlang#56573); the interface script remains as pre-27 shim/verifier.
+    # (swiftlang#56573), pinned via -enable-module-selectors-in-module-interface.
     stack: osx-xcode-27.0.x
     machine_type_id: g2.mac.medium
 trigger_map:
@@ -99,7 +99,11 @@ workflows:
             swift package --disable-sandbox tuist test XCFramework-Workspace -p Projects/ --platform ios
     - script:
         title: ARCHIVE & CREATE XCFRAMEWORK
-        timeout: 720
+        # Raised 720→1800: the verify script now consumer-builds the artifact
+        # per shipped platform — ~154s measured locally (8 builds × ~19-20s)
+        # plus `swift test` — on top of the archive loop; CI runners without
+        # warm DerivedData need the headroom.
+        timeout: 1800
         inputs:
         - content: |-
             #!/usr/bin/env bash
@@ -159,41 +163,20 @@ workflows:
               -archive "Archives/P256K-watchOS Simulator.xcarchive" -framework P256K.framework \
               -output P256K.xcframework
 
-            # Fix module interfaces for swiftlang#56573 and strip the
-            # gratuitous `import libsecp256k1` (no interface declaration
-            # references the C module, and consumers have no module map for
-            # it). Shared with the release workflow so both ship the same
-            # artifact shape.
-            bash Scripts/fix-p256k-module-interfaces.sh P256K.xcframework
+            # Fail-closed artifact gate before deploy: per-slice/per-arch
+            # export allowlist (_$s* + _P256KVersion*) — a leaked
+            # _secp256k1_* silently binds to a consumer's own libsecp256k1
+            # under -dead_strip, invisible to builds — plus a real consumer
+            # build of the shipped artifact per platform: `swift test` on
+            # macOS and `xcodebuild build-for-testing` for each name this
+            # step archived (interface typechecking already happened at
+            # archive emit via -verify-emitted-module-interface). Shared
+            # with the release workflow so both verify the same thing.
+            bash Scripts/verify-p256k-xcframework.sh P256K.xcframework "${PLATFORMS[@]}"
     - deploy-to-bitrise-io:
         inputs:
         - deploy_path: "$BITRISE_SOURCE_DIR/P256K.xcframework"
         - is_compress: true
-    - script:
-        title: TEST XCFRAMEWORK
-        timeout: 720
-        inputs:
-        - content: |-
-            #!/usr/bin/env bash
-            # fail if any commands fails; debug log
-            set -ex
-
-            # Fail loudly if the archive step did not produce the artifact,
-            # rather than silently testing the source targets.
-            test -d P256K.xcframework
-
-            # Swap in the consumer manifest: Tests/XCFrameworkTests compiles
-            # against the prebuilt binary target — the shipped .swiftinterface
-            # and static binary — exercising the artifact shape the shared
-            # interface script rewrites and asserts on.
-            cp Scripts/XCFrameworkTest/Package.swift Package.swift
-
-            # Distribution-built frameworks ship only .swiftinterface files,
-            # so the interface path is the only load path; the env var is
-            # belt-and-suspenders in case a serialized .swiftmodule ever
-            # lands in the artifact and same-toolchain resolution short-
-            # circuits the interface parse.
-            SWIFT_FORCE_MODULE_LOADING=only-interface swift test --traits ecdh,musig,recovery,schnorrsig,uint256
   PULL-PACKAGE-FILES:
     steps:
     - pull-intermediate-files:

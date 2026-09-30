@@ -88,6 +88,29 @@ SKIP_INSTALL = NO
 BUILD_LIBRARY_FOR_DISTRIBUTION = YES
 
 
+// Verify Emitted Module Interface
+//
+// Typechecks each .swiftinterface the archive writes — public and private —
+// so a bad interface fails the build instead of shipping. Two settings are
+// required: SWIFT_INSTALL_OBJC_HEADER = YES (Shared.xcconfig) makes
+// swift-build pass -no-verify-emitted-module-interface
+// (SWIFT_SKIP_INSTALLED_HEADER_INTERFACE_VERIFICATION defaults to YES), so
+// the skip must be overridden alongside the explicit flag.
+
+SWIFT_SKIP_INSTALLED_HEADER_INTERFACE_VERIFICATION = NO
+
+
+// Other Swift Flags
+//
+// -verify-emitted-module-interface is the check above.
+// -enable-module-selectors-in-module-interface keeps the P256K:: selector
+// spelling (swiftlang#56573) explicit — it's already Swift 6.4's default,
+// and pinning it keeps the emitted output from depending on the toolchain
+// default.
+
+OTHER_SWIFT_FLAGS = $(inherited) -verify-emitted-module-interface -enable-module-selectors-in-module-interface
+
+
 //********************************************//
 //*      Apple Clang - Code Generation       *//
 //********************************************//
@@ -150,3 +173,18 @@ ENABLE_NS_ASSERTIONS = NO
 // Space-separated list of preprocessor macros of the form foo or foo=bar.
 
 GCC_PREPROCESSOR_DEFINITIONS = 
+
+
+//********************************************//
+//*                Signing                   *//
+//********************************************//
+
+
+// Code Signing Allowed
+//
+// A static framework is linked into the app, never embedded, so a signature
+// buys nothing — and the ad-hoc signature the archive writes is invalidated
+// when -create-xcframework deletes the .swiftmodule files it covered,
+// leaving slices that fail codesign --verify.
+
+CODE_SIGNING_ALLOWED = NO

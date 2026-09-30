@@ -1,8 +1,0 @@
-# Symbols demoted to local by the P256K target's single-object prelink
-# (Shared.xcconfig → PRELINK_FLAGS → ld -r -unexported_symbols_list).
-# Every libsecp256k1 global is _secp256k1_-prefixed, so one wildcard covers
-# all of them — including secp256k1_swift_sha256 / secp256k1_swift_memczero
-# from Utility.c. If upstream ever adds a global without the prefix it stays
-# external — verify with `nm -gU` on a built slice (0 matches expected);
-# wiring that into CI is a tracked follow-up.
-_secp256k1_*
