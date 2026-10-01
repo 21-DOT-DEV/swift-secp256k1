@@ -11,8 +11,8 @@ jobs:
       # The xcode-27 label pins the image; DEVELOPER_DIR pins the 27.0
       # toolchain inside it so the release toolchain can't drift when the
       # image's default moves to a 27.x point release. Xcode 27's emitter
-      # produces the P256K::P256K selector spelling natively — the shared
-      # interface script runs as a no-op verifier on this toolchain.
+      # produces the P256K::P256K selector spelling natively, pinned via
+      # -enable-module-selectors-in-module-interface (Release.xcconfig).
       DEVELOPER_DIR: /Applications/Xcode_27.0.app/Contents/Developer
     steps:
       - name: Checkout
@@ -81,17 +81,38 @@ jobs:
               -archive "Archives/P256K-watchOS Simulator.xcarchive" -framework P256K.framework \
               -output P256K.xcframework
 
-            # Fix module interfaces for swiftlang#56573 and strip the gratuitous
-            # `import libsecp256k1` (no interface declaration references the C
-            # module, and consumers have no module map for it). Shared with the
-            # Bitrise archive step so both ship the same artifact shape.
-            bash Scripts/fix-p256k-module-interfaces.sh P256K.xcframework
+            # Hand the archived platform list to the verify step — the
+            # verifier consumer-builds exactly these destinations.
+            printf '%s\n' "${PLATFORMS[@]}" > "$RUNNER_TEMP/xcf-platforms"
       - name: 7z XCFramework
         run: |
           # Copy COPYING file to current directory to avoid including folder structure
           cp "Vendor/secp256k1/COPYING" "COPYING-libsecp256k1"
-          # Create zip with maximum compression including license files alongside the XCFramework
-          7z a -tzip -mx=9 P256K.xcframework.zip P256K.xcframework LICENSE "COPYING-libsecp256k1"
+          # Create zip with maximum compression including license files alongside the
+          # XCFramework. -snl is load-bearing: the standalone 7-Zip port (7zz, since
+          # 21.x) dereferences symlinks by default — Versions/Current → real dir,
+          # binary duplicated — unless told to store links; legacy p7zip stored them
+          # by default (why older release zips kept theirs). Materializing is
+          # benign for a static framework — a fatter zip, identical linkage — but
+          # -snl keeps the artifact byte-honest at zero cost.
+          7z a -tzip -mx=9 -snl P256K.xcframework.zip P256K.xcframework LICENSE "COPYING-libsecp256k1"
+      - name: Verify XCFramework
+        run: |
+          # Verify what actually ships: unzip the produced zip into a temp
+          # dir and gate on the extracted copy — per-slice/per-arch export
+          # allowlist (a leaked _secp256k1_* silently binds to a consumer's
+          # own libsecp256k1 under -dead_strip, invisible to builds) plus a
+          # real consumer build per shipped platform: `swift test` on
+          # macOS and `xcodebuild build-for-testing` for every slice
+          # destination (interface typechecking already happened at
+          # archive emit via -verify-emitted-module-interface). Shared
+          # with Bitrise (ARCHIVE step) so both verify the same thing.
+          unzip -q P256K.xcframework.zip -d "$RUNNER_TEMP/xcf-verify"
+          # The archived platform list crosses steps via a file the archive
+          # step wrote; read -d '' returns 1 at EOF, so `|| true` is load-
+          # bearing. Direct call (not xargs) keeps the verifier's exit code.
+          IFS=$'\n' read -r -d '' -a platforms < "$RUNNER_TEMP/xcf-platforms" || true
+          bash Scripts/verify-p256k-xcframework.sh "$RUNNER_TEMP/xcf-verify/P256K.xcframework" "${platforms[@]}"
       - name: Upload XCFramework
         env:
           TAG_NAME: ${{ github.ref_name }}

@@ -146,13 +146,17 @@ PRELINK_LIBS = $(BUILT_PRODUCTS_DIR)/libsecp256k1.o
 
 // Single-Object Prelink Flags
 //
-// Extra arguments to the prelink `ld -r`. -unexported_symbols_list marks the
-// C symbols private extern for the remainder of that link, and because
-// KEEP_PRIVATE_EXTERNS stays NO the emitted master object demotes them to
-// local (non-external) symbols — still resolvable by the Swift objects merged
-// alongside them, but absent from the interface a consumer links against.
+// Export allowlist for the prelink `ld -r`: only symbols named in
+// exported-symbols.txt stay global in the master object — everything else
+// (all of libsecp256k1's _secp256k1_*, any future unprefixed C global,
+// compiler-emitted helpers) demotes to local, because KEEP_PRIVATE_EXTERNS
+// stays NO. An allowlist is strictly stronger than the hide list it
+// replaced: the fold can't leak a C symbol nobody named. Passed via
+// PRELINK_FLAGS, not the EXPORTED_SYMBOLS_FILE build setting, because
+// Libtool.xcspec also forwards that setting to libtool — which warns it
+// ignores the flag for static archives.
 
-PRELINK_FLAGS = -unexported_symbols_list $(SRCROOT)/Resources/P256K/hidden-symbols.txt
+PRELINK_FLAGS = -exported_symbols_list $(SRCROOT)/Resources/P256K/exported-symbols.txt
 
 
 // Keep Private Externs
@@ -288,6 +292,18 @@ MODULE_VERIFIER_SUPPORTED_LANGUAGES = objective-c objective-c++
 // Objective-C or C++ code using the framework. Defaults to YES.
 
 SWIFT_INSTALL_OBJC_HEADER = YES
+
+
+// Internal Imports by Default
+//
+// Matches the upcoming feature Package.swift enables for SwiftPM builds
+// (SE-0409): a bare `import` becomes internal, so the 30 `import
+// libsecp256k1`/`libsecp256k1_zkp` sites in Sources/Shared stay out of the
+// public .swiftinterface with no post-emit rewrite. Declarations that must
+// stay visible already use `public import` (Foundation, SwiftSystem); a
+// public API that leaks a C type fails to compile.
+
+SWIFT_UPCOMING_FEATURE_INTERNAL_IMPORTS_BY_DEFAULT = YES
 
 
 //********************************************//

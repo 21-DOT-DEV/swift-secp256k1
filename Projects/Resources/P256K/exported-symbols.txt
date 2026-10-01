@@ -1,0 +1,11 @@
+# Export whitelist for the P256K single-object prelink
+# (Shared.xcconfig → PRELINK_FLAGS → ld -r -exported_symbols_list).
+# Only these globals survive as exports in the shipped framework; every
+# other symbol — all _secp256k1_* C functions, plus any future unprefixed
+# upstream global or compiler-emitted helper — is demoted to local by the
+# prelink, which is strictly stronger than hiding a known list: the fold
+# can't leak a C symbol the list forgot to name. Wildcards, not exact
+# names, so ld never fails on a symbol a future emitter stops producing.
+# Scripts/verify-p256k-xcframework.sh gates the same contract in CI.
+_$s*
+_P256KVersion*

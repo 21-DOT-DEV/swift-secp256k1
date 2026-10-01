@@ -65,6 +65,11 @@ This package uses [SE-0450 Package Traits](https://github.com/swiftlang/swift-ev
 | `0.18.0 ..< 0.22.0`   | 6.0                   | 16.0                  |
 | `0.22.0 ...`          | 6.1                   | 16.3                  |
 
+Prebuilt XCFramework releases (CocoaPods and manual downloads) built on Xcode 27+
+require Swift 6.3 / Xcode 26.4+ to consume: the emitted `.swiftinterface` files use
+`Module::Type` selectors that older compilers can't parse. Source (SwiftPM) builds
+are unaffected.
+
 ## Usage Examples
 
 ### ECDSA
