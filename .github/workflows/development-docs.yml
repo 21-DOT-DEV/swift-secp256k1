@@ -1,0 +1,64 @@
+name: Development Docs
+
+on:
+  push:
+    branches: [main]
+    paths: ['Development/**', '.vale.ini', '.vale/**', '.github/workflows/development-docs.yml']
+  pull_request:
+    branches: [main]
+    paths: ['Development/**', '.vale.ini', '.vale/**', '.github/workflows/development-docs.yml']
+
+permissions: {}
+
+concurrency:
+  group: development-docs-${{ github.ref }}
+  # PR updates may supersede their own runs; every push to main must record a
+  # result, so it is never cancelled (same convention as docc-release.yml).
+  cancel-in-progress: ${{ github.event_name != 'push' }}
+
+jobs:
+  check:
+    name: Plans & decision records
+    # Apple machine because Swift ships preinstalled; the checker is its own
+    # small package, so this never builds the project itself.
+    runs-on: macos-26
+    # Least privilege: checkout is the only thing this job needs.
+    permissions:
+      contents: read
+    env:
+      DEVELOPER_DIR: "/Applications/Xcode_26.4.app/Contents/Developer"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Unit-test the checker
+        run: swift test --package-path Development/Tools
+
+      - name: Validate frontmatter and index freshness
+        run: swift run --package-path Development/Tools plans --check
+
+      # Pinned to a release binary, not `brew install`: a new upstream release
+      # must not change what this gate enforces. Hash from the release's own
+      # checksums.txt; bump both together.
+      - name: Install Vale
+        env:
+          VALE_URL: "https://github.com/errata-ai/vale/releases/download/v3.24.0/vale_3.24.0_macOS_arm64.tar.gz"
+          VALE_SHA256: "87b513f26499f6657c15cf7175ba5b058a7c1ff2bb2d4e07265db2dd43451e44"
+        run: |
+          mkdir -p .vale-bin
+          curl -sSfL "$VALE_URL" -o /tmp/vale.tgz
+          echo "$VALE_SHA256  /tmp/vale.tgz" | shasum -a 256 --check
+          tar -xzf /tmp/vale.tgz -C .vale-bin vale
+          .vale-bin/vale --version
+
+      - name: Lint plan structure
+        run: .vale-bin/vale Development/
+
+      # Advisory only, and deliberately not a failure: length is a symptom, not
+      # the defect. This prints the numbers so a real threshold can be set later
+      # from observation rather than guessed at now.
+      - name: Report plan length
+        run: |
+          echo "| lines | file |"
+          echo "|---|---|"
+          find Development -name '*.md' -not -path '*/.build/*' -exec wc -l {} + \
+            | sort -rn | sed 's/^ *//' | awk 'NF==2 && $2!="total" {printf "| %s | %s |\n", $1, $2}'

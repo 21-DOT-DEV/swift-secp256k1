@@ -23,9 +23,10 @@ Projects/Derived/
 # Git
 .git/
 
-# Specs (not needed for tests)
-specs/
-.specify/
+# Planning artifacts (not needed for tests)
+Development/
+.vale
+.vale.ini
 
 # Other
 *.log

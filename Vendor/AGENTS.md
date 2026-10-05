@@ -22,3 +22,11 @@ This file is the canonical reference for extraction mappings. The subtree CLI us
 - `Vendor/secp256k1` → `Sources/libsecp256k1/`
 - `Vendor/secp256k1-zkp` → `Sources/libsecp256k1_zkp/`
 - `Vendor/swift-crypto` → `Sources/Shared/swift-crypto/`
+
+## Syncing local files with upstream
+
+When a local file derived from vendored code drifts, cross-reference it against its upstream original before editing:
+
+1. Locate the original: `find Vendor/ -name "<filename>" -type f`. If multiple matches exist, pick the entry named in `subtree.yaml`; no match means the file is fully custom.
+2. Categorize each difference. Typically syncable: import changes, `@available` attributes, protocol conformances (`Sendable`, `Hashable`), concurrency annotations (`@preconcurrency`, `nonisolated`, `async`), `#if` conditional-compilation wrappers. Typically preserved: function bodies and algorithms, custom types, project-specific integrations, custom initializers and members. Review case-by-case: access-control changes, documentation.
+3. Present the proposed edits before applying any; apply file-by-file and verify the build after each.

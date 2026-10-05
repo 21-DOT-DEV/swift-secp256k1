@@ -1,0 +1,8 @@
+extends: existence
+message: "'%s' is a running total for the whole suite; record what this feature added instead, for example '+7 tests'."
+level: error
+ignorecase: true
+tokens:
+  - '\d+ tests? (green|passing|pass)'
+  - '\d+ (tests|suites) green'
+  - '\d+ tests / \d+ suites'

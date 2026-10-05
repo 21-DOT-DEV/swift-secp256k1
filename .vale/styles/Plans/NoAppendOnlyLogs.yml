@@ -1,0 +1,12 @@
+extends: existence
+message: "'%s' is an append-only log section, which plans do not carry."
+level: error
+scope: heading
+ignorecase: true
+tokens:
+  - 'Status log'
+  - 'Review resolutions?'
+  - 'Review rounds?'
+  - 'Change ?log'
+  - 'Progress log'
+  - 'Work log'
