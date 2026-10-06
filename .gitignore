@@ -60,6 +60,7 @@ Package.resolved
 .swiftpm
 
 .build/
+.build-*/
 
 # CocoaPods
 #

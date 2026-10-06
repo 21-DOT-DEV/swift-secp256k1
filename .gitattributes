@@ -28,9 +28,9 @@ Projects/**                 export-ignore
 .github/**                  export-ignore linguist-vendored
 .vscode/**                  export-ignore linguist-vendored
 .swiftpm/**                 export-ignore linguist-vendored
-.specify/**                 export-ignore linguist-vendored
-.windsurf/**                export-ignore linguist-vendored
-specs/**                    export-ignore linguist-vendored
+Development/**              export-ignore linguist-vendored
+.vale/**                    export-ignore linguist-vendored
+.vale.ini                   export-ignore
 
 # CI/CD and tooling configs
 bitrise.yml                 export-ignore
