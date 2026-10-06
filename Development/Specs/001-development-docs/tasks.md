@@ -98,5 +98,5 @@ checkboxes record the order the work was executed, not separate merges.
   binary, `cancel-in-progress` scoped to PRs, and wording/template
   consistency across the docs · `Development/Tools/**`,
   `.github/workflows/development-docs.yml`, `Development/**`
-- [ ] T018 Flip `status:` to `Implemented` at merge — the field records a
+- [x] T018 Flip `status:` to `Implemented` at merge — the field records a
   repository fact, not a claim about checks

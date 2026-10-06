@@ -44,5 +44,6 @@ disagree. Do not hand-edit it.
 <!-- BEGIN GENERATED INDEX -->
 | # | Feature | Phase | Status | Plan |
 |---|---|---|---|---|
-| 001 | Planning artifacts consolidated under Development/ with a checked, self-contained workflow | — | In Progress | [plan.md](001-development-docs/plan.md) |
+| 001 | Planning artifacts consolidated under Development/ with a checked, self-contained workflow | — | Implemented | [plan.md](001-development-docs/plan.md) |
+| 002 | Replace git-subtree vendoring with vendir, deleting Vendor/ and the subtree tooling | — | Planned | [plan.md](002-vendir-migration/plan.md) |
 <!-- END GENERATED INDEX -->

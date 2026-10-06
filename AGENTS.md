@@ -31,7 +31,7 @@ Code is formatted and linted automatically via pre-commit hooks:
 
 ## Boundaries
 
-- **Never**: emit private keys or sensitive material; weaken constant-time code in vendored C sources; edit files under `Vendor/` directly; bypass Lefthook formatting/linting hooks.
+- **Never**: emit private keys or sensitive material; weaken constant-time code in vendored C sources; edit files under `Vendor/` directly; bypass Lefthook formatting/linting hooks; stage or commit changes — leave the working tree unstaged for maintainer review (the maintainer commits manually, or an explicit instruction may say to commit).
 - **Ask first**: add new third-party dependencies; broaden CI permissions.
 - See the [21-DOT-DEV contributing guidelines](https://github.com/21-DOT-DEV/.github/blob/main/CONTRIBUTING.md) for branching and commit guidelines. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
@@ -43,10 +43,16 @@ Everything about how this project is developed lives under
 That folder's README is authoritative for what goes where and this file does not repeat
 it.
 
-Two rules are worth knowing before writing anything there. A plan is **corrected in
+Three rules are worth knowing before writing anything there. A plan is **corrected in
 place** when review changes its design, never appended to with a note saying an earlier
 section is now wrong. A decision that outlives its feature becomes an ADR. Plans carry
-no status log, review log, or round-by-round history.
+no status log, review log, or round-by-round history. And work decomposes into
+**reviewable chunks** — task groups close on checkpoints, and an authored diff over
+~300 changed lines per commit or pull request gets split or justified; generated
+output (vendored trees, lock files, bulk deletions, mechanical sweeps) is exempt
+from the count. A coherent document set that can't be split — a spec and its
+companions landing together, say — is a legitimate justification; name it in the
+PR description.
 
 ## Scoped guidance
 
