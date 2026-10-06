@@ -2,8 +2,8 @@
 feature: 001
 title: Planning artifacts consolidated under Development/ with a checked, self-contained workflow
 phase: null
-status: In Progress
-updated: 2026-10-04
+status: Implemented
+updated: 2026-10-06
 adrs: [0005]
 ---
 
