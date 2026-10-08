@@ -80,11 +80,13 @@ let package = Package(
         ),
         .target(
             name: "libsecp256k1",
+            exclude: ["COPYING"],
             cSettings: PackageDescription.CSetting.baseSettings
                 + PackageDescription.CSetting.moduleSettings
         ),
         .target(
             name: "libsecp256k1_zkp",
+            exclude: ["COPYING"],
             cSettings: PackageDescription.CSetting.baseSettings
                 + PackageDescription.CSetting.moduleSettings
                 + PackageDescription.CSetting.zkpModuleSettings

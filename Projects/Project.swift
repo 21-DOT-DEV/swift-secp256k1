@@ -102,13 +102,21 @@ let project = Project(
             )
         ),
         // Native secp256k1 C test runner
-        // Sources symlinked from Vendor/secp256k1/src/
+        // Test-suite files vendored by vendir into Sources/libsecp256k1Tests/
+        // (see vendir.yml); the library .c file tests.c text-includes
+        // (secp256k1.c) resolves via HEADER_SEARCH_PATHS, and the two
+        // precomputed tables compile straight from the shipped tree —
+        // the suite exercises the bytes the package ships.
         .target(
             name: "libsecp256k1Tests",
             destinations: [.mac],
             product: .commandLineTool,
             bundleId: "dev.21.libsecp256k1Tests",
-            sources: ["Sources/libsecp256k1Tests/**"],
+            sources: [
+                "Sources/libsecp256k1Tests/src/tests.c",
+                "../Sources/libsecp256k1/src/precomputed_ecmult.c",
+                "../Sources/libsecp256k1/src/precomputed_ecmult_gen.c"
+            ],
             dependencies: [],
             settings: .settings(
                 configurations: [

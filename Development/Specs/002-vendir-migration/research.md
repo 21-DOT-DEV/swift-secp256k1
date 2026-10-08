@@ -79,6 +79,12 @@ anyway for greppability):
   quote-include (the glob is `lax_der_*`), and `includePaths` are matched
   repo-relative *before* `newRootPath` re-roots (bare vector names error out
   with "Expected to find at least one file within directory").
+  *(2026-10-08 update: the shipped config narrowed the bundle further — the
+  complete header tree plus only the test-only `.c` harness, with library
+  `.c` files resolving to `Sources/libsecp256k1`; `clang -fsyntax-only` on a
+  scratch tree proved `tests.c` parses clean against that layout, and the
+  real `libsecp256k1Tests` build + suite run confirmed it — see plan §3 and
+  §6.)*
 
 ## 3. Provenance notes: SHAs, tags, and signatures
 
@@ -197,8 +203,8 @@ lightweight tag over an unsigned commit.
 | Consumer | What it reads | Re-plumb |
 |---|---|---|
 | `xcframework-release.yml` | `Vendor/secp256k1/COPYING` | `Sources/libsecp256k1/COPYING` via includePaths |
-| `Projects/` `libsecp256k1Tests` target | `src/tests.c` + `src/precomputed_ecmult{,_gen}.c` + everything `tests.c` `#include`s (`secp256k1.c`, `include/`, `contrib/lax_der_*`, `unit_test.*`, `testrand*`, `testutil*`, `wycheproof/*.h`) | upstream-layout bundle at `Projects/Sources/libsecp256k1Tests/`; sources narrowed to the three literal `.c` files (no `{a,b}` glob — unverified under Tuist) — the pair defines the `extern` tables `tests.c` links against |
-| `WycheproofTests` resources | `src/wycheproof/*.json` ×2 + `WYCHEPROOF_COPYING` | `Projects/Resources/WycheproofTests/secp256k1/` subdir; the two `Vendor/`-backed symlinks get `git rm`'d in the same sync change (vendir owns the subdir, not the parent) |
+| `Projects/` `libsecp256k1Tests` target | `src/tests.c` + `src/precomputed_ecmult{,_gen}.c` + everything `tests.c` `#include`s (`secp256k1.c`, `include/`, `contrib/lax_der_*`, `unit_test.*`, `testrand*`, `testutil*`, `wycheproof/*.h`) | deduplicated upstream-layout bundle at `Projects/Sources/libsecp256k1Tests/` (header tree + test-only `.c`); `sources:` = vendored `src/tests.c` + the two `precomputed_*.c` literal paths into `Sources/libsecp256k1` — the pair defines the `extern` tables `tests.c` links against |
+| `WycheproofTests` resources | `src/wycheproof/*.json` ×2 + `WYCHEPROOF_COPYING` | `Projects/Resources/WycheproofTests/secp256k1/` subdir; the two `Vendor/`-backed symlinks get removed in the same sync change (vendir owns the subdir, not the parent) |
 | `Vendor/AGENTS.md` drift runbook | local upstream originals | folded into `Sources/AGENTS.md`, fetch-on-demand via `gh api` |
 | 36 doc comments across `Sources/Shared/**` + `Projects/Sources/**` | `Vendor/…` path mentions | mechanical rewrite to `secp256k1 v0.7.1, src/…` |
 | `.gitattributes`, `.swiftformat`, `.swiftlint.yml` | `Vendor/**` exclude/export-ignore lines | dropped; vendored `Projects/` paths + `Sources/Shared/swift-crypto/**` gain linguist-vendored |

@@ -113,9 +113,19 @@ directories:
     - '**/SubjectPublicKeyInfo*'
     legalPaths: []
 
-# Vendored copy of upstream's C test suite in upstream layout: the Tuist
-# target compiles src/tests.c + src/precomputed_ecmult{,_gen}.c
-# and everything else here is inert — a text-include of tests.c or a license.
+# Deduplicated copy of upstream's C test suite, still in upstream layout:
+# vendored are the complete header tree plus the test-only translation
+# units — every *library* .c resolves to the shipped Sources/libsecp256k1
+# copy instead (secp256k1.c via HEADER_SEARCH_PATHS, the two
+# precomputed_*.c via the Tuist target's sources list). The suite
+# therefore exercises the bytes the package ships, and ~2.7MB of
+# precomputed tables are not duplicated into every clone. The duplicated
+# headers are deliberate — vendoring the full tree keeps upstream's
+# relative-include topology ("../../util.h" from modules/*/tests_impl.h,
+# same-dir "keyagg.h") resolving own-dir exactly as upstream's build; same
+# pin and the shared ref anchor keep them byte-identical to shipped
+# copies — vendir-check's lock-SHA equality guard will assert it
+# (lands later).
 - path: Projects/Sources/libsecp256k1Tests
   contents:
   - path: .
@@ -126,13 +136,15 @@ directories:
       depth: 1
       skipInitSubmodules: true
     includePaths:
-    # The compilable closure of tests.c's #include graph — *.c/*.h selection
-    # keeps out upstream build-system files (CMakeLists, Makefile.am.include,
-    # src/asm/*.s) and the vector JSONs (they live under
-    # Projects/Resources/WycheproofTests/).
-    - src/**/*.c
-    - src/**/*.h
     - include/**/*.h
+    - src/**/*.h
+    # The test-only translation units. tests.c text-includes secp256k1.c,
+    # unit_test.c, contrib/lax_der_*.c, and modules/*/tests_impl.h;
+    # unit_test.c is vendored because it is *included* by tests.c — the
+    # Tuist target's literal sources list controls what compiles, so no
+    # main()-carrying .c needs excluding here.
+    - src/tests.c
+    - src/unit_test.c
     # The lax_der_*.c files quote-include their sibling .h — the glob
     # carries both.
     - contrib/lax_der_*
@@ -141,13 +153,6 @@ directories:
     # License rides with vendored code — test-only or not, this tree is a
     # substantial verbatim copy of MIT-licensed upstream source.
     - COPYING
-    excludePaths:
-    # Every main()-carrying src/*.c except tests.c itself.
-    - src/bench*.c
-    - src/ctime_tests.c
-    - src/precompute_ecmult.c
-    - src/precompute_ecmult_gen.c
-    - src/tests_exhaustive.c
     legalPaths: []
 
 - path: Projects/Resources/WycheproofTests/secp256k1

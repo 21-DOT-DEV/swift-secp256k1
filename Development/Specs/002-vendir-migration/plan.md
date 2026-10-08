@@ -2,8 +2,8 @@
 feature: 002
 title: Replace git-subtree vendoring with vendir, deleting Vendor/ and the subtree tooling
 phase: null
-status: Planned
-updated: 2026-10-06
+status: In Progress
+updated: 2026-10-08
 adrs: [0006]
 ---
 
@@ -35,12 +35,15 @@ work: [tasks.md](./tasks.md). Evidence and measured verification:
   dev dependency.
 - `Vendor/`'s two live consumers move to vendir-managed destinations: the
   C test-runner symlinks at `Projects/Sources/libsecp256k1Tests/` become a
-  self-contained vendored bundle in upstream layout (the target compiles
-  `src/tests.c`, `src/precomputed_ecmult.c`, and
-  `src/precomputed_ecmult_gen.c`; the rest stay
-  inert — text-includes or licenses), the Wycheproof JSON symlinks become real files under
+  deduplicated vendored bundle in upstream layout — the complete header
+  tree plus the test-only translation units (`src/tests.c`,
+  `src/unit_test.c`, `contrib/lax_der_*`) — while the library's `.c`
+  files resolve to the shipped tree (`secp256k1.c` via
+  `HEADER_SEARCH_PATHS`, the two `precomputed_*.c` as literal `sources:`
+  entries), so the suite exercises the bytes the package ships instead of
+  a ~3.4MB twin; the Wycheproof JSON symlinks become real files under
   `Projects/Resources/WycheproofTests/secp256k1/` — the `Vendor/`-backed
-  symlinks themselves get `git rm`'d in the same change — and
+  symlinks themselves get removed in the same change — and
   `xcframework-release.yml` reads `COPYING` from `Sources/libsecp256k1/COPYING`,
   and its zip step gains swift-crypto's `LICENSE.txt`/`NOTICE.txt` — the
   framework compiles that code, so Apache-2.0 attribution belongs in the
@@ -65,10 +68,14 @@ work: [tasks.md](./tasks.md). Evidence and measured verification:
 deletions listed above; `Package.swift` (drop the plugin dep; `exclude:
 ["COPYING"]` on both C targets — rides T002's commit, since the sync puts
 the files inside the target roots); `Projects/Project.swift` (narrow the
-`libsecp256k1Tests` sources to the three literal `.c` files — no `{a,b}`
-glob, which no manifest uses and Tuist expansion of is unverified — update
-the comment); `Projects/Resources/libsecp256k1Tests/Shared.xcconfig` (header search
-paths to the new bundle); `.github/workflows/xcframework-release.yml` (COPYING
+`libsecp256k1Tests` `sources:` to three literal files — the vendored
+`src/tests.c` plus `../Sources/libsecp256k1/src/precomputed_ecmult{,_gen}.c`
+under the deduped bundle; literal, since a glob would compile the
+vendored-but-inert `unit_test.c` — and update the comment);
+`Projects/Resources/libsecp256k1Tests/Shared.xcconfig` (header search
+paths repoint at the shipped `Sources/libsecp256k1` triple — the bundle
+resolves its own vendored headers own-dir and needs no entry);
+`.github/workflows/xcframework-release.yml` (COPYING
 path + swift-crypto LICENSE/NOTICE into the release zip); `.gitattributes`,
 `.swiftformat`, `.swiftlint.yml`, `.gitignore`;
 `AGENTS.md`, `Sources/AGENTS.md`, `Sources/Shared/README.md`, `.github/AGENTS.md`,
@@ -154,40 +161,50 @@ SHAs to assert those paths stay absent.
 `wycheproof/*.h` vectors — but not `precomputed_ecmult{,_gen}.c`, whose table
 symbols (`secp256k1_pre_g`, `secp256k1_ecmult_gen_prec_table`) it references
 `extern` (upstream's CMake compiles the same pair as the `secp256k1_precomputed`
-object library). Relative includes must resolve in upstream layout, so
-`Projects/Sources/libsecp256k1Tests/` becomes a vendored bundle preserving that
-layout — includePaths cover the compilable `*.c`/`*.h` closure (`src/**/*.c`,
-`src/**/*.h`, `include/**/*.h`) plus `contrib/lax_der_*`
-(the `.c` files quote-include their sibling `.h`, so the glob carries both —
-today that resolves inside the full `Vendor/` tree the symlinks point into)
-and `src/wycheproof/WYCHEPROOF_COPYING` — the `.c`/`.h` filter itself keeps
-upstream build-system files (`CMakeLists`, `Makefile.am.include`,
-`src/asm/*.s`) and the vector JSONs out — and `excludePaths` drops the
-seven `main()`-carrying `src/*.c` (`bench*.c`,
-`ctime_tests.c`, `precompute_ecmult{,_gen}.c` — the table *generators*,
-distinct from the `precomputed_*` tables — and `tests_exhaustive.c`).
-`Project.swift` narrows its sources to the three literal `.c` files
-(`src/tests.c`, `src/precomputed_ecmult.c`, `src/precomputed_ecmult_gen.c`
-— no brace glob, whose Tuist expansion is unverified and whose failure mode
-is compiling nothing) so every other bundled `.c` stays an inert
-text-include — and that narrowing
-lands in the same commit as the sync (T002): left at `**`, the target would
-compile `secp256k1.c`, `unit_test.c`, and `contrib/lax_der_*.c` a second time
-on top of `tests.c`'s text-includes and the link fails on duplicate symbols.
-`Shared.xcconfig`'s
-`HEADER_SEARCH_PATHS` repoint at the bundle. The Wycheproof JSONs (plus
+object library). The bundle vendors only what the shipped tree lacks: the
+**complete header tree** (`include/**/*.h` + `src/**/*.h`) plus the test-only
+translation units (`src/tests.c`, `src/unit_test.c` — vendored because
+`tests.c` text-includes it — and `contrib/lax_der_*`, whose `.c` files
+quote-include their sibling `.h`), `COPYING`, and
+`src/wycheproof/WYCHEPROOF_COPYING`. Vendoring every header — including the
+~0.7MB that duplicate `Sources/libsecp256k1` — is deliberate: module test
+headers use `../../`/`../../../`-relative and same-dir (`"keyagg.h"`)
+spellings that no fixed `-I` set satisfies robustly, while a complete header
+tree makes every relative include resolve own-dir exactly as upstream's own
+build (verified by `clang -fsyntax-only` on a scratch tree, then the real
+`libsecp256k1Tests` build and suite run). Every library `.c` instead comes
+from the shipped tree: `secp256k1.c` resolves through
+`HEADER_SEARCH_PATHS` — `$(SRCROOT)/../Sources/libsecp256k1{,/src,/include}`:
+the `src/` entry supplies the unvendored `secp256k1.c`, the `include/`
+entry supplies the `<secp256k1.h>` that `contrib/lax_der_*.h`
+angle-include (angle brackets skip the including file's own directory;
+quote-includes of `../include/…` never reach the paths — `include/` is
+vendored, so they resolve own-dir inside the bundle), and
+the root entry mirrors upstream's own `-I` set; the two
+`precomputed_*.c` are literal `sources:` entries in `Project.swift` — their
+includes are all same-dir, so no search path is needed. No `excludePaths` on
+this entry: `includePaths` name no `main()`-carrying file beyond `tests.c`
+itself, and the literal
+`sources:` list (`src/tests.c` + the two `../Sources/…` tables) — no glob —
+keeps vendored-but-inert `unit_test.c`/`lax_der_*.c` from compiling a second
+time on top of `tests.c`'s text-includes (duplicate-symbol link failure
+otherwise). The repoint of `Shared.xcconfig` lands in the same commit (T002)
+so the checkpoint's suite run exercises shipped bytes, not `Vendor/`'s.
+The Wycheproof JSONs (plus
 `WYCHEPROOF_COPYING`, the vectors' own license) sync to a vendir-owned
 `secp256k1/` subdirectory so the xcconfig siblings survive — `newRootPath:
 src/wycheproof` re-roots the fetched tree, but `includePaths` are matched
 repo-relative *before* it applies, so the patterns spell `src/wycheproof/…`
 in full (verified in [research.md](./research.md) §2) — and the two
-`Vendor/`-backed JSON symlinks it replaces get `git rm`'d in the same sync
+`Vendor/`-backed JSON symlinks it replaces get removed in the same sync
 change — vendir owns the subdir, not the parent. The loader looks the
 vectors up flat (`forResource:`, no subdirectory), so the vendored dir
 must flatten into the bundle — §5 verifies it.
 
 **Interim updates.** Manual: edit `ref:` in `vendir.yml` →
-`vendir sync` → check the lock diff → commit → PR on a
+`vendir sync` → check the lock diff → run `libsecp256k1Tests` against the
+synced tree (the §6 tripwire — it only catches extraction bugs if it runs)
+→ commit → PR on a
 `vendor/<name>-<ref>` branch with the `dependencies` label. The diff check
 matters: `vendir sync` re-resolves *every* entry, so a re-pushed tag or drift
 on an untouched pin would ride the same PR — only the bumped dep's `sha:`s
@@ -271,14 +288,17 @@ full task list, grouped into review slices with checkpoints, is in
 
 ## 5. Verification
 
-- [ ] `diff -r` of synced trees against the pre-migration commit is empty
+- [x] `diff -r` of synced trees against the pre-migration commit is empty
   modulo the declared deltas (`COPYING`/`LICENSE.txt`/`NOTICE.txt`, the new `Projects/`
   destinations, the removed symlinks) — proven once in
-  [research.md](./research.md) §2; re-run on the real config
-- [ ] `swift build` and `swift test` at the root unchanged
-- [ ] `swift package --disable-sandbox tuist generate -p Projects/ --no-open`
-  and `libsecp256k1Tests` builds and runs the upstream suite
-- [ ] `WycheproofTests` resolves the JSONs — `TestVectorLoader` looks them up
+  [research.md](./research.md) §2; re-run on the real config (T002: zero
+  modified tracked files)
+- [x] `swift build` and `swift test` at the root unchanged (T002: 39/39,
+  no unhandled-file warnings)
+- [x] `swift package --disable-sandbox tuist generate -p Projects/ --no-open`
+  and `libsecp256k1Tests` builds and runs the upstream suite (T002: exits 0,
+  ~216s)
+- [x] `WycheproofTests` resolves the JSONs — `TestVectorLoader` looks them up
   flat in the test bundle, so the vendored `secp256k1/` subdir must flatten
   in the copy step
 - [ ] `xcframework-release.yml` `cp` path resolves (path check; the release
@@ -292,18 +312,26 @@ full task list, grouped into review slices with checkpoints, is in
 
 ## 6. Risks and mitigations
 
-- **Test-bundle duplication — decide before T002** — the bundle re-vendors
-  ~76 of its 106 files byte-identical to `Sources/libsecp256k1` (~3.4MB
-  duplicated into every SPM clone; `export-ignore` doesn't help clones).
-  A verified alternative (links and passes in review): vendor only the
-  ~30 test-only files, point `HEADER_SEARCH_PATHS` at
-  `Sources/libsecp256k1{,/src,/include}`, and compile the two
-  `precomputed_*.c` from there — the suite then exercises the bytes the
-  package ships. Cost: `#include "secp256k1.c"` resolves through search
-  paths rather than the file's own folder, so a same-named file could
-  shadow it. The spec currently keeps the self-contained bundle; the
-  dedup variant changes T001's `includePaths` and T002's wiring — i.e.,
-  it reopens the ticked T001.
+- **Test-bundle duplication — resolved 2026-10-08 (dedup variant landed,
+  header-tree form)** — `Projects/Sources/libsecp256k1Tests` vendors the
+  complete header tree plus the test-only `.c` harness (~2.2MB, of which
+  ~0.7MB are headers duplicating `Sources/libsecp256k1` — down from ~3.4MB
+  of duplicated sources in the self-contained design). "Test what you
+  ship" is the established packaging norm (Fedora `%check`, Debian
+  autopkgtest): the suite now compiles the library `.c` files consumers
+  actually build, so a silent `vendir.yml` extraction bug in `Sources/`
+  fails the suite *when it runs* — the vendoring recipe above and the
+  T002/T017 checkpoints; no CI job runs the suite today
+  (`apple-builds`/`docker-builds` compile the package, so a build-breaking
+  bug still fails CI — a wrong-but-compiling extraction does not) —
+  instead of passing forever on a twin. The complete-header-tree
+  choice (over vendoring only test-only files) avoids fragile per-depth
+  engineered `-I` dirs for `../../`/`../../../`/same-dir include spellings.
+  Residual: `#include "secp256k1.c"` resolves through search paths, so a
+  same-named file could shadow it — and vendored headers shadow shipped
+  ones for bundle-internal includes; both copies are pinned by the shared
+  `&secp256k1-ref` anchor and the CI gate's lock-SHA equality +
+  `sync --locked` porcelain checks, so they cannot drift undetected.
 - **vendir wipes each managed path before copying** — `ignorePaths` carries
   the four `Utility.{h,c}` shims across natively (on-disk bytes, so
   uncommitted edits too; verified in [research.md](./research.md) §2).
@@ -314,7 +342,7 @@ full task list, grouped into review slices with checkpoints, is in
 - **Symlink-target dirs audited** — `Projects/Sources/libsecp256k1Tests/`
   contains only symlinks, so vendir can own it outright; the Wycheproof dir
   holds live xcconfigs, so vendir owns only a new `secp256k1/` subdirectory
-  and the two `Vendor/`-backed JSON symlinks beside it get `git rm`'d — vendir
+  and the two `Vendor/`-backed JSON symlinks beside it get removed — vendir
   cannot clear what it doesn't own.
 - **Tag-object vs commit SHA provenance shift** — `subtree.yaml`'s `commit:`
   recorded the annotated *tag object* SHA; `vendir.lock.yml` records the peeled
