@@ -2,12 +2,18 @@
 
 One file per durable decision, named `NNNN-<slug>.md`. Records are append-only:
 a decision that no longer holds is marked `Superseded` and points at the record
-that replaced it, rather than being edited or deleted. The chain is checked at
+that replaced it, rather than being edited or deleted — dated factual
+corrections aside (the exception is below). The chain is checked at
 both ends: a `Superseded` record must set `superseded_by:` to a record that
 exists and that lists it in `supersedes:` (and vice versa), `superseded_by:`
 may not appear on a record that still stands, numbers never repeat, every
 reference must resolve, and every chain of replacements must end at a record
 that still stands — a loop retires every decision on it.
+
+Corrections are the exception: a factual error in a standing record — a wrong
+mechanism, a dead reference — may be fixed in place with a dated
+`(amended YYYY-MM-DD: …)` marker naming what changed. Anything that changes what was decided is
+supersession, not correction.
 
 A choice belongs here when it stays true after the feature that prompted it has
 shipped and the surrounding code has moved on. Feature-local choices that die

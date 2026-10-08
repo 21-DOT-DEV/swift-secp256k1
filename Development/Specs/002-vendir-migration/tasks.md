@@ -16,60 +16,93 @@ the same way. Tick the box in the same change that lands the task.
 
 ## The vendir config
 
-- [ ] T001 [P] Write `vendir.yml` — five `directories:` entries with `git:`
+- [x] T001 [P] Write `vendir.yml` — five `directories:` entries with `git:`
   sources per plan §3: `Sources/libsecp256k1` (+`COPYING` in includePaths,
   `depth: 1`, `ref: v0.7.1`), `Sources/libsecp256k1_zkp` (+`COPYING`,
-  `ref: 08d1cd0…`, `depth: 0`), `Sources/Shared/swift-crypto` (+`LICENSE.txt`,
-  `ref: 4.5.0`, `depth: 1`), `Projects/Sources/libsecp256k1Tests`
-  (upstream-layout bundle, `depth: 1`, `excludePaths` drops the seven
-  `main()`-carrying `src/*.c` and `src/wycheproof/*.json` per plan §3),
-  `Projects/Resources/WycheproofTests/secp256k1` (two JSONs +
+  `ref: 08d1cd0…`, `depth: 0`), `Sources/Shared/swift-crypto` (+`LICENSE.txt`
+  +`NOTICE.txt`, `ref: 4.5.0`, `depth: 1`), `Projects/Sources/libsecp256k1Tests`
+  (upstream-layout bundle narrowed to the compilable `*.c`/`*.h` closure plus
+  `contrib/lax_der_*` — the filter itself keeps build-system files and the
+  vector JSONs out — +`COPYING`/`WYCHEPROOF_COPYING`, `depth: 1`,
+  `excludePaths` drops the seven `main()`-carrying `src/*.c` per plan §3),
+  `Projects/Resources/WycheproofTests/secp256k1` (`src/wycheproof/*.json` —
+  globbed so future upstream vectors ride ref bumps — plus
   `WYCHEPROOF_COPYING`, `newRootPath: src/wycheproof`, `depth: 1`);
   `ignorePaths` on each C-library entry names its `include/Utility.h` +
   `src/Utility.c` — vendir carries existing destination files across the wipe
   natively (on-disk bytes, so uncommitted edits too; research.md §2 verified);
-  `legalPaths: []` everywhere; `minimumRequiredVersion: 0.46.1` · `vendir.yml`
+  `legalPaths: []` everywhere; the three secp256k1 refs share one
+  `&secp256k1-ref` YAML anchor (vendir 0.46.2 and Renovate 44.142.1 both
+  verified — research.md §4/§5); `skipInitSubmodules: true` on all five
+  (vendir runs `git submodule update --init --recursive` by default; no
+  upstream has a `.gitmodules`, so output is unchanged and a future
+  submodule can't widen the sync); `minimumRequiredVersion: 0.46.2` · `vendir.yml`
 
-**Checkpoint:** `vendir.yml` exists and parses — `vendir sync` resolves every
-entry once the next group runs it; nothing downstream exists yet to break.
+**Checkpoint:** `vendir.yml` exists and parses — parse-clean only, since
+vendir drops unknown keys silently; §3's key-allowlist check is the real
+validator. `vendir sync` resolves every entry once the next group runs it;
+nothing downstream exists yet to break.
 
 ## The generated trees and their provenance
 
 - [ ] T002 Run `vendir sync`; `git rm` the two `Vendor/`-backed JSON symlinks
   at `Projects/Resources/WycheproofTests/` (vendir owns only the new
-  `secp256k1/` subdir — removing the stale links here keeps every commit
-  buildable); `diff -r` each destination against the pre-migration tree —
-  expect empty modulo the new `COPYING`/`LICENSE.txt` files, the removed
+  `secp256k1/` subdir); narrow `Project.swift`'s `libsecp256k1Tests` `sources:`
+  to the three literal files (`src/tests.c`, `src/precomputed_ecmult.c`,
+  `src/precomputed_ecmult_gen.c` — not a `{a,b}` glob: no manifest uses the
+  brace form, and an unexpanded brace would silently compile nothing) and fix
+  its "symlinked from Vendor/" comment — the narrowing must land in this
+  commit, since left at `**` the target double-compiles `secp256k1.c`,
+  `unit_test.c`, and
+  `contrib/lax_der_*.c` on top of `tests.c`'s text-includes and the link fails
+  on duplicate symbols; add `exclude: ["COPYING"]` to both C targets in
+  `Package.swift` — the sync drops `COPYING` inside both target roots, and
+  an un-excluded file there warns "found N file(s) which are unhandled" on
+  every build (same-commit fold, same reason as the glob); `diff -r` each
+  destination against the pre-migration tree — expect empty modulo the new
+  `COPYING`/`LICENSE.txt`/`NOTICE.txt` files, the removed
   symlink pair, and the two new `Projects/` destinations, where the three
   `libsecp256k1Tests` symlinks
   become real files (vendir deletes the symlinks itself when it wipes its
-  path) · vendored paths
+  path) · vendored paths, `Projects/Project.swift`, `Package.swift`
 - [ ] T003 Track `vendir.lock.yml`; `.gitignore` gains `.vendir-tmp*` — the
   lock is the provenance record and Renovate's prerequisite · `vendir.lock.yml`,
   `.gitignore`
 
 **Checkpoint:** every vendored destination reproduces byte-for-byte (modulo
-the declared license/symlink deltas), and `vendir.lock.yml` pins a
-resolved SHA for each of the five entries.
+the declared license/symlink deltas), `vendir.lock.yml` pins a
+resolved SHA for each of the five entries, and `tuist generate`, a
+`libsecp256k1Tests` build, and a `WycheproofTests` run are green — the run
+proves the vendored JSONs flatten into the test bundle's root, which
+`TestVectorLoader` (`forResource:` with no subdirectory) depends on (T002
+landed the narrowing) — and `swift build` emits no unhandled-file
+warnings (T002's `exclude: ["COPYING"]`).
 
 ## Consumers re-pointed at the new trees
 
 - [ ] T004 `Package.swift`: drop `swift-plugin-subtree` from
-  `developmentDependencies`; add `exclude: ["COPYING"]` to the `libsecp256k1`
-  and `libsecp256k1_zkp` targets (`Package.resolved` is gitignored — the
-  plugin's transitive closure just leaves local resolution) · `Package.swift`
-- [ ] T005 `Projects/Project.swift`: narrow `libsecp256k1Tests` sources to the
-  three-file compile set `src/{tests,precomputed_ecmult,precomputed_ecmult_gen}.c`
-  (why that pair and nothing else: plan §3); fix the "symlinked from
-  Vendor/" comment; `WycheproofTests` resources glob unchanged (subdir is
-  inside it) · `Projects/Project.swift`
+  `developmentDependencies` (`Package.resolved` is gitignored — the
+  plugin's transitive closure just leaves local resolution); the
+  `exclude: ["COPYING"]` lines landed back in T002 — the sync puts `COPYING`
+  inside both target roots and SPM warns on unexcluded files · `Package.swift`
+- [ ] T005 _Folded into T002 — the `Project.swift` sources narrowing must land
+  in the same commit as the tree it scopes, or that commit doesn't build;
+  tick this box in T002's commit.
+  (`WycheproofTests` resources glob unchanged — the new subdir is inside it.)_
 - [ ] T006 `Projects/Resources/libsecp256k1Tests/Shared.xcconfig`:
   `HEADER_SEARCH_PATHS` repoint `$(SRCROOT)/../Vendor/secp256k1{,/src,/include}`
   → `$(SRCROOT)/Sources/libsecp256k1Tests{,/src,/include}` (same triple —
-  root serves `contrib/`, the rest cover `src/`/`include/`) ·
+  root serves `contrib/`, the rest cover `src/`/`include/`); must land before
+  T008 — until the `Vendor/` deletion the old paths still resolve, which is
+  also what keeps T002 green ·
   `Projects/Resources/libsecp256k1Tests/Shared.xcconfig`
 - [ ] T007 `xcframework-release.yml`: `cp Vendor/secp256k1/COPYING` →
-  `Sources/libsecp256k1/COPYING` · `.github/workflows/xcframework-release.yml`
+  `Sources/libsecp256k1/COPYING`; the same step also copies
+  `Sources/Shared/swift-crypto/{LICENSE.txt,NOTICE.txt}` into the zip as
+  `LICENSE-swift-crypto.txt`/`NOTICE-swift-crypto.txt`, and the unzip-verify
+  step asserts both ship — the framework compiles swift-crypto code, so
+  Apache-2.0 attribution belongs in the binary artifact (a compliance gap
+  that predates this branch) · `.github/workflows/xcframework-release.yml`
 
 **Checkpoint:** `swift build`, `swift test`, and `tuist generate` pass against
 the new trees — every consumer path re-plumbed and the stale symlinks already
@@ -93,12 +126,19 @@ the two JSON symlinks are gone and the real files resolve; build still green.
 - [ ] T010 Root `AGENTS.md`: rewrite the "Extraction flow" bullet for vendir
   (config, `ignorePaths`-preserved shims, manual bump recipe on
   `vendor/<name>-<ref>` branches with the `dependencies` label — include the
-  plan-§3 lock-diff check); Boundaries now
+  plan-§3 lock-diff check, and note `minimumRequiredVersion` is a floor:
+  run the version `vendir-check.yml` pins, since a newer release's lock
+  format could drift; and warn that `vendir sync` deletes files in managed
+  paths not covered by `ignorePaths` — anything uncommitted there doesn't
+  survive); Boundaries now
   read "vendored paths under `Sources/`/`Projects/`", the patch guidance keeps
   its shape; add a vendir install line (`brew install carvel-dev/carvel/vendir`)
   to Commands · `AGENTS.md`
 - [ ] T011 `Sources/AGENTS.md` extraction note points at `vendir.yml`;
-  `Sources/Shared/README.md` Vendor reference updated; the
+  `Sources/Shared/README.md` Vendor reference updated, plus a `*.swift`-only
+  invariant: `swift-crypto/`'s `LICENSE.txt`/`NOTICE.txt` stay inert only
+  because the plugin copies `*.swift` — any SharedSourcesPlugin replacement
+  must keep that filter; the
   `Vendor/AGENTS.md` drift-check runbook folds into `Sources/AGENTS.md` as
   "locate the original via `gh api repos/<repo>/contents/<path>?ref=<tag>`" ·
   `Sources/AGENTS.md`, `Sources/Shared/README.md`
@@ -127,11 +167,19 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
 ## The CI gate
 
 - [ ] T015 [P] Add `.github/workflows/vendir-check.yml` per plan §3 —
-  path-filtered on `vendir*.yml`, the five vendored destinations, and the
-  workflow itself; `ubuntu-slim`, `permissions: {}`, `env:` blocks per
-  `.github/AGENTS.md`; `curl` + hard-coded `VENDIR_SHA256` + `sha256sum -c`
-  install; run `vendir sync` then the scoped `git status --porcelain` check;
-  note the gate in `.github/AGENTS.md`'s conventions list ·
+  `ubuntu-slim`, `permissions: {}`, `persist-credentials: false` on
+  checkout, `env:` blocks per `.github/AGENTS.md`;
+  `curl` + hard-coded `VENDIR_SHA256` + `sha256sum -c` install; trigger on
+  PRs touching `vendir*.yml`, the five vendored destinations, or the
+  workflow itself, plus the weekly `schedule:` and `workflow_dispatch:`.
+  The six checks are §3's verbatim — remote-resolution before the sync,
+  `yq 'explode(.)'` for all config/lock *value* reads (the allowlist
+  scans keys un-exploded — that also catches `<<:` merge keys),
+  `--ignored=matching` on
+  the porcelain check. Switch `vendir.yml`'s future-tense gate comments
+  ("lands later", "will pin/assert/guard") to present tense; note the
+  gate in
+  `.github/AGENTS.md`'s conventions list ·
   `.github/workflows/vendir-check.yml`, `.github/AGENTS.md`
 
 **Checkpoint:** the gate exercises itself — this PR touches `vendir.yml` and the
@@ -149,8 +197,9 @@ required).
   Tuist generate + `libsecp256k1Tests` run, Wycheproof resource lookup,
   `vendir-check.yml` red/green on a stale-or-untracked-extraction probe,
   `plans --check` + `vale Development/` clean
-- [ ] T018 Flip this spec's `status:` to `Implemented` at merge — the field
-  records a repository fact, not a claim about checks
+- [ ] T018 Flip this spec's `status:` to `Implemented` and
+  `Development/Roadmap/README.md`'s vendir-migration row to ✅ at merge —
+  the field records a repository fact, not a claim about checks
 
 **Checkpoint:** merge-time only — index tables regenerated, the spec's status
 reflects what the repository now does.

@@ -31,9 +31,11 @@ upstream layout, the Wycheproof JSONs get a vendir-owned subdirectory,
 `COPYING` joins the extraction). The four project-owned `Utility.{h,c}` shims
 inside the wiped trees are declared via `ignorePaths`, so vendir itself
 carries them across syncs — no wrapper. Update automation is Renovate — its
-vendir manager
-bumps `ref:` and re-syncs — landing in a separate PR with `dependabot.yml`
-absorbed then; until it lands, updates are a documented manual recipe.
+vendir manager bumps `ref:` and re-syncs the ref-pinned entries — landing
+in a separate PR with `dependabot.yml` absorbed then; until it lands,
+updates are a documented manual recipe.
+*(amended 2026-10-07: vendir-manager scope corrected — the zkp SHA pin has
+no ref for it to track)*
 
 ## Alternatives considered and rejected
 
@@ -58,12 +60,17 @@ absorbed then; until it lands, updates are a documented manual recipe.
 
 ## Consequences
 
-Sync is five fetches (~50–100MB total): four shallow, plus `depth: 0` on the
-zkp SHA pin because bare-SHA fetches take vendir's slow path. `vendir.lock.yml` records
+Sync is five fetches (~25MB measured): four shallow, plus `depth: 0` on the
+zkp SHA pin — a shallow fetch reaches only ref tips and `08d1cd0` sits far
+behind `master`'s tip. `vendir.lock.yml` records
 peeled *commit* SHAs where `subtree.yaml` recorded annotated tag-*object* SHAs
 — same trees, clearer provenance, and the lock is exactly what Renovate
-maintains. Update detection is manual until the Renovate PR lands — parity,
+maintains — though the zkp bare-SHA pin has no ref for the vendir manager to
+track, so moving it needs a `customManagers` rule paired with a `vendir
+sync` step (a text rewrite alone leaves the lock and tree stale).
+Update detection is manual until the Renovate PR lands — parity,
 since the old checker's schedule was already disabled. `git-subtree` trailers
 cease; `Vendor/` deletion is recoverable from history. The drift-check runbook
 from `Vendor/AGENTS.md` becomes fetch-on-demand via `gh api` in
-`Sources/AGENTS.md`.
+`Sources/AGENTS.md`. *(amended 2026-10-07: fetch size and depth mechanism
+corrected; zkp update path corrected)*

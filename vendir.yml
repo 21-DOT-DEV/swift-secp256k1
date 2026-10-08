@@ -1,0 +1,169 @@
+# Managed by vendir — https://carvel.dev/vendir/
+# Install: `brew install carvel-dev/carvel/vendir`. Sync: `vendir sync`
+# (re-resolves every ref; resolved SHAs land in vendir.lock.yml).
+
+apiVersion: vendir.k14s.io/v1alpha1
+kind: Config
+
+# Floor is the verified binary, not a feature: 0.46.2 is the release this
+# migration was verified against and the version the vendir-check workflow
+# will pin. (carvel-dev/vendir#453's targeted single-ref fetch is still open —
+# `depth` bounds history depth and that is what keeps the syncs cheap.)
+minimumRequiredVersion: 0.46.2
+
+directories:
+- path: Sources/libsecp256k1
+  contents:
+  - path: .
+    git:
+      url: https://github.com/bitcoin-core/secp256k1
+      # Shared pin: the two Projects/ secp256k1 entries below alias this
+      # YAML anchor — edit the value once and all three move together, or
+      # the test bundle tests a different upstream than the library ships.
+      # .github/workflows/vendir-check.yml (lands later) will assert the
+      # three vendir.lock.yml SHAs match — a backstop for an alias ever
+      # replaced by a literal.
+      ref: &secp256k1-ref v0.7.1
+      depth: 1
+      # No upstream uses submodules today (on all five entries) — keeps a
+      # future one from pulling a second repo into the sync.
+      skipInitSubmodules: true
+    includePaths:
+    - include/**/*.c
+    - include/**/*.h
+    - src/**/*.c
+    - src/**/*.h
+    # License rides with vendored code (legalPaths default doesn't match
+    # the COPYING name, so it is an explicit include).
+    - COPYING
+    excludePaths:
+    - '**/bench*'
+    - '**/test*'
+    - '**/precompute_ecmult*'
+    - '**/wycheproof/**'
+    - '**/test_vectors/**'
+    - '**/*tests*'
+    - '**/unit_test*'
+    - '**/musig/vectors.h'
+    # Project-owned shims vendir carries across the wipe. Caveat: a future
+    # upstream file at one of these exact paths would be silently shadowed
+    # by the local copy — vendir copies ignored destination bytes over the
+    # freshly fetched content (CopyExistingFiles, pkg/vendir/directory);
+    # the vendir-check workflow will guard against that upstream file appearing.
+    ignorePaths:
+    - include/Utility.h
+    - src/Utility.c
+    legalPaths: []
+
+- path: Sources/libsecp256k1_zkp
+  contents:
+  - path: .
+    git:
+      url: https://github.com/BlockstreamResearch/secp256k1-zkp
+      ref: 08d1cd0c9c35a5a151ba80c226d49ea949e90374
+      # tracks: master (subtree.yaml's `branch: master`) — a bare SHA gives
+      # Renovate's vendir manager no ref to follow; ADR 0006 records the
+      # customManagers rule + `vendir sync` step needed to move it.
+      # `depth` reaches only ref tips — this pin sits well behind
+      # master's tip, so depth: 0 (full history) is required to fetch it.
+      depth: 0
+      skipInitSubmodules: true
+    includePaths:
+    - include/**/*.c
+    - include/**/*.h
+    - src/**/*.c
+    - src/**/*.h
+    - COPYING
+    excludePaths:
+    - '**/bench*'
+    - '**/test*'
+    - '**/precompute_ecmult*'
+    - '**/wycheproof/**'
+    - '**/test_vectors/**'
+    - '**/*tests*'
+    - '**/unit_test*'
+    - '**/musig/vectors.h'
+    ignorePaths:
+    - include/Utility.h
+    - src/Utility.c
+    legalPaths: []
+
+- path: Sources/Shared/swift-crypto
+  contents:
+  - path: .
+    git:
+      url: https://github.com/apple/swift-crypto
+      ref: 4.5.0
+      depth: 1
+      skipInitSubmodules: true
+    includePaths:
+    - Sources/Crypto/CryptoKitErrors.swift
+    - Sources/Crypto/Digests/Digest.swift
+    - Sources/Crypto/Signatures/Signature.swift
+    - Sources/Crypto/Util/PrettyBytes.swift
+    - Sources/Crypto/Util/SecureBytes.swift
+    - Sources/Crypto/Util/BoringSSL/RNG_boring.swift
+    - Sources/Crypto/ASN1/**/*.swift
+    - LICENSE.txt
+    # Apache-2.0 §4(d): the NOTICE attribution text must ride with the code.
+    - NOTICE.txt
+    excludePaths:
+    - '**/ObjectIdentifier*'
+    - '**/SEC1PrivateKey*'
+    - '**/SubjectPublicKeyInfo*'
+    legalPaths: []
+
+# Vendored copy of upstream's C test suite in upstream layout: the Tuist
+# target compiles src/tests.c + src/precomputed_ecmult{,_gen}.c
+# and everything else here is inert — a text-include of tests.c or a license.
+- path: Projects/Sources/libsecp256k1Tests
+  contents:
+  - path: .
+    git:
+      url: https://github.com/bitcoin-core/secp256k1
+      # YAML alias of the shared pin above — resolves to its value.
+      ref: *secp256k1-ref
+      depth: 1
+      skipInitSubmodules: true
+    includePaths:
+    # The compilable closure of tests.c's #include graph — *.c/*.h selection
+    # keeps out upstream build-system files (CMakeLists, Makefile.am.include,
+    # src/asm/*.s) and the vector JSONs (they live under
+    # Projects/Resources/WycheproofTests/).
+    - src/**/*.c
+    - src/**/*.h
+    - include/**/*.h
+    # The lax_der_*.c files quote-include their sibling .h — the glob
+    # carries both.
+    - contrib/lax_der_*
+    # Upstream's terms for the vector headers tests.c includes.
+    - src/wycheproof/WYCHEPROOF_COPYING
+    # License rides with vendored code — test-only or not, this tree is a
+    # substantial verbatim copy of MIT-licensed upstream source.
+    - COPYING
+    excludePaths:
+    # Every main()-carrying src/*.c except tests.c itself.
+    - src/bench*.c
+    - src/ctime_tests.c
+    - src/precompute_ecmult.c
+    - src/precompute_ecmult_gen.c
+    - src/tests_exhaustive.c
+    legalPaths: []
+
+- path: Projects/Resources/WycheproofTests/secp256k1
+  contents:
+  - path: .
+    git:
+      url: https://github.com/bitcoin-core/secp256k1
+      # YAML alias of the shared pin above — resolves to its value.
+      ref: *secp256k1-ref
+      depth: 1
+      skipInitSubmodules: true
+    # includePaths match repo-relative paths BEFORE newRootPath re-roots;
+    # the *.json glob lets future upstream vectors ride ref bumps (the
+    # Swift loader names files explicitly, so extras land bundled-but-unused).
+    includePaths:
+    - src/wycheproof/*.json
+    - src/wycheproof/WYCHEPROOF_COPYING
+    newRootPath: src/wycheproof
+    legalPaths: []
