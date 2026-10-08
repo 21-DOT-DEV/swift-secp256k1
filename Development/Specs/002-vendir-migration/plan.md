@@ -36,18 +36,23 @@ work: [tasks.md](./tasks.md). Evidence and measured verification:
 - `Vendor/`'s two live consumers move to vendir-managed destinations: the
   C test-runner symlinks at `Projects/Sources/libsecp256k1Tests/` become a
   self-contained vendored bundle in upstream layout (the target compiles
-  `src/{tests,precomputed_ecmult,precomputed_ecmult_gen}.c`; the rest stay
-  inert text-includes), the Wycheproof JSON symlinks become real files under
+  `src/tests.c`, `src/precomputed_ecmult.c`, and
+  `src/precomputed_ecmult_gen.c`; the rest stay
+  inert — text-includes or licenses), the Wycheproof JSON symlinks become real files under
   `Projects/Resources/WycheproofTests/secp256k1/` — the `Vendor/`-backed
   symlinks themselves get `git rm`'d in the same change — and
-  `xcframework-release.yml` reads `COPYING` from `Sources/libsecp256k1/COPYING`.
+  `xcframework-release.yml` reads `COPYING` from `Sources/libsecp256k1/COPYING`,
+  and its zip step gains swift-crypto's `LICENSE.txt`/`NOTICE.txt` — the
+  framework compiles that code, so Apache-2.0 attribution belongs in the
+  binary artifact (a gap that predates this branch).
 - Provenance lives in a committed `vendir.lock.yml` — peeled commit SHAs plus
   resolved tag names, which is what Renovate's vendir manager maintains.
-- A CI freshness gate runs `vendir sync` — which
-  re-resolves every ref — and fails on `git status --porcelain` output scoped
-  to the vendored paths, so a `vendir.yml` ref edit, a stale lock, a
-  hand-edited tree, or a re-pushed upstream tag all surface as diffs in the
-  next vendoring PR.
+- A CI freshness gate keeps the vendored trees honest: `vendir sync
+  --locked` plus a scoped `git status --porcelain` (the tree must match the
+  committed lock deterministically), each `ref:` resolved against its
+  remote and required to equal the lock's `sha:` — a moved tag or unsynced
+  `ref:` edit fails by name — and on PRs an unchanged `ref:` must keep its
+  base `sha:`. The full check list and design live in §3.
 - The interim update recipe (edit `ref:` → `vendir sync` → PR) is
   documented in `AGENTS.md`; Renovate is the committed successor ([ADR
   0006](../../ADRs/0006-vendir-replaces-subtree-and-vendor-mirror.md)) and lands
@@ -57,13 +62,15 @@ work: [tasks.md](./tasks.md). Evidence and measured verification:
 
 **In scope:** `vendir.yml`, `vendir.lock.yml`, a path-filtered
 `vendir-check.yml` workflow; the
-deletions listed above; `Package.swift` (drop the plugin dep, `exclude:
-["COPYING"]` on both C targets); `Projects/Project.swift` (narrow the
-`libsecp256k1Tests` source glob to the three
-`src/{tests,precomputed_ecmult,precomputed_ecmult_gen}.c` units, update the
-comment); `Projects/Resources/libsecp256k1Tests/Shared.xcconfig` (header search
+deletions listed above; `Package.swift` (drop the plugin dep; `exclude:
+["COPYING"]` on both C targets — rides T002's commit, since the sync puts
+the files inside the target roots); `Projects/Project.swift` (narrow the
+`libsecp256k1Tests` sources to the three literal `.c` files — no `{a,b}`
+glob, which no manifest uses and Tuist expansion of is unverified — update
+the comment); `Projects/Resources/libsecp256k1Tests/Shared.xcconfig` (header search
 paths to the new bundle); `.github/workflows/xcframework-release.yml` (COPYING
-path); `.gitattributes`, `.swiftformat`, `.swiftlint.yml`, `.gitignore`;
+path + swift-crypto LICENSE/NOTICE into the release zip); `.gitattributes`,
+`.swiftformat`, `.swiftlint.yml`, `.gitignore`;
 `AGENTS.md`, `Sources/AGENTS.md`, `Sources/Shared/README.md`, `.github/AGENTS.md`,
 `Development/constitution.md`; the 36 `Vendor/…` references in doc comments
 across `Sources/Shared/**` and `Projects/Sources/**`; the `CHANGELOG.md`
@@ -86,9 +93,18 @@ housekeeping.
 
 **vendir.yml.** Five `directories:` entries, each with a single `git:` contents
 entry — the canonical model, and the only one Renovate's vendir support updates
-end-to-end. `minimumRequiredVersion: 0.46.1` (first release carrying
-carvel-dev/vendir#453's targeted single-ref fetch). `vendir.lock.yml` is
-committed; `.vendir-tmp*` is gitignored.
+end-to-end. `minimumRequiredVersion: 0.46.2` — the release this migration was
+verified against and the version CI pins (carvel-dev/vendir#453's targeted
+fetch is still open, so the floor is a tested binary, not a feature gate).
+`vendir.lock.yml` is
+committed; `.vendir-tmp*` is gitignored. `skipInitSubmodules: true` on all
+five — vendir runs `git submodule update --init --recursive` by default,
+no upstream has a `.gitmodules`, and the flag keeps a future one from
+pulling a second repo into the sync. The three secp256k1 refs share one
+`&secp256k1-ref` YAML anchor, so the shared pin can't drift inside the
+config — the lock-SHA equality check in the CI gate is the backstop for an
+alias replaced by a literal (vendir and Renovate compatibility both
+verified — [research.md](./research.md) §4/§5).
 
 | Destination | Upstream | `ref:` | `depth:` |
 |---|---|---|---|
@@ -98,9 +114,11 @@ committed; `.vendir-tmp*` is gitignored.
 | `Projects/Sources/libsecp256k1Tests` | bitcoin-core/secp256k1 | `v0.7.1` | 1 |
 | `Projects/Resources/WycheproofTests/secp256k1` | bitcoin-core/secp256k1 | `v0.7.1` | 1 |
 
-Tag pins get `depth: 1` (the targeted fetch). The zkp SHA pin takes vendir's
-full-fetch path regardless — a bare SHA is not fetchable by name, and shallow
-depth can miss a non-tip commit — so `depth: 0` is explicit about it. The repo
+Tag pins get `depth: 1` — it bounds history depth even though released vendir
+still fetches every ref shallowly for a named tag (the targeted single-ref
+fetch in carvel-dev/vendir#453 is unmerged). The zkp SHA pin can't ride
+`depth: 1` — a shallow fetch reaches only ref tips, and `08d1cd0` sits well
+behind `master`'s tip — so `depth: 0` is required. The repo
 is ~7MB; the fetch is seconds. Five entries fetch three different repos —
 secp256k1 three times over at ~5MB a clone. That fan-out is real but trivially
 cheap, so a shared-cache design buys nothing here.
@@ -111,8 +129,11 @@ patterns — verified equivalent in [research.md](./research.md) §2). One
 deliberate addition per extraction — license files ride with vendored code:
 `COPYING` for both C trees (replaces the `Vendor/secp256k1/COPYING` the
 release zip copies; vendir's `legalPaths` default doesn't match the name, so
-it's explicit) and `LICENSE.txt` for swift-crypto. Each lands at its target root and is `exclude`d in `Package.swift` /
-inert under `Sources/Shared/` (the plugin only copies `*.swift`).
+it's explicit) and `LICENSE.txt`/`NOTICE.txt` for swift-crypto (Apache-2.0
+§4(d) requires the NOTICE attribution text to ride with the code). Each lands at its target root and is `exclude`d in `Package.swift` — for the C-tree
+`COPYING`s, that exclusion rides T002's commit, since an un-excluded file
+inside a target root warns on every build — or sits inert under
+`Sources/Shared/` (the plugin only copies `*.swift`).
 
 **Preserve step.** vendir wipes each `directories[].path` before copying, and
 the only non-upstream files inside the wiped roots are the four `Utility.{h,c}`
@@ -120,10 +141,12 @@ shims (the `.h` is pinned in `include/` by `publicHeadersPath`; the `.c`
 needs `src/` internals — neither can leave the tree). vendir's `ignorePaths`
 field covers this natively: destination files matching its globs are staged
 aside and copied back over the sync — shims and uncommitted edits alike,
-verified in [research.md](./research.md) §2. No wrapper exists; humans and CI
-run bare `vendir sync`. One caveat: a *future* upstream file at one of those
+verified in [research.md](./research.md) §2. No wrapper exists; humans run
+bare `vendir sync`, the gate runs `vendir sync --locked`. One caveat: a
+*future* upstream file at one of those
 exact paths would be silently shadowed — none exists today; a `vendir.yml`
-comment notes it.
+comment notes it, and the CI gate queries both C upstreams at the locked
+SHAs to assert those paths stay absent.
 
 **C test-runner re-plumb.** `tests.c` is an amalgamating file: it `#include`s
 `secp256k1.c` (the whole library), `../include/` headers,
@@ -133,16 +156,25 @@ symbols (`secp256k1_pre_g`, `secp256k1_ecmult_gen_prec_table`) it references
 `extern` (upstream's CMake compiles the same pair as the `secp256k1_precomputed`
 object library). Relative includes must resolve in upstream layout, so
 `Projects/Sources/libsecp256k1Tests/` becomes a vendored bundle preserving that
-layout — includePaths cover `src/**`, `include/**`, `contrib/lax_der_*`
+layout — includePaths cover the compilable `*.c`/`*.h` closure (`src/**/*.c`,
+`src/**/*.h`, `include/**/*.h`) plus `contrib/lax_der_*`
 (the `.c` files quote-include their sibling `.h`, so the glob carries both —
-today that resolves inside the full `Vendor/` tree the symlinks point into),
-and
-`excludePaths` drops the seven `main()`-carrying `src/*.c` (`bench*.c`,
+today that resolves inside the full `Vendor/` tree the symlinks point into)
+and `src/wycheproof/WYCHEPROOF_COPYING` — the `.c`/`.h` filter itself keeps
+upstream build-system files (`CMakeLists`, `Makefile.am.include`,
+`src/asm/*.s`) and the vector JSONs out — and `excludePaths` drops the
+seven `main()`-carrying `src/*.c` (`bench*.c`,
 `ctime_tests.c`, `precompute_ecmult{,_gen}.c` — the table *generators*,
-distinct from the `precomputed_*` tables — and `tests_exhaustive.c`) plus
-`src/wycheproof/*.json` (the JSONs belong under Resources). `Project.swift`
-narrows its source glob to `src/{tests,precomputed_ecmult,precomputed_ecmult_gen}.c`
-so every other bundled `.c` stays an inert text-include. `Shared.xcconfig`'s
+distinct from the `precomputed_*` tables — and `tests_exhaustive.c`).
+`Project.swift` narrows its sources to the three literal `.c` files
+(`src/tests.c`, `src/precomputed_ecmult.c`, `src/precomputed_ecmult_gen.c`
+— no brace glob, whose Tuist expansion is unverified and whose failure mode
+is compiling nothing) so every other bundled `.c` stays an inert
+text-include — and that narrowing
+lands in the same commit as the sync (T002): left at `**`, the target would
+compile `secp256k1.c`, `unit_test.c`, and `contrib/lax_der_*.c` a second time
+on top of `tests.c`'s text-includes and the link fails on duplicate symbols.
+`Shared.xcconfig`'s
 `HEADER_SEARCH_PATHS` repoint at the bundle. The Wycheproof JSONs (plus
 `WYCHEPROOF_COPYING`, the vectors' own license) sync to a vendir-owned
 `secp256k1/` subdirectory so the xcconfig siblings survive — `newRootPath:
@@ -150,33 +182,84 @@ src/wycheproof` re-roots the fetched tree, but `includePaths` are matched
 repo-relative *before* it applies, so the patterns spell `src/wycheproof/…`
 in full (verified in [research.md](./research.md) §2) — and the two
 `Vendor/`-backed JSON symlinks it replaces get `git rm`'d in the same sync
-change — vendir owns the subdir, not the parent. Whether the test bundle
-lookup needs the subdir name is a verification step.
+change — vendir owns the subdir, not the parent. The loader looks the
+vectors up flat (`forResource:`, no subdirectory), so the vendored dir
+must flatten into the bundle — §5 verifies it.
 
 **Interim updates.** Manual: edit `ref:` in `vendir.yml` →
 `vendir sync` → check the lock diff → commit → PR on a
 `vendor/<name>-<ref>` branch with the `dependencies` label. The diff check
 matters: `vendir sync` re-resolves *every* entry, so a re-pushed tag or drift
-on an untouched pin would ride the same PR — only the bumped entry's `sha:`
-should change. No git-subtree trailers, no squash gymnastics — the
+on an untouched pin would ride the same PR — only the bumped dep's `sha:`s
+should move (for secp256k1 that's all three entries in lockstep — they
+share one anchor; the CI gate enforces the same rule on PRs). No
+git-subtree trailers, no squash gymnastics — the
 lock file is the provenance. Renovate replaces this wholesale in its own PR.
 
-**CI gate.** New `vendir-check.yml`, path-filtered on `vendir*.yml`
-and the five vendored destinations; `ubuntu-slim` (its published toolset
-includes git, curl, and coreutils — all the job needs); vendir
+**CI gate.** New `vendir-check.yml`, path-filtered on `vendir*.yml`,
+the five vendored destinations, and the workflow itself, plus a weekly
+`schedule:` and
+`workflow_dispatch:` — a moved tag surfaces within days, not at the next
+vendoring PR; `ubuntu-slim` (its published toolset includes git, curl,
+coreutils, `yq`, and `jq`; config and lock reads go through
+`yq 'explode(.)'` — a bare read prints the `*secp256k1-ref` alias
+literally, and `ls-remote` would chase a garbage ref); vendir
 installed by `curl` plus a hard-coded release SHA-256 in an `env:` constant
 (the Vale precedent — a `checksums.txt` fetched from the same release would
-prove nothing if the release were tampered); runs `vendir sync` —
-re-resolving every ref is what makes drift visible: an
-edited `ref:`, a stale lock, a hand-edited tree, or a re-pushed upstream tag
-all change the output — then a scoped `test -z "$(git status --porcelain --
-<vendored paths> vendir.lock.yml)"`, because `git diff --exit-code` ignores
-untracked files. `--locked` was rejected: it fetches the *lock's* stored
-`OriginalRef` and verifies it against the locked SHA — the config's edited
-`ref:` is never consulted, so a `ref:` edit without a committed lock would
-pass silently. Not a required check; a re-pushed tag surfaces at
-the next vendoring PR — it cannot alter the repo until something re-resolves
-it.
+prove nothing if the release were tampered) — pinned at or above the
+config's `minimumRequiredVersion`, which the config enforces itself.
+Six checks, each a named failure, in run order:
+
+1. **Key allowlist** — enumerate every mapping key in `vendir.yml` and
+   fail on any outside the used set: top-level `apiVersion`, `kind`,
+   `minimumRequiredVersion`, `directories`; per directory `path`,
+   `contents`; per `contents[]` entry `path`, `git`, `includePaths`,
+   `excludePaths`, `legalPaths`, `ignorePaths`, `newRootPath`; `git`
+   limited to `url`, `ref`, `depth`, `skipInitSubmodules`. Values are
+   pinned too: every `url:` in the fixed three-upstream set and every
+   `directories[].path` in the five-destination set — otherwise a
+   repointed `url:` resolves happily on a fork through every other check.
+   vendir drops unknown keys silently — a typo'd `excludePath:` syncs
+   green, and the consistency checks below can't see the difference.
+2. **Remote resolution** — `git ls-remote <url> refs/tags/<ref>
+   refs/tags/<ref>^{}` per entry (take the `^{}` line's SHA when present —
+   the bare ref line is the tag-*object* SHA for annotated tags and
+   false-fails the lock comparison; lightweight `4.5.0` has only the ref
+   line; the zkp pin's `ref:` is the SHA itself),
+   required to equal the lock's `sha:` — each resolved value must match
+   `^[0-9a-f]{40}$` (an abbreviated SHA fails rather than matching by
+   accident) and empty `ls-remote` output fails (a branch name or
+   `origin/…` ref queries nothing under `refs/tags/`) — so a moved tag or
+   an unsynced
+   `ref:` edit fails with the entry named. Runs before the sync: after a
+   tag move the locked SHA is often unreachable at `depth: 1`, and a
+   fetch error would mask the named failure.
+3. **Deterministic tree** — `vendir sync --locked`, then `test -z "$(git
+   status --porcelain --ignored=matching -- <vendored paths>
+   vendir.lock.yml)"` — the tree must match the committed lock (`git diff
+   --exit-code` ignores untracked files; `--ignored=matching` catches a
+   synced upstream file matching a repo `.gitignore` pattern).
+4. **Base comparison** — on PRs, an entry whose `ref:` is unchanged from
+   the base must keep the base's locked `sha:`, so a re-pushed tag can't
+   ride another dependency's bump through a committed re-resolve (needs
+   base history; skips when `vendir.yml` doesn't exist on the base — this
+   PR introduces it).
+5. **Anchor backstop** — the three secp256k1 lock SHAs stay equal (the
+   anchor makes drift impossible by construction; the guard catches an
+   alias replaced by a literal).
+6. **Shim shadow check** — `curl -o /dev/null -w '%{http_code}'` on
+   `raw.githubusercontent.com` for `include/Utility.h` and `src/Utility.c`
+   in both C upstreams at their locked SHAs; passes only on an exact 404
+   — an outage must fail, not read as absent (no `gh` or token needed;
+   curl is already the install tool). A future upstream file at either
+   `ignorePaths` path would be silently shadowed.
+
+`--locked` alone was rejected as the gate — `Lock()` swaps the config's
+`ref:` for the lock's `sha:` (pkg/vendir/config/directory.go) without
+consulting the edit — so check 2 is what makes a `ref:` edit without a
+re-synced lock fail. Not a required check; nothing reaches the repo
+without a re-resolve, and a moved tag fails with its name on the next
+gate run.
 
 ## 4. Implementation steps
 
@@ -189,29 +272,45 @@ full task list, grouped into review slices with checkpoints, is in
 ## 5. Verification
 
 - [ ] `diff -r` of synced trees against the pre-migration commit is empty
-  modulo the declared deltas (`COPYING`/`LICENSE.txt`, the new `Projects/`
+  modulo the declared deltas (`COPYING`/`LICENSE.txt`/`NOTICE.txt`, the new `Projects/`
   destinations, the removed symlinks) — proven once in
   [research.md](./research.md) §2; re-run on the real config
 - [ ] `swift build` and `swift test` at the root unchanged
 - [ ] `swift package --disable-sandbox tuist generate -p Projects/ --no-open`
   and `libsecp256k1Tests` builds and runs the upstream suite
-- [ ] `WycheproofTests` resolves the JSONs at their new subdir
+- [ ] `WycheproofTests` resolves the JSONs — `TestVectorLoader` looks them up
+  flat in the test bundle, so the vendored `secp256k1/` subdir must flatten
+  in the copy step
 - [ ] `xcframework-release.yml` `cp` path resolves (path check; the release
   itself only runs on tags)
-- [ ] `vendir-check.yml` fails on an intentionally stale *or untracked* output
-  and passes clean
+- [ ] `vendir-check.yml` fails on an intentionally stale *or untracked* output,
+  fails a doctored `ref:` by name (remote-resolution check), fails a
+  misspelled-key probe (allowlist check), and passes clean
 - [ ] `swift run --package-path Development/Tools plans --check` and
   `vale Development/` clean
 - [ ] Manual update recipe exercised end-to-end once (dry-run on a branch)
 
 ## 6. Risks and mitigations
 
+- **Test-bundle duplication — decide before T002** — the bundle re-vendors
+  ~76 of its 106 files byte-identical to `Sources/libsecp256k1` (~3.4MB
+  duplicated into every SPM clone; `export-ignore` doesn't help clones).
+  A verified alternative (links and passes in review): vendor only the
+  ~30 test-only files, point `HEADER_SEARCH_PATHS` at
+  `Sources/libsecp256k1{,/src,/include}`, and compile the two
+  `precomputed_*.c` from there — the suite then exercises the bytes the
+  package ships. Cost: `#include "secp256k1.c"` resolves through search
+  paths rather than the file's own folder, so a same-named file could
+  shadow it. The spec currently keeps the self-contained bundle; the
+  dedup variant changes T001's `includePaths` and T002's wiring — i.e.,
+  it reopens the ticked T001.
 - **vendir wipes each managed path before copying** — `ignorePaths` carries
   the four `Utility.{h,c}` shims across natively (on-disk bytes, so
   uncommitted edits too; verified in [research.md](./research.md) §2).
   Residual: a *future* upstream file at one of those exact paths would be
-  silently shadowed — none exists today, and the project names are arbitrary
-  enough that upstream adopting them is unlikely.
+  silently shadowed — none exists today, the project names are arbitrary
+  enough that upstream adopting them is unlikely, and the CI gate asserts
+  their absence at each locked SHA.
 - **Symlink-target dirs audited** — `Projects/Sources/libsecp256k1Tests/`
   contains only symlinks, so vendir can own it outright; the Wycheproof dir
   holds live xcconfigs, so vendir owns only a new `secp256k1/` subdirectory
@@ -222,14 +321,20 @@ full task list, grouped into review slices with checkpoints, is in
   *commit* SHA (`833ca65…` vs `1a53f49…` for `v0.7.1` — same tree). Documented
   in [research.md](./research.md) §3 so a reviewer diffing configs doesn't
   read it as drift.
-- **zkp SHA pin takes the slow fetch path** — bounded at ~7MB of history;
-  `depth: 0` documents that the pin is intentional, not an oversight.
+- **zkp SHA pin needs full history** — a shallow fetch can't reach it (it
+  sits well behind `master`'s tip), so `depth: 0` is required, not optional; bounded
+  at ~7MB of history either way. Deeper residual: even `depth: 0` works only
+  while `08d1cd0` stays reachable from a fetched branch or tag — a `master`
+  rewrite upstream would break sync outright until re-pinned (unlikely; no
+  mitigation short of a fork mirror).
 - **Update detection is manual until Renovate lands** — parity with today, not
   a regression: the subtree checker's schedule was already disabled and ran on
   dispatch only.
 - **Contributors need the vendir binary** — `brew install
   carvel-dev/carvel/vendir`, documented in `AGENTS.md`; CI installs a pinned,
-  hash-checked binary.
+  hash-checked binary, and the recipe points at that pinned version —
+  `minimumRequiredVersion` is a floor, so a newer local release could write
+  a lock format CI can't check.
 
 ## 7. Out of scope (follow-ups)
 
@@ -237,9 +342,35 @@ full task list, grouped into review slices with checkpoints, is in
   github-actions / swift Dependabot ecosystems, and deleting `dependabot.yml` —
   the committed successor per [ADR
   0006](../../ADRs/0006-vendir-replaces-subtree-and-vendor-mirror.md). The zkp
-  pin updates through its digest-update flow.
+  SHA pin is the exception — no ref for the vendir manager; the
+  `customManagers` + sync-step path and the dual-manager `packageRules`
+  question live in [research.md](./research.md) §5. Before relying on the
+  `&secp256k1-ref` anchor, run one
+  `renovate --platform=local --dry-run=full` — it settles that and the
+  single-owner question; the recorded verification covered
+  `extractPackageFile` + `doAutoReplace` in branch-worker order, not a
+  real run applying three upgrades to one file.
+- Upstream signature verification: `v0.7.1` is a GPG-signed tag and the zkp
+  pin `08d1cd0` a signed merge commit — the gate detects ref drift but
+  cannot authenticate what a pin points at: a bump to a forged commit
+  passes every check. The follow-up is a
+  CI-side git/gpg check against a committed keyring of known release
+  signers; vendir-native verification was evaluated and deferred — keyring
+  contents, expiry cadence, and the deferral detail live in
+  [research.md](./research.md) §3. Fetch fresh signer keys when that work
+  starts — the documented expiries are near-term.
 - Whether `vendir-check.yml` joins the merge ruleset — a maintainer decision,
-  same as development-docs.
+  same as development-docs. Its path filter would leave a required check
+  pending on untouched-path PRs — a required rollout needs an always-run
+  path or the filter dropped.
+- Scheduled-failure visibility — a `schedule:`-triggered red run notifies
+  only the last editor of the cron line. If silent-red is unacceptable, a
+  follow-up job opening an issue needs a scoped `issues: write` grant on
+  that one job; `permissions: {}` stays for the gate itself.
+- Pin local `vendir` to the CI version via a lefthook hook filtered to
+  `vendir*.yml` — lefthook is already a dev dependency; closes the skew the
+  AGENTS recipe warns about (a newer local vendir could write a lock CI
+  can't read).
 - Flattening `Sources/Shared/swift-crypto/Sources/Crypto/…` via `newRootPath` —
   deliberately unchanged to keep the diff empty.
 
