@@ -15,9 +15,16 @@ GCC_PREPROCESSOR_DEFINITIONS = $(inherited) VERIFY=1 ECMULT_GEN_PREC_BITS=4 ECMU
 
 // Header Search Paths
 //
-// Paths to secp256k1 headers in Vendor directory
+// Paths into the shipped libsecp256k1 sources — the vendored test-suite
+// bundle keeps upstream's header topology, so tests.c's relative includes
+// resolve own-dir inside it; these paths supply exactly what cannot
+// resolve that way: secp256k1.c itself, unvendored (src entry), and the
+// <secp256k1.h> that contrib/lax_der_*.h angle-include — angle brackets
+// skip the including file's own directory (include entry). The root
+// entry mirrors upstream's own -I set; nothing else resolves through
+// these paths.
 
-HEADER_SEARCH_PATHS = $(inherited) $(SRCROOT)/../Vendor/secp256k1 $(SRCROOT)/../Vendor/secp256k1/src $(SRCROOT)/../Vendor/secp256k1/include
+HEADER_SEARCH_PATHS = $(inherited) $(SRCROOT)/../Sources/libsecp256k1 $(SRCROOT)/../Sources/libsecp256k1/src $(SRCROOT)/../Sources/libsecp256k1/include
 
 
 

@@ -73,4 +73,8 @@ since the old checker's schedule was already disabled. `git-subtree` trailers
 cease; `Vendor/` deletion is recoverable from history. The drift-check runbook
 from `Vendor/AGENTS.md` becomes fetch-on-demand via `gh api` in
 `Sources/AGENTS.md`. *(amended 2026-10-07: fetch size and depth mechanism
-corrected; zkp update path corrected)*
+corrected; zkp update path corrected; amended 2026-10-08: the C test-runner
+bundle deduplicates against the shipped tree — it vendors upstream's full
+header topology plus only the test-only `.c` harness, while the library's
+`.c` files compile from `Sources/libsecp256k1`, so the suite exercises
+shipped bytes and ~2.7MB of precomputed tables are not duplicated per clone)*

@@ -36,7 +36,9 @@ the same way. Tick the box in the same change that lands the task.
   verified — research.md §4/§5); `skipInitSubmodules: true` on all five
   (vendir runs `git submodule update --init --recursive` by default; no
   upstream has a `.gitmodules`, so output is unchanged and a future
-  submodule can't widen the sync); `minimumRequiredVersion: 0.46.2` · `vendir.yml`
+  submodule can't widen the sync); `minimumRequiredVersion: 0.46.2`
+  · `vendir.yml` *(the `libsecp256k1Tests` entry was narrowed to the
+  deduplicated header-tree shape by T002 — see its task text)*
 
 **Checkpoint:** `vendir.yml` exists and parses — parse-clean only, since
 vendir drops unknown keys silently; §3's key-allowlist check is the real
@@ -45,29 +47,35 @@ nothing downstream exists yet to break.
 
 ## The generated trees and their provenance
 
-- [ ] T002 Run `vendir sync`; `git rm` the two `Vendor/`-backed JSON symlinks
-  at `Projects/Resources/WycheproofTests/` (vendir owns only the new
-  `secp256k1/` subdir); narrow `Project.swift`'s `libsecp256k1Tests` `sources:`
-  to the three literal files (`src/tests.c`, `src/precomputed_ecmult.c`,
-  `src/precomputed_ecmult_gen.c` — not a `{a,b}` glob: no manifest uses the
-  brace form, and an unexpanded brace would silently compile nothing) and fix
-  its "symlinked from Vendor/" comment — the narrowing must land in this
-  commit, since left at `**` the target double-compiles `secp256k1.c`,
-  `unit_test.c`, and
-  `contrib/lax_der_*.c` on top of `tests.c`'s text-includes and the link fails
-  on duplicate symbols; add `exclude: ["COPYING"]` to both C targets in
-  `Package.swift` — the sync drops `COPYING` inside both target roots, and
-  an un-excluded file there warns "found N file(s) which are unhandled" on
-  every build (same-commit fold, same reason as the glob); `diff -r` each
-  destination against the pre-migration tree — expect empty modulo the new
-  `COPYING`/`LICENSE.txt`/`NOTICE.txt` files, the removed
-  symlink pair, and the two new `Projects/` destinations, where the three
-  `libsecp256k1Tests` symlinks
-  become real files (vendir deletes the symlinks itself when it wipes its
-  path) · vendored paths, `Projects/Project.swift`, `Package.swift`
-- [ ] T003 Track `vendir.lock.yml`; `.gitignore` gains `.vendir-tmp*` — the
-  lock is the provenance record and Renovate's prerequisite · `vendir.lock.yml`,
-  `.gitignore`
+- [x] T002 Amend `vendir.yml`'s `libsecp256k1Tests` entry to the deduped
+  shape — the complete header tree (`include/**/*.h`, `src/**/*.h`, which
+  keeps upstream's relative-include topology resolving own-dir) plus the
+  test-only `.c` harness (`src/tests.c`, `src/unit_test.c`,
+  `contrib/lax_der_*`) — rather than the full compilable closure; the
+  library's `.c` files resolve to the shipped tree (`secp256k1.c` via
+  `HEADER_SEARCH_PATHS`, the two `precomputed_*.c` via the target's
+  `sources:` list — folds T006's repoint in here so the checkpoint's suite
+  run provably exercises shipped bytes). Run `vendir sync`; remove the two
+  `Vendor/`-backed JSON symlinks at `Projects/Resources/WycheproofTests/`
+  (vendir owns only the new `secp256k1/` subdir); narrow
+  `Project.swift`'s `libsecp256k1Tests` `sources:` to three literal files
+  (`Sources/libsecp256k1Tests/src/tests.c` +
+  `../Sources/libsecp256k1/src/precomputed_ecmult{,_gen}.c` — a `**` glob
+  would compile vendored-but-inert `unit_test.c`/`lax_der_*.c` on top of
+  `tests.c`'s text-includes and the link fails on duplicate symbols) and
+  fix its "symlinked from Vendor/" comment; add `exclude: ["COPYING"]` to
+  both C targets in `Package.swift` — the sync drops `COPYING` inside both
+  target roots and an un-excluded file warns on every build; `diff -r`
+  each destination against the pre-migration tree — verified: zero
+  modified tracked files, plus exactly the declared additions (the three
+  `libsecp256k1Tests` symlinks were deleted by vendir's wipe itself) ·
+  vendored paths, `vendir.yml`, `Projects/Project.swift`,
+  `Projects/Resources/libsecp256k1Tests/Shared.xcconfig`, `Package.swift`
+- [x] T003 _Folded into T002 — `vendir.lock.yml` is the provenance record
+  of the same `vendir sync`; committing it apart would leave a commit
+  whose vendored trees have no in-history provenance (`vendir sync
+  --locked` cannot reproduce them). Tick this box in T002's commit._ ·
+  `vendir.lock.yml`, `.gitignore`
 
 **Checkpoint:** every vendored destination reproduces byte-for-byte (modulo
 the declared license/symlink deltas), `vendir.lock.yml` pins a
@@ -76,7 +84,9 @@ resolved SHA for each of the five entries, and `tuist generate`, a
 proves the vendored JSONs flatten into the test bundle's root, which
 `TestVectorLoader` (`forResource:` with no subdirectory) depends on (T002
 landed the narrowing) — and `swift build` emits no unhandled-file
-warnings (T002's `exclude: ["COPYING"]`).
+warnings (T002's `exclude: ["COPYING"]`). *Verified 2026-10-08: zero
+modified tracked files; upstream suite exits 0 in ~216s against the
+shipped tree; Wycheproof 7/7.*
 
 ## Consumers re-pointed at the new trees
 
@@ -85,16 +95,15 @@ warnings (T002's `exclude: ["COPYING"]`).
   plugin's transitive closure just leaves local resolution); the
   `exclude: ["COPYING"]` lines landed back in T002 — the sync puts `COPYING`
   inside both target roots and SPM warns on unexcluded files · `Package.swift`
-- [ ] T005 _Folded into T002 — the `Project.swift` sources narrowing must land
+- [x] T005 _Folded into T002 — the `Project.swift` sources narrowing must land
   in the same commit as the tree it scopes, or that commit doesn't build;
   tick this box in T002's commit.
   (`WycheproofTests` resources glob unchanged — the new subdir is inside it.)_
-- [ ] T006 `Projects/Resources/libsecp256k1Tests/Shared.xcconfig`:
-  `HEADER_SEARCH_PATHS` repoint `$(SRCROOT)/../Vendor/secp256k1{,/src,/include}`
-  → `$(SRCROOT)/Sources/libsecp256k1Tests{,/src,/include}` (same triple —
-  root serves `contrib/`, the rest cover `src/`/`include/`); must land before
-  T008 — until the `Vendor/` deletion the old paths still resolve, which is
-  also what keeps T002 green ·
+- [x] T006 _Folded into T002 — under the deduped bundle the repoint targets
+  the shipped tree, not the bundle: `HEADER_SEARCH_PATHS` →
+  `$(SRCROOT)/../Sources/libsecp256k1{,/src,/include}`. Landing it here is
+  what lets the checkpoint's suite run prove the shipped-bytes claim rather
+  than still resolving through `Vendor/`._ ·
   `Projects/Resources/libsecp256k1Tests/Shared.xcconfig`
 - [ ] T007 `xcframework-release.yml`: `cp Vendor/secp256k1/COPYING` →
   `Sources/libsecp256k1/COPYING`; the same step also copies

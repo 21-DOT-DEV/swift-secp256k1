@@ -1,0 +1,42 @@
+apiVersion: vendir.k14s.io/v1alpha1
+directories:
+- contents:
+  - git:
+      commitTitle: 'Merge bitcoin-core/secp256k1#1808: Prepare for 0.7.1...'
+      sha: 1a53f4961f337b4d166c25fce72ef0dc88806618
+      tags:
+      - v0.7.1
+    path: .
+  path: Sources/libsecp256k1
+- contents:
+  - git:
+      commitTitle: 'Merge BlockstreamResearch/secp256k1-zkp#353: sync-upstream: Restore
+        SYNC_PAT...'
+      sha: 08d1cd0c9c35a5a151ba80c226d49ea949e90374
+    path: .
+  path: Sources/libsecp256k1_zkp
+- contents:
+  - git:
+      commitTitle: Add module anchor to fix empty dynamic framework on Xcode 26 (#436)...
+      sha: 1b6b2e274e85105bfa155183145a1dcfd63331f1
+      tags:
+      - 4.5.0
+    path: .
+  path: Sources/Shared/swift-crypto
+- contents:
+  - git:
+      commitTitle: 'Merge bitcoin-core/secp256k1#1808: Prepare for 0.7.1...'
+      sha: 1a53f4961f337b4d166c25fce72ef0dc88806618
+      tags:
+      - v0.7.1
+    path: .
+  path: Projects/Sources/libsecp256k1Tests
+- contents:
+  - git:
+      commitTitle: 'Merge bitcoin-core/secp256k1#1808: Prepare for 0.7.1...'
+      sha: 1a53f4961f337b4d166c25fce72ef0dc88806618
+      tags:
+      - v0.7.1
+    path: .
+  path: Projects/Resources/WycheproofTests/secp256k1
+kind: LockConfig

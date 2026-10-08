@@ -106,6 +106,9 @@ iOSInjectionProject/
 # Tuist
 **/Derived/*
 
+# vendir staging directories (removed on successful sync; litter if interrupted)
+.vendir-tmp*
+
 # mcp
 .mcp_data/
 
