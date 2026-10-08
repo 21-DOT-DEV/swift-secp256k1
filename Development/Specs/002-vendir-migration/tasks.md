@@ -105,13 +105,15 @@ shipped tree; Wycheproof 7/7.*
   what lets the checkpoint's suite run prove the shipped-bytes claim rather
   than still resolving through `Vendor/`._ ·
   `Projects/Resources/libsecp256k1Tests/Shared.xcconfig`
-- [ ] T007 `xcframework-release.yml`: `cp Vendor/secp256k1/COPYING` →
+- [x] T007 `xcframework-release.yml`: `cp Vendor/secp256k1/COPYING` →
   `Sources/libsecp256k1/COPYING`; the same step also copies
   `Sources/Shared/swift-crypto/{LICENSE.txt,NOTICE.txt}` into the zip as
   `LICENSE-swift-crypto.txt`/`NOTICE-swift-crypto.txt`, and the unzip-verify
-  step asserts both ship — the framework compiles swift-crypto code, so
-  Apache-2.0 attribution belongs in the binary artifact (a compliance gap
-  that predates this branch) · `.github/workflows/xcframework-release.yml`
+  step asserts all four license files ship non-empty and `cmp`s the three
+  renamed copies against the vendored sources — the framework compiles
+  swift-crypto code, so Apache-2.0 attribution belongs in the binary
+  artifact (a compliance gap that predates this branch) ·
+  `.github/workflows/xcframework-release.yml`
 
 **Checkpoint:** `swift build`, `swift test`, and `tuist generate` pass against
 the new trees — every consumer path re-plumbed and the stale symlinks already

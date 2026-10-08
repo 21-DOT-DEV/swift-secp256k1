@@ -86,8 +86,14 @@ jobs:
             printf '%s\n' "${PLATFORMS[@]}" > "$RUNNER_TEMP/xcf-platforms"
       - name: 7z XCFramework
         run: |
-          # Copy COPYING file to current directory to avoid including folder structure
-          cp "Vendor/secp256k1/COPYING" "COPYING-libsecp256k1"
+          # Copy each compiled-in upstream's license text to the current
+          # directory to avoid including folder structure. The framework
+          # compiles vendored libsecp256k1 and swift-crypto code, so both
+          # licenses ship in the artifact; swift-crypto's NOTICE carries its
+          # Apache-2.0 §4(d) attribution text.
+          cp "Sources/libsecp256k1/COPYING" "COPYING-libsecp256k1"
+          cp "Sources/Shared/swift-crypto/LICENSE.txt" "LICENSE-swift-crypto.txt"
+          cp "Sources/Shared/swift-crypto/NOTICE.txt" "NOTICE-swift-crypto.txt"
           # Create zip with maximum compression including license files alongside the
           # XCFramework. -snl is load-bearing: the standalone 7-Zip port (7zz, since
           # 21.x) dereferences symlinks by default — Versions/Current → real dir,
@@ -95,7 +101,7 @@ jobs:
           # by default (why older release zips kept theirs). Materializing is
           # benign for a static framework — a fatter zip, identical linkage — but
           # -snl keeps the artifact byte-honest at zero cost.
-          7z a -tzip -mx=9 -snl P256K.xcframework.zip P256K.xcframework LICENSE "COPYING-libsecp256k1"
+          7z a -tzip -mx=9 -snl P256K.xcframework.zip P256K.xcframework LICENSE "COPYING-libsecp256k1" "LICENSE-swift-crypto.txt" "NOTICE-swift-crypto.txt"
       - name: Verify XCFramework
         run: |
           # Verify what actually ships: unzip the produced zip into a temp
@@ -108,6 +114,18 @@ jobs:
           # archive emit via -verify-emitted-module-interface). Shared
           # with Bitrise (ARCHIVE step) so both verify the same thing.
           unzip -q P256K.xcframework.zip -d "$RUNNER_TEMP/xcf-verify"
+          # License compliance gate: every compiled-in upstream ships its
+          # license text (Apache-2.0 §4(a)/(d) for swift-crypto — LICENSE +
+          # NOTICE attribution). All four must exist non-empty, and the
+          # renamed copies must carry the vendored bytes verbatim — the
+          # vendored tree is the source of truth, so a stale or empty copy
+          # fails here rather than in a released artifact.
+          for f in LICENSE COPYING-libsecp256k1 LICENSE-swift-crypto.txt NOTICE-swift-crypto.txt; do
+            test -s "$RUNNER_TEMP/xcf-verify/$f" || { echo "license file missing or empty in zip: $f"; exit 1; }
+          done
+          cmp "$RUNNER_TEMP/xcf-verify/COPYING-libsecp256k1" "Sources/libsecp256k1/COPYING"
+          cmp "$RUNNER_TEMP/xcf-verify/LICENSE-swift-crypto.txt" "Sources/Shared/swift-crypto/LICENSE.txt"
+          cmp "$RUNNER_TEMP/xcf-verify/NOTICE-swift-crypto.txt" "Sources/Shared/swift-crypto/NOTICE.txt"
           # The archived platform list crosses steps via a file the archive
           # step wrote; read -d '' returns 1 at EOF, so `|| true` is load-
           # bearing. Direct call (not xargs) keeps the verifier's exit code.

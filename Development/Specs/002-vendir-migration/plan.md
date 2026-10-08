@@ -301,8 +301,9 @@ full task list, grouped into review slices with checkpoints, is in
 - [x] `WycheproofTests` resolves the JSONs — `TestVectorLoader` looks them up
   flat in the test bundle, so the vendored `secp256k1/` subdir must flatten
   in the copy step
-- [ ] `xcframework-release.yml` `cp` path resolves (path check; the release
-  itself only runs on tags)
+- [x] `xcframework-release.yml` `cp` path resolves (path check; the release
+  itself only runs on tags) — the three source paths exist post-sync and the
+  copy/zip/unzip/assert flow was simulated locally
 - [ ] `vendir-check.yml` fails on an intentionally stale *or untracked* output,
   fails a doctored `ref:` by name (remote-resolution check), fails a
   misspelled-key probe (allowlist check), and passes clean
