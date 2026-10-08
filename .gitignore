@@ -106,7 +106,9 @@ iOSInjectionProject/
 # Tuist
 **/Derived/*
 
-# vendir staging directories (removed on successful sync; litter if interrupted)
+# vendir staging directories (removed on successful sync; litter if interrupted).
+# A leftover means a sync died mid-run — vendored trees may be half-synced and
+# vendir.lock.yml untouched (it writes last); re-run `vendir sync` to restore.
 .vendir-tmp*
 
 # mcp

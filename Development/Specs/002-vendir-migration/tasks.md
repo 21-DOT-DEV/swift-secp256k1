@@ -90,7 +90,7 @@ shipped tree; Wycheproof 7/7.*
 
 ## Consumers re-pointed at the new trees
 
-- [ ] T004 `Package.swift`: drop `swift-plugin-subtree` from
+- [x] T004 `Package.swift`: drop `swift-plugin-subtree` from
   `developmentDependencies` (`Package.resolved` is gitignored — the
   plugin's transitive closure just leaves local resolution); the
   `exclude: ["COPYING"]` lines landed back in T002 — the sync puts `COPYING`
