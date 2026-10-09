@@ -402,6 +402,9 @@ full task list, grouped into review slices with checkpoints, is in
   can't read).
 - Flattening `Sources/Shared/swift-crypto/Sources/Crypto/…` via `newRootPath` —
   deliberately unchanged to keep the diff empty.
+- `BOT_TOKEN`: its only consumers were the deleted subtree workflows, and
+  the repo has no repo-scoped secrets — if the token is org-level,
+  cross-repo usage needs an org-admin audit before revocation.
 
 ## 8. Division of labor
 

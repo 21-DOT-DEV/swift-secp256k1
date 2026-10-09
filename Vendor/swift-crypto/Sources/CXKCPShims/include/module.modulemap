@@ -1,4 +1,0 @@
-module CXKCPShims {
-    header "CXKCPShims.h"
-    export *
-}

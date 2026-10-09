@@ -29,7 +29,7 @@ Files you can modify. These compile into both P256K and ZKP targets:
 
 ## Dependencies (swift-crypto/)
 
-Auto-extracted from `Vendor/swift-crypto` via `subtree.yaml`. **Do not edit directly.**
+Auto-synced from `apple/swift-crypto` via `vendir.yml`. **Do not edit directly.**
 
 These provide cryptographic primitives (SecureBytes, Digest, ASN1, etc.) used by the core files.
 

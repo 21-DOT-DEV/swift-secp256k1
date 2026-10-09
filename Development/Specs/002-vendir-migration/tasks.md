@@ -121,16 +121,23 @@ gone (T002), so `Vendor/` is now dead weight awaiting teardown.
 
 ## Teardown — `Vendor/`, `subtree.yaml`, the workflows
 
-- [ ] T008 Delete `Vendor/` wholesale (~50MB tracked; the ~565MB `.build`
+- [x] T008 Delete `Vendor/` wholesale (~50MB tracked; the ~565MB `.build`
   under `Vendor/swift-crypto` is untracked) and `subtree.yaml` — history keeps
-  both; the `Vendor/`-backed JSON symlinks are already gone (T002) · deletions
-- [ ] T009 Delete `.github/workflows/update-subtree.yml` and
+  both; the `Vendor/`-backed JSON symlinks are already gone (T002) ·
+  deletions + dead-pointer strips in `AGENTS.md`, `Sources/AGENTS.md`, and
+  `Sources/Shared/README.md` (no commit references a file it deletes)
+- [x] T009 Delete `.github/workflows/update-subtree.yml` and
   `.github/workflows/check-subtree-updates.yml` — interim update recipe moves
-  into `AGENTS.md` · deletions
+  into `AGENTS.md` · deletions + remote cleanup (orphaned
+  `subtree/secp256k1-zkp-*` branches on `origin`, closed PRs #1095/#1111,
+  deleted 2026-10-08)
 
 **Checkpoint:** a repo-wide `Vendor/`/`subtree` search returns only doc
-comments (swept next group) and history notes — nothing that resolves a path;
-the two JSON symlinks are gone and the real files resolve; build still green.
+comments (swept next group), dead config globs (dropped in T013), and
+history notes — nothing resolves a path and no guide points at a deleted
+file; the two JSON symlinks are gone and the real files resolve; build still
+green. *Verified 2026-10-08: `swift build` + `swift test` green (39/39); the
+sweep's only non-history matches are the scheduled T013/T014 leftovers.*
 
 ## Docs and metadata
 
@@ -142,16 +149,28 @@ the two JSON symlinks are gone and the real files resolve; build still green.
   format could drift; and warn that `vendir sync` deletes files in managed
   paths not covered by `ignorePaths` — anything uncommitted there doesn't
   survive); Boundaries now
-  read "vendored paths under `Sources/`/`Projects/`", the patch guidance keeps
-  its shape; add a vendir install line (`brew install carvel-dev/carvel/vendir`)
-  to Commands · `AGENTS.md`
+  read "vendored paths under `Sources/`/`Projects/`", the `Vendor/AGENTS.md`
+  Scoped-guidance bullet is dropped, and the vendored-code patch
+  procedure moves to `Sources/AGENTS.md` (T011); add a vendir install
+  line (`brew install carvel-dev/carvel/vendir`)
+  to Commands *(the dead `Vendor/`/`subtree.yaml` pointers in the three
+  guide files were already stripped and minimally repointed in the teardown
+  commit — this task installs the vendir narrative, not stale-text removal)* ·
+  `AGENTS.md`
 - [ ] T011 `Sources/AGENTS.md` extraction note points at `vendir.yml`;
   `Sources/Shared/README.md` Vendor reference updated, plus a `*.swift`-only
   invariant: `swift-crypto/`'s `LICENSE.txt`/`NOTICE.txt` stay inert only
   because the plugin copies `*.swift` — any SharedSourcesPlugin replacement
   must keep that filter; the
   `Vendor/AGENTS.md` drift-check runbook folds into `Sources/AGENTS.md` as
-  "locate the original via `gh api repos/<repo>/contents/<path>?ref=<tag>`" ·
+  "locate the original via `gh api repos/<repo>/contents/<path>?ref=<tag>`",
+  and its "If you must patch" procedure folds too, vendir-adapted — a
+  `vendir sync` wipes managed paths outside `ignorePaths`, so prefer
+  upstreaming plus a `ref:` bump; a committed patch survives in history but
+  the tree loses it on every sync, and moving a file into `ignorePaths`
+  makes it shadow all future upstream changes
+  *(both files' dead `subtree.yaml`/`Vendor/swift-crypto` pointers were
+  already repointed to `vendir.yml` in the teardown commit)* ·
   `Sources/AGENTS.md`, `Sources/Shared/README.md`
 - [ ] T012 `Development/constitution.md` dev-deps list drops
   `swift-plugin-subtree` (§Development only bullet) · `Development/constitution.md`
@@ -169,8 +188,10 @@ the two JSON symlinks are gone and the real files resolve; build still green.
   `Sources/Shared/**` and `Projects/Sources/SecurityTests/` to
   upstream-relative references (`secp256k1 v0.7.1, src/…`) — mechanical
   sweep, no wording judgment calls — and add the migration's `CHANGELOG.md`
-  `[Unreleased]` entry · `Sources/Shared/**`, `Projects/Sources/**`,
-  `CHANGELOG.md`
+  `[Unreleased]` entry, folding in the existing "Dropped the scheduled
+  trigger from `check-subtree-updates.yml`" line — it describes a file the
+  teardown deleted, so the migration entry supersedes it ·
+  `Sources/Shared/**`, `Projects/Sources/**`, `CHANGELOG.md`
 
 **Checkpoint:** docs tell the vendir story consistently — `vale Development/`
 clean, and no doc comment or guide references `Vendor/` outside history notes.

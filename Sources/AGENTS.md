@@ -10,7 +10,7 @@ This directory contains the library implementation (Swift targets and C bindings
 
 ## Extractions
 
-Some paths under `Sources/` are generated via extraction from vendored upstream sources. Before making changes in these areas, check `subtree.yaml` to confirm the extraction mapping and avoid unintended divergence:
+Some paths under `Sources/` are generated via extraction from vendored upstream sources. Before making changes in these areas, check `vendir.yml` to confirm the extraction mapping and avoid unintended divergence:
 
 - `Sources/libsecp256k1/`
 - `Sources/libsecp256k1_zkp/`
