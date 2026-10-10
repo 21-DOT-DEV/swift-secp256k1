@@ -24,7 +24,7 @@ public extension P256K.Signing {
     /// `true`.
     ///
     /// Conversion uses `secp256k1_xonly_pubkey_from_pubkey` (declared in
-    /// [`Vendor/secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h)),
+    /// [`secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h)),
     /// which flips the sign of the point when its Y coordinate is odd and records the
     /// original parity so callers can reconstruct the full point later. Useful when pivoting
     /// from ECDSA-era verification into BIP-340 / Taproot workflows without regenerating the

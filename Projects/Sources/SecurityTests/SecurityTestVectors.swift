@@ -296,7 +296,7 @@ enum SecurityTestVectors {
 
         // MARK: - libsecp256k1 Invalid Point Test Vectors
 
-        // From Vendor/secp256k1/src/tests.c - these are real cryptographic edge cases
+        // From secp256k1/src/tests.c - these are real cryptographic edge cases
 
         /// Point on twist curve y² = x³ + 9 (not secp256k1's y² = x³ + 7)
         /// x is third root of -8, y is -1 * (x³+7)

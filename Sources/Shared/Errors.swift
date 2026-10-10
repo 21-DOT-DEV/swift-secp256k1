@@ -10,7 +10,7 @@
 
 /// Errors thrown by swift-secp256k1 operations: covers key-size mismatches, byte-count errors
 /// for individual parameters, and failures propagated from the upstream libsecp256k1 C library
-/// (see [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)).
+/// (see [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)).
 ///
 /// ## Topics
 ///

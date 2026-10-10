@@ -38,7 +38,7 @@ public import Foundation
         /// Key aggregation requires **no trusted dealer** — every signer runs the aggregation
         /// locally and arrives at the same result by deterministic protocol. The upstream C
         /// implementation
-        /// ([`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h))
+        /// ([`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h))
         /// is the normative reference for every method here; the Swift surface wraps those
         /// functions with type-safe session state.
         ///

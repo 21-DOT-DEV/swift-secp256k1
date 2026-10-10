@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- swift-crypto's `LICENSE.txt`/`NOTICE.txt` now ship in the XCFramework zip
+
+### Changed
+
+- Replaced git-subtree vendoring with vendir — upstream sources sync directly into `Sources/`/`Projects/` per `vendir.yml` + `vendir.lock.yml`; `libsecp256k1Tests` compiles the shipped `Sources/libsecp256k1` tree instead of a duplicated copy
+
+### Removed
+
+- The `Vendor/` mirror, `subtree.yaml`, the `update-subtree.yml`/`check-subtree-updates.yml` workflows, and the `swift-plugin-subtree` dev dependency
+
 ## [0.23.2] - 2026-05-22
 
 ### Added

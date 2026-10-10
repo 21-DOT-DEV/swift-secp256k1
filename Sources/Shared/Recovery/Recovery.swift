@@ -32,7 +32,7 @@ public import Foundation
         /// recovery ID). They are produced by `secp256k1_ecdsa_sign_recoverable` and allow the
         /// signing public key to be recovered via `secp256k1_ecdsa_recover` given only the
         /// message hash. See
-        /// [`Vendor/secp256k1/include/secp256k1_recovery.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_recovery.h)
+        /// [`secp256k1/include/secp256k1_recovery.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_recovery.h)
         /// for the upstream API reference.
         ///
         /// Bitcoin's

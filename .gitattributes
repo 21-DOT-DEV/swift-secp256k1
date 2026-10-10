@@ -13,6 +13,7 @@ Sources/libsecp256k1/src/**         linguist-vendored
 Sources/libsecp256k1/include/**     linguist-vendored
 Sources/libsecp256k1_zkp/src/**     linguist-vendored
 Sources/libsecp256k1_zkp/include/** linguist-vendored
+Sources/Shared/swift-crypto/**      linguist-vendored
 
 # Custom utility files (not vendored)
 Sources/libsecp256k1/src/Utility.c          linguist-vendored=false
@@ -20,9 +21,10 @@ Sources/libsecp256k1/include/Utility.h      linguist-vendored=false
 Sources/libsecp256k1_zkp/src/Utility.c      linguist-vendored=false
 Sources/libsecp256k1_zkp/include/Utility.h  linguist-vendored=false
 
-# Vendor/development directories
-Vendor/**                   export-ignore linguist-vendored
+# Development directories
 Projects/**                 export-ignore
+Projects/Sources/libsecp256k1Tests/** linguist-vendored
+Projects/Resources/WycheproofTests/secp256k1/** linguist-vendored
 .build/**                   export-ignore linguist-vendored
 .build_custom/**            export-ignore linguist-vendored
 .github/**                  export-ignore linguist-vendored
@@ -37,7 +39,8 @@ bitrise.yml                 export-ignore
 Dockerfile                  export-ignore
 .dockerignore               export-ignore
 lefthook.yml                export-ignore
-subtree.yaml                export-ignore
+vendir.yml                  export-ignore
+vendir.lock.yml             export-ignore linguist-generated
 .spi.yml                    export-ignore
 .swiftformat                export-ignore
 .swiftlint.yml              export-ignore

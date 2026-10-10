@@ -27,7 +27,7 @@ public extension P256K.Signing {
     /// deserializing a compressed (33-byte), uncompressed (65-byte), PEM, DER, or ANSI
     /// X9.63 representation. The serialization format is preserved and reported by the
     /// ``format`` property. Parsing goes through `secp256k1_ec_pubkey_parse` (declared in
-    /// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)),
+    /// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)),
     /// which rejects off-curve points and wrong-length encodings.
     ///
     /// ## Topics

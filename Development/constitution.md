@@ -257,7 +257,7 @@ This constitution governs the **swift-secp256k1** package, a Swift wrapper aroun
 ### Dependencies
 
 **Runtime**: Zero dependencies beyond libsecp256k1 bindings
-**Development only**: the dev tools declared in `Package.swift` (lefthook-plugin, swift-plugin-tuist, SwiftFormat, SwiftLint, swift-plugin-subtree, and friends) — excluded from tagged releases via git-tag context
+**Development only**: the dev tools declared in `Package.swift` (lefthook-plugin, swift-plugin-tuist, SwiftFormat, SwiftLint, and friends) — excluded from tagged releases via git-tag context
 
 ---
 

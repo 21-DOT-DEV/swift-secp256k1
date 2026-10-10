@@ -141,7 +141,7 @@ sweep's only non-history matches are the scheduled T013/T014 leftovers.*
 
 ## Docs and metadata
 
-- [ ] T010 Root `AGENTS.md`: rewrite the "Extraction flow" bullet for vendir
+- [x] T010 Root `AGENTS.md`: rewrite the "Extraction flow" bullet for vendir
   (config, `ignorePaths`-preserved shims, manual bump recipe on
   `vendor/<name>-<ref>` branches with the `dependencies` label — include the
   plan-§3 lock-diff check, and note `minimumRequiredVersion` is a floor:
@@ -157,7 +157,7 @@ sweep's only non-history matches are the scheduled T013/T014 leftovers.*
   guide files were already stripped and minimally repointed in the teardown
   commit — this task installs the vendir narrative, not stale-text removal)* ·
   `AGENTS.md`
-- [ ] T011 `Sources/AGENTS.md` extraction note points at `vendir.yml`;
+- [x] T011 `Sources/AGENTS.md` extraction note points at `vendir.yml`;
   `Sources/Shared/README.md` Vendor reference updated, plus a `*.swift`-only
   invariant: `swift-crypto/`'s `LICENSE.txt`/`NOTICE.txt` stay inert only
   because the plugin copies `*.swift` — any SharedSourcesPlugin replacement
@@ -172,9 +172,9 @@ sweep's only non-history matches are the scheduled T013/T014 leftovers.*
   *(both files' dead `subtree.yaml`/`Vendor/swift-crypto` pointers were
   already repointed to `vendir.yml` in the teardown commit)* ·
   `Sources/AGENTS.md`, `Sources/Shared/README.md`
-- [ ] T012 `Development/constitution.md` dev-deps list drops
+- [x] T012 `Development/constitution.md` dev-deps list drops
   `swift-plugin-subtree` (§Development only bullet) · `Development/constitution.md`
-- [ ] T013 `.gitattributes`: drop the `Vendor/**` and `subtree.yaml` lines;
+- [x] T013 `.gitattributes`: drop the `Vendor/**` and `subtree.yaml` lines;
   `vendir.yml` + `vendir.lock.yml` gain `export-ignore` (the lock also
   `linguist-generated` — same shape as `subtree.yaml`/`Package.resolved`);
   mark `Projects/Sources/libsecp256k1Tests/**`,
@@ -184,13 +184,17 @@ sweep's only non-history matches are the scheduled T013/T014 leftovers.*
   `.swiftformat` / `.swiftlint.yml` drop `--exclude Vendor/**` /
   `- Vendor/**` (the `**/swift-crypto/**` excludes stay) · `.gitattributes`,
   `.swiftformat`, `.swiftlint.yml`
-- [ ] T014 Rewrite the 36 `Vendor/…` doc-comment mentions across
+- [x] T014 Rewrite the 36 `Vendor/…` doc-comment mentions across
   `Sources/Shared/**` and `Projects/Sources/SecurityTests/` to
-  upstream-relative references (`secp256k1 v0.7.1, src/…`) — mechanical
+  upstream-relative references (`secp256k1/include/…`,
+  `secp256k1-zkp/include/…`, `secp256k1/src/…`) — mechanical
   sweep, no wording judgment calls — and add the migration's `CHANGELOG.md`
-  `[Unreleased]` entry, folding in the existing "Dropped the scheduled
-  trigger from `check-subtree-updates.yml`" line — it describes a file the
-  teardown deleted, so the migration entry supersedes it ·
+  `[Unreleased]` entry *(the "Dropped the scheduled trigger" line it was to
+  fold in already shipped in 0.23.2 — release history stays untouched, so
+  the entry stands alone; the shipped refs carry no version at all —
+  `vendir.yml` owns the pins and a `v0.7.1` in every comment would rot on
+  each ref bump — while markdown links keep their `master` URLs tracking
+  living upstream)* ·
   `Sources/Shared/**`, `Projects/Sources/**`, `CHANGELOG.md`
 
 **Checkpoint:** docs tell the vendir story consistently — `vale Development/`

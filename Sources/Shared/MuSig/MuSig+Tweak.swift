@@ -22,7 +22,7 @@ import Foundation
     public extension P256K.MuSig.PublicKey {
         /// Creates a new ``PublicKey`` by computing `agg_pk' = agg_pk + G × tweak` via
         /// `secp256k1_musig_pubkey_ec_tweak_add` (declared in
-        /// [`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)),
+        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)),
         /// updating the key aggregation cache in-place.
         ///
         /// Use this method when you need to **sign** for a

@@ -34,7 +34,7 @@ public extension P256K.Signing {
     ///
     /// The internal 64-byte `data` buffer is the opaque `secp256k1_ecdsa_signature` struct
     /// body declared in
-    /// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h).
+    /// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h).
     /// Its byte layout is **not** a stable wire format across libsecp256k1 versions — use
     /// ``compactRepresentation`` or ``derRepresentation`` for persistence / transmission.
     ///
