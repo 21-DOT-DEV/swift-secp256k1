@@ -23,7 +23,7 @@ public import Foundation
         /// A 64-byte compact ECDSA signature paired with its 1-byte recovery ID, as
         /// produced by `secp256k1_ecdsa_recoverable_signature_serialize_compact` (declared
         /// in
-        /// [`Vendor/secp256k1/include/secp256k1_recovery.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_recovery.h)).
+        /// [`secp256k1/include/secp256k1_recovery.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_recovery.h)).
         ///
         /// This is the canonical wire format for Bitcoin signed-message payloads
         /// ([BIP-137](https://github.com/bitcoin/bips/blob/master/bip-0137.mediawiki),
@@ -87,7 +87,7 @@ public import Foundation
             ///
             /// The internal layout is the opaque upstream struct body (declared as
             /// `unsigned char data[65]` in
-            /// [`Vendor/secp256k1/include/secp256k1_recovery.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_recovery.h)).
+            /// [`secp256k1/include/secp256k1_recovery.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_recovery.h)).
             /// It is **not** a stable wire format across libsecp256k1 versions — for
             /// cross-process persistence, use ``compactRepresentation`` and transmit the
             /// `signature + recoveryId` bytes alongside each other.

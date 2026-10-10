@@ -33,10 +33,10 @@
 /// reachable through this single backing type.
 ///
 /// Upstream C symbols referenced here are declared in
-/// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h),
-/// [`Vendor/secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h),
+/// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h),
+/// [`secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h),
 /// and (for the aggregation cache)
-/// [`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
+/// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 @usableFromInline struct PublicKeyImplementation: Sendable {
     /// Serialized secp256k1 public key bytes in the key's ``P256K/Format``, as output by

@@ -26,7 +26,7 @@ public extension P256K.Signing {
     /// Create a key by generating fresh randomness or by deserializing an existing raw,
     /// PEM, or DER representation. The 32-byte secret scalar must pass
     /// `secp256k1_ec_seckey_verify` (declared in
-    /// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h))
+    /// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h))
     /// to be accepted. Keep ``dataRepresentation`` confidential; exposing it compromises
     /// all signatures produced by this key.
     ///

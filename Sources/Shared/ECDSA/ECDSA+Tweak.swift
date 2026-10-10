@@ -20,7 +20,7 @@ import Foundation
 public extension P256K.Signing.PrivateKey {
     /// Creates a new ``PrivateKey`` by computing `secret_key' = (secret_key + tweak) mod n`
     /// via `secp256k1_ec_seckey_tweak_add` (declared in
-    /// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)),
+    /// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)),
     /// where `n` is the secp256k1 curve order.
     ///
     /// Scalar addition on private keys pairs with public-key point addition through the

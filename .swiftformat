@@ -40,7 +40,6 @@
 --exclude Exhaustive/**/secp256k1Tests.swift
 --exclude Exhaustive/**/XCTestManifests.swift
 --exclude "**/swift-crypto/**/*"
---exclude Vendor/**
 
 # rules
 # --disable elseOnSameLine,semicolons

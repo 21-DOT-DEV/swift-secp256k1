@@ -21,7 +21,7 @@ import Foundation
     public extension P256K.Schnorr.PrivateKey {
         /// Creates a new ``P256K/Schnorr/PrivateKey`` by applying a BIP-341 Taproot x-only
         /// tweak to the secret scalar via `secp256k1_keypair_xonly_tweak_add` (declared in
-        /// [`Vendor/secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h)).
+        /// [`secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h)).
         ///
         /// When the x-only representation of the current key has odd Y, the upstream keypair
         /// helper implicitly negates the secret scalar before applying the tweak so the

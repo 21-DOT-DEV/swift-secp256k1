@@ -59,7 +59,7 @@ public extension P256K {
     /// Signatures are produced via `secp256k1_ecdsa_sign` with
     /// [RFC 6979](https://datatracker.ietf.org/doc/html/rfc6979) deterministic nonce
     /// generation and verified via `secp256k1_ecdsa_verify` (both declared in
-    /// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)).
+    /// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)).
     /// Taproot-era signing uses ``P256K/Schnorr`` instead.
     ///
     /// ### Lower-S Normalization

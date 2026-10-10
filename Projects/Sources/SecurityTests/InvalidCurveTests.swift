@@ -167,7 +167,7 @@ struct InvalidCurveTests {
 
     // MARK: - libsecp256k1 Invalid Point Test Vectors
 
-    // From Vendor/secp256k1/src/tests.c
+    // From secp256k1/src/tests.c
 
     @Test("Reject twist curve point (y² = x³ + 9)")
     func rejectTwistCurvePoint() throws {

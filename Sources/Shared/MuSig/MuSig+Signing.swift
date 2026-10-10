@@ -22,7 +22,7 @@ import Foundation
     public extension P256K.MuSig.PublicKey {
         /// Verifies one signer's ``P256K/Schnorr/PartialSignature`` against this aggregate
         /// public key using `secp256k1_musig_partial_sig_verify` (declared in
-        /// [`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)).
+        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)).
         ///
         /// Partial signature verification is optional in regular
         /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) MuSig2

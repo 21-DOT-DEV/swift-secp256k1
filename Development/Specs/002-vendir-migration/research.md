@@ -206,7 +206,7 @@ lightweight tag over an unsigned commit.
 | `Projects/` `libsecp256k1Tests` target | `src/tests.c` + `src/precomputed_ecmult{,_gen}.c` + everything `tests.c` `#include`s (`secp256k1.c`, `include/`, `contrib/lax_der_*`, `unit_test.*`, `testrand*`, `testutil*`, `wycheproof/*.h`) | deduplicated upstream-layout bundle at `Projects/Sources/libsecp256k1Tests/` (header tree + test-only `.c`); `sources:` = vendored `src/tests.c` + the two `precomputed_*.c` literal paths into `Sources/libsecp256k1` — the pair defines the `extern` tables `tests.c` links against |
 | `WycheproofTests` resources | `src/wycheproof/*.json` ×2 + `WYCHEPROOF_COPYING` | `Projects/Resources/WycheproofTests/secp256k1/` subdir; the two `Vendor/`-backed symlinks get removed in the same sync change (vendir owns the subdir, not the parent) |
 | `Vendor/AGENTS.md` drift runbook | local upstream originals | folded into `Sources/AGENTS.md`, fetch-on-demand via `gh api` |
-| 36 doc comments across `Sources/Shared/**` + `Projects/Sources/**` | `Vendor/…` path mentions | mechanical rewrite to `secp256k1 v0.7.1, src/…` |
+| 36 doc comments across `Sources/Shared/**` + `Projects/Sources/**` | `Vendor/…` path mentions | mechanical rewrite to upstream-relative `secp256k1/include/…`, `secp256k1-zkp/include/…`, `secp256k1/src/…` (no version — `vendir.yml` owns the pins; a literal ref in every comment would rot on each bump) |
 | `.gitattributes`, `.swiftformat`, `.swiftlint.yml` | `Vendor/**` exclude/export-ignore lines | dropped; vendored `Projects/` paths + `Sources/Shared/swift-crypto/**` gain linguist-vendored |
 
 Note: `Vendor/` shows ~615MB on disk locally — the bulk is the untracked

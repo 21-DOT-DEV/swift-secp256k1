@@ -35,6 +35,17 @@ xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme MuSig2Vector
 xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme <TargetName> -destination 'platform=macOS'
 ```
 
+### Run libsecp256k1Tests (upstream C suite)
+
+`libsecp256k1Tests` is a `.commandLineTool`, not a test bundle — `xcodebuild test` will not run it. Build the scheme, then execute the binary:
+
+```bash
+xcodebuild -workspace Projects/XCFramework.xcworkspace -scheme libsecp256k1Tests -destination 'platform=macOS' -derivedDataPath /tmp/libsecp256k1Tests-dd build
+/tmp/libsecp256k1Tests-dd/Build/Products/Debug/libsecp256k1Tests
+```
+
+Exit code 0 means the upstream suite passed.
+
 ## Test Vector Sources
 
 - **BIP-340**: [bitcoin/bips/bip-0340](https://github.com/bitcoin/bips/blob/master/bip-0340/test-vectors.csv)

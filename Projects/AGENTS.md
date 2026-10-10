@@ -21,6 +21,10 @@ swift package --disable-sandbox tuist test XCFramework-Workspace -p Projects/ --
 xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme <TargetName> -destination 'platform=macOS'
 ```
 
+## Running libsecp256k1Tests (upstream C suite)
+
+`libsecp256k1Tests` is a `.commandLineTool`, not a test bundle — `tuist test` and `xcodebuild test` will not run it. See `Projects/README.md` → "Run libsecp256k1Tests" for the build-and-execute commands.
+
 ## Notes
 
 - Tuist is a conditional dev dependency — `swift package tuist ...` commands only work in a non-tagged checkout (see root `AGENTS.md` → Non-obvious patterns).

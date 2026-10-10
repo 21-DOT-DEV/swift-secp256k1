@@ -21,7 +21,7 @@
 /// of the `secp256k1_context` object that all cryptographic operations in the library depend on,
 /// including ECDSA signature creation and verification, Schnorr signature operations, public key
 /// generation, and ECDH key agreement. The upstream reference is
-/// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h).
+/// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h).
 ///
 /// Use ``Context/rawRepresentation`` to access the shared, pre-initialized context for standard
 /// operations, or call ``Context/create()`` to create a fresh, independently randomized context.

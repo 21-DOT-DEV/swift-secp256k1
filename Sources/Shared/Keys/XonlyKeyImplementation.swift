@@ -33,7 +33,7 @@
 /// serialized as only its 32-byte X coordinate. The `keyParity` value records whether
 /// the original full public key's Y coordinate required negation to produce the even-Y
 /// form — needed for BIP-341 Taproot tweaking operations
-/// ([`Vendor/secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h)).
+/// ([`secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h)).
 ///
 /// Kept `@usableFromInline` so it can back the public Schnorr / ECDH / MuSig / Signing
 /// x-only key types across `Sources/Shared/*` without widening the public API surface.

@@ -27,7 +27,7 @@ public import Foundation
         /// aggregate public key via `secp256k1_musig_pubkey_agg`, sorting keys first with
         /// `secp256k1_ec_pubkey_sort` so the result is order-independent. Upstream
         /// reference:
-        /// [`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
+        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
         ///
         /// The returned ``PublicKey`` includes the 197-byte `secp256k1_musig_keyagg_cache`
         /// needed for signing sessions and Taproot tweaking. Different orderings of the
@@ -195,7 +195,7 @@ public import Foundation
         /// struct body. The wire format is 32 bytes, produced by
         /// `secp256k1_musig_partial_sig_serialize` and consumed by
         /// `secp256k1_musig_partial_sig_parse`. See
-        /// [`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)
+        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)
         /// for the upstream declarations.
         ///
         /// ## Topics

@@ -36,7 +36,7 @@ import Foundation
         /// compressed form ECDSA requires.
         ///
         /// All signing operations call `secp256k1_schnorrsig_sign_custom` (declared in
-        /// `Vendor/secp256k1/include/secp256k1_schnorrsig.h`) with the default BIP-340 nonce
+        /// `secp256k1/include/secp256k1_schnorrsig.h`) with the default BIP-340 nonce
         /// function `secp256k1_nonce_function_bip340`. Verification uses
         /// `secp256k1_schnorrsig_verify` against the x-only public key.
         ///

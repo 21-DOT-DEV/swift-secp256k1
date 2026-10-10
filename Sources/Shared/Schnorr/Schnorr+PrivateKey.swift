@@ -29,7 +29,7 @@ public import Foundation
         ///
         /// Schnorr signatures use `secp256k1_schnorrsig_sign_custom` with the BIP-340 nonce
         /// function (`secp256k1_nonce_function_bip340`), both declared in
-        /// [`Vendor/secp256k1/include/secp256k1_schnorrsig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h).
+        /// [`secp256k1/include/secp256k1_schnorrsig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_schnorrsig.h).
         /// Unlike ECDSA, signing takes a 32-byte auxiliary randomness input that is mixed
         /// into the nonce for protection against fault attacks; the default
         /// `signature(for:)` overloads supply fresh random bytes automatically via

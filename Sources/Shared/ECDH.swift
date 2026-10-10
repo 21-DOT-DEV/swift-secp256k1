@@ -25,7 +25,7 @@ public import Foundation
         /// secp256k1 ECDH (Elliptic-Curve Diffie-Hellman) key-agreement namespace
         /// providing ``PrivateKey`` and ``PublicKey`` for computing a ``SharedSecret`` via
         /// `secp256k1_ecdh` (declared in
-        /// [`Vendor/secp256k1/include/secp256k1_ecdh.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_ecdh.h)).
+        /// [`secp256k1/include/secp256k1_ecdh.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_ecdh.h)).
         ///
         /// ## Overview
         ///
@@ -47,7 +47,7 @@ public import Foundation
         ///
         /// > Important: **Context randomization does not provide side-channel protection for
         /// > ECDH.** Per the upstream `secp256k1_context_randomize` documentation in
-        /// > [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h):
+        /// > [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h):
         /// > *"A notable exception [to the rule that randomization protects secret-key
         /// > operations] is the ECDH module, which relies on a different kind of elliptic
         /// > curve point multiplication and thus does not benefit from enhanced protection
@@ -335,7 +335,7 @@ public import Foundation
         /// EC point into secret bytes.
         ///
         /// Matches the upstream `secp256k1_ecdh_hash_function` typedef in
-        /// [`Vendor/secp256k1/include/secp256k1_ecdh.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_ecdh.h).
+        /// [`secp256k1/include/secp256k1_ecdh.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_ecdh.h).
         /// The installed closure receives the 32-byte `x` and `y` coordinates of the
         /// shared point along with a user-data pointer; the upstream contract requires
         /// returning `1` on success (allowing `secp256k1_ecdh` itself to return `1`) and

@@ -32,7 +32,7 @@ public import Foundation
         /// Aggregation is specified in
         /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) and
         /// implemented in
-        /// [`Vendor/secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
+        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
         /// The aggregated nonce is computed once from all signers' ``P256K/Schnorr/Nonce``
         /// values and then shared with every signer before they call
         /// ``P256K/Schnorr/PrivateKey/partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)``.

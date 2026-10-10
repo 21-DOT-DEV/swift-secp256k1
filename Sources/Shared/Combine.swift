@@ -20,7 +20,7 @@ import Foundation
 public extension P256K.Signing.PublicKey {
     /// Creates a new ``PublicKey`` by adding this key together with `pubkeys` via
     /// `secp256k1_ec_pubkey_combine` (declared in
-    /// [`Vendor/secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)),
+    /// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h)),
     /// equivalent to point addition on the secp256k1 curve.
     ///
     /// Point addition is the basis for unhardened
