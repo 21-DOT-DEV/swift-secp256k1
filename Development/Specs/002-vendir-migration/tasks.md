@@ -143,7 +143,7 @@ sweep's only non-history matches are the scheduled T013/T014 leftovers.*
 
 - [x] T010 Root `AGENTS.md`: rewrite the "Extraction flow" bullet for vendir
   (config, `ignorePaths`-preserved shims, manual bump recipe on
-  `vendor/<name>-<ref>` branches with the `dependencies` label — include the
+  `vendor/<dep>-<ref>` branches with the `dependencies` label — include the
   plan-§3 lock-diff check, and note `minimumRequiredVersion` is a floor:
   run the version `vendir-check.yml` pins, since a newer release's lock
   format could drift; and warn that `vendir sync` deletes files in managed
@@ -202,25 +202,98 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
 
 ## The CI gate
 
-- [ ] T015 [P] Add `.github/workflows/vendir-check.yml` per plan §3 —
-  `ubuntu-slim`, `permissions: {}`, `persist-credentials: false` on
-  checkout, `env:` blocks per `.github/AGENTS.md`;
-  `curl` + hard-coded `VENDIR_SHA256` + `sha256sum -c` install; trigger on
-  PRs touching `vendir*.yml`, the five vendored destinations, or the
-  workflow itself, plus the weekly `schedule:` and `workflow_dispatch:`.
-  The six checks are §3's verbatim — remote-resolution before the sync,
-  `yq 'explode(.)'` for all config/lock *value* reads (the allowlist
-  scans keys un-exploded — that also catches `<<:` merge keys),
-  `--ignored=matching` on
-  the porcelain check. Switch `vendir.yml`'s future-tense gate comments
-  ("lands later", "will pin/assert/guard") to present tense; note the
-  gate in
+- [ ] T015 _Split into T019–T026 on re-review — the gate grows
+  incrementally rather than landing whole: the core sync check wires
+  first (drift detection is the point; the rest is hardening), then each
+  remaining check lands as a task-sized increment — script function +
+  case arm + workflow step + the `vendir.yml` comment flip naming it —
+  so every PR answers one question and the flakiest check can revert
+  alone. The `OLD-VENDIR-MIGRATION` prototype's update machinery
+  (`vendir-update.yml`, `sanitize-upstream-md`, `sanitizer-test.yml`)
+  does not ship — update automation is re-recorded as a centralized
+  org-repo updater per ADR 0007, and the base-SHA comparison plus the
+  `gh api` on-default-branch probe are dropped (§3 records why); that
+  branch stays in git as the edge-case reference. Tick this box in
+  T026's PR._
+- [ ] T019 [P] `Scripts/vendir-check.sh` — the skeleton (check-name
+  dispatch, shared helpers, `fail()`) plus §3's **sync** check
+  (`vendir sync --locked` + `git status --porcelain --ignored=matching`
+  over the five destinations + `vendir.lock.yml`); a bare run executes
+  every check that exists, so the gate reproduces locally outside CI;
+  bash-3.2-safe so it runs on macOS (local runs need `yq` —
+  `brew install yq`); `yq 'explode(.)'` for all config/lock *value*
+  reads; anonymous reads only — no token. Lands inert — nothing calls
+  it until T020 · `Scripts/vendir-check.sh`
+- [ ] T020 `.github/workflows/vendir-check.yml` — `ubuntu-slim`,
+  `permissions: {}`, `persist-credentials: false` on checkout, `env:`
+  blocks per `.github/AGENTS.md`; `curl` + hard-coded `VENDIR_SHA256` +
+  `sha256sum -c` install (the Vale precedent); triggers on PRs touching
+  `vendir*.yml`, the five vendored destinations, or the gate-machinery
+  globs `Scripts/vendir-check*` and `.github/workflows/vendir-check*`,
+  plus weekly `schedule:` (comment notes GitHub's 60-day inactivity
+  disable — §7) and `workflow_dispatch:`; one
+  job whose first named step is `Scripts/vendir-check.sh sync` — the
+  gate is live from this PR. Flip `vendir.yml`'s version-floor comment
+  ("will pin" → "pins in CI") and root `AGENTS.md`'s "until
+  vendir-check.yml lands" line to present tense; note the gate in
   `.github/AGENTS.md`'s conventions list ·
-  `.github/workflows/vendir-check.yml`, `.github/AGENTS.md`
+  `.github/workflows/vendir-check.yml`, `vendir.yml`, `AGENTS.md`,
+  `.github/AGENTS.md`
+- [ ] T021 `resolve` — script gains §3's remote-resolution check
+  (`git ls-remote` per entry against the lock's `sha:`) plus a workflow
+  step, inserted ahead of `sync` in run order (a moved tag fails named
+  rather than masked as a depth-1 fetch error) ·
+  `Scripts/vendir-check.sh`, `.github/workflows/vendir-check.yml`
+- [ ] T022 `allowlist` — script gains §3's key/value allowlist
+  (un-exploded key scan catches `<<:` merge keys; `url:`/`path:` value
+  pins) plus a workflow step, first in run order ·
+  `Scripts/vendir-check.sh`, `.github/workflows/vendir-check.yml`
+- [ ] T023 `locksha` — script gains §3's same-URL lock-SHA equality +
+  workflow step + both `vendir.yml` lock-SHA comment flips — the anchor
+  site (~line 23) and the test-bundle rationale (~line 127), "will
+  assert"/"(lands later)" → present tense · `Scripts/vendir-check.sh`,
+  `.github/workflows/vendir-check.yml`, `vendir.yml`
+- [ ] T024 `ignorepaths` — script gains §3's exact-404 probe (429/5xx
+  retried with backoff — anonymous `raw.` requests share runner-IP
+  throttles) at the locked SHA + workflow step + `vendir.yml`
+  ignorePaths comment flip.
+  Kept alone deliberately — it is the flakiest check (live `curl`
+  probes to three upstreams), so an independent revert never touches
+  the core · `Scripts/vendir-check.sh`,
+  `.github/workflows/vendir-check.yml`, `vendir.yml`
+- [ ] T025 `Scripts/vendir-check-test.sh` — self-test for the gate:
+  heredoc-built doctored `vendir.yml`/lock fixtures under `mktemp`
+  assert each check fails when it should and passes on the real tree;
+  plain bash — BATS would be a new test-framework dependency for one
+  script, and new deps are an ask-first boundary. Lands inert —
+  nothing calls it until T026 · `Scripts/vendir-check-test.sh`
+- [ ] T026 `.github/workflows/vendir-check-test.yml` — `ubuntu-slim`,
+  `permissions: {}`; runs the self-test on PRs touching
+  `Scripts/vendir-check*` or `.github/workflows/vendir-check*`, plus a
+  `schedule:`/`workflow_dispatch:` (the old prototype's
+  `sanitizer-test.yml` shape, minus the perl). Tick T015 here ·
+  `.github/workflows/vendir-check-test.yml`, `tasks.md` (T015 box)
 
-**Checkpoint:** the gate exercises itself — this PR touches `vendir.yml` and the
-vendored paths, so `vendir-check.yml` ran on it and passed (advisory, not
-required).
+**Checkpoint:** the gate exercises itself at every increment — every
+gate-group PR touches `vendir.yml`, `Scripts/vendir-check*`, or
+`.github/workflows/vendir-check*`, all inside the gate's trigger
+globs, so `vendir-check.yml` runs on its own diff from T020's PR
+onward and must pass (advisory, not required).
+
+## Adjacent hardening (landed in this spec's pass)
+
+- [x] T027 `benchmark-pr.yml` fork-PR path per ADR 0007 — fork PRs get a
+  read-only `GITHUB_TOKEN`, so the PR comment is gated to non-fork PRs
+  and the comparison also lands in the job summary (no token needed);
+  the regression verdict runs under `!cancelled()` so a comment-step
+  failure can never mask it; the fork-PR/token convention is recorded
+  in `.github/AGENTS.md` · `.github/workflows/benchmark-pr.yml`,
+  `.github/AGENTS.md`
+- [x] T028 `PlanIndexTests` zero-padded-refs contract test —
+  `supersedes: [0006, 0008, 0010]` decodes `[6, 8, 10]` in decimal
+  through the Codable path, locking the parse contract this spec's
+  zero-padded ADR references ride ·
+  `Development/Tools/Tests/PlanIndexTests/PlanIndexTests.swift`
 
 ## Verification and merge
 

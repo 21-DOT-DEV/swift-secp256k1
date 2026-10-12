@@ -161,6 +161,14 @@ lightweight tag over an unsigned commit.
 
 ## 5. Update automation
 
+*Update direction settled 2026-10-11: the committed successor is a
+centralized org-level updater in the `swift-plugin-tuist` checker/worker
+shape — [ADR 0007](../../ADRs/0007-vendir-updates-via-central-org-repo.md)
+supersedes ADR 0006's Renovate clause. The Renovate findings below stand
+as evidence: the anchor-compat verification validates the shipped
+`vendir.yml` shape, and the vendir manager remains the zero-code fallback
+for the tag-pinned entries.*
+
 - **Renovate has a native vendir manager**
   (docs.renovatebot.com/modules/manager/vendir/): watches `vendir.yml`, bumps
   `git:`/`githubRelease:` refs, and runs `vendir sync` for lock-file
@@ -173,7 +181,8 @@ lightweight tag over an unsigned commit.
   the replace edits only the anchor line, and re-extraction reads the new
   value on all three. Scope note: this verified the functions in
   branch-worker order — a full `renovate --platform=local --dry-run=full`
-  pass in the Renovate PR is the belt before relying on the anchor. The
+  pass — in a Renovate PR, if the fallback is ever taken — is the belt before
+  relying on the anchor. The
   lock-SHA guard stays as a backstop for paths that bypass this — an alias
   replaced by a literal, a future `customManagers` rule, or a changed vendir
   manager.
@@ -187,14 +196,14 @@ lightweight tag over an unsigned commit.
   `branch: master` survives as a `# tracks: master` comment in `vendir.yml`.
   Two managers can also end up owning the pin — `extractGitSource` still
   emits it on `git-refs` — so the PR may need a `packageRules` disable for
-  the vendir-manager dep on the zkp URL; the dry run settles it. Details
-  live in the Renovate PR.
+  the vendir-manager dep on the zkp URL; the dry run settles it if the
+  fallback is ever taken.
 - Interim recipe (documented in `AGENTS.md`): edit `ref:` →
   `vendir sync` → check the lock diff (only the bumped dep's `sha:`s should
   move — sync re-resolves every entry, and secp256k1's three entries share
-  one anchor, so a bump moves them in lockstep; the CI gate enforces the
-  same rule on PRs) → commit → PR on
-  `vendor/<name>-<ref>` with the
+  one anchor, so a bump moves them in lockstep; no CI check enforces the
+  same rule — the lock-diff read is the only guard) → commit → PR on
+  `vendor/<dep>-<ref>` with the
   `dependencies` label. This is parity with today — `check-subtree-updates.yml`
   already ran on manual dispatch only.
 

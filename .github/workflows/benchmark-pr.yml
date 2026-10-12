@@ -97,10 +97,12 @@ jobs:
             echo ""
             cat /tmp/benchmark-comparison.md
           } > /tmp/pr-comment.md
+          cat /tmp/pr-comment.md >> "$GITHUB_STEP_SUMMARY"
 
-      # ── Post or update the PR comment ──
+      # ── Post or update the PR comment (skipped on cross-repo PRs, whose
+      #    GITHUB_TOKEN is read-only; the step summary carries the result) ──
       - name: Post PR comment
-        if: steps.download-baseline.outcome == 'success'
+        if: steps.download-baseline.outcome == 'success' && github.event.pull_request.head.repo.full_name == github.repository
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -109,7 +111,8 @@ jobs:
             gh issue comment "$PR_NUMBER" --body-file /tmp/pr-comment.md
           fi
 
-      # ── Fail the job if regressions were detected ──
+      # ── Fail the job if regressions were detected (!cancelled() so a
+      #    comment-step failure can't mask the verdict) ──
       - name: Fail on regression
-        if: steps.download-baseline.outcome == 'success' && steps.compare.outcome == 'failure'
+        if: steps.download-baseline.outcome == 'success' && steps.compare.outcome == 'failure' && !cancelled()
         run: exit 2

@@ -61,9 +61,10 @@ directories:
     git:
       url: https://github.com/BlockstreamResearch/secp256k1-zkp
       ref: 08d1cd0c9c35a5a151ba80c226d49ea949e90374
-      # tracks: master (subtree.yaml's `branch: master`) — a bare SHA gives
-      # Renovate's vendir manager no ref to follow; ADR 0006 records the
-      # customManagers rule + `vendir sync` step needed to move it.
+      # tracks: master (the retired subtree.yaml's `branch: master`) — a
+      # bare SHA gives tag-tracking updaters no ref to follow; ADR 0007
+      # records the centralized updater that will move it (manual re-pin +
+      # `vendir sync` until then).
       # `depth` reaches only ref tips — this pin sits well behind
       # master's tip, so depth: 0 (full history) is required to fetch it.
       depth: 0

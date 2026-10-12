@@ -68,6 +68,27 @@ import Testing
     #expect(front.supersededBy == nil)
 }
 
+@Test func decodesZeroPaddedIntegerListsInDecimal() throws {
+    // Authors write record references padded to match filenames (`[0006]`).
+    // They must decode in decimal: `0010` meaning 8 would name the wrong
+    // record. The overlay parses scalars itself in radix-10 today — this
+    // locks that contract so a switch to a base-detecting parse (e.g.
+    // yaml-cpp's `as<int>`, which reads a `0` prefix as octal) can't
+    // regress it.
+    let front = try Frontmatter.decode(
+        ADRFrontmatter.self,
+        from:
+        "---\nadr: 0008\ntitle: t\nstatus: Accepted\ndate: 2026-05-07\nsupersedes: [0006, 0008, 0010]\nsuperseded_by: null\n---\n"
+    )
+    #expect(front.supersedes == [6, 8, 10])
+    let plan = try Frontmatter.decode(
+        PlanFrontmatter.self,
+        from:
+        "---\nfeature: 001\ntitle: t\nphase: p\nstatus: s\nupdated: 2026-05-07\nadrs: [0009]\n---\n"
+    )
+    #expect(plan.adrs == [9])
+}
+
 @Test func refusesAnUnknownFieldOnADecisionRecord() {
     #expect(throws: Frontmatter.ParseError("unknown field(s): supercedes")) {
         try Frontmatter.decode(
