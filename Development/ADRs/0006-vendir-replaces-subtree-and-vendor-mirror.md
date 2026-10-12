@@ -1,13 +1,17 @@
 ---
 adr: 0006
 title: Vendored upstream sources are synced by vendir, retiring git subtree and the Vendor/ mirror
-status: Accepted
+status: Superseded
 date: 2026-10-06
 supersedes: []
-superseded_by: null
+superseded_by: 0007
 ---
 
 # 0006 — Vendored upstream sources are synced by vendir, retiring git subtree and the Vendor/ mirror
+
+> **Superseded by [ADR 0007](0007-vendir-updates-via-central-org-repo.md)**
+> — the extraction decision carries forward unchanged; the update
+> successor is the centralized org updater, not Renovate.
 
 ## Context
 

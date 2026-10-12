@@ -13,6 +13,7 @@ This directory contains GitHub configuration and CI workflows.
 - Preserve least privilege defaults (this repo commonly uses `permissions: {}` at workflow and job levels).
 - All workflows use `env:` blocks for context values — no inline `${{ }}` interpolation in `run:` scripts.
 - Avoid fragile shell output capture for UTF-8/multiline content; prefer temp files and tools like `jq` reading from files.
+- `pull_request`-triggered steps that write via `GITHUB_TOKEN` (comments, labels) get a same-repo gate (`github.event.pull_request.head.repo.full_name == github.repository`) — fork-PR tokens are read-only, and `head.repo.fork` is the wrong test (it also skips same-repo PRs on a repo that is itself a fork). Publish results to `$GITHUB_STEP_SUMMARY` instead, and gate verdict steps with `!cancelled()` so a skipped/failed write can't mask them.
 - `development-docs.yml` runs only when `Development/**`, `.vale.ini`, `.vale/**`, or the workflow itself changes. It unit-tests the checker in `Development/Tools`, verifies plan and decision-record frontmatter plus index freshness (`plans --check`), lints plan structure with Vale, and prints document lengths as advisory output. It never builds the package.
 
 ## Validation

@@ -45,5 +45,6 @@ The table below is generated from those frontmatter blocks. Do not hand-edit it.
 | 0003 | [No Snippets/ directory — SwiftPM auto-discovery cannot scope snippet dependencies](0003-no-snippets-directory.md) | Accepted | 2026-04-24 |
 | 0004 | [XCFramework builds are pinned to Xcode 27 and verified as shipped, never post-edited](0004-xcframework-builds-pinned-to-xcode-27-with-shipped-artifact-verification.md) | Accepted | 2026-10-01 |
 | 0005 | [Planning artifacts are consolidated under Development/, retiring the spec-kit scaffolding](0005-planning-artifacts-consolidated-under-development.md) | Accepted | 2026-10-04 |
-| 0006 | [Vendored upstream sources are synced by vendir, retiring git subtree and the Vendor/ mirror](0006-vendir-replaces-subtree-and-vendor-mirror.md) | Accepted | 2026-10-06 |
+| 0006 | [Vendored upstream sources are synced by vendir, retiring git subtree and the Vendor/ mirror](0006-vendir-replaces-subtree-and-vendor-mirror.md) | Superseded | 2026-10-06 |
+| 0007 | [Vendored upstream sources are synced by vendir, with updates produced by a centralized org updater](0007-vendir-updates-via-central-org-repo.md) | Accepted | 2026-10-11 |
 <!-- END GENERATED INDEX -->

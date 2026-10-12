@@ -3,8 +3,8 @@ feature: 002
 title: Replace git-subtree vendoring with vendir, deleting Vendor/ and the subtree tooling
 phase: null
 status: In Progress
-updated: 2026-10-08
-adrs: [0006]
+updated: 2026-10-11
+adrs: [0006, 0007]
 ---
 
 # Replace git-subtree vendoring with vendir, deleting Vendor/ and the subtree tooling
@@ -16,9 +16,11 @@ upstreams straight into their final trees — `Sources/libsecp256k1/`,
 the `swift-plugin-subtree` dev dependency, the two subtree update workflows, and
 the `Vendor/` mirror directory. Where the reference migration in swift-openssl
 kept subtree for its mirror and update loop, this spec retires subtree outright.
-Update-PR automation is handled by Renovate in a follow-up PR; until then,
-updates are a manual three-step recipe. Produces [ADR
-0006](../../ADRs/0006-vendir-replaces-subtree-and-vendor-mirror.md). Ordered
+Update automation stays a manual recipe until a centralized org-level
+updater lands in its own repository (§7). Produces [ADR
+0006](../../ADRs/0006-vendir-replaces-subtree-and-vendor-mirror.md) —
+superseded on update automation by [ADR
+0007](../../ADRs/0007-vendir-updates-via-central-org-repo.md). Ordered
 work: [tasks.md](./tasks.md). Evidence and measured verification:
 [research.md](./research.md).
 
@@ -49,22 +51,23 @@ work: [tasks.md](./tasks.md). Evidence and measured verification:
   framework compiles that code, so Apache-2.0 attribution belongs in the
   binary artifact (a gap that predates this branch).
 - Provenance lives in a committed `vendir.lock.yml` — peeled commit SHAs plus
-  resolved tag names, which is what Renovate's vendir manager maintains.
+  resolved tag names, the record the gate re-checks and an updater edits.
 - A CI freshness gate keeps the vendored trees honest: `vendir sync
   --locked` plus a scoped `git status --porcelain` (the tree must match the
   committed lock deterministically), each `ref:` resolved against its
   remote and required to equal the lock's `sha:` — a moved tag or unsynced
-  `ref:` edit fails by name — and on PRs an unchanged `ref:` must keep its
-  base `sha:`. The full check list and design live in §3.
+  `ref:` edit fails by name. The full check list and design live in §3.
 - The interim update recipe (edit `ref:` → `vendir sync` → PR) is
-  documented in `AGENTS.md`; Renovate is the committed successor ([ADR
-  0006](../../ADRs/0006-vendir-replaces-subtree-and-vendor-mirror.md)) and lands
-  as a separate PR.
+  documented in `AGENTS.md`; a centralized org-level updater is the
+  committed successor ([ADR
+  0007](../../ADRs/0007-vendir-updates-via-central-org-repo.md)) and lives in
+  its own repository.
 
 ## 2. Scope
 
 **In scope:** `vendir.yml`, `vendir.lock.yml`, a path-filtered
-`vendir-check.yml` workflow; the
+`vendir-check.yml` workflow plus its `Scripts/vendir-check.sh` check
+logic; the
 deletions listed above; `Package.swift` (drop the plugin dep; `exclude:
 ["COPYING"]` on both C targets — rides T002's commit, since the sync puts
 the files inside the target roots); `Projects/Project.swift` (narrow the
@@ -76,7 +79,11 @@ vendored-but-inert `unit_test.c` — and update the comment);
 paths repoint at the shipped `Sources/libsecp256k1` triple — the bundle
 resolves its own vendored headers own-dir and needs no entry);
 `.github/workflows/xcframework-release.yml` (COPYING
-path + swift-crypto LICENSE/NOTICE into the release zip); `.gitattributes`,
+path + swift-crypto LICENSE/NOTICE into the release zip);
+`.github/workflows/benchmark-pr.yml` (the fork-PR path per ADR 0007 —
+comment gated off fork PRs, comparison to the job summary,
+`!cancelled()` verdict); `Development/Tools` (the zero-padded-refs
+contract test in `PlanIndexTests`); `.gitattributes`,
 `.swiftformat`, `.swiftlint.yml`, `.gitignore`;
 `AGENTS.md`, `Sources/AGENTS.md`, `Sources/Shared/README.md`, `.github/AGENTS.md`,
 `Development/constitution.md`; the 36 `Vendor/…` references in doc comments
@@ -86,21 +93,26 @@ housekeeping.
 
 **Out of scope (with owners):**
 
-- Renovate configuration, its workflow, and the `dependabot.yml` teardown —
-  separate PR ([ADR 0006](../../ADRs/0006-vendir-replaces-subtree-and-vendor-mirror.md)
-  records the commitment). `dependabot.yml` is untouched until it lands.
+- The centralized updater — release detection and the bump worker live in
+  their own org repository in the `swift-plugin-tuist` checker/worker
+  shape ([ADR 0007](../../ADRs/0007-vendir-updates-via-central-org-repo.md)
+  supersedes the Renovate successor [ADR
+  0006](../../ADRs/0006-vendir-replaces-subtree-and-vendor-mirror.md)
+  recorded). `dependabot.yml` is untouched until a successor absorbs the
+  remaining ecosystems.
 - Upstream content changes — every synced byte is upstream at the pinned ref.
 - `Sources/` layout changes — the extracted trees are byte-identical; the
   nested `Sources/Crypto/…` shape under `Sources/Shared/swift-crypto/` stays.
-- The merge ruleset and other workflows — `vendir-check.yml` reports visibly
+- The merge ruleset and workflows not named above — `vendir-check.yml`
+  reports visibly
   but joins no required set without a maintainer decision (same stance as [ADR
   0005](../../ADRs/0005-planning-artifacts-consolidated-under-development.md)).
 
 ## 3. Design
 
 **vendir.yml.** Five `directories:` entries, each with a single `git:` contents
-entry — the canonical model, and the only one Renovate's vendir support updates
-end-to-end. `minimumRequiredVersion: 0.46.2` — the release this migration was
+entry — the canonical model, and the shape any updater edits.
+`minimumRequiredVersion: 0.46.2` — the release this migration was
 verified against and the version CI pins (carvel-dev/vendir#453's targeted
 fetch is still open, so the floor is a tested binary, not a feature gate).
 `vendir.lock.yml` is
@@ -201,31 +213,41 @@ change — vendir owns the subdir, not the parent. The loader looks the
 vectors up flat (`forResource:`, no subdirectory), so the vendored dir
 must flatten into the bundle — §5 verifies it.
 
-**Interim updates.** Manual: edit `ref:` in `vendir.yml` →
+**Interim updates.** Manual until the centralized updater in §7 exists:
+edit `ref:` in `vendir.yml` →
 `vendir sync` → check the lock diff → run `libsecp256k1Tests` against the
 synced tree (the §6 tripwire — it only catches extraction bugs if it runs)
 → commit → PR on a
-`vendor/<name>-<ref>` branch with the `dependencies` label. The diff check
+`vendor/<dep>-<ref>` branch with the `dependencies` label. The diff check
 matters: `vendir sync` re-resolves *every* entry, so a re-pushed tag or drift
 on an untouched pin would ride the same PR — only the bumped dep's `sha:`s
 should move (for secp256k1 that's all three entries in lockstep — they
-share one anchor; the CI gate enforces the same rule on PRs). No
+share one anchor; no CI check enforces the same rule — this read is the
+only guard). No
 git-subtree trailers, no squash gymnastics — the
-lock file is the provenance. Renovate replaces this wholesale in its own PR.
+lock file is the provenance. The centralized updater performs this recipe
+cross-repo.
 
 **CI gate.** New `vendir-check.yml`, path-filtered on `vendir*.yml`,
-the five vendored destinations, and the workflow itself, plus a weekly
+the five vendored destinations, and the gate-machinery prefixes
+`Scripts/vendir-check*` + `.github/workflows/vendir-check*`, plus a weekly
 `schedule:` and
-`workflow_dispatch:` — a moved tag surfaces within days, not at the next
-vendoring PR; `ubuntu-slim` (its published toolset includes git, curl,
-coreutils, `yq`, and `jq`; config and lock reads go through
+`workflow_dispatch:` — a moved tag surfaces within days while the repo
+sees activity (GitHub disables cron triggers on public repos after 60
+quiet days — §7), not at the next vendoring PR; `ubuntu-slim` (its published toolset includes git, curl,
+coreutils, `yq`, and `jq`). All check logic lives in
+`Scripts/vendir-check.sh` — bash, kept bash-3.2-safe so the same file
+runs on macOS — called by the job's named steps with a check-name
+argument; a bare run executes all five checks, so the gate reproduces
+locally outside CI. Config and lock reads go through
 `yq 'explode(.)'` — a bare read prints the `*secp256k1-ref` alias
-literally, and `ls-remote` would chase a garbage ref); vendir
+literally, and `ls-remote` would chase a garbage ref; vendir
 installed by `curl` plus a hard-coded release SHA-256 in an `env:` constant
 (the Vale precedent — a `checksums.txt` fetched from the same release would
 prove nothing if the release were tampered) — pinned at or above the
 config's `minimumRequiredVersion`, which the config enforces itself.
-Six checks, each a named failure, in run order:
+The job needs no token — every read is anonymous. Five checks, each a
+named step failure, in run order:
 
 1. **Key allowlist** — enumerate every mapping key in `vendir.yml` and
    fail on any outside the used set: top-level `apiVersion`, `kind`,
@@ -236,13 +258,17 @@ Six checks, each a named failure, in run order:
    pinned too: every `url:` in the fixed three-upstream set and every
    `directories[].path` in the five-destination set — otherwise a
    repointed `url:` resolves happily on a fork through every other check.
+   Structural invariants ride the same check: `apiVersion`/`kind`
+   literals, exactly one `contents` entry per directory, and every
+   `contents[].path` equal to `.` — a second `git:` contents merging
+   another upstream at a sub-path would otherwise pass every check below.
    vendir drops unknown keys silently — a typo'd `excludePath:` syncs
    green, and the consistency checks below can't see the difference.
 2. **Remote resolution** — `git ls-remote <url> refs/tags/<ref>
    refs/tags/<ref>^{}` per entry (take the `^{}` line's SHA when present —
    the bare ref line is the tag-*object* SHA for annotated tags and
    false-fails the lock comparison; lightweight `4.5.0` has only the ref
-   line; the zkp pin's `ref:` is the SHA itself),
+   line; the zkp pin's `ref:` is the SHA itself — it resolves to itself),
    required to equal the lock's `sha:` — each resolved value must match
    `^[0-9a-f]{40}$` (an abbreviated SHA fails rather than matching by
    accident) and empty `ls-remote` output fails (a branch name or
@@ -256,20 +282,28 @@ Six checks, each a named failure, in run order:
    vendir.lock.yml)"` — the tree must match the committed lock (`git diff
    --exit-code` ignores untracked files; `--ignored=matching` catches a
    synced upstream file matching a repo `.gitignore` pattern).
-4. **Base comparison** — on PRs, an entry whose `ref:` is unchanged from
-   the base must keep the base's locked `sha:`, so a re-pushed tag can't
-   ride another dependency's bump through a committed re-resolve (needs
-   base history; skips when `vendir.yml` doesn't exist on the base — this
-   PR introduces it).
-5. **Anchor backstop** — the three secp256k1 lock SHAs stay equal (the
-   anchor makes drift impossible by construction; the guard catches an
-   alias replaced by a literal).
-6. **Shim shadow check** — `curl -o /dev/null -w '%{http_code}'` on
-   `raw.githubusercontent.com` for `include/Utility.h` and `src/Utility.c`
-   in both C upstreams at their locked SHAs; passes only on an exact 404
-   — an outage must fail, not read as absent (no `gh` or token needed;
-   curl is already the install tool). A future upstream file at either
-   `ignorePaths` path would be silently shadowed.
+4. **Anchor backstop** — entries sharing a `git.url` keep equal lock SHAs
+   (the three secp256k1 entries today; the `&secp256k1-ref` anchor makes
+   drift impossible by construction — the guard catches an alias replaced
+   by a literal).
+5. **Shim shadow check** — `curl -o /dev/null -w '%{http_code}'` on
+   `raw.githubusercontent.com` for every declared `ignorePaths` entry at
+   its locked SHA (`include/Utility.h` and `src/Utility.c` in both C
+   upstreams today); 429/5xx retried with backoff — anonymous `raw.`
+   requests share runner-IP throttles — and passes only on an exact
+   404: a persistent non-404 fails, so an outage can't read as absent.
+   A future upstream file at an `ignorePaths` path would be silently
+   shadowed.
+
+Two checks from the `OLD-VENDIR-MIGRATION` prototype were dropped on
+re-review: a **base-SHA comparison** (on PRs, an unchanged `ref:` had to
+keep its base lock SHA — it catches only a retag absorbed through a
+committed re-resolve, the same drift the bump recipe's mandatory
+lock-diff read already targets) and a **`gh api` on-default-branch
+probe** for raw hex pins (the job's only token need; `vendir sync`
+itself proves a pinned SHA exists in upstream history, and
+on-default-branch provenance is a bump-time review concern — the
+centralized updater enforces it there).
 
 `--locked` alone was rejected as the gate — `Lock()` swaps the config's
 `ref:` for the lock's `sha:` (pkg/vendir/config/directory.go) without
@@ -277,6 +311,17 @@ consulting the edit — so check 2 is what makes a `ref:` edit without a
 re-synced lock fail. Not a required check; nothing reaches the repo
 without a re-resolve, and a moved tag fails with its name on the next
 gate run.
+
+The gate lands as increments, not one PR: check 3 (the sync) wires
+first — drift detection is the point and the rest is hardening — then
+each remaining check lands as one task (script function + case arm +
+named step + the `vendir.yml` comment flip naming it), so every gate
+PR answers one question and each lands already self-exercised.
+`ignorepaths` stays last and alone — it is the flakiest piece (live
+HTTP probes to three upstreams), so an isolated revert never touches
+the core. Advisory throughout — never a required check, matching
+staged-rollout guidance (report-only first, promote later): the gate
+can be overridden only by a reviewer, on the record.
 
 ## 4. Implementation steps
 
@@ -356,9 +401,9 @@ full task list, grouped into review slices with checkpoints, is in
   while `08d1cd0` stays reachable from a fetched branch or tag — a `master`
   rewrite upstream would break sync outright until re-pinned (unlikely; no
   mitigation short of a fork mirror).
-- **Update detection is manual until Renovate lands** — parity with today, not
-  a regression: the subtree checker's schedule was already disabled and ran on
-  dispatch only.
+- **Update detection is manual until the centralized updater lands** —
+  parity with today, not a regression: the subtree checker's schedule was
+  already disabled and ran on dispatch only.
 - **Contributors need the vendir binary** — `brew install
   carvel-dev/carvel/vendir`, documented in `AGENTS.md`; CI installs a pinned,
   hash-checked binary, and the recipe points at that pinned version —
@@ -367,18 +412,30 @@ full task list, grouped into review slices with checkpoints, is in
 
 ## 7. Out of scope (follow-ups)
 
-- Renovate: `renovate.json`, its scheduled workflow, absorbing the docker /
-  github-actions / swift Dependabot ecosystems, and deleting `dependabot.yml` —
-  the committed successor per [ADR
-  0006](../../ADRs/0006-vendir-replaces-subtree-and-vendor-mirror.md). The zkp
-  SHA pin is the exception — no ref for the vendir manager; the
-  `customManagers` + sync-step path and the dual-manager `packageRules`
-  question live in [research.md](./research.md) §5. Before relying on the
-  `&secp256k1-ref` anchor, run one
-  `renovate --platform=local --dry-run=full` — it settles that and the
-  single-owner question; the recorded verification covered
-  `extractPackageFile` + `doAutoReplace` in branch-worker order, not a
-  real run applying three upgrades to one file.
+- Centralized org updater — a new org-level repository in the
+  `swift-plugin-tuist` checker/worker shape: a `schedule:` +
+  `workflow_dispatch:` detector compares each repo's `vendir.lock.yml`
+  SHAs against upstream heads/tags and calls `gh workflow run` on a
+  `workflow_call:` + `workflow_dispatch:` worker (the convention
+  `check-github-release.yml` → `publish-artifact-bundle.yml` already
+  uses); the worker clones the repo, re-pins `vendir.yml`, runs
+  `vendir sync`, verifies only the bumped upstream's lock SHAs moved,
+  pushes `vendor/<dep>-<ref>` to an org-owned fork, and opens the PR —
+  the App holds read + pull-request + label write on vendoring repos
+  and `contents: write` only on the fork, so it cannot reach a shipped
+  repo's branches or tags; its key sits in a protected environment.
+  Vendoring repos need only `vendir.yml`, this gate, and the App
+  installed — [ADR
+  0007](../../ADRs/0007-vendir-updates-via-central-org-repo.md)
+  supersedes the Renovate plan; the hosted Mend app stays the zero-code
+  fallback (its vendir manager is function-verified for the tag-pinned
+  entries — extractor/replacer tested, full dry run pending —
+  [research.md](./research.md) §5).
+- Tag ruleset on this repo (maintainer action, not updater-blocked):
+  restrict tag create/update/delete to maintainer bypass — the
+  updater's App holds no tag-capable permission regardless, but the
+  ruleset covers every other write credential on a release-tag-driven
+  package.
 - Upstream signature verification: `v0.7.1` is a GPG-signed tag and the zkp
   pin `08d1cd0` a signed merge commit — the gate detects ref drift but
   cannot authenticate what a pin points at: a bump to a forged commit
@@ -396,6 +453,11 @@ full task list, grouped into review slices with checkpoints, is in
   only the last editor of the cron line. If silent-red is unacceptable, a
   follow-up job opening an issue needs a scoped `issues: write` grant on
   that one job; `permissions: {}` stays for the gate itself.
+- Scheduled-run auto-disable — GitHub stops cron triggers on public
+  repos after 60 days without repository activity, and quiet stretches
+  are exactly when drift accumulates; the schedule is best-effort
+  detection — the PR-triggered run is the real gate and a moved tag
+  surfaces at the next vendoring PR regardless.
 - Pin local `vendir` to the CI version via a lefthook hook filtered to
   `vendir*.yml` — lefthook is already a dev dependency; closes the skew the
   AGENTS recipe warns about (a newer local vendir could write a lock CI
@@ -408,7 +470,9 @@ full task list, grouped into review slices with checkpoints, is in
 
 ## 8. Division of labor
 
-Single pull request, agent-executed, maintainer-reviewed and -committed — the
-maintainer lands each task's or checkpoint's commit per the AGENTS.md
-working-tree convention. The Renovate follow-up is a second PR for separate
-review.
+Task-sized pull requests, agent-executed, maintainer-reviewed and -committed —
+the maintainer lands each task's or checkpoint's commit per the AGENTS.md
+working-tree convention (T001–T014 each landed this way; the gate group is
+T019–T026; T027–T028 are adjacent hardening landed in the same pass). The
+centralized updater lives in its own org repository — nothing
+for it lands here.
