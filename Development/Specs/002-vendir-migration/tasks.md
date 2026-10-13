@@ -215,7 +215,7 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
   `gh api` on-default-branch probe are dropped (§3 records why); that
   branch stays in git as the edge-case reference. Tick this box in
   T026's PR._
-- [ ] T019 [P] `Scripts/vendir-check.sh` — the skeleton (check-name
+- [x] T019 [P] `Scripts/vendir-check.sh` — the skeleton (check-name
   dispatch, shared helpers, `fail()`) plus §3's **sync** check
   (`vendir sync --locked` + `git status --porcelain --ignored=matching`
   over the five destinations + `vendir.lock.yml`); a bare run executes
@@ -227,23 +227,27 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
 - [ ] T020 `.github/workflows/vendir-check.yml` — `ubuntu-slim`,
   `permissions: {}`, `persist-credentials: false` on checkout, `env:`
   blocks per `.github/AGENTS.md`; `curl` + hard-coded `VENDIR_SHA256` +
-  `sha256sum -c` install (the Vale precedent); triggers on PRs touching
+  `sha256sum -c` install (the Vale precedent — the image already ships
+  mikefarah `yq` 4.x and `git`, verified in its published toolset, so
+  neither needs an install step); triggers on PRs touching
   `vendir*.yml`, the five vendored destinations, or the gate-machinery
   globs `Scripts/vendir-check*` and `.github/workflows/vendir-check*`,
   plus weekly `schedule:` (comment notes GitHub's 60-day inactivity
   disable — §7) and `workflow_dispatch:`; one
-  job whose first named step is `Scripts/vendir-check.sh sync` — the
-  gate is live from this PR. Flip `vendir.yml`'s version-floor comment
+  job with a named step per existing check — `resolve` then `sync` —
+  the gate is live from this PR. Flip `vendir.yml`'s version-floor comment
   ("will pin" → "pins in CI") and root `AGENTS.md`'s "until
   vendir-check.yml lands" line to present tense; note the gate in
   `.github/AGENTS.md`'s conventions list ·
   `.github/workflows/vendir-check.yml`, `vendir.yml`, `AGENTS.md`,
   `.github/AGENTS.md`
-- [ ] T021 `resolve` — script gains §3's remote-resolution check
-  (`git ls-remote` per entry against the lock's `sha:`) plus a workflow
-  step, inserted ahead of `sync` in run order (a moved tag fails named
-  rather than masked as a depth-1 fetch error) ·
-  `Scripts/vendir-check.sh`, `.github/workflows/vendir-check.yml`
+- [ ] T021 _Folded into T020 + the T019 findings pass — the `resolve`
+  check's script half (§3's remote resolution: `git ls-remote
+  refs/tags/<ref>` + `^{}` peel per entry vs the lock's `sha:`) landed
+  early there, since an unsynced `ref:` edit is the gate's core story
+  and couldn't wait for the workflow to exist; its named step rides
+  T020's job ("one step per existing check") rather than its own PR.
+  Tick this box in T020's PR._
 - [ ] T022 `allowlist` — script gains §3's key/value allowlist
   (un-exploded key scan catches `<<:` merge keys; `url:`/`path:` value
   pins) plus a workflow step, first in run order ·
@@ -262,8 +266,23 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
   the core · `Scripts/vendir-check.sh`,
   `.github/workflows/vendir-check.yml`, `vendir.yml`
 - [ ] T025 `Scripts/vendir-check-test.sh` — self-test for the gate:
-  heredoc-built doctored `vendir.yml`/lock fixtures under `mktemp`
-  assert each check fails when it should and passes on the real tree;
+  heredoc-built doctored `vendir.yml`/lock fixtures under `mktemp`,
+  each a git repo (`git init` + a commit — the checks assert committed
+  state, via `git show HEAD:` and `worktree add HEAD`), asserting each
+  check fails when it should — including the 1-vs-2 exit split
+  (findings vs could-not-run, and findings *dominate*: a run that both
+  found drift and couldn't run a check still exits 1 — inside one check
+  too, where a drifted entry plus an unreachable entry still fails) — and
+  passes on the real tree. Entries sharing a `(url, ref)` are cached to
+  one probe but must still *name* every affected path (a fixture whose
+  two directories share a bad tag must fail both by name, not one).
+  Fixture remotes can use `file://` URLs by exporting
+  `VENDIR_CHECK_ALLOW_PROTOCOLS=file:https` — the script pins
+  `GIT_ALLOW_PROTOCOL=https` for its own probes *and* vendir's fetches;
+  the same knob widens past a `url.*.insteadOf` rewrite, so cover the
+  preflight audit too: a `GIT_CONFIG_GLOBAL` fixture rewriting the
+  fixture remote's scheme is flagged exit 2, while a rewrite for an
+  unrelated host is ignored;
   plain bash — BATS would be a new test-framework dependency for one
   script, and new deps are an ask-first boundary. Lands inert —
   nothing calls it until T026 · `Scripts/vendir-check-test.sh`
@@ -280,7 +299,7 @@ gate-group PR touches `vendir.yml`, `Scripts/vendir-check*`, or
 globs, so `vendir-check.yml` runs on its own diff from T020's PR
 onward and must pass (advisory, not required).
 
-## Adjacent hardening (landed in this spec's pass)
+## Adjacent hardening
 
 - [x] T027 `benchmark-pr.yml` fork-PR path per ADR 0007 — fork PRs get a
   read-only `GITHUB_TOKEN`, so the PR comment is gated to non-fork PRs
@@ -294,6 +313,33 @@ onward and must pass (advisory, not required).
   through the Codable path, locking the parse contract this spec's
   zero-padded ADR references ride ·
   `Development/Tools/Tests/PlanIndexTests/PlanIndexTests.swift`
+- [ ] T029 [P] `vendir-check` executable target in `Development/Tools` —
+  a thin `main.swift` that locates `Scripts/vendir-check.sh` via
+  `git rev-parse --show-toplevel` run at the running binary's own
+  resolved path first (`Bundle.main.executableURL` — never
+  `CommandLine.arguments[0]`, which can be relative or a bare PATH
+  name), falling back to the caller's cwd, and `execv`s
+  `Scripts/vendir-check.sh` with the forwarded args — a real exec, not
+  `Process`, so signals and exit codes pass through untouched (`execv`
+  takes an absolute path and never searches `PATH` — resolve the script
+  first); `VENDIR_CHECK_ROOT` is forwarded untouched — it names the repo
+  under test (a T025 fixture carries no `Scripts/`), never the script's
+  home:
+  `swift run --package-path Development/Tools vendir-check` becomes
+  the local entry point matching `plans`, while CI keeps calling the
+  script bare (`ubuntu-slim` ships no Swift toolchain — the wrapper can
+  never be the gate's call site). Long term the executable *replaces*
+  the script: the checks migrate into Swift one at a time as a follow-up
+  (break that port out as its own task once this lands — the stable
+  `vendir-check` name means callers never notice the swap). The script
+  stays at `Scripts/` —
+  `Development/**` is `export-ignore` + `linguist-vendored` (source
+  archives drop it, diffs collapse it) and `development-docs.yml`
+  fires on every `Development/` edit. No new package deps, no
+  `PlanIndex` dep; a `vendir-check-test` sibling for T025's self-test
+  may ride the same wrapper pattern if wanted ·
+  `Development/Tools/Package.swift`,
+  `Development/Tools/Sources/vendir-check/main.swift`
 
 ## Verification and merge
 

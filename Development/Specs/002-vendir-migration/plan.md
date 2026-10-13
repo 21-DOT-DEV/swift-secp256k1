@@ -83,7 +83,10 @@ path + swift-crypto LICENSE/NOTICE into the release zip);
 `.github/workflows/benchmark-pr.yml` (the fork-PR path per ADR 0007 —
 comment gated off fork PRs, comparison to the job summary,
 `!cancelled()` verdict); `Development/Tools` (the zero-padded-refs
-contract test in `PlanIndexTests`); `.gitattributes`,
+contract test in `PlanIndexTests`, plus a thin `vendir-check` executable
+target exec'ing `Scripts/vendir-check.sh` — the `swift run` local entry
+point; CI still calls the script bare since `ubuntu-slim` has no Swift
+toolchain); `.gitattributes`,
 `.swiftformat`, `.swiftlint.yml`, `.gitignore`;
 `AGENTS.md`, `Sources/AGENTS.md`, `Sources/Shared/README.md`, `.github/AGENTS.md`,
 `Development/constitution.md`; the 36 `Vendor/…` references in doc comments
@@ -239,7 +242,10 @@ coreutils, `yq`, and `jq`). All check logic lives in
 `Scripts/vendir-check.sh` — bash, kept bash-3.2-safe so the same file
 runs on macOS — called by the job's named steps with a check-name
 argument; a bare run executes all five checks, so the gate reproduces
-locally outside CI. Config and lock reads go through
+locally outside CI; exits split diff(1)-style — 0 clean, 1 any findings
+(drift dominates: a proven mismatch outranks another check's couldn't-run),
+2 nothing found but a check couldn't run — so a network flake never reads
+as drift, and a real drift never hides under one. Config and lock reads go through
 `yq 'explode(.)'` — a bare read prints the `*secp256k1-ref` alias
 literally, and `ls-remote` would chase a garbage ref; vendir
 installed by `curl` plus a hard-coded release SHA-256 in an `env:` constant
@@ -276,7 +282,22 @@ named step failure, in run order:
    an unsynced
    `ref:` edit fails with the entry named. Runs before the sync: after a
    tag move the locked SHA is often unreachable at `depth: 1`, and a
-   fetch error would mask the named failure.
+   fetch error would mask the named failure. Probes dedupe by (url, ref)
+   — the anchored secp256k1 trio pays one round-trip, and a cache hit
+   still names every affected entry — while a transport failure on one
+   entry reports and skips it, so a dead remote can't mask another
+   entry's proven drift (findings dominate inside the check, not just
+   between checks). The probe's URL argument goes behind `--` — a
+   `-`-leading `url:` would otherwise parse as an option
+   (`--upload-pack` runs a command); `GIT_ALLOW_PROTOCOL=https` is the
+   second layer and also covers vendir's own fetches during the sync.
+   The allowlist provokes a preflight audit: a `url.*.insteadOf` rewrite
+   in the config layer the probes see (system+global+env, read from a
+   neutral directory — never a repo-local layer nobody shares) that
+   retargets a committed `url:` to a blocked transport is flagged with
+   the rule, the matched url, and the deliberate override
+   (`VENDIR_CHECK_ALLOW_PROTOCOLS`), instead of reading as a network
+   outage on every run.
 3. **Deterministic tree** — `vendir sync --locked`, then `test -z "$(git
    status --porcelain --ignored=matching -- <vendored paths>
    vendir.lock.yml)"` — the tree must match the committed lock (`git diff
@@ -313,8 +334,11 @@ without a re-resolve, and a moved tag fails with its name on the next
 gate run.
 
 The gate lands as increments, not one PR: check 3 (the sync) wires
-first — drift detection is the point and the rest is hardening — then
-each remaining check lands as one task (script function + case arm +
+first — drift detection is the point and the rest is hardening — with
+check 2's script half riding alongside (an unsynced `ref:` edit is the
+gate's core story and couldn't wait for a workflow that doesn't exist
+yet; its named step still lands with T020's job); then each remaining
+check lands as one task (script function + case arm +
 named step + the `vendir.yml` comment flip naming it), so every gate
 PR answers one question and each lands already self-exercised.
 `ignorepaths` stays last and alone — it is the flakiest piece (live
