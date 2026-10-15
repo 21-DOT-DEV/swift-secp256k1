@@ -231,13 +231,14 @@ git-subtree trailers, no squash gymnastics — the
 lock file is the provenance. The centralized updater performs this recipe
 cross-repo.
 
-**CI gate.** New `vendir-check.yml`, path-filtered on `vendir*.yml`,
-the five vendored destinations, and the gate-machinery prefixes
-`Scripts/vendir-check*` + `.github/workflows/vendir-check*`, plus a weekly
-`schedule:` and
+**CI gate.** New `vendir-check.yml`, path-filtered on PRs and pushes to
+main touching `vendir*.yml`, the five vendored destinations, and the
+gate-machinery prefixes `Scripts/vendir-check*` +
+`.github/workflows/vendir-check*`, plus a weekly `schedule:` and
 `workflow_dispatch:` — a moved tag surfaces within days while the repo
 sees activity (GitHub disables cron triggers on public repos after 60
-quiet days — §7), not at the next vendoring PR; `ubuntu-slim` (its published toolset includes git, curl,
+quiet days — §7), and repo-originated drift at the push itself;
+`ubuntu-slim` (its published toolset includes git, curl,
 coreutils, `yq`, and `jq`). All check logic lives in
 `Scripts/vendir-check.sh` — bash, kept bash-3.2-safe so the same file
 runs on macOS — called by the job's named steps with a check-name
