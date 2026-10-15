@@ -224,24 +224,33 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
   `brew install yq`); `yq 'explode(.)'` for all config/lock *value*
   reads; anonymous reads only — no token. Lands inert — nothing calls
   it until T020 · `Scripts/vendir-check.sh`
-- [ ] T020 `.github/workflows/vendir-check.yml` — `ubuntu-slim`,
-  `permissions: {}`, `persist-credentials: false` on checkout, `env:`
-  blocks per `.github/AGENTS.md`; `curl` + hard-coded `VENDIR_SHA256` +
-  `sha256sum -c` install (the Vale precedent — the image already ships
-  mikefarah `yq` 4.x and `git`, verified in its published toolset, so
-  neither needs an install step); triggers on PRs touching
-  `vendir*.yml`, the five vendored destinations, or the gate-machinery
-  globs `Scripts/vendir-check*` and `.github/workflows/vendir-check*`,
-  plus weekly `schedule:` (comment notes GitHub's 60-day inactivity
-  disable — §7) and `workflow_dispatch:`; one
-  job with a named step per existing check — `resolve` then `sync` —
-  the gate is live from this PR. Flip `vendir.yml`'s version-floor comment
-  ("will pin" → "pins in CI") and root `AGENTS.md`'s "until
-  vendir-check.yml lands" line to present tense; note the gate in
+- [x] T020 `.github/workflows/vendir-check.yml` — `ubuntu-slim`,
+  `permissions: {}`, `persist-credentials: false` on a SHA-pinned
+  checkout (`9c091bb2…` = v7.0.0, the docc-release precedent — the
+  supply-chain gate doesn't fetch its own tooling through a mutable
+  tag), `env:` blocks per `.github/AGENTS.md`; `curl` + hard-coded
+  `VENDIR_SHA256` + `sha256sum -c` install (the Vale precedent — the
+  image already ships mikefarah `yq` 4.x and `git`, verified in its
+  published toolset, so neither needs an install step); triggers on PRs
+  *and pushes to main* touching `vendir*.yml`, the five vendored
+  destinations, or the gate-machinery globs `Scripts/vendir-check*` and
+  `.github/workflows/vendir-check*` (the push leg mirrors
+  development-docs.yml — a direct push or merge skew surfaces at push
+  time, not the next weekly run), plus weekly `schedule:` (comment
+  notes GitHub's 60-day inactivity disable — §7) and
+  `workflow_dispatch:`; one job with a named step per existing check —
+  `resolve` then `sync`, each gated `if: ${{ !cancelled() }}` (the
+  `${{ }}` is required — a leading `!` is a YAML tag, not expression
+  text) so a failed verdict can't mask the next check's — the same
+  run-all semantics a bare script run has locally — the gate is live
+  from this PR.
+  Flip `vendir.yml`'s version-floor comment ("will pin" → "pins in
+  CI"), root `AGENTS.md`'s "until vendir-check.yml lands" line, and the
+  script header's "(lands T020)" to present tense; note the gate in
   `.github/AGENTS.md`'s conventions list ·
   `.github/workflows/vendir-check.yml`, `vendir.yml`, `AGENTS.md`,
-  `.github/AGENTS.md`
-- [ ] T021 _Folded into T020 + the T019 findings pass — the `resolve`
+  `.github/AGENTS.md`, `Scripts/vendir-check.sh`
+- [x] T021 _Folded into T020 + the T019 findings pass — the `resolve`
   check's script half (§3's remote resolution: `git ls-remote
   refs/tags/<ref>` + `^{}` peel per entry vs the lock's `sha:`) landed
   early there, since an unsynced `ref:` edit is the gate's core story

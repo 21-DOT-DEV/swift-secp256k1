@@ -6,8 +6,8 @@ apiVersion: vendir.k14s.io/v1alpha1
 kind: Config
 
 # Floor is the verified binary, not a feature: 0.46.2 is the release this
-# migration was verified against and the version the vendir-check workflow
-# will pin. (carvel-dev/vendir#453's targeted single-ref fetch is still open —
+# migration was verified against and the version vendir-check.yml pins in CI.
+# (carvel-dev/vendir#453's targeted single-ref fetch is still open —
 # `depth` bounds history depth and that is what keeps the syncs cheap.)
 minimumRequiredVersion: 0.46.2
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # vendir-check.sh [check ...] — the vendored-tree gate behind
-# .github/workflows/vendir-check.yml (lands T020). No arguments runs every
+# .github/workflows/vendir-check.yml. No arguments runs every
 # check that exists, so the gate reproduces outside CI; a workflow step names
 # one check per invocation. bash-3.2-safe (macOS /bin/bash): no declare -A,
 # no mapfile.
@@ -369,7 +369,7 @@ check_sync() {
     vver=${vver##* }
     # A vendir newer than the declared floor can rewrite the lock's format —
     # flag it now so a red sync isn't misread as upstream drift (AGENTS.md,
-    # Extraction flow pins exactly the floor until CI does).
+    # Extraction flow — CI pins exactly the floor).
     floor=$(cfg '.minimumRequiredVersion' "$wt/tree/vendir.yml" || true)
     if [ -n "$floor" ] && [ "$floor" != null ] && [ "$vver" != "$floor" ]; then
         note "note: vendir $vver differs from vendir.yml's minimumRequiredVersion $floor"

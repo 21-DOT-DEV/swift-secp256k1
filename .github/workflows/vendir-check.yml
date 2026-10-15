@@ -1,0 +1,85 @@
+name: Vendir Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'vendir*.yml'
+      - 'Sources/libsecp256k1/**'
+      - 'Sources/libsecp256k1_zkp/**'
+      - 'Sources/Shared/swift-crypto/**'
+      - 'Projects/Sources/libsecp256k1Tests/**'
+      - 'Projects/Resources/WycheproofTests/secp256k1/**'
+      - 'Scripts/vendir-check*'
+      - '.github/workflows/vendir-check*'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'vendir*.yml'
+      - 'Sources/libsecp256k1/**'
+      - 'Sources/libsecp256k1_zkp/**'
+      - 'Sources/Shared/swift-crypto/**'
+      - 'Projects/Sources/libsecp256k1Tests/**'
+      - 'Projects/Resources/WycheproofTests/secp256k1/**'
+      - 'Scripts/vendir-check*'
+      - '.github/workflows/vendir-check*'
+  # Weekly drift sweep — a moved upstream tag surfaces within days, not at the
+  # next vendoring PR. GitHub disables cron triggers on public repos after 60
+  # days of repository inactivity; the push/PR runs are the real gate
+  # (Development/Specs/002-vendir-migration §7).
+  schedule:
+    - cron: '41 5 * * 3'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: vendir-check-${{ github.ref }}
+  # PR updates may supersede their own runs; a push to main, a scheduled run,
+  # and a dispatch are never cancelled mid-run (same convention as
+  # development-docs.yml).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: Vendored trees
+    # Slim image ships git, curl, coreutils, and mikefarah yq 4.x — no install
+    # step beyond vendir itself (published toolset, verified against spec).
+    runs-on: ubuntu-slim
+    permissions: {}
+    timeout-minutes: 15
+    env:
+      # The pinned binary fetched below; Scripts/vendir-check.sh resolves
+      # vendir through VENDIR so CI and local runs share one code path.
+      VENDIR: /tmp/vendir
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      # Pinned release binary + hard-coded hash (the Vale precedent in
+      # development-docs.yml) — a checksums.txt fetched from the same release
+      # would prove nothing if the release were tampered. Pinned at
+      # vendir.yml's minimumRequiredVersion; bump the two together.
+      - name: Install vendir
+        env:
+          VENDIR_URL: "https://github.com/carvel-dev/vendir/releases/download/v0.46.2/vendir-linux-amd64"
+          VENDIR_SHA256: "0b4bad28b765c4cbf0cc2234d0d420bcf2d352b58eb202e9c55263374f95bd71"
+        run: |
+          curl --retry 3 --retry-all-errors -sSfL "$VENDIR_URL" -o /tmp/vendir
+          echo "$VENDIR_SHA256  /tmp/vendir" | sha256sum --check
+          chmod 0755 /tmp/vendir
+          /tmp/vendir version
+
+      # One named step per check in Scripts/vendir-check.sh. `${{ !cancelled() }}`
+      # (the `${{ }}` is required — a leading `!` is a YAML tag, not expression
+      # text) so a failed verdict can't mask the next check's — the same
+      # run-all semantics a bare script run has locally. resolve runs first:
+      # a moved tag fails named there before a sync fetch error could blur it.
+      - name: resolve
+        if: ${{ !cancelled() }}
+        run: ./Scripts/vendir-check.sh resolve
+
+      - name: sync
+        if: ${{ !cancelled() }}
+        run: ./Scripts/vendir-check.sh sync
