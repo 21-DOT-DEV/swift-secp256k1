@@ -271,6 +271,12 @@ named step failure, in run order:
    another upstream at a sub-path would otherwise pass every check below.
    vendir drops unknown keys silently — a typo'd `excludePath:` syncs
    green, and the consistency checks below can't see the difference.
+   Repeated keys fail as well — YAML 1.2 requires unique mapping keys
+   and parsers disagree on which duplicate wins — and
+   `minimumRequiredVersion` is required present (a floor whose presence
+   is asserted; the value stays unpinned — the workflow pins the
+   binary). Unparseable committed YAML is couldn't-run, matching check
+   2's split; parseable-but-wrong-shaped nodes fail named.
 2. **Remote resolution** — `git ls-remote <url> refs/tags/<ref>
    refs/tags/<ref>^{}` per entry (take the `^{}` line's SHA when present —
    the bare ref line is the tag-*object* SHA for annotated tags and

@@ -74,8 +74,14 @@ jobs:
       # One named step per check in Scripts/vendir-check.sh. `${{ !cancelled() }}`
       # (the `${{ }}` is required — a leading `!` is a YAML tag, not expression
       # text) so a failed verdict can't mask the next check's — the same
-      # run-all semantics a bare script run has locally. resolve runs first:
-      # a moved tag fails named there before a sync fetch error could blur it.
+      # run-all semantics a bare script run has locally. allowlist runs first —
+      # it vets the vendir.yml shape every later check parses; resolve then
+      # precedes sync: a moved tag fails named there before a sync fetch error
+      # could blur it.
+      - name: allowlist
+        if: ${{ !cancelled() }}
+        run: ./Scripts/vendir-check.sh allowlist
+
       - name: resolve
         if: ${{ !cancelled() }}
         run: ./Scripts/vendir-check.sh resolve

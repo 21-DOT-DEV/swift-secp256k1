@@ -10,7 +10,7 @@ A Swift 6.1 wrapper around libsecp256k1 (and secp256k1-zkp) for the Bitcoin and 
 - Lint: `swift package swiftlint` (dev checkout only)
 - Install Lefthook hooks (one-time, dev checkout only): `lefthook install`
 - Install vendir (needed only to re-sync vendored sources): `brew install carvel-dev/carvel/vendir` — it tracks latest, so check `vendir version` against the pinned version named in "Extraction flow" below (exact binaries live on the vendir GitHub releases page)
-- Vendored-tree freshness gate: `Scripts/vendir-check.sh [check ...]` (bare run = all checks; needs vendir + yq). `resolve` asserts each committed `ref:` resolves upstream to the lock's SHA (an unsynced `ref:` edit fails named); `sync` runs `vendir sync --locked` in a throwaway worktree of HEAD, then asserts a clean porcelain over the managed paths. Both read committed state — safe on a dirty working tree, but useless as a pre-commit hook (it asserts HEAD, not the index). Exit 0 clean / 1 any drift found (dominates) / 2 nothing found but a check couldn't run.
+- Vendored-tree freshness gate: `Scripts/vendir-check.sh [check ...]` (bare run = all checks; needs vendir + yq). `allowlist` fails `vendir.yml` on keys or values outside the declared set (vendir drops unknown keys silently); `resolve` asserts each committed `ref:` resolves upstream to the lock's SHA (an unsynced `ref:` edit fails named); `sync` runs `vendir sync --locked` in a throwaway worktree of HEAD, then asserts a clean porcelain over the managed paths. All three assert committed state (HEAD, not the working tree) — safe on a dirty working tree, but useless as a pre-commit hook. Exit 0 clean / 1 any drift found (dominates) / 2 nothing found but a check couldn't run.
 
 ## Non-obvious patterns
 
