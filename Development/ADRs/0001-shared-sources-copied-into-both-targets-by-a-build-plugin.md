@@ -1,10 +1,10 @@
 ---
 adr: 0001
 title: Shared sources are copied into both targets by a build plugin, not symlinked
-status: Accepted
+status: Superseded
 date: 2025-12-08
 supersedes: []
-superseded_by: null
+superseded_by: 0008
 ---
 
 # 0001 — Shared sources are copied into both targets by a build plugin, not symlinked
