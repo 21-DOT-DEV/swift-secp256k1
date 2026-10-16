@@ -257,10 +257,16 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
   and couldn't wait for the workflow to exist; its named step rides
   T020's job ("one step per existing check") rather than its own PR.
   Tick this box in T020's PR._
-- [ ] T022 `allowlist` — script gains §3's key/value allowlist
-  (un-exploded key scan catches `<<:` merge keys; `url:`/`path:` value
-  pins) plus a workflow step, first in run order ·
-  `Scripts/vendir-check.sh`, `.github/workflows/vendir-check.yml`
+- [x] T022 `allowlist` — script gains §3's key/value allowlist
+  (un-exploded key scan catches `<<:` merge keys — and repeated keys:
+  duplicate mapping keys are spec-invalid and parsers disagree on which
+  wins, so the gate rejects rather than picks a side; `url:`/`path:`
+  value pins, `minimumRequiredVersion` presence — a required floor,
+  not a pinned literal — and named findings for present-but-wrong-shaped
+  nodes, while an unparseable or `directories`-less vendir.yml stays
+  couldn't-run like resolve) plus a workflow step, first in run order ·
+  `Scripts/vendir-check.sh`, `.github/workflows/vendir-check.yml`,
+  `AGENTS.md`
 - [ ] T023 `locksha` — script gains §3's same-URL lock-SHA equality +
   workflow step + both `vendir.yml` lock-SHA comment flips — the anchor
   site (~line 23) and the test-bundle rationale (~line 127), "will

@@ -5,11 +5,18 @@
 # one check per invocation. bash-3.2-safe (macOS /bin/bash): no declare -A,
 # no mapfile.
 #
-# Checks (a bare run uses registry order; final order once T022–T024 land:
+# Checks (a bare run uses registry order; final order once T023–T024 land:
 #   allowlist resolve sync locksha ignorepaths — insert, never reorder.
 #   Explicit args run in the order given and may repeat — args are NOT
 #   re-sorted to registry order, so it is the workflow's step order, not
 #   $CHECKS, that keeps allowlist first in CI):
+#   allowlist committed vendir.yml confined to the used key set at every
+#           mapping level (read un-exploded so `<<:` merge keys surface —
+#           and repeated keys fail too, since parsers disagree on which
+#           duplicate wins), `url:`/`directories[].path` pinned to the
+#           declared sets, one git: contents per directory. vendir drops
+#           unknown keys silently, so a typo'd excludePath: would sync
+#           green with nothing downstream able to tell.
 #   resolve every committed `ref:` resolves upstream to the SHA the
 #           committed lock pins — a ref edit without a re-sync, or a moved
 #           tag, fails named. The config↔lock parity check `npm ci` and
@@ -39,7 +46,7 @@
 # anything but at least one could not run (usage, missing tool, environment
 # trouble). T025's assertions and CI reporting hang off the 1-vs-2 split.
 # shellcheck disable=SC2329  # checks are invoked dynamically as "check_$c";
-# the helpers are this file's shared library (some are for T022–T024).
+# the helpers are this file's shared library (some are for T023–T024).
 set -euo pipefail
 
 # A git-hook environment exports GIT_* vars that silently retarget nested git
@@ -137,9 +144,10 @@ note() {
 
 # Every *value* read from the vendir files goes through explode(.) — a bare
 # read prints the `*secp256k1-ref` alias literally (spec 002 §3). Key
-# enumeration stays un-exploded so `<<:` merge keys surface (T022). Optional
-# second arg reads a different copy — the live files are the default; a
-# check asserting committed state passes the worktree's file explicitly.
+# enumeration stays un-exploded so `<<:` merge keys surface (the allowlist
+# check relies on it). Optional second arg reads a different copy — the live
+# files are the default; a check asserting committed state passes the
+# worktree's file explicitly.
 cfg() {
     yq "explode(.) | $1" "${2:-$VENDIR_YML}"
 }
@@ -153,6 +161,7 @@ lock() {
 # VENDIR path may contain spaces.
 check_tools() {
     case "$1" in
+        allowlist) printf '%s\n' git yq ;;
         resolve) printf '%s\n' git yq ;;
         sync) printf '%s\n' git yq "$VENDIR" ;;
         *) die "internal: no tool list for check '$1'" ;;
@@ -169,7 +178,7 @@ tool_hint() {
 }
 
 # — checks —————————————————————————————————————————————————————————————
-# Contract for check_* functions (T022–T024): the dispatcher runs each as a
+# Contract for check_* functions (T023–T024): the dispatcher runs each as a
 # foreground subshell in *tested* context (`( check_$c ) || rc=$?`), so
 # `set -e` is OFF inside — every step that must abort the check needs its
 # own `|| die` or `|| { fail …; return 1; }`. Report findings via fail(),
@@ -180,6 +189,235 @@ tool_hint() {
 # and aborts the run. Signals: the parent records INT/TERM/HUP and exits
 # with that code once the check returns; a terminal Ctrl-C reaches the
 # whole group, and the subshell's own EXIT trap still cleans its worktree.
+
+# Probe one node's shape, then enumerate its mapping keys against the
+# level's allowed set — accumulating into the caller's found/errored
+# locals via bash dynamic scope (the caller must declare them), and
+# leaving the node's type tag in the caller's _KT so it can decide
+# whether to descend. Shape semantics (spec 002 §3, check 1, as
+# amended): absent (null) is skipped — the missing-field findings are
+# resolve's territory; a present non-map node is a finding, not an
+# error — the check ran and proved a violation. Keys are enumerated
+# UN-exploded on purpose: explode(.) resolves `<<:` merge keys into
+# their source's fields and hides them, while the literal `<<` is itself
+# a foreign key. Repeated keys fail too — YAML 1.2 makes mapping keys a
+# unique set, and parsers disagree on which duplicate wins (yamllint's
+# key-duplicates rule), so the gate rejects rather than picks a side —
+# the winner yq picks here is not necessarily the winner vendir's own
+# parser picks. Keys are read by index and matched with `=` equality —
+# a substring match would let a crafted key like `ref depth` borrow the
+# boundary between two allowed names, and a line-oriented read would
+# silently drop an empty-string key. Reads $cfg_yml through dynamic
+# scope — the caller's local holds the committed bytes. Never exits;
+# always returns 0.
+keyscan() {
+    local q=$1 label=$2 allowed=$3 nkeys i j k a ok
+    local klist=()
+    _KT=$(printf '%s' "$cfg_yml" | yq "$q | type" - 2>/dev/null) || _KT=
+    case "$_KT" in
+        '!!map') ;;
+        '!!null') return 0 ;;
+        '') cerr "$label — type probe failed (node skipped)"; errored=1; return 0 ;;
+        *) fail "$label is a $_KT, not a mapping"; found=1; return 0 ;;
+    esac
+    nkeys=$(printf '%s' "$cfg_yml" | yq "$q | keys | length" -) \
+        || { cerr "$label — key enumeration failed (node skipped)"; errored=1; return 0; }
+    for ((i = 0; i < nkeys; i++)); do
+        # Append in both paths — klist stays index-aligned for the dup
+        # loop below even when a read fails (a failed read is cerr, not a
+        # foreign-key finding: we couldn't see the key).
+        if k=$(printf '%s' "$cfg_yml" | yq "$q | keys | .[$i]" -); then
+            ok=0
+            for a in $allowed; do  # word-split — the list is literals
+                [ "$k" = "$a" ] && { ok=1; break; }
+            done
+            [ "$ok" = 1 ] \
+                || { fail "$label — key '$k' is outside the allowed set ($allowed)"; found=1; }
+        else
+            cerr "$label — key read failed at index $i"; errored=1; k=''
+        fi
+        klist+=("$k")
+    done
+    # Repeated keys — pairwise because a key containing a newline would
+    # garble a line-oriented uniq; n per level is tiny. An empty klist[i]
+    # marks a failed read above — skipped, not a dup candidate (a real
+    # empty-string key is already flagged foreign by the membership pass).
+    for ((i = 0; i < nkeys; i++)); do
+        [ -n "${klist[$i]}" ] || continue
+        for ((j = 0; j < i; j++)); do
+            if [ "${klist[$i]}" = "${klist[$j]}" ]; then
+                fail "$label — key '${klist[$i]}' is repeated (duplicate keys are spec-invalid; which wins is parser-defined)"
+                found=1
+                break
+            fi
+        done
+    done
+    return 0
+}
+
+check_allowlist() {
+    # Committed state, like resolve and sync — the gate asserts HEAD, not
+    # the working tree.
+    local cfg_yml found=0 errored=0 _KT
+    cfg_yml=$(git -C "$ROOT" show HEAD:vendir.yml 2>/dev/null) \
+        || die "HEAD has no vendir.yml (no commits yet?)"
+
+    # Advisory, like resolve — the verdict reads HEAD.
+    local live_dirty
+    live_dirty=$(git -C "$ROOT" status --porcelain --untracked-files=all -- vendir.yml || true)
+    if [ -n "$live_dirty" ]; then
+        note "note: uncommitted changes (allowlist checks HEAD, not the working tree):"
+        printf '%s\n' "$live_dirty"
+    fi
+
+    # Unparseable committed YAML is couldn't-run — nothing exists to
+    # enumerate (the same split resolve makes); parseable-but-wrong-shaped
+    # nodes are findings below, since the check ran and proved a violation.
+    printf '%s' "$cfg_yml" | yq '.' - >/dev/null 2>&1 \
+        || die "committed vendir.yml is malformed YAML"
+    local t
+    t=$(printf '%s' "$cfg_yml" | yq '. | type' -) \
+        || die "type probe failed on committed vendir.yml's document root"
+    [ "$t" = '!!map' ] \
+        || { fail "vendir.yml's document root is a $t, not a mapping"; return 1; }
+    keyscan '.' 'top level' 'apiVersion kind minimumRequiredVersion directories'
+
+    # — pinned values that don't depend on directories: —
+    # apiVersion/kind are the schema's identity, not data — a changed pair
+    # silently redefines what every key below means.
+    t=$(printf '%s' "$cfg_yml" | yq 'explode(.) | .apiVersion + " " + .kind' - 2>/dev/null || true)
+    [ "$t" = 'vendir.k14s.io/v1alpha1 Config' ] \
+        || { fail "apiVersion/kind is '$t' — expected 'vendir.k14s.io/v1alpha1 Config'"; found=1; }
+    # The version floor must exist — without it vendir never refuses an
+    # older binary. Its value is not pinned here: the workflow pins the
+    # binary, and a floor bump stays a two-file change.
+    t=$(printf '%s' "$cfg_yml" | yq 'explode(.) | .minimumRequiredVersion' - 2>/dev/null || true)
+    case "$t" in
+        '' | null) fail "minimumRequiredVersion is missing or empty — vendir's own version floor needs it"; found=1 ;;
+    esac
+
+    # Absent subject = couldn't-run (resolve reads it identically): a
+    # missing, null, or empty directories: leaves nothing to enumerate, and
+    # the per-directory pins below would just restate the same absence as
+    # misleading per-path findings — so they're skipped too. A present
+    # non-list directories: is a finding: definitively wrong, and the
+    # shape probe proved it.
+    local ndirs=0 dirs_ok=0
+    t=$(printf '%s' "$cfg_yml" | yq '.directories | type' - 2>/dev/null) || t=
+    case "$t" in
+        '!!seq')
+            if ndirs=$(printf '%s' "$cfg_yml" | yq '.directories | length' -); then
+                if [ "$ndirs" -gt 0 ] 2>/dev/null; then
+                    dirs_ok=1
+                elif [ "$ndirs" = 0 ]; then
+                    cerr "committed vendir.yml declares zero directories — nothing to scan"
+                    errored=1
+                else
+                    cerr "committed vendir.yml — 'directories' length probe returned '$ndirs'"
+                    errored=1
+                fi
+            else
+                cerr "committed vendir.yml — 'directories' length probe failed"
+                errored=1
+            fi
+            ;;
+        '!!null') cerr "committed vendir.yml declares no 'directories' list — nothing to scan"; errored=1 ;;
+        '') cerr "committed vendir.yml — 'directories' type probe failed"; errored=1 ;;
+        *) fail "committed vendir.yml's directories is a $t, not a list"; found=1 ;;
+    esac
+    [ "$dirs_ok" = 1 ] || {
+        ((found)) && return 1
+        return 2
+    }
+
+    # Per-node scans. Structure queries (type/length/keys) stay un-exploded
+    # — the raw document is what key-conflicts hide in; value reads
+    # (path/url) go through explode(.) per the file's convention.
+    local all_dir='path contents'
+    local all_contents='path git includePaths excludePaths legalPaths ignorePaths newRootPath'
+    local all_git='url ref depth skipInitSubmodules'
+    local allowed_urls='https://github.com/BlockstreamResearch/secp256k1-zkp https://github.com/apple/swift-crypto https://github.com/bitcoin-core/secp256k1'
+    local dirpaths=() i j ncontents ctype dpath dlabel cpath url ok u
+    for ((i = 0; i < ndirs; i++)); do
+        dlabel="directories[$i]"
+        keyscan ".directories[$i]" "$dlabel" "$all_dir"
+        [ "$_KT" = '!!map' ] || continue
+        dpath=$(printf '%s' "$cfg_yml" | yq "explode(.) | .directories[$i].path" -) \
+            || { cerr "$dlabel — path read failed (entry skipped)"; errored=1; continue; }
+        case "$dpath" in
+            '' | null) fail "$dlabel has no usable path value"; found=1 ;;
+            *) dirpaths+=("$dpath"); dlabel="'$dpath'" ;;
+        esac
+
+        ctype=$(printf '%s' "$cfg_yml" | yq ".directories[$i].contents | type" - 2>/dev/null) || ctype=
+        ncontents=0
+        case "$ctype" in
+            '!!seq')
+                ncontents=$(printf '%s' "$cfg_yml" | yq ".directories[$i].contents | length" -) \
+                    || { cerr "$dlabel — contents length probe failed (entry skipped)"; errored=1; continue; }
+                ;;
+            '!!null') ;;  # absent — the count below reports it
+            '') cerr "$dlabel — contents type probe failed (entry skipped)"; errored=1; continue ;;
+            *) fail "$dlabel contents is a $ctype, not a list"; found=1; continue ;;
+        esac
+        [ "$ncontents" = 1 ] \
+            || { fail "$dlabel — $ncontents contents entries; exactly one git: contents per directory"; found=1; }
+        for ((j = 0; j < ncontents; j++)); do
+            keyscan ".directories[$i].contents[$j]" "$dlabel contents[$j]" "$all_contents"
+            [ "$_KT" = '!!map' ] || continue
+            cpath=$(printf '%s' "$cfg_yml" | yq "explode(.) | .directories[$i].contents[$j].path" -) \
+                || { cerr "$dlabel contents[$j] — path read failed"; errored=1; continue; }
+            [ "$cpath" = '.' ] \
+                || { fail "$dlabel contents[$j].path is '$cpath', not '.' — a contents entry must own its destination root"; found=1; }
+            keyscan ".directories[$i].contents[$j].git" "$dlabel contents[$j].git" "$all_git"
+            [ "$_KT" = '!!map' ] || continue  # absent git: — resolve names the missing url:
+            url=$(printf '%s' "$cfg_yml" | yq "explode(.) | .directories[$i].contents[$j].git.url" -) \
+                || { cerr "$dlabel contents[$j].git — url read failed"; errored=1; continue; }
+            case "$url" in
+                '' | null) ;;  # absent url: — resolve names the missing field
+                *)
+                    # `=` equality, not a substring match — a url joining
+                    # two allowed names with a space can't borrow their
+                    # boundary.
+                    ok=0
+                    for u in $allowed_urls; do
+                        [ "$url" = "$u" ] && { ok=1; break; }
+                    done
+                    [ "$ok" = 1 ] \
+                        || { fail "$dlabel — git.url '$url' is outside the three declared upstreams"; found=1; }
+                    ;;
+            esac
+        done
+    done
+
+    # Destination set — `=` equality in both directions. Counting
+    # occurrences also catches a duplicated destination, which a
+    # sort|comm diff would only show as an unexplained surplus.
+    local expected_paths='Projects/Resources/WycheproofTests/secp256k1 Projects/Sources/libsecp256k1Tests Sources/Shared/swift-crypto Sources/libsecp256k1 Sources/libsecp256k1_zkp'
+    local ep seen
+    for t in ${dirpaths[@]+"${dirpaths[@]}"}; do
+        ok=0
+        for ep in $expected_paths; do
+            [ "$t" = "$ep" ] && { ok=1; break; }
+        done
+        [ "$ok" = 1 ] \
+            || { fail "unexpected directories[].path '$t' — outside the five declared destinations"; found=1; }
+    done
+    for ep in $expected_paths; do
+        seen=0
+        for t in ${dirpaths[@]+"${dirpaths[@]}"}; do
+            [ "$t" = "$ep" ] && seen=$((seen + 1))
+        done
+        case "$seen" in
+            1) ;;
+            0) fail "declared destination '$ep' has no directories[] entry"; found=1 ;;
+            *) fail "declared destination '$ep' appears in $seen directories[] entries"; found=1 ;;
+        esac
+    done
+    ((found)) && return 1
+    ((errored)) && return 2
+    return 0
+}
 
 # Resolve a vendir git ref to its upstream commit SHA. A 40-hex ref resolves
 # to itself — ls-remote lists refs, not raw SHAs. Otherwise query
@@ -270,11 +508,11 @@ check_resolve() {
     for i in "${!dirs[@]}"; do
         path=${dirs[$i]}; url=${urls[$i]}; ref=${refs[$i]}
         # Shape guard first — a directory with !=1 contents entries is
-        # something this check can't fully see (multi-entry policy is
-        # T022's allowlist scope); failing named beats a silent skip.
+        # something this check can't fully see (allowlist asserts exactly
+        # one per directory); failing named beats a silent skip.
         case "${counts[$i]}" in
             1) ;;
-            *) fail "$path — ${counts[$i]} contents entries; resolve covers exactly one per directory (multi-entry is T022 allowlist scope)"; found=1; continue ;;
+            *) fail "$path — ${counts[$i]} contents entries; resolve covers exactly one per directory (allowlist asserts the same)"; found=1; continue ;;
         esac
         sha=""
         if ((${#lockpaths[@]})); then
@@ -434,7 +672,7 @@ EOF
 }
 
 # Checks that exist, in run order.
-CHECKS="resolve sync"
+CHECKS="allowlist resolve sync"
 
 # Map an insteadOf replacement base to its transport protocol — fail-closed
 # (unclassifiable → non-zero): scheme:// → scheme, transport:: → transport,
@@ -528,14 +766,15 @@ preflight() {
 main() {
     case "${1:-}" in -h | --help) usage; exit 0 ;; esac
 
-    local c rc sig failed="" errored=""
+    local c rc sig failed="" errored="" known ok
     # shellcheck disable=SC2086 # $CHECKS is a literal word list — splitting is the point.
     if [ $# -eq 0 ]; then set -- $CHECKS; fi
     for c; do
-        case " $CHECKS " in
-            *" $c "*) ;;
-            *) die "unknown check '$c' (available: $CHECKS)" ;;
-        esac
+        ok=0
+        for known in $CHECKS; do
+            [ "$c" = "$known" ] && { ok=1; break; }
+        done
+        [ "$ok" = 1 ] || die "unknown check '$c' (available: $CHECKS)"
     done
     preflight "$@" || exit 2
     # Foreground checks + record-the-signal traps. A terminal Ctrl-C hits
