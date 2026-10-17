@@ -298,7 +298,7 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
   `Scripts/vendir-check.sh`, `.github/workflows/vendir-check.yml`,
   `vendir.yml`, `AGENTS.md`,
   `Development/Specs/002-vendir-migration/plan.md`
-- [ ] T025 `Scripts/vendir-check-test.sh` — self-test for the gate:
+- [x] T025 `Scripts/vendir-check-test.sh` — self-test for the gate:
   heredoc-built doctored `vendir.yml`/lock fixtures under `mktemp`,
   each a git repo (`git init` + a commit — the checks assert committed
   state, via `git show HEAD:` and `worktree add HEAD`), asserting each
