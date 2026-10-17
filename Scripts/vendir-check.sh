@@ -5,7 +5,7 @@
 # one check per invocation. bash-3.2-safe (macOS /bin/bash): no declare -A,
 # no mapfile.
 #
-# Checks (a bare run uses registry order; final order once T023–T024 land:
+# Checks (a bare run uses registry order; final order once T024 lands:
 #   allowlist resolve sync locksha ignorepaths — insert, never reorder.
 #   Explicit args run in the order given and may repeat — args are NOT
 #   re-sorted to registry order, so it is the workflow's step order, not
@@ -25,6 +25,10 @@
 #           over every config-declared destination plus vendir.lock.yml, run
 #           in a throwaway worktree of HEAD so vendir's wipe can never touch —
 #           or be fooled by — an unclean working tree.
+#   locksha entries sharing a git.url keep equal lock SHAs — a literal
+#           typed in place of a shared-ref alias (like &secp256k1-ref)
+#           survives a ref bump as a split pin, so the finding names
+#           every member of the group with its SHA and the likely cause.
 #
 # Env:
 #   VENDIR_CHECK_ROOT   repo (or T025 fixture dir) under test — checks read
@@ -46,7 +50,7 @@
 # anything but at least one could not run (usage, missing tool, environment
 # trouble). T025's assertions and CI reporting hang off the 1-vs-2 split.
 # shellcheck disable=SC2329  # checks are invoked dynamically as "check_$c";
-# the helpers are this file's shared library (some are for T023–T024).
+# the helpers are this file's shared library (some are for T024).
 set -euo pipefail
 
 # A git-hook environment exports GIT_* vars that silently retarget nested git
@@ -164,6 +168,7 @@ check_tools() {
         allowlist) printf '%s\n' git yq ;;
         resolve) printf '%s\n' git yq ;;
         sync) printf '%s\n' git yq "$VENDIR" ;;
+        locksha) printf '%s\n' git yq ;;
         *) die "internal: no tool list for check '$1'" ;;
     esac
 }
@@ -178,7 +183,7 @@ tool_hint() {
 }
 
 # — checks —————————————————————————————————————————————————————————————
-# Contract for check_* functions (T023–T024): the dispatcher runs each as a
+# Contract for check_* functions (T024): the dispatcher runs each as a
 # foreground subshell in *tested* context (`( check_$c ) || rc=$?`), so
 # `set -e` is OFF inside — every step that must abort the check needs its
 # own `|| die` or `|| { fail …; return 1; }`. Report findings via fail(),
@@ -655,6 +660,103 @@ check_sync() {
     fi
 }
 
+check_locksha() {
+    # Committed state, like its siblings — both files out of HEAD.
+    local cfg_yml lock_yml
+    cfg_yml=$(git -C "$ROOT" show HEAD:vendir.yml 2>/dev/null) \
+        || die "HEAD has no vendir.yml (no commits yet?)"
+    lock_yml=$(git -C "$ROOT" show HEAD:vendir.lock.yml 2>/dev/null) \
+        || die "HEAD has no vendir.lock.yml"
+
+    # Malformed or list-less committed files are couldn't-run — resolve's
+    # split: findings are for proven violations, not unreadable inputs.
+    printf '%s' "$cfg_yml" | yq 'explode(.) | has("directories") == true' - | grep -qx true \
+        || die "committed vendir.yml is malformed YAML or lacks a 'directories' list"
+    printf '%s' "$lock_yml" | yq 'explode(.) | has("directories") == true' - | grep -qx true \
+        || die "committed vendir.lock.yml is malformed YAML or lacks a 'directories' list"
+
+    # Advisory — the verdict reads HEAD, so surface an unsynced local
+    # edit rather than let it read as the checked state.
+    local live_dirty
+    live_dirty=$(git -C "$ROOT" status --porcelain --untracked-files=all -- vendir.yml vendir.lock.yml || true)
+    if [ -n "$live_dirty" ]; then
+        note "note: uncommitted changes (locksha checks HEAD, not the working tree):"
+        printf '%s\n' "$live_dirty"
+    fi
+
+    local dirs=() urls=() counts=() lockpaths=() lockshas=()
+    local line rest path url ncontents sha i j
+    # Manual field splits — `IFS=tab read` would collapse an empty middle
+    # field into a misaligned row (resolve's idiom). The length read comes
+    # BEFORE the [0] index — yq materializes a null element for a missing
+    # index, so an absent or empty `contents` would read as length 1 and
+    # slip past the count guard into a misleading "no url" finding.
+    while IFS= read -r line; do
+        path=${line%%$'\t'*}; rest=${line#*$'\t'}
+        ncontents=${rest%%$'\t'*}; url=${rest##*$'\t'}
+        dirs+=("$path"); urls+=("$url"); counts+=("$ncontents")
+    done < <(printf '%s' "$cfg_yml" | yq 'explode(.) | .directories[] | [.path, (.contents | length), .contents[0].git.url] | @tsv' -)
+    while IFS= read -r line; do
+        lockpaths+=("${line%%$'\t'*}"); lockshas+=("${line##*$'\t'}")
+    done < <(printf '%s' "$lock_yml" | yq 'explode(.) | .directories[] | [.path, .contents[0].git.sha] | @tsv' -)
+    ((${#dirs[@]})) || die "committed vendir.yml declares no directories"
+
+    # Entries that fail their own shape guards are findings and stay out
+    # of the groups below — a broken entry mustn't seed a fake second
+    # divergence in its url group.
+    local vpaths=() vurls=() vshas=() found=0
+    for i in "${!dirs[@]}"; do
+        path=${dirs[$i]}; url=${urls[$i]}
+        case "${counts[$i]}" in
+            1) ;;
+            *) fail "$path — ${counts[$i]} contents entries; locksha covers exactly one per directory (allowlist asserts the same)"; found=1; continue ;;
+        esac
+        case "$url" in
+            "" | null) fail "$path — no contents[0].git.url in the config (non-git contents?)"; found=1; continue ;;
+        esac
+        sha=""
+        if ((${#lockpaths[@]})); then
+            for j in "${!lockpaths[@]}"; do
+                if [ "${lockpaths[$j]}" = "$path" ]; then sha=${lockshas[$j]}; break; fi
+            done
+        fi
+        case "$sha" in
+            "" | null) fail "$path — no contents[0].git.sha in the lock"; found=1; continue ;;
+        esac
+        vpaths+=("$path"); vurls+=("$url"); vshas+=("$sha")
+    done
+
+    # One report per shared upstream, led by the url's first-seen entry so
+    # a group isn't listed once per member. The finding names every member
+    # with its SHA — the reader sees which entry split — plus the cause
+    # that most often produces this: a YAML alias (like &secp256k1-ref)
+    # typed out as a literal and left behind by a ref bump. n is five;
+    # O(n²) scans keep the bash-3.2 parallel arrays readable.
+    local leader mismatched base detail
+    if ((${#vpaths[@]})); then
+        for i in "${!vpaths[@]}"; do
+            url=${vurls[$i]}
+            leader=1
+            for ((j = 0; j < i; j++)); do
+                [ "${vurls[$j]}" = "$url" ] && { leader=0; break; }
+            done
+            ((leader)) || continue
+            detail=""; base=${vshas[$i]}; mismatched=0
+            for j in "${!vpaths[@]}"; do
+                [ "${vurls[$j]}" = "$url" ] || continue
+                detail="${detail:+$detail }${vpaths[$j]}=${vshas[$j]}"
+                [ "${vshas[$j]}" = "$base" ] || mismatched=1
+            done
+            if ((mismatched)); then
+                fail "entries sharing url $url lock different commits ($detail) — an entry that should share the group's ref was likely typed as a literal where a YAML alias (like &secp256k1-ref) belongs and left behind on a ref bump; restore the shared ref and re-sync"
+                found=1
+            fi
+        done
+    fi
+    ((found)) && return 1
+    return 0
+}
+
 # — dispatch ———————————————————————————————————————————————————————————
 
 usage() {
@@ -672,7 +774,7 @@ EOF
 }
 
 # Checks that exist, in run order.
-CHECKS="allowlist resolve sync"
+CHECKS="allowlist resolve sync locksha"
 
 # Map an insteadOf replacement base to its transport protocol — fail-closed
 # (unclassifiable → non-zero): scheme:// → scheme, transport:: → transport,
@@ -736,6 +838,14 @@ preflight() {
     # prefix hits a committed url: — an unrelated rewrite mustn't gate.
     # --get-regexp -z: one NUL record per rule, key\nvalue — the
     # replacement base lives in the KEY (url.<base>.insteadof).
+    # Run it only when a requested check fetches over git — today resolve
+    # and sync (T024's probes use curl, which these rewrites never reach) —
+    # so an https→ssh rule can't gate the offline checks.
+    local fetch=0
+    for c in "$@"; do
+        case "$c" in resolve | sync) fetch=1 ;; esac
+    done
+    ((fetch)) || return "$bad"
     local committed_urls rule repkey rep orig scheme u
     committed_urls=$(git -C "$ROOT" show HEAD:vendir.yml 2>/dev/null \
         | yq 'explode(.) | .directories[].contents[].git.url' - 2>/dev/null || true)

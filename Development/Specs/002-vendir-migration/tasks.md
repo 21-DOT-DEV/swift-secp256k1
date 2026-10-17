@@ -267,11 +267,11 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
   couldn't-run like resolve) plus a workflow step, first in run order ·
   `Scripts/vendir-check.sh`, `.github/workflows/vendir-check.yml`,
   `AGENTS.md`
-- [ ] T023 `locksha` — script gains §3's same-URL lock-SHA equality +
+- [x] T023 `locksha` — script gains §3's same-URL lock-SHA equality +
   workflow step + both `vendir.yml` lock-SHA comment flips — the anchor
   site (~line 23) and the test-bundle rationale (~line 127), "will
   assert"/"(lands later)" → present tense · `Scripts/vendir-check.sh`,
-  `.github/workflows/vendir-check.yml`, `vendir.yml`
+  `.github/workflows/vendir-check.yml`, `vendir.yml`, `AGENTS.md`
 - [ ] T024 `ignorepaths` — script gains §3's exact-404 probe (429/5xx
   retried with backoff — anonymous `raw.` requests share runner-IP
   throttles) at the locked SHA + workflow step + `vendir.yml`
