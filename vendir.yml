@@ -20,8 +20,8 @@ directories:
       # Shared pin: the two Projects/ secp256k1 entries below alias this
       # YAML anchor — edit the value once and all three move together, or
       # the test bundle tests a different upstream than the library ships.
-      # .github/workflows/vendir-check.yml (lands later) will assert the
-      # three vendir.lock.yml SHAs match — a backstop for an alias ever
+      # .github/workflows/vendir-check.yml asserts the three
+      # vendir.lock.yml SHAs match — a backstop for an alias ever
       # replaced by a literal.
       ref: &secp256k1-ref v0.7.1
       depth: 1
@@ -125,8 +125,7 @@ directories:
 # relative-include topology ("../../util.h" from modules/*/tests_impl.h,
 # same-dir "keyagg.h") resolving own-dir exactly as upstream's build; same
 # pin and the shared ref anchor keep them byte-identical to shipped
-# copies — vendir-check's lock-SHA equality guard will assert it
-# (lands later).
+# copies — vendir-check's locksha and sync checks assert it.
 - path: Projects/Sources/libsecp256k1Tests
   contents:
   - path: .

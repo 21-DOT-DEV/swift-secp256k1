@@ -77,7 +77,8 @@ jobs:
       # run-all semantics a bare script run has locally. allowlist runs first —
       # it vets the vendir.yml shape every later check parses; resolve then
       # precedes sync: a moved tag fails named there before a sync fetch error
-      # could blur it.
+      # could blur it. locksha trails — it compares committed lock SHAs only
+      # (no fetches), so its spot after sync is convention, not necessity.
       - name: allowlist
         if: ${{ !cancelled() }}
         run: ./Scripts/vendir-check.sh allowlist
@@ -89,3 +90,7 @@ jobs:
       - name: sync
         if: ${{ !cancelled() }}
         run: ./Scripts/vendir-check.sh sync
+
+      - name: locksha
+        if: ${{ !cancelled() }}
+        run: ./Scripts/vendir-check.sh locksha
