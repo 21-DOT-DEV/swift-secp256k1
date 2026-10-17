@@ -79,6 +79,8 @@ jobs:
       # precedes sync: a moved tag fails named there before a sync fetch error
       # could blur it. locksha trails — it compares committed lock SHAs only
       # (no fetches), so its spot after sync is convention, not necessity.
+      # ignorepaths is last on purpose: the flakiest check (live
+      # raw.githubusercontent.com probes) stays one revert away from the core.
       - name: allowlist
         if: ${{ !cancelled() }}
         run: ./Scripts/vendir-check.sh allowlist
@@ -94,3 +96,7 @@ jobs:
       - name: locksha
         if: ${{ !cancelled() }}
         run: ./Scripts/vendir-check.sh locksha
+
+      - name: ignorepaths
+        if: ${{ !cancelled() }}
+        run: ./Scripts/vendir-check.sh ignorepaths

@@ -49,7 +49,8 @@ directories:
     # upstream file at one of these exact paths would be silently shadowed
     # by the local copy — vendir copies ignored destination bytes over the
     # freshly fetched content (CopyExistingFiles, pkg/vendir/directory);
-    # the vendir-check workflow will guard against that upstream file appearing.
+    # vendir-check's ignorepaths check asserts they stay absent upstream at
+    # the locked SHA.
     ignorePaths:
     - include/Utility.h
     - src/Utility.c

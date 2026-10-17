@@ -316,12 +316,29 @@ named step failure, in run order:
    by a literal).
 5. **Shim shadow check** — `curl -o /dev/null -w '%{http_code}'` on
    `raw.githubusercontent.com` for every declared `ignorePaths` entry at
-   its locked SHA (`include/Utility.h` and `src/Utility.c` in both C
-   upstreams today); 429/5xx retried with backoff — anonymous `raw.`
-   requests share runner-IP throttles — and passes only on an exact
-   404: a persistent non-404 fails, so an outage can't read as absent.
-   A future upstream file at an `ignorePaths` path would be silently
-   shadowed.
+   its locked SHA — under `<newRootPath>/` when the contents entry
+   re-roots, since vendir applies `ignorePaths` only after the re-root
+   — (`include/Utility.h` and `src/Utility.c` in both C upstreams
+   today); 429/5xx retried with backoff — anonymous `raw.` requests
+   share runner-IP throttles — and passes only on an exact 404. The
+   verdict then splits on the run's own 1-vs-2 contract: a 2xx is a
+   named finding (the file exists and the preserved shim would shadow
+   it — a filtered-out entry would be contradictory config, so filter
+   membership is never evaluated), while anything else after the retry
+   budget — a persistent 429/5xx, a transport failure, an ambiguous
+   status — reports couldn't-verify, so an outage reads as neither
+   absent nor drift. A dead pin 404s identically to an absent file and
+   today's healthy answer is all-404s, so each directory first probes
+   one committed, non-ignored file (the "anchor") through the same URL
+   mapping — only a 2xx there earns the entries' 404s any trust, and
+   it double-checks the owner/repo/SHA/newRootPath mapping. Locally,
+   before any probe, an entry naming a committed directory is a named
+   finding (vendir preserves files only; copying a dir errors the
+   sync). Entries the probe can't reach literally — a non-GitHub
+   `url:`, a glob-shaped `ignorePaths`, a `contents[].path` other than
+   `.`, a failed or missing anchor — get the same named couldn't-
+   verify. A future upstream file at an `ignorePaths` path would be
+   silently shadowed.
 
 Two checks from the `OLD-VENDIR-MIGRATION` prototype were dropped on
 re-review: a **base-SHA comparison** (on PRs, an unchanged `ref:` had to
@@ -349,7 +366,7 @@ check lands as one task (script function + case arm +
 named step + the `vendir.yml` comment flip naming it), so every gate
 PR answers one question and each lands already self-exercised.
 `ignorepaths` stays last and alone — it is the flakiest piece (live
-HTTP probes to three upstreams), so an isolated revert never touches
+HTTP probes to the two C upstreams), so an isolated revert never touches
 the core. Advisory throughout — never a required check, matching
 staged-rollout guidance (report-only first, promote later): the gate
 can be overridden only by a reviewer, on the record.
