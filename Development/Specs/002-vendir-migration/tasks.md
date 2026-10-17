@@ -272,14 +272,32 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
   site (~line 23) and the test-bundle rationale (~line 127), "will
   assert"/"(lands later)" → present tense · `Scripts/vendir-check.sh`,
   `.github/workflows/vendir-check.yml`, `vendir.yml`, `AGENTS.md`
-- [ ] T024 `ignorepaths` — script gains §3's exact-404 probe (429/5xx
+- [x] T024 `ignorepaths` — script gains §3's exact-404 probe (429/5xx
   retried with backoff — anonymous `raw.` requests share runner-IP
   throttles) at the locked SHA + workflow step + `vendir.yml`
   ignorePaths comment flip.
   Kept alone deliberately — it is the flakiest check (live `curl`
-  probes to three upstreams), so an independent revert never touches
-  the core · `Scripts/vendir-check.sh`,
-  `.github/workflows/vendir-check.yml`, `vendir.yml`
+  probes to the two C upstreams), so an independent revert never
+  touches the core.
+  *(Landed with the verdict split §3 leaves implicit: only a 2xx is a
+  finding — a persistent 429/5xx, transport failure, or ambiguous status
+  after `curl --retry`'s budget is couldn't-verify (exit 2), never a
+  pass and never mislabeled drift. Unprobeable entries — a non-GitHub
+  `url:` or a glob-shaped `ignorePaths` — report the same. Retries ride
+  `curl --retry` (+ `--retry-all-errors` for transport failures;
+  `Retry-After` honoring is `--retry`'s — moot today: raw.'s anonymous
+  429 carries no rate-limit headers). A post-landing review added three
+  hardenings: entries probe at `<newRootPath>/<entry>` since vendir
+  re-roots before matching `ignorePaths`; each directory first probes a
+  committed, non-ignored "anchor" file so a dead pin can't 404 into a
+  false pass; and a local `git ls-tree` pass turns an entry naming a
+  committed directory into a named finding (vendir's copyFile would
+  error the sync). The same review surfaced and fixed a `set -e`
+  swallow in `resolve` — a failed `resolve_ref` aborted before its
+  verdict code was read.)* ·
+  `Scripts/vendir-check.sh`, `.github/workflows/vendir-check.yml`,
+  `vendir.yml`, `AGENTS.md`,
+  `Development/Specs/002-vendir-migration/plan.md`
 - [ ] T025 `Scripts/vendir-check-test.sh` — self-test for the gate:
   heredoc-built doctored `vendir.yml`/lock fixtures under `mktemp`,
   each a git repo (`git init` + a commit — the checks assert committed

@@ -5,11 +5,11 @@
 # one check per invocation. bash-3.2-safe (macOS /bin/bash): no declare -A,
 # no mapfile.
 #
-# Checks (a bare run uses registry order; final order once T024 lands:
-#   allowlist resolve sync locksha ignorepaths — insert, never reorder.
-#   Explicit args run in the order given and may repeat — args are NOT
-#   re-sorted to registry order, so it is the workflow's step order, not
-#   $CHECKS, that keeps allowlist first in CI):
+# Checks (a bare run uses registry order — allowlist resolve sync locksha
+#   ignorepaths — insert, never reorder. Explicit args run in the order
+#   given and may repeat — args are NOT re-sorted to registry order, so it
+#   is the workflow's step order, not $CHECKS, that keeps allowlist first
+#   in CI):
 #   allowlist committed vendir.yml confined to the used key set at every
 #           mapping level (read un-exploded so `<<:` merge keys surface —
 #           and repeated keys fail too, since parsers disagree on which
@@ -29,6 +29,24 @@
 #           typed in place of a shared-ref alias (like &secp256k1-ref)
 #           survives a ref bump as a split pin, so the finding names
 #           every member of the group with its SHA and the likely cause.
+#   ignorepaths
+#           every declared ignorePaths entry stays absent upstream at the
+#           locked SHA — a future upstream file there would be silently
+#           shadowed by the preserved local copy (CopyExistingFiles writes
+#           destination bytes over fetched ones — after newRootPath
+#           re-roots, so entries probe at <newRootPath>/<entry>). Probes
+#           hit raw.githubusercontent.com: an exact 404 passes, a 2xx is
+#           a finding, anything else after curl's retried backoff is
+#           couldn't-verify — never a pass. Before entries, one "anchor"
+#           probe on a committed, non-ignored file proves the SHA/repo/
+#           URL-mapping answers at all — a dead pin 404s identically to
+#           an absent file, and today's correct answer IS all-404s, so
+#           only the anchor keeps that green honest. A local ls-tree
+#           pass (no network) runs first: an entry naming a committed
+#           directory is a named finding — vendir's copyFile errors the
+#           next sync on it. The flakiest check by design (live HTTP to
+#           upstream), so it trails the registry — one revert never
+#           touches the core.
 #
 # Env:
 #   VENDIR_CHECK_ROOT   repo (or T025 fixture dir) under test — checks read
@@ -50,7 +68,7 @@
 # anything but at least one could not run (usage, missing tool, environment
 # trouble). T025's assertions and CI reporting hang off the 1-vs-2 split.
 # shellcheck disable=SC2329  # checks are invoked dynamically as "check_$c";
-# the helpers are this file's shared library (some are for T024).
+# the helpers are this file's shared library.
 set -euo pipefail
 
 # A git-hook environment exports GIT_* vars that silently retarget nested git
@@ -169,6 +187,7 @@ check_tools() {
         resolve) printf '%s\n' git yq ;;
         sync) printf '%s\n' git yq "$VENDIR" ;;
         locksha) printf '%s\n' git yq ;;
+        ignorepaths) printf '%s\n' git yq curl ;;
         *) die "internal: no tool list for check '$1'" ;;
     esac
 }
@@ -178,12 +197,13 @@ tool_hint() {
         *vendir*) echo "brew install carvel-dev/carvel/vendir (or point VENDIR at a binary)" ;;
         yq) echo "brew install yq" ;;
         git) echo "xcode-select --install" ;;
+        curl) echo "preinstalled on macOS and the CI image — brew install curl if missing" ;;
         *) echo "" ;;
     esac
 }
 
 # — checks —————————————————————————————————————————————————————————————
-# Contract for check_* functions (T024): the dispatcher runs each as a
+# Contract for check_* functions: the dispatcher runs each as a
 # foreground subshell in *tested* context (`( check_$c ) || rc=$?`), so
 # `set -e` is OFF inside — every step that must abort the check needs its
 # own `|| die` or `|| { fail …; return 1; }`. Report findings via fail(),
@@ -541,7 +561,7 @@ check_resolve() {
             done
         fi
         if ((!cached)); then
-            resolved=$(resolve_ref "$url" "$ref"); rc=$?
+            resolved=$(resolve_ref "$url" "$ref") || rc=$?  # || keeps set -e off it
             cache_keys+=("$key"); cache_rcs+=("$rc")
             cache_vals+=("$resolved"); cache_paths+=("$path")
         fi
@@ -757,6 +777,274 @@ check_locksha() {
     return 0
 }
 
+# GET a raw.githubusercontent.com URL, print the final response code
+# (000 when curl never got one), and let the caller's case decide. Retries
+# are curl's own: --retry gives the spec's 429/5xx exponential backoff and
+# honors a Retry-After header if one ever arrives — raw. throttles
+# anonymous runner IPs with a header-less 429, so bounded backoff is the
+# whole answer — while --retry-all-errors widens the retryable set to
+# every transport error (timeout, refused, TLS). Each attempt caps at
+# --max-time, the retry window at --retry-max-time.
+# The `--` is belt-and-suspenders, same as resolve's ls-remote: every
+# argument curl sees must parse as positional even if a future caller
+# hands this a `-`-leading URL.
+probe_code() {
+    local url=$1 code
+    # `|| :` — a failed curl still writes its code (000 on no response);
+    # the printed code, not curl's exit status, is the evidence.
+    code=$(curl -sSL -o /dev/null -w '%{http_code}' \
+        --connect-timeout 10 --max-time 30 \
+        --retry 4 --retry-all-errors --retry-max-time 60 \
+        -- "$url" 2>/dev/null) || :
+    printf '%s' "${code:-000}"
+}
+
+# Can $1 be probed as a literal path under owner/repo/sha? Two failure
+# tiers so the caller keeps distinct causes:
+#   1  a doublestar glob char or URL-unsafe byte — vendir treats
+#      ignorePaths entries as patterns (isPathIgnored, staging_dir.go),
+#      so a glob reaches upstream paths no single URL does; a ? # space
+#      or % would corrupt, truncate, or double-decode the request into a
+#      false 404; " < > | ^ ` ] } and tab are bytes a raw URL can't carry
+#      honestly either.
+#   2  not a clean relative path — curl strips . and .. segments unless
+#      --path-as-is (a src/./x entry probes as src/x while vendir would
+#      never match it), and a leading/trailing slash or empty segment
+#      collapses the same way.
+# Empty/null lands in tier 2: callers that name the case check it first.
+probeable_path() {
+    case "$1" in "" | null) return 2 ;; esac
+    if printf '%s' "$1" | grep -qF -e '*' -e '?' -e '[' -e '{' -e "\\" \
+        || printf '%s' "$1" | grep -qF -e '#' -e ' ' -e '%' -e '"' \
+            -e '<' -e '>' -e '|' -e '^' -e '`' -e ']' -e '}' \
+            -e "$(printf '\t')"; then
+        return 1
+    fi
+    case "$1" in
+        /* | */ | */../* | ../* | */.. | .. | ./* | . | */./* | */. | *//*) return 2 ;;
+    esac
+    return 0
+}
+
+check_ignorepaths() {
+    # Committed state, like its siblings — both files out of HEAD.
+    local cfg_yml lock_yml
+    cfg_yml=$(git -C "$ROOT" show HEAD:vendir.yml 2>/dev/null) \
+        || die "HEAD has no vendir.yml (no commits yet?)"
+    lock_yml=$(git -C "$ROOT" show HEAD:vendir.lock.yml 2>/dev/null) \
+        || die "HEAD has no vendir.lock.yml"
+
+    # Malformed or list-less committed files are couldn't-run (resolve's
+    # split): findings are for proven violations, not unreadable inputs.
+    printf '%s' "$cfg_yml" | yq 'explode(.) | has("directories") == true' - | grep -qx true \
+        || die "committed vendir.yml is malformed YAML or lacks a 'directories' list"
+    printf '%s' "$lock_yml" | yq 'explode(.) | has("directories") == true' - | grep -qx true \
+        || die "committed vendir.lock.yml is malformed YAML or lacks a 'directories' list"
+
+    # Advisory — the verdict reads HEAD, so surface an unsynced local
+    # edit rather than let it read as the checked state.
+    local live_dirty
+    live_dirty=$(git -C "$ROOT" status --porcelain --untracked-files=all -- vendir.yml vendir.lock.yml || true)
+    if [ -n "$live_dirty" ]; then
+        note "note: uncommitted changes (ignorepaths checks HEAD, not the working tree):"
+        printf '%s\n' "$live_dirty"
+    fi
+
+    local dirs=() urls=() counts=() lockpaths=() lockshas=()
+    local line rest path url ncontents sha i j
+    # locksha's TSV idiom: the length read comes BEFORE the [0] index so an
+    # absent or empty `contents` can't read as length 1 and slip the guard.
+    while IFS= read -r line; do
+        path=${line%%$'\t'*}; rest=${line#*$'\t'}
+        ncontents=${rest%%$'\t'*}; url=${rest##*$'\t'}
+        dirs+=("$path"); urls+=("$url"); counts+=("$ncontents")
+    done < <(printf '%s' "$cfg_yml" | yq 'explode(.) | .directories[] | [.path, (.contents | length), .contents[0].git.url] | @tsv' -)
+    while IFS= read -r line; do
+        lockpaths+=("${line%%$'\t'*}"); lockshas+=("${line##*$'\t'}")
+    done < <(printf '%s' "$lock_yml" | yq 'explode(.) | .directories[] | [.path, .contents[0].git.sha] | @tsv' -)
+    ((${#dirs[@]})) || die "committed vendir.yml declares no directories"
+
+    # Every declared ignorePaths entry gets probed — no dedup: a shared
+    # (url, sha, entry) still names each of its directories in turn, the
+    # same "name every affected path" contract resolve's cache keeps.
+    local found=0 errored=0 itype ip status rc
+    local cpath nrp ntype prefix lt ltype cand anchor
+    local entries=() toprobe=()
+    for i in "${!dirs[@]}"; do
+        path=${dirs[$i]}; url=${urls[$i]}
+        case "${counts[$i]}" in
+            1) ;;
+            *) fail "$path — ${counts[$i]} contents entries; ignorepaths covers exactly one per directory (allowlist asserts the same)"; found=1; continue ;;
+        esac
+        case "$url" in
+            "" | null) fail "$path — no contents[0].git.url in the config (non-git contents?)"; found=1; continue ;;
+        esac
+        sha=""
+        if ((${#lockpaths[@]})); then
+            for j in "${!lockpaths[@]}"; do
+                if [ "${lockpaths[$j]}" = "$path" ]; then sha=${lockshas[$j]}; break; fi
+            done
+        fi
+        case "$sha" in
+            "" | null) fail "$path — no contents[0].git.sha in the lock"; found=1; continue ;;
+        esac
+        # The probe is GitHub-only. A url: outside github.com can't form a
+        # raw.githubusercontent.com URL — couldn't-verify that entry, never
+        # a silent pass (allowlist pins the three github.com upstreams).
+        # The https, git@, and ssh:// spellings all reduce to owner/repo —
+        # `?*/?*` requires non-empty segments (a bare `*` would swallow an
+        # empty one) — and a trailing `.git`, the standard git spelling, is
+        # stripped for the probe. Subpaths, a trailing slash, spaces, or a
+        # `%` would assemble a wrong URL that 404s into a false pass.
+        local rel
+        case "$url" in
+            https://github.com/?*/?*)     rel=${url#https://github.com/} ;;
+            http://github.com/?*/?*)      rel=${url#http://github.com/} ;;
+            git@github.com:?*/?*)         rel=${url#git@github.com:} ;;
+            ssh://git@github.com/?*/?*)   rel=${url#ssh://git@github.com/} ;;
+            *) cerr "$path — git.url '$url' isn't a github.com remote this check can map to a raw URL"; errored=1; continue ;;
+        esac
+        rel=${rel%.git}
+        case "$rel" in
+            */*/* | */ | *' '* | *%*)
+                cerr "$path — git.url '$url' isn't a clean owner/repo; can't form a raw.githubusercontent.com URL"
+                errored=1; continue ;;
+        esac
+
+        # contents[].path positions the fetched tree inside the
+        # destination, and entries are patterns against THAT subtree —
+        # CopyExistingFiles walks <dir>/<contents.path> (staging_dir.go).
+        # '.' is the only value whose upstream coordinate is
+        # newRootPath/<entry>; anything else is a dir-level
+        # couldn't-verify (allowlist fails it too, but this check runs
+        # standalone). A missing path is a shape violation like the rest.
+        cpath=$(printf '%s' "$cfg_yml" | yq "explode(.) | .directories[$i].contents[0].path" - 2>/dev/null) || cpath=
+        case "$cpath" in
+            .) ;;
+            "" | null) fail "$path — no contents[0].path in the config"; found=1; continue ;;
+            *) cerr "$path — contents[0].path is '$cpath', not '.' — entries under a contents subdir can't be mapped to an upstream path"; errored=1; continue ;;
+        esac
+        # newRootPath re-roots the fetched tree BEFORE ignorePaths match —
+        # NewSubPath().Extract runs ahead of CopyExistingFiles
+        # (directory.go, staging_dir.go; vendir.yml's own note records the
+        # opposite ordering for includePaths), so the upstream coordinate
+        # is <newRootPath>/<entry>. It feeds the URL like an entry: same
+        # guards, and a bad one is a dir-level couldn't-verify — never a
+        # silent repo-root probe that 404s into a false pass.
+        ntype=$(printf '%s' "$cfg_yml" | yq "explode(.) | .directories[$i].contents[0].newRootPath | type" - 2>/dev/null) || ntype=
+        nrp=""
+        case "$ntype" in
+            '!!null') ;;
+            '!!str') nrp=$(printf '%s' "$cfg_yml" | yq "explode(.) | .directories[$i].contents[0].newRootPath" - 2>/dev/null) || nrp= ;;
+            '') cerr "$path — newRootPath type probe failed (entry skipped)"; errored=1; continue ;;
+            *) fail "$path — contents[0].newRootPath is a $ntype, not a string"; found=1; continue ;;
+        esac
+        if [ -n "$nrp" ]; then
+            rc=0; probeable_path "$nrp" || rc=$?  # || keeps set -e off it
+            case "$rc" in
+                0) ;;
+                1) cerr "$path — newRootPath '$nrp' is a pattern or URL-hostile; can't form a probe URL"; errored=1; continue ;;
+                *) cerr "$path — newRootPath '$nrp' isn't a clean relative path"; errored=1; continue ;;
+            esac
+        fi
+        prefix=${nrp:+$nrp/}
+
+        # Shape guard before enumerating — a present non-list ignorePaths
+        # is a proven violation, a finding like allowlist's shape checks;
+        # absent (null) is the common case and skips cleanly.
+        itype=$(printf '%s' "$cfg_yml" | yq "explode(.) | .directories[$i].contents[0].ignorePaths | type" - 2>/dev/null) || itype=
+        case "$itype" in
+            '!!null') continue ;;
+            '!!seq') ;;
+            '') cerr "$path — ignorePaths type probe failed (entry skipped)"; errored=1; continue ;;
+            *) fail "$path — contents[0].ignorePaths is a $itype, not a list"; found=1; continue ;;
+        esac
+
+        # Local pass first — it needs no network, so a proven finding
+        # surfaces even when raw. is unreachable. vendir's Walk visits
+        # directories and copyFile errors on one (staging_dir.go), so an
+        # entry naming a committed dir — or a gitlink, an empty dir in the
+        # worktree — breaks the next sync. That's a finding, not
+        # couldn't-verify: the check DID verify. The lookup path is
+        # <dir>/<entry> — destination-relative, never newRootPath-
+        # prefixed: ignorePaths match the re-rooted tree, and the
+        # re-rooted tree IS the destination; only the upstream URL takes
+        # the prefix. No committed file is a note, not a red — vendir
+        # tolerates a dead entry ("reserved for a shim to come"), but the
+        # upstream check still matters: it guards the future shadow.
+        entries=(); toprobe=()
+        while IFS= read -r ip; do entries+=("$ip"); done \
+            < <(printf '%s' "$cfg_yml" | yq "explode(.) | .directories[$i].contents[0].ignorePaths[]" -)
+        ((${#entries[@]})) || continue
+        for ip in "${entries[@]}"; do
+            case "$ip" in
+                "" | null) cerr "$path — empty ignorePaths entry; nothing to probe"; errored=1; continue ;;
+            esac
+            rc=0; probeable_path "$ip" || rc=$?  # || keeps set -e off it
+            case "$rc" in
+                0) ;;
+                1) cerr "$path — ignorePaths entry '$ip' is a pattern or URL-hostile; the check probes literal paths only"
+                   errored=1; continue ;;
+                *) cerr "$path — ignorePaths entry '$ip' isn't a clean relative path"
+                   errored=1; continue ;;
+            esac
+            lt=$(git -C "$ROOT" ls-tree HEAD -- "$path/$ip" 2>/dev/null || true)
+            lt=${lt%%$'\n'*}; ltype=${lt#* }; ltype=${ltype%% *}
+            case "$ltype" in
+                tree)   fail "$path — ignorePaths entry '$ip' names a directory in the committed tree — vendir preserves files only; copying it would error the next sync"; found=1; continue ;;
+                commit) fail "$path — ignorePaths entry '$ip' names a gitlink (a submodule — an empty dir in the worktree) — vendir preserves files only"; found=1; continue ;;
+                blob) ;;
+                "")     note "    $path — '$ip': nothing committed there (dead entry — reserved or stale); probed anyway" ;;
+            esac
+            toprobe+=("$ip")
+        done
+        ((${#toprobe[@]})) || continue
+
+        # Anchor — a string of 404s only means "absent" if the same URL
+        # builder returns 2xx for a file that exists. Pick a committed
+        # file outside the ignore list (a committed non-ignored file is
+        # upstream-sourced by definition) through the SAME prefix: a dead
+        # pin, a moved repo, or a wrong mapping all 404 into
+        # couldn't-verify instead of a false green. Caveat: GitHub serves
+        # any commit in a repo's fork network at this URL, so a passing
+        # anchor proves reachability through owner/repo — not that the
+        # commit ever sat on that repo's own branches. No usable anchor
+        # means the dir's SHA can't be anchored — couldn't-verify.
+        anchor=""
+        while IFS= read -r line; do
+            ltype=${line#* }; ltype=${ltype%% *}
+            [ "$ltype" = blob ] || continue
+            cand=${line#*$'\t'}
+            cand=${cand#"$path"/}  # repo-root-relative → contents-relative
+            for ip in "${entries[@]}"; do [ "$cand" = "$ip" ] && continue 2; done
+            probeable_path "$cand" || continue
+            anchor=$cand; break
+        done < <(git -C "$ROOT" ls-tree -r HEAD -- "$path" 2>/dev/null)
+        case "$anchor" in
+            "") cerr "$path — no committed file outside the ignore list to anchor on; couldn't verify $rel@$sha exists upstream (entry probes skipped)"; errored=1; continue ;;
+        esac
+        status=$(probe_code "https://raw.githubusercontent.com/$rel/$sha/$prefix$anchor")
+        case "$status" in
+            2??) note "    $path — anchor $prefix$anchor verified at ${sha:0:12}… (HTTP $status)" ;;
+            *) cerr "$path — anchor '$anchor' at $rel@$sha returned HTTP $status — can't verify the lock SHA exists upstream; entry probes skipped"; errored=1; continue ;;
+        esac
+
+        for ip in "${toprobe[@]}"; do
+            status=$(probe_code "https://raw.githubusercontent.com/$rel/$sha/$prefix$ip")
+            case "$status" in
+                404) note "    $path — $ip: absent upstream at ${sha:0:12}… (404)" ;;
+                2??) fail "$path — '$ip' exists upstream at $rel@$sha${prefix:+ as \"$prefix$ip\"} (HTTP $status) — the preserved local copy would silently shadow it on the next sync"; found=1 ;;
+                *) cerr "$path — probe of '$ip' at $rel@$sha returned HTTP $status after retries — couldn't verify absence"; errored=1 ;;
+            esac
+        done
+    done
+    # Findings dominate within a check: a proven shadow outranks another
+    # entry's probe failure.
+    ((found)) && return 1
+    ((errored)) && return 2
+    return 0
+}
+
 # — dispatch ———————————————————————————————————————————————————————————
 
 usage() {
@@ -774,7 +1062,7 @@ EOF
 }
 
 # Checks that exist, in run order.
-CHECKS="allowlist resolve sync locksha"
+CHECKS="allowlist resolve sync locksha ignorepaths"
 
 # Map an insteadOf replacement base to its transport protocol — fail-closed
 # (unclassifiable → non-zero): scheme:// → scheme, transport:: → transport,
@@ -839,8 +1127,9 @@ preflight() {
     # --get-regexp -z: one NUL record per rule, key\nvalue — the
     # replacement base lives in the KEY (url.<base>.insteadof).
     # Run it only when a requested check fetches over git — today resolve
-    # and sync (T024's probes use curl, which these rewrites never reach) —
-    # so an https→ssh rule can't gate the offline checks.
+    # and sync (ignorepaths probes raw.githubusercontent.com over HTTPS via
+    # curl, which git's url-rewrites never reach) — so an https→ssh rule
+    # can't gate the offline checks.
     local fetch=0
     for c in "$@"; do
         case "$c" in resolve | sync) fetch=1 ;; esac
