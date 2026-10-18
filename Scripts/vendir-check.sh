@@ -361,7 +361,7 @@ check_allowlist() {
     local all_dir='path contents'
     local all_contents='path git includePaths excludePaths legalPaths ignorePaths newRootPath'
     local all_git='url ref depth skipInitSubmodules'
-    local allowed_urls='https://github.com/BlockstreamResearch/secp256k1-zkp https://github.com/apple/swift-crypto https://github.com/bitcoin-core/secp256k1'
+    local allowed_urls='https://github.com/apple/swift-crypto https://github.com/bitcoin-core/secp256k1'
     local dirpaths=() i j ncontents ctype dpath dlabel cpath url ok u
     for ((i = 0; i < ndirs; i++)); do
         dlabel="directories[$i]"
@@ -409,7 +409,7 @@ check_allowlist() {
                         [ "$url" = "$u" ] && { ok=1; break; }
                     done
                     [ "$ok" = 1 ] \
-                        || { fail "$dlabel — git.url '$url' is outside the three declared upstreams"; found=1; }
+                        || { fail "$dlabel — git.url '$url' is outside the two declared upstreams"; found=1; }
                     ;;
             esac
         done
@@ -418,7 +418,7 @@ check_allowlist() {
     # Destination set — `=` equality in both directions. Counting
     # occurrences also catches a duplicated destination, which a
     # sort|comm diff would only show as an unexplained surplus.
-    local expected_paths='Projects/Resources/WycheproofTests/secp256k1 Projects/Sources/libsecp256k1Tests Sources/Shared/swift-crypto Sources/libsecp256k1 Sources/libsecp256k1_zkp'
+    local expected_paths='Projects/Resources/WycheproofTests/secp256k1 Projects/Sources/libsecp256k1Tests Sources/Shared/swift-crypto Sources/libsecp256k1'
     local ep seen
     for t in ${dirpaths[@]+"${dirpaths[@]}"}; do
         ok=0
@@ -426,7 +426,7 @@ check_allowlist() {
             [ "$t" = "$ep" ] && { ok=1; break; }
         done
         [ "$ok" = 1 ] \
-            || { fail "unexpected directories[].path '$t' — outside the five declared destinations"; found=1; }
+            || { fail "unexpected directories[].path '$t' — outside the four declared destinations"; found=1; }
     done
     for ep in $expected_paths; do
         seen=0
@@ -750,7 +750,7 @@ check_locksha() {
     # a group isn't listed once per member. The finding names every member
     # with its SHA — the reader sees which entry split — plus the cause
     # that most often produces this: a YAML alias (like &secp256k1-ref)
-    # typed out as a literal and left behind by a ref bump. n is five;
+    # typed out as a literal and left behind by a ref bump. n is four;
     # O(n²) scans keep the bash-3.2 parallel arrays readable.
     local leader mismatched base detail
     if ((${#vpaths[@]})); then
@@ -890,7 +890,7 @@ check_ignorepaths() {
         esac
         # The probe is GitHub-only. A url: outside github.com can't form a
         # raw.githubusercontent.com URL — couldn't-verify that entry, never
-        # a silent pass (allowlist pins the three github.com upstreams).
+        # a silent pass (allowlist pins the two github.com upstreams).
         # The https, git@, and ssh:// spellings all reduce to owner/repo —
         # `?*/?*` requires non-empty segments (a bare `*` would swallow an
         # empty one) — and a trailing `.git`, the standard git spelling, is

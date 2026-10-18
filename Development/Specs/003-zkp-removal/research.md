@@ -94,6 +94,15 @@ Decisive measurements for choosing deletion over preservation:
   importer surface this file guards.
 - `SilentPaymentsAPIShapeTests.swift` (phase-10 prototyping) triaged in
   T001 as vanilla-only — retargets with the suite, nothing deleted.
+- The vendored swift-crypto tree must stay inside `Sources/Shared/`
+  until the fold — ~20 shared files reference its symbols (`Digest`,
+  `SecureBytes`, `CryptoKitError`, `ASN1.*`) with no trait gate
+  (`Context.swift` uses `SecureBytes` unconditionally); the plugin's
+  `find` sweep is `ZKP`'s only source delivery, and
+  `Projects/Sources/P256K/Shared → Sources/Shared` is Tuist's. A
+  destination move before the fold breaks `swift build` *and*
+  `tuist generate`, so the re-destination rides T003's `git mv`, not
+  T002.
 - Deletion footprint: ~129 files / ~3.8MB — mostly the vendored
   `libsecp256k1_zkp` tree; bulk deletions exempt from the diff budget.
 - Consumers using `ZKP` for the *vanilla* surface migrate to `P256K`

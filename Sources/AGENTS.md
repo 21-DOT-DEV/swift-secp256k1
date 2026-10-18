@@ -13,7 +13,6 @@ This directory contains the library implementation (Swift targets and C bindings
 These paths are synced copies of upstream sources, managed by vendir — `vendir.yml` (repo root) is the canonical reference, naming each entry's upstream repo, `ref:` pin, and `includePaths`/`excludePaths` filters:
 
 - `Sources/libsecp256k1/` — `bitcoin-core/secp256k1`
-- `Sources/libsecp256k1_zkp/` — `BlockstreamResearch/secp256k1-zkp`
 - `Sources/Shared/swift-crypto/` — `apple/swift-crypto`
 
 ## If you must patch vendored code (explicit request only)

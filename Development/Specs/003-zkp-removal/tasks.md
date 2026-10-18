@@ -40,29 +40,33 @@ the task.
   upstream `tests.c` suite never exercises the Swift importer surface) ·
   `Tests/libsecp256k1zkpTests/` → `Tests/libsecp256k1BindingsTests/`,
   `Package.swift`, `Projects/Sources/BindingsTests`
-- [ ] T002 vendir re-destinations — `vendir.yml`: delete the
-  `libsecp256k1_zkp` entry (the `depth: 0` SHA pin and its full-history
-  residual go with it) and point the swift-crypto entry at
-  `Sources/P256K/swift-crypto` (single destination — no anchor needed);
-  `vendir sync`; `Package.swift` gains
-  `exclude: ["swift-crypto/LICENSE.txt", "swift-crypto/NOTICE.txt"]` on
-  `P256K` (the `COPYING` precedent — inside the target root they warn
-  otherwise); `vendir-check.sh` allowlist 5 → 4 paths,
-  `vendir-check.yml` globs drop `Sources/libsecp256k1_zkp/**` and repoint
-  `Sources/Shared/swift-crypto/**` → `Sources/P256K/swift-crypto/**`;
-  `.gitattributes` `linguist-vendored` lines repoint identically;
-  `xcframework-release.yml`'s four LICENSE/NOTICE `cp`/`cmp` lines →
-  `Sources/P256K/swift-crypto/…` · `vendir.yml`, `vendir.lock.yml`,
-  vendored trees, `Package.swift`, `Scripts/vendir-check.sh`,
-  `.github/workflows/vendir-check.yml`, `.gitattributes`,
-  `.github/workflows/xcframework-release.yml`
+- [x] T002 vendir excision — `vendir.yml`: delete the `libsecp256k1_zkp`
+  entry (the `depth: 0` SHA pin and its full-history fetch go with it);
+  `vendir sync` regenerates the lock at four destinations;
+  `vendir-check.sh`'s allowlist drops the path from `expected_paths` and
+  the BlockstreamResearch URL from `allowed_urls` ("three declared
+  upstreams" → "two"); `vendir-check.yml` path filters drop
+  `Sources/libsecp256k1_zkp/**` — the gate stops guarding the tree the
+  moment vendir stops managing it; every sentence asserting the old
+  shape goes with it (`Sources/AGENTS.md`'s extraction list drops the
+  zkp line, root `AGENTS.md`'s "five `git:` sources across three
+  upstreams" becomes four across two with the shim count dropping to
+  two, `.github/AGENTS.md`'s destination count, and
+  `vendir-check-test.sh`'s fixture comments). The swift-crypto
+  re-destination rides T003's fold instead — while `ZKP` and the Tuist
+  `Shared` symlink still read through `Sources/Shared/`, moving the
+  tree out early strips `Digest`/`SecureBytes`/`CryptoKitError`/`ASN1`
+  symbols from both builds ([research.md](./research.md) §4) ·
+  `vendir.yml`, `vendir.lock.yml`, `Scripts/vendir-check.sh`,
+  `Scripts/vendir-check-test.sh`, `.github/workflows/vendir-check.yml`,
+  `AGENTS.md`, `Sources/AGENTS.md`, `.github/AGENTS.md`
 
-**Checkpoint:** `swift build`/`swift test` green — the plugin still
-flattens the remaining `Sources/Shared/` into both targets, ZKP is intact,
-swift-crypto compiles as ordinary P256K source with no unhandled-file
-warnings; `vendir-check` passes over four destinations. *Note: T002
-removes `Sources/libsecp256k1_zkp/` from vendir but the directory itself
-stays until T003 — the vendir entry leaves here, the tree deletes there.*
+**Checkpoint:** `swift build`/`swift test` green — nothing compiled
+changed: the plugin still flattens all of `Sources/Shared/`, swift-crypto
+included, into both targets; ZKP is intact; `vendir-check` passes over
+four destinations. *Note: T002 removes `Sources/libsecp256k1_zkp/` from
+vendir but the directory itself stays until T003 — the vendir entry
+leaves here, the tree deletes there.*
 
 ## The atomic teardown
 
@@ -74,7 +78,20 @@ stays until T003 — the vendir entry leaves here, the tree deletes there.*
   `zkpModuleSettings` extensions, the `SharedSourcesPlugin` declaration,
   and both `plugins:` entries; `git mv Sources/Shared/* Sources/P256K/`
   (subdirs preserved — `Sources/Shared/README.md` folds into
-  `Sources/AGENTS.md` in T007 and deletes here); delete
+  `Sources/AGENTS.md` in T007 and deletes here); the fold carries the
+  vendored swift-crypto tree to its final location, so the same commit
+  re-destinations it: `vendir.yml` `path:` → `Sources/P256K/swift-crypto`
+  and `vendir sync` (rewrites the lock's `path:` — `git mv` first, then
+  sync, and the wiped-and-recopied tree still reads as one rename);
+  `Package.swift`'s `P256K` gains
+  `exclude: ["swift-crypto/LICENSE.txt", "swift-crypto/NOTICE.txt"]`
+  (the `COPYING` precedent — license files inside a target root warn
+  otherwise); every file naming the old location repoints here:
+  `vendir-check.sh` `expected_paths`, `vendir-check.yml` globs,
+  `.gitattributes` `linguist-vendored` (which also drops the
+  `Sources/libsecp256k1_zkp` lines with the tree),
+  `xcframework-release.yml`'s four LICENSE/NOTICE `cp`/`cmp` lines, and
+  `Scripts/vendir-check-test.sh`'s bad-path fixture sed; delete
   `Sources/ZKP/` (incl. `ZKP.docc`), `Sources/libsecp256k1_zkp/` (its
   vendir entry left in T002 — the now-unmanaged tree is removed
   outright), `Plugins/SharedSourcesPlugin/`, both `Placeholder.swift`
@@ -85,7 +102,10 @@ stays until T003 — the vendir entry leaves here, the tree deletes there.*
   `lefthook.yml` drops the `swift build --target ZKP` pre-push hook — it
   fails the moment the target is gone (the `swift test` hook stays) ·
   `Package.swift`, `Sources/` trees, `Plugins/`,
-  `Scripts/`, `Projects/Project.swift`, `Projects/Sources/`, `lefthook.yml`
+  `Scripts/`, `Projects/Project.swift`, `Projects/Sources/`, `lefthook.yml`,
+  `vendir.yml`, `vendir.lock.yml`, `.gitattributes`,
+  `.github/workflows/vendir-check.yml`,
+  `.github/workflows/xcframework-release.yml`
   *(bulk deletions exempt from line count; authored ≈ manifest edit +
   moves)*
 
@@ -122,8 +142,12 @@ deleted script or a `ZKP` target.
   past plugin-trust language); root `AGENTS.md`: the `SharedSourcesPlugin`
   bullet becomes the single-target layout note ("`Sources/P256K/` is
   self-contained — edit it directly"), the "Cross-archive DocC xrefs"
-  bullet retires (one archive — hashes can't diverge), Commands unchanged ·
-  `README.md`, `AGENTS.md`
+  bullet retires (one archive — hashes can't diverge), the header's
+  "(and secp256k1-zkp)" and the Snippets bullet's two-C-binding
+  rationale get the same pass, Commands unchanged; `SECURITY.md`'s
+  wrapped-libraries list and `Development/constitution.md`'s scope
+  line + component table drop the zkp rows · `README.md`, `AGENTS.md`,
+  `SECURITY.md`, `Development/constitution.md`
 - [ ] T007 `Sources/` docs — `Sources/AGENTS.md` rewritten for the
   single-target layout (one Swift target, one C target, swift-crypto at
   `Sources/P256K/swift-crypto/`; the `Sources/Shared/README.md` content

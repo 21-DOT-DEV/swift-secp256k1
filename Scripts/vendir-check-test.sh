@@ -241,7 +241,7 @@ commit_all "$CUR"
 it allowlist-foreign-key 1 allowlist
 has 'bogusKey'
 
-# A url outside the three pinned upstreams.
+# A url outside the two pinned upstreams.
 CUR=$(mkrepo "$T/fx-al-url")
 git -C "$REPO" show HEAD:vendir.yml > "$CUR/vendir.yml" \
     || harness_die "git show HEAD:vendir.yml failed"
@@ -250,7 +250,7 @@ commit_all "$CUR"
 it allowlist-foreign-url 1 allowlist
 has 'evil/repo'
 
-# A destination outside the five declared paths.
+# A destination outside the four declared paths.
 CUR=$(mkrepo "$T/fx-al-path")
 git -C "$REPO" show HEAD:vendir.yml > "$CUR/vendir.yml" \
     || harness_die "git show HEAD:vendir.yml failed"
