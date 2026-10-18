@@ -1,0 +1,70 @@
+name: Vendir Check Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Scripts/vendir-check*'
+      - '.github/workflows/vendir-check*'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Scripts/vendir-check*'
+      - '.github/workflows/vendir-check*'
+  # Weekly harness sweep — the fixtures are hermetic, but the real-tree leg
+  # re-runs the gate's live probes (ls-remote, raw., a full sync), so
+  # runner-image and tool-version drift surfaces within days and moved-tag
+  # coverage spreads to ~twice-weekly against vendir-check.yml's Wednesday
+  # run. GitHub disables cron triggers on public repos after 60 days of
+  # repository inactivity; the push/PR runs are the real check
+  # (Development/Specs/002-vendir-migration §7).
+  schedule:
+    - cron: '17 4 * * 0'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: vendir-check-test-${{ github.ref }}
+  # PR updates may supersede their own runs; a push to main, a scheduled run,
+  # and a dispatch are never cancelled mid-run (same convention as
+  # vendir-check.yml).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  self-test:
+    name: Gate self-test
+    # Slim image ships git, curl, coreutils, and mikefarah yq 4.x — everything
+    # the fixtures need. vendir installs below: the sync fixtures and the
+    # real-tree leg SKIP without it, and a skip is exit 2, not a pass.
+    runs-on: ubuntu-slim
+    permissions: {}
+    timeout-minutes: 15
+    env:
+      # The pinned binary fetched below; Scripts/vendir-check-test.sh resolves
+      # vendir through VENDIR so CI and local runs share one code path.
+      VENDIR: /tmp/vendir
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          persist-credentials: false
+
+      # Same pinned release binary + hard-coded hash as vendir-check.yml (the
+      # Vale precedent in development-docs.yml — a checksums.txt fetched from
+      # the same release would prove nothing if the release were tampered).
+      # Pinned at vendir.yml's minimumRequiredVersion; bump both workflows
+      # together.
+      - name: Install vendir
+        env:
+          VENDIR_URL: "https://github.com/carvel-dev/vendir/releases/download/v0.46.2/vendir-linux-amd64"
+          VENDIR_SHA256: "0b4bad28b765c4cbf0cc2234d0d420bcf2d352b58eb202e9c55263374f95bd71"
+        run: |
+          curl --retry 3 --retry-all-errors -sSfL "$VENDIR_URL" -o /tmp/vendir
+          echo "$VENDIR_SHA256  /tmp/vendir" | sha256sum --check
+          chmod 0755 /tmp/vendir
+          /tmp/vendir version
+
+      # One step, bare invocation — the script executes every fixture case
+      # plus the real-tree leg, matching what a local run does.
+      - name: Run the gate self-test
+        run: ./Scripts/vendir-check-test.sh
