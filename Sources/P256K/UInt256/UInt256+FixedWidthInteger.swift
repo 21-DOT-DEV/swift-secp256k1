@@ -142,7 +142,9 @@
             if s < 128 {
                 return Self(_low: lhs._low &<< s, _high: (lhs._high &<< s) | (lhs._low &>> (128 - s)))
             }
-            if s == 128 { return Self(_low: 0, _high: lhs._low) }
+            if s == 128 {
+                return Self(_low: 0, _high: lhs._low)
+            }
             return Self(_low: 0, _high: lhs._low &<< (s - 128))
         }
 
@@ -157,7 +159,9 @@
             if s < 128 {
                 return Self(_low: (lhs._low &>> s) | (lhs._high &<< (128 - s)), _high: lhs._high &>> s)
             }
-            if s == 128 { return Self(_low: lhs._high, _high: 0) }
+            if s == 128 {
+                return Self(_low: lhs._high, _high: 0)
+            }
             return Self(_low: lhs._high &>> (s - 128), _high: 0)
         }
 
@@ -245,13 +249,17 @@
 
         public func dividedReportingOverflow(by rhs: Self) -> (partialValue: Self, overflow: Bool) {
             guard rhs != .zero else { return (self, true) }
-            if self == .min, rhs == (-1 as Self) { return (self, true) }
+            if self == .min, rhs == (-1 as Self) {
+                return (self, true)
+            }
             return (dividingFullWidth((high: _high < 0 ? -1 : 0, low: magnitude)).quotient, false)
         }
 
         public func remainderReportingOverflow(dividingBy rhs: Self) -> (partialValue: Self, overflow: Bool) {
             guard rhs != .zero else { return (self, true) }
-            if self == .min, rhs == (-1 as Self) { return (.zero, true) }
+            if self == .min, rhs == (-1 as Self) {
+                return (.zero, true)
+            }
             return (dividingFullWidth((high: _high < 0 ? -1 : 0, low: magnitude)).remainder, false)
         }
 
@@ -290,7 +298,9 @@
             if s < 128 {
                 return Self(_low: lo &<< s, _high: Swift.Int128(bitPattern: (uHi &<< s) | (lo &>> (128 - s))))
             }
-            if s == 128 { return Self(_low: 0, _high: Swift.Int128(bitPattern: lo)) }
+            if s == 128 {
+                return Self(_low: 0, _high: Swift.Int128(bitPattern: lo))
+            }
             return Self(_low: 0, _high: Swift.Int128(bitPattern: lo &<< (s - 128)))
         }
 
@@ -308,7 +318,9 @@
             if s < 128 {
                 return Self(_low: (lo &>> s) | (uHi &<< (128 - s)), _high: hi &>> s)
             }
-            if s == 128 { return Self(_low: uHi, _high: Swift.Int128(bitPattern: signFill)) }
+            if s == 128 {
+                return Self(_low: uHi, _high: Swift.Int128(bitPattern: signFill))
+            }
             return Self(_low: uHi &>> (s - 128) | (signFill &<< (128 - (s - 128))), _high: Swift.Int128(bitPattern: signFill))
         }
 

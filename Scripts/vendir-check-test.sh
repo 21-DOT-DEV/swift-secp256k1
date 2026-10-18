@@ -254,7 +254,7 @@ has 'evil/repo'
 CUR=$(mkrepo "$T/fx-al-path")
 git -C "$REPO" show HEAD:vendir.yml > "$CUR/vendir.yml" \
     || harness_die "git show HEAD:vendir.yml failed"
-edit "$CUR/vendir.yml" 's|path: Sources/Shared/swift-crypto|path: Sources/evil|'
+edit "$CUR/vendir.yml" 's|path: Sources/P256K/swift-crypto|path: Sources/evil|'
 commit_all "$CUR"
 it allowlist-bad-path 1 allowlist
 has 'Sources/evil'

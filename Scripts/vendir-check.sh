@@ -418,7 +418,7 @@ check_allowlist() {
     # Destination set — `=` equality in both directions. Counting
     # occurrences also catches a duplicated destination, which a
     # sort|comm diff would only show as an unexplained surplus.
-    local expected_paths='Projects/Resources/WycheproofTests/secp256k1 Projects/Sources/libsecp256k1Tests Sources/Shared/swift-crypto Sources/libsecp256k1'
+    local expected_paths='Projects/Resources/WycheproofTests/secp256k1 Projects/Sources/libsecp256k1Tests Sources/P256K/swift-crypto Sources/libsecp256k1'
     local ep seen
     for t in ${dirpaths[@]+"${dirpaths[@]}"}; do
         ok=0

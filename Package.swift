@@ -11,25 +11,12 @@ let moduleDefines: [(trait: String, define: String)] = [
     ("uint256", "ENABLE_UINT256")
 ]
 
-let zkpModuleDefines: [(trait: String, define: String)] = [
-    ("bppp", "ENABLE_MODULE_BPPP"),
-    ("ecdsaAdaptor", "ENABLE_MODULE_ECDSA_ADAPTOR"),
-    ("ecdsaS2C", "ENABLE_MODULE_ECDSA_S2C"),
-    ("generator", "ENABLE_MODULE_GENERATOR"),
-    ("rangeproof", "ENABLE_MODULE_RANGEPROOF"),
-    ("schnorrsigHalfagg", "ENABLE_MODULE_SCHNORRSIG_HALFAGG"),
-    ("surjectionproof", "ENABLE_MODULE_SURJECTIONPROOF"),
-    ("whitelist", "ENABLE_MODULE_WHITELIST")
-]
-
 let package = Package(
     name: "swift-secp256k1",
     products: [
         // WARNING: These APIs should not be considered stable and may change at any time.
         .library(name: "libsecp256k1", targets: ["libsecp256k1"]),
-        .library(name: "libsecp256k1_zkp", targets: ["libsecp256k1_zkp"]),
-        .library(name: "P256K", targets: ["P256K"]),
-        .library(name: "ZKP", targets: ["ZKP"])
+        .library(name: "P256K", targets: ["P256K"])
     ],
     traits: [
         .default(enabledTraits: ["ecdh", "musig", "recovery", "schnorrsig"]),
@@ -38,58 +25,22 @@ let package = Package(
         .trait(name: "recovery"),
         .trait(name: "schnorrsig"),
         .trait(name: "musig", enabledTraits: ["schnorrsig"]),
-        .trait(name: "bppp"),
-        .trait(name: "ecdsaAdaptor"),
-        .trait(name: "ecdsaS2C"),
-        .trait(name: "generator"),
-        .trait(name: "rangeproof"),
-        .trait(name: "schnorrsigHalfagg"),
-        .trait(name: "surjectionproof"),
-        .trait(name: "whitelist"),
-        .trait(name: "uint256"),
-        .trait(name: "zkp", enabledTraits: [
-            "bppp", "ecdsaAdaptor", "ecdsaS2C", "ellswift", "generator",
-            "rangeproof", "schnorrsigHalfagg", "surjectionproof", "whitelist"
-        ])
+        .trait(name: "uint256")
     ],
     dependencies: Package.Dependency.developmentDependencies,
     targets: [
-        // MARK: - Build Plugins
-
-        .plugin(
-            name: "SharedSourcesPlugin",
-            capability: .buildTool()
-        ),
-
-        // MARK: - Main Targets
-
         .target(
             name: "P256K",
             dependencies: ["libsecp256k1"],
-            swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
-                + PackageDescription.SwiftSetting.moduleSettings,
-            plugins: ["SharedSourcesPlugin"]
-        ),
-        .target(
-            name: "ZKP",
-            dependencies: ["libsecp256k1_zkp"],
+            exclude: ["swift-crypto/LICENSE.txt", "swift-crypto/NOTICE.txt"],
             swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
                 + PackageDescription.SwiftSetting.moduleSettings
-                + PackageDescription.SwiftSetting.zkpModuleSettings,
-            plugins: ["SharedSourcesPlugin"]
         ),
         .target(
             name: "libsecp256k1",
             exclude: ["COPYING"],
             cSettings: PackageDescription.CSetting.baseSettings
                 + PackageDescription.CSetting.moduleSettings
-        ),
-        .target(
-            name: "libsecp256k1_zkp",
-            exclude: ["COPYING"],
-            cSettings: PackageDescription.CSetting.baseSettings
-                + PackageDescription.CSetting.moduleSettings
-                + PackageDescription.CSetting.zkpModuleSettings
         ),
         .testTarget(
             name: "libsecp256k1BindingsTests",
@@ -137,11 +88,6 @@ extension PackageDescription.CSetting {
     static let moduleSettings: [Self] = moduleDefines.map {
         .define($0.define, .when(traits: [$0.trait]))
     }
-
-    /// Trait-conditional settings for ZKP-only modules.
-    static let zkpModuleSettings: [Self] = zkpModuleDefines.map {
-        .define($0.define, .when(traits: [$0.trait]))
-    }
 }
 
 extension PackageDescription.SwiftSetting {
@@ -157,11 +103,6 @@ extension PackageDescription.SwiftSetting {
     ///   so Swift source files use `#if Xcode || ENABLE_MODULE_*` guards as a workaround.
     ///   Xcode automatically defines `Xcode` in all Swift compilations.
     static let moduleSettings: [Self] = moduleDefines.map {
-        .define($0.define, .when(traits: [$0.trait]))
-    }
-
-    /// Trait-conditional settings for ZKP-only modules.
-    static let zkpModuleSettings: [Self] = zkpModuleDefines.map {
         .define($0.define, .when(traits: [$0.trait]))
     }
 }

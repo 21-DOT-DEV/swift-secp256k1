@@ -121,7 +121,11 @@
                     let algorithmOID = try ASN1.ASN1ObjectIdentifier(asn1Encoded: &nodes)
 
                     let n = nodes.next()
-                    let parameters = if let n { try ASN1.ASN1Any(asn1Encoded: n) } else { nil as ASN1.ASN1Any? }
+                    let parameters = if let n {
+                        try ASN1.ASN1Any(asn1Encoded: n)
+                    } else {
+                        nil as ASN1.ASN1Any?
+                    }
                     return .init(algorithm: algorithmOID, parameters: parameters)
                 }
             }

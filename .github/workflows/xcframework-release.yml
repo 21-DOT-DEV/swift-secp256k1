@@ -92,8 +92,8 @@ jobs:
           # licenses ship in the artifact; swift-crypto's NOTICE carries its
           # Apache-2.0 §4(d) attribution text.
           cp "Sources/libsecp256k1/COPYING" "COPYING-libsecp256k1"
-          cp "Sources/Shared/swift-crypto/LICENSE.txt" "LICENSE-swift-crypto.txt"
-          cp "Sources/Shared/swift-crypto/NOTICE.txt" "NOTICE-swift-crypto.txt"
+          cp "Sources/P256K/swift-crypto/LICENSE.txt" "LICENSE-swift-crypto.txt"
+          cp "Sources/P256K/swift-crypto/NOTICE.txt" "NOTICE-swift-crypto.txt"
           # Create zip with maximum compression including license files alongside the
           # XCFramework. -snl is load-bearing: the standalone 7-Zip port (7zz, since
           # 21.x) dereferences symlinks by default — Versions/Current → real dir,
@@ -124,8 +124,8 @@ jobs:
             test -s "$RUNNER_TEMP/xcf-verify/$f" || { echo "license file missing or empty in zip: $f"; exit 1; }
           done
           cmp "$RUNNER_TEMP/xcf-verify/COPYING-libsecp256k1" "Sources/libsecp256k1/COPYING"
-          cmp "$RUNNER_TEMP/xcf-verify/LICENSE-swift-crypto.txt" "Sources/Shared/swift-crypto/LICENSE.txt"
-          cmp "$RUNNER_TEMP/xcf-verify/NOTICE-swift-crypto.txt" "Sources/Shared/swift-crypto/NOTICE.txt"
+          cmp "$RUNNER_TEMP/xcf-verify/LICENSE-swift-crypto.txt" "Sources/P256K/swift-crypto/LICENSE.txt"
+          cmp "$RUNNER_TEMP/xcf-verify/NOTICE-swift-crypto.txt" "Sources/P256K/swift-crypto/NOTICE.txt"
           # The archived platform list crosses steps via a file the archive
           # step wrote; read -d '' returns 1 at EOF, so `|| true` is load-
           # bearing. Direct call (not xargs) keeps the verifier's exit code.
