@@ -85,10 +85,15 @@ Decisive measurements for choosing deletion over preservation:
 - `Tests/ZKPTests` *is* the vanilla suite — there is no `P256KTests`;
   `Projects/Sources/P256KTests` symlinks to `Tests/ZKPTests`. Retargeting
   preserves 100% of non-zkp coverage. `Tests/libsecp256k1zkpTests` is a
-  one-file C-binding smoke test — it dies with its target.
-- One in-flight file: `SilentPaymentsAPIShapeTests.swift` (phase-10
-  prototyping) — per-file triage in T001; history preserves anything
-  deleted.
+  one-file C-binding smoke test — dual-import: the Tuist `BindingsTests`
+  target already compiles its vanilla (`libsecp256k1` + `P256K`) arm, and
+  `keyAgreementHashFunction` cross-validates the Swift wrapper against
+  raw `secp256k1_ecdh`. It is retargeted as
+  `Tests/libsecp256k1BindingsTests`, not deleted — the vendored upstream
+  `tests.c` suite covers C correctness but never exercises the Swift
+  importer surface this file guards.
+- `SilentPaymentsAPIShapeTests.swift` (phase-10 prototyping) triaged in
+  T001 as vanilla-only — retargets with the suite, nothing deleted.
 - Deletion footprint: ~129 files / ~3.8MB — mostly the vendored
   `libsecp256k1_zkp` tree; bulk deletions exempt from the diff budget.
 - Consumers using `ZKP` for the *vanilla* surface migrate to `P256K`

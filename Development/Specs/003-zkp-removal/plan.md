@@ -3,7 +3,7 @@ feature: 003
 title: Remove the ZKP products and fold shared sources into P256K, retiring the build plugin
 phase: null
 status: Planned
-updated: 2026-10-16
+updated: 2026-10-17
 adrs: [0008]
 ---
 
@@ -30,7 +30,8 @@ Ordered work: [tasks.md](./tasks.md). Evidence: [research.md](./research.md).
 ## 1. Goal & success criteria
 
 - The package ships exactly two products — `P256K` and `libsecp256k1` — and
-  two targets plus the retargeted `P256KTests` suite; every build path
+  two targets plus the retargeted `P256KTests`/`libsecp256k1BindingsTests`
+  suites; every build path
   (`swift build`, `swift test`, `xcodebuild`, `tuist generate`, Xcode Cloud)
   runs with **zero** plugins, no trust prompt, no
   `-skipPackagePluginValidation`.
@@ -39,8 +40,11 @@ Ordered work: [tasks.md](./tasks.md). Evidence: [research.md](./research.md).
   `Sources/Shared/` remains.
 - `Tests/ZKPTests` — the vanilla test suite — survives as
   `Tests/P256KTests` against `import P256K` with unchanged coverage;
-  `Tests/libsecp256k1zkpTests` (the zkp C-binding smoke test) is deleted
-  with its target.
+  `Tests/libsecp256k1zkpTests` — the C-binding smoke suite — survives
+  retargeted to the vanilla stack as `Tests/libsecp256k1BindingsTests`
+  (its `#else` arm already compiled under the Tuist `BindingsTests`
+  target, and it holds the only direct-`secp256k1_*` coverage under
+  `swift test`).
 - `vendir.yml` drops the `libsecp256k1_zkp` entry (its heaviest: the
   `depth: 0` SHA pin) and re-destinations swift-crypto to
   `Sources/P256K/swift-crypto` — four destinations total, all
@@ -56,8 +60,9 @@ Ordered work: [tasks.md](./tasks.md). Evidence: [research.md](./research.md).
 `zkpModuleDefines`/`zkpModuleSettings`, plugin declaration); the atomic
 tree change — `git mv Sources/Shared/*` → `Sources/P256K/`, delete
 `Sources/ZKP/`, `Sources/libsecp256k1_zkp/`, `Plugins/SharedSourcesPlugin/`,
-`Tests/libsecp256k1zkpTests/`, both `Placeholder.swift` files; the
-`Tests/ZKPTests` → `Tests/P256KTests` rename + import retarget;
+both `Placeholder.swift` files; the `Tests/ZKPTests` → `Tests/P256KTests`
+and `Tests/libsecp256k1zkpTests` → `Tests/libsecp256k1BindingsTests`
+renames + import retargets;
 `vendir.yml`/`vendir.lock.yml`; `Scripts/vendir-check.sh` allowlist and
 `.github/workflows/vendir-check.yml` globs;
 `.github/workflows/apple-builds.yml` (`-skipPackagePluginValidation` ×4 +
@@ -133,10 +138,15 @@ deletions are exempt from the line budget; the authored portion is the
 exists) — it `git mv`s to `Tests/P256KTests` with `import ZKP` → `import
 P256K` and `ZKP.` → `P256K.` retargeted **before** the atomic commit:
 P256K already compiles the identical surface, so the rename commit builds
-green on its own. Per-file pass on `SilentPaymentsAPIShapeTests` — if it
-exercises ZKP-only surface it deletes with the atomic commit (git history
-keeps it for the future repo); if vanilla, it retargets with the rest.
-`Tests/libsecp256k1zkpTests` deletes with the C target it binds.
+green on its own. Per-file pass on `SilentPaymentsAPIShapeTests` found it
+exercises only the vanilla surface (`P256K.Signing`,
+`P256K.KeyAgreement`, `SHA256.taggedHash`) — it retargets with the rest.
+`Tests/libsecp256k1zkpTests` — the C-binding smoke suite — retargets to
+the vanilla stack as `Tests/libsecp256k1BindingsTests` in the same prep
+group rather than deleting: its `#else` arm already compiled under the
+Tuist `BindingsTests` target, and `keyAgreementHashFunction` is the only
+test that cross-validates the Swift wrapper against raw `secp256k1_*`
+calls — upstream `tests.c` never exercises the Swift importer surface.
 
 **Tuist.** `Projects/Project.swift`'s `P256K` target resolves its sources
 at repo `Sources/P256K/` — preferring a `../`-relative `sources:` glob
@@ -144,8 +154,8 @@ at repo `Sources/P256K/` — preferring a `../`-relative `sources:` glob
 acceptance at implementation) over converting `Projects/Sources/P256K` to
 a directory symlink (ADR 0001's consolidated-symlink fallback). The
 `P256KTests` symlink repoints `Tests/ZKPTests` → `Tests/P256KTests`;
-`BindingsTests` (symlink + Tuist target) deletes with
-`libsecp256k1zkpTests`.
+the `BindingsTests` symlink repoints `Tests/libsecp256k1zkpTests` →
+`Tests/libsecp256k1BindingsTests` — the Tuist target keeps its name.
 
 **CI.** `bitrise.yml`: the `ZKP` stage and `BUILD-ZKP` workflow are
 removed; its `swift test --traits ecdh,musig,recovery,schnorrsig,uint256`
@@ -178,7 +188,7 @@ environment-selected products (consumer-invariance — §3 of research.md).
 
 ## 4. Implementation steps
 
-Ordered as: independently-buildable prep first (test-suite retarget,
+Ordered as: independently-buildable prep first (test-suite retargets,
 vendir re-destination) → the atomic teardown commit → mechanical sweeps →
 CI/docs sweep → verification and merge. Full list with review slices:
 [tasks.md](./tasks.md).
@@ -187,15 +197,17 @@ CI/docs sweep → verification and merge. Full list with review slices:
 
 - [ ] `swift build`, `swift test`, `swift build --target P256K` green;
   `swift package describe` shows two products, no `plugins:` anywhere
-- [ ] `Tests/P256KTests` runs the full former-ZKPTests suite — test-count
-  delta = only deleted zkp-specific tests, recorded in §5/CHANGELOG
+- [ ] `Tests/P256KTests` runs the full former-ZKPTests suite and
+  `Tests/libsecp256k1BindingsTests` the former-zkp smoke suite — no test
+  files are deleted; the suite delta is rename-only, recorded in
+  §5/CHANGELOG
 - [ ] `vendir sync --locked` reproduces all four destinations;
   `Scripts/vendir-check.sh` green on the updated allowlist
 - [ ] `xcodebuild` per the `apple-builds.yml` matrix with **no**
   `-skipPackagePluginValidation`; `bitrise.yml` pipeline validates
   (yaml parse) and its `swift test` runs under `BUILD-P256K`
-- [ ] `tuist generate` + `libsecp256k1Tests` + `P256KTests` green through
-  the repointed source resolution
+- [ ] `tuist generate` + `libsecp256k1Tests` + `P256KTests` +
+  `BindingsTests` green through the repointed source resolution
 - [ ] DocC `--analyze` archive for `P256K` builds clean; symbol paths are
   committed repo paths (no rewrite step)
 - [ ] A scratch consumer manifest declaring `.product(name: "ZKP")` fails
@@ -203,9 +215,10 @@ CI/docs sweep → verification and merge. Full list with review slices:
   break
 - [ ] `swift test --package-path Development/Tools`,
   `plans --check`, `vale Development/` clean
-- [ ] Repo-wide grep for `ZKP`/`SharedSourcesPlugin`/`Sources/Shared`
-  returns only history (CHANGELOG), the superseded ADR, and the
-  future-repo backlog notes
+- [ ] Repo-wide case-insensitive grep for `zkp`/`SharedSourcesPlugin`/
+  `Sources/Shared` returns only history (CHANGELOG), the superseded ADR,
+  and the future-repo backlog notes — case-sensitive `ZKP` cannot see
+  `libsecp256k1_zkp`/`zkpTests` survivors
 
 ## 6. Risks and mitigations
 
@@ -214,16 +227,16 @@ CI/docs sweep → verification and merge. Full list with review slices:
   they hit today; the package warns the API is unstable; migration note
   lands in the release notes + `MigratingToP256K`.
 - **In-flight zkp prototyping loses its home** —
-  `SilentPaymentsAPIShapeTests` exists in `ZKPTests`; per-file triage in
-  T001 decides retarget-vs-delete, and git history preserves anything
-  deleted. Phase-10 silent-payments work re-homes to the future package.
+  `SilentPaymentsAPIShapeTests` exists in `ZKPTests`; T001's per-file
+  pass found it binds only the vanilla surface, so it retargeted with the
+  suite. Phase-10 silent-payments work re-homes to the future package.
 - **ZKP-first workflow inverts** — ADR 0001's "prototype in ZKP, promote
   to P256K" was the shared-dir workflow; post-fold there is one target
   and the direction is moot. The future repo inherits `Sources/P256K`
   wholesale via vendir, so today's P256K files are the prototype bed.
-- **Test coverage regressions via sloppy retarget** — the rename commit
-  is isolated and required to be green before teardown starts; the §5
-  delta check records exactly what was lost.
+- **Test coverage regressions via sloppy retarget** — the rename commits
+  are isolated and required to be green before teardown starts; the §5
+  delta check records the rename-only delta.
 - **A dangling `ZKP.`/`libsecp256k1_zkp` reference survives the sweep** —
   §5's final grep checklist is the tripwire; `swift build` catches the
   compile-visible ones.

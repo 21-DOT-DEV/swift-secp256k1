@@ -5,14 +5,8 @@
 //  Created by csjones on 2/9/25.
 //
 
-#if canImport(libsecp256k1_zkp)
-    @testable import libsecp256k1_zkp
-    @testable import ZKP
-#else
-    @testable import libsecp256k1
-    @testable import P256K
-#endif
-
+@testable import libsecp256k1
+@testable import P256K
 import Testing
 
 struct BindingsTestSuite {

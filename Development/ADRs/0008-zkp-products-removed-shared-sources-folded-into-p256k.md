@@ -26,14 +26,20 @@ files.
 
 ## Decision
 
-Remove the `ZKP` and `libsecp256k1_zkp` products, targets, trait set, and
-test targets. `Sources/Shared/` folds into `Sources/P256K/` — one Swift
+Remove the `ZKP` and `libsecp256k1_zkp` products, targets, and trait
+set. `Sources/Shared/` folds into `Sources/P256K/` — one Swift
 target means the shared-source mechanism needs no replacement: no plugin,
 no copies, no sync script, no drift gate. `Sources/libsecp256k1_zkp/` and
 its vendir entry are deleted; vendored swift-crypto moves to
 `Sources/P256K/swift-crypto/` as a single vendir destination.
 `Tests/ZKPTests` — the vanilla suite — becomes `Tests/P256KTests` against
-`import P256K`. ZKP-tier work (the zkp-module APIs, phases 6/8/10/11) is
+`import P256K`; `Tests/libsecp256k1zkpTests` — the C-binding smoke suite —
+becomes `Tests/libsecp256k1BindingsTests` against `import libsecp256k1`
+(the Tuist `BindingsTests` target already compiled its vanilla arm).
+*(amended 2026-10-17: test-target disposition corrected —
+`Tests/libsecp256k1zkpTests` was dual-import, not zkp-only, so it
+retargets as `Tests/libsecp256k1BindingsTests` instead of deleting)*
+ZKP-tier work (the zkp-module APIs, phases 6/8/10/11) is
 deferred to a future dedicated `swift-secp256k1-zkp` package that vendirs
 the shared surface from this repo — recorded in the roadmap backlog.
 

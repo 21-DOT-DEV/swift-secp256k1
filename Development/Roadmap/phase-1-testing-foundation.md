@@ -108,7 +108,9 @@ Run the native C test suites from libsecp256k1 (under `Projects/`) and libsecp25
 **Notes**:
 - secp256k1 tests: `Vendor/secp256k1/src/tests.c`
 - Consider running `tests_exhaustive.c` on schedule (slow but thorough)
-- zkp tests via existing `libsecp256k1zkpTests` target
+- zkp-module tests re-home to the future `swift-secp256k1-zkp` package
+  (the `libsecp256k1zkpTests` target retargeted to the vanilla stack as
+  `libsecp256k1BindingsTests` — ADR 0008)
 
 ---
 
