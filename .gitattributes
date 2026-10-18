@@ -11,15 +11,11 @@
 # Upstream C library in Sources should be marked as vendored
 Sources/libsecp256k1/src/**         linguist-vendored
 Sources/libsecp256k1/include/**     linguist-vendored
-Sources/libsecp256k1_zkp/src/**     linguist-vendored
-Sources/libsecp256k1_zkp/include/** linguist-vendored
-Sources/Shared/swift-crypto/**      linguist-vendored
+Sources/P256K/swift-crypto/**       linguist-vendored
 
 # Custom utility files (not vendored)
 Sources/libsecp256k1/src/Utility.c          linguist-vendored=false
 Sources/libsecp256k1/include/Utility.h      linguist-vendored=false
-Sources/libsecp256k1_zkp/src/Utility.c      linguist-vendored=false
-Sources/libsecp256k1_zkp/include/Utility.h  linguist-vendored=false
 
 # Development directories
 Projects/**                 export-ignore

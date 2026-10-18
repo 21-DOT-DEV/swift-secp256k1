@@ -70,7 +70,7 @@ leaves here, the tree deletes there.*
 
 ## The atomic teardown
 
-- [ ] T003 One commit — every intermediate state fails to build (a
+- [x] T003 One commit — every intermediate state fails to build (a
   declared target with no sources; a plugin `find`ing a deleted
   `Sources/Shared`): `Package.swift` drops `libsecp256k1_zkp` + `ZKP`
   products, the `ZKP`/`libsecp256k1_zkp` targets,
@@ -100,11 +100,16 @@ leaves here, the tree deletes there.*
   (`../`-relative glob preferred — the 002 literal-`../` precedent — else
   the `Projects/Sources/P256K` dir becomes a symlink per ADR 0001);
   `lefthook.yml` drops the `swift build --target ZKP` pre-push hook — it
-  fails the moment the target is gone (the `swift test` hook stays) ·
+  fails the moment the target is gone (the `swift test` hook stays);
+  `apple-builds.yml` also drops the `Validate ZKP DocC` step here — it
+  invokes the deleted target and reds every pushed head, so it cannot
+  wait for T005 (the bitrise `ZKP` stage stays for T005: its script is
+  `swift test` over vanilla traits only — green either way) ·
   `Package.swift`, `Sources/` trees, `Plugins/`,
   `Scripts/`, `Projects/Project.swift`, `Projects/Sources/`, `lefthook.yml`,
   `vendir.yml`, `vendir.lock.yml`, `.gitattributes`,
   `.github/workflows/vendir-check.yml`,
+  `.github/workflows/apple-builds.yml`,
   `.github/workflows/xcframework-release.yml`
   *(bulk deletions exempt from line count; authored ≈ manifest edit +
   moves)*
@@ -121,14 +126,18 @@ scratch `xcodebuild` without `-skipPackagePluginValidation` builds.
   dead); `#if Xcode || ENABLE_MODULE_*` guards on retained traits stay ·
   `Sources/P256K/**`
 - [ ] T005 CI sweep — `apple-builds.yml`: drop `-skipPackagePluginValidation`
-  ×4 and the `Validate ZKP DocC` step; `docc-release.yml`: delete the ZKP
+  ×4 (the `Validate ZKP DocC` step left in T003 — the only step that
+  reds a T003-only head); `docc-release.yml`: delete the ZKP
   archive build/rewrite/sanity/smoke steps and the P256K rewrite step
   (symbol-graph paths are committed files — they resolve unmodified), zip
   + upload steps become P256K-only; `bitrise.yml`: `PIPELINE-P256K-ZKP` →
   `PIPELINE-P256K`, drop the `ZKP` stage + `BUILD-ZKP` workflow, fold its
   `swift test --traits ecdh,musig,recovery,schnorrsig,uint256` run into
   `BUILD-P256K`; confirm `.spi.yml` needs nothing (documentation link
-  only) · `.github/workflows/{apple-builds,docc-release}.yml`,
+  only) — no tag, release, or `docc-release` dispatch may land between
+  the T003 merge and this merge: the workflow still calls the deleted
+  rewrite script and `--target ZKP` until here ·
+  `.github/workflows/{apple-builds,docc-release}.yml`,
   `bitrise.yml`
 
 **Checkpoint:** `swift build`/`swift test` green post-sweep; a repo-wide
@@ -152,16 +161,23 @@ deleted script or a `ZKP` target.
   single-target layout (one Swift target, one C target, swift-crypto at
   `Sources/P256K/swift-crypto/`; the `Sources/Shared/README.md` content
   that still matters — ASN1 files are project-owned upstream copies, the
-  license-file invariant — folds in here); delete
-  `Sources/Shared/README.md` (the move happened in T003; this commit
-  carries the prose) · `Sources/AGENTS.md`, `Sources/Shared/README.md`
-- [ ] T008 DocC — delete `Sources/ZKP/ZKP.docc` remnants and
-  `Sources/P256K/P256K.docc/ChoosingP256KvsZKP.md` (the two-product choice
-  no longer exists — fix any `<doc:ChoosingP256KvsZKP>` links); strip the
-  "Trust the SharedSourcesPlugin" section from `GettingStarted.md` and
-  the plugin note from `MigratingToP256K.md`, replacing with a migration
-  line: `ZKP`/`libsecp256k1_zkp` products removed in this release —
-  vanilla consumers switch to `P256K` · `Sources/*/*.docc`
+  license-file invariant — folds in here — recover it from git history;
+  the file deleted in T003, so nothing on disk remains to move) ·
+  `Sources/AGENTS.md`
+- [ ] T008 DocC — strip the "Trust the SharedSourcesPlugin" section from
+  `GettingStarted.md` and the plugin note from `MigratingToP256K.md`,
+  replacing with a migration line: `ZKP`/`libsecp256k1_zkp` products
+  removed in this release — vanilla consumers switch to `P256K`; sweep
+  every `zkp` trait reference out of both articles — the
+  `traits: ["zkp"]` copy-paste examples (`GettingStarted.md` ~line 89,
+  `MigratingToP256K.md` ~line 74; a consumer who copies one now hits an
+  unknown-trait error at resolution), the `zkp`-bundle paragraph
+  (`GettingStarted.md` ~line 93 — rewriting it also clears the DocC
+  inclusive-language note on `whitelist`), the "requires the `zkp`
+  trait" module-mapping rows and "behind the `zkp` package trait" line
+  (`MigratingToP256K.md` ~lines 100–103), and the `zkp`-named traits in
+  the trait-selection prose and missing-trait troubleshooting paragraph
+  (`MigratingToP256K.md` ~lines 68, 200) · `Sources/*/*.docc`
 - [ ] T009 Roadmap + changelog — `Development/Roadmap/`: a README note
   re-homing the zkp-tier phases (6 adaptor sigs, 8 BDHKE/DLEQ, 10/11 as
   applicable) to the future dedicated package — sweep the phase files for
@@ -170,8 +186,13 @@ deleted script or a `ZKP` target.
   `swift-secp256k1-zkp` extraction item (design sketch: new repo,
   `vendir.yml` `git:` sources pull this repo's `Sources/P256K/**` +
   `secp256k1-zkp` + `swift-crypto` — canonical shared surface stays here;
-  rides the existing `vendir-check` shape and ADR-0007 updater) and the
-  Windows item's plugin note is rewritten (the POSIX blocker is gone);
+  rides the existing `vendir-check` shape and ADR-0007 updater), the
+  Windows item's plugin note is rewritten (the POSIX blocker is gone),
+  and a new item records `DocC symbol extraction fails under
+  Xcode 27.0 — cause unconfirmed; pre-existing, unrelated to spec 003`
+  (the three DocC jobs pin Xcode 26.4 by hand while
+  `xcframework-release.yml` already runs 27.0 — whoever aligns them
+  trips this);
   `CHANGELOG.md` `[Unreleased]` breaking entry; `.github/AGENTS.md`
   conventions if the workflow list mentions the dropped pieces ·
   `Development/Roadmap/{README,backlog,phase-1-testing-foundation}.md`,
@@ -190,7 +211,8 @@ doc wording; `plans --check` green.
 
 - [ ] T011 Full §5 sweep — builds/tests/describe, suite-delta accounting,
   vendir-check green, flagless `xcodebuild`, Tuist generate + both test
-  runs, DocC archive path spot-check, scratch-consumer `ZKP` resolution
+  runs, DocC archive path spot-check (run under Xcode 26.4, CI's pin —
+  `apple-builds.yml:70`), scratch-consumer `ZKP` resolution
   failure confirmed, dev-docs trio, final grep checklist — each result
   recorded against its §5 box
 - [ ] T012 Flip this spec's `status:` to `Implemented` at merge — the

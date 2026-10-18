@@ -15,7 +15,7 @@ directories:
       tags:
       - 4.5.0
     path: .
-  path: Sources/Shared/swift-crypto
+  path: Sources/P256K/swift-crypto
 - contents:
   - git:
       commitTitle: 'Merge bitcoin-core/secp256k1#1808: Prepare for 0.7.1...'

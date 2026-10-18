@@ -76,7 +76,9 @@
     @available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *)
     extension UInt256: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
         public var description: String {
-            if self == .zero { return "0" }
+            if self == .zero {
+                return "0"
+            }
             var digits = ContiguousArray<UInt8>()
             var value = self
             while value != .zero {

@@ -56,7 +56,7 @@ directories:
     - src/Utility.c
     legalPaths: []
 
-- path: Sources/Shared/swift-crypto
+- path: Sources/P256K/swift-crypto
   contents:
   - path: .
     git:

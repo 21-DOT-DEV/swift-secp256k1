@@ -6,7 +6,7 @@ on:
     paths:
       - 'vendir*.yml'
       - 'Sources/libsecp256k1/**'
-      - 'Sources/Shared/swift-crypto/**'
+      - 'Sources/P256K/swift-crypto/**'
       - 'Projects/Sources/libsecp256k1Tests/**'
       - 'Projects/Resources/WycheproofTests/secp256k1/**'
       - 'Scripts/vendir-check*'
@@ -16,7 +16,7 @@ on:
     paths:
       - 'vendir*.yml'
       - 'Sources/libsecp256k1/**'
-      - 'Sources/Shared/swift-crypto/**'
+      - 'Sources/P256K/swift-crypto/**'
       - 'Projects/Sources/libsecp256k1Tests/**'
       - 'Projects/Resources/WycheproofTests/secp256k1/**'
       - 'Scripts/vendir-check*'
