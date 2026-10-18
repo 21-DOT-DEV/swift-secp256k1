@@ -16,7 +16,7 @@ the task.
 
 ## Prep that builds standalone
 
-- [ ] T001 [P] Retarget the vanilla test suite — `git mv Tests/ZKPTests
+- [x] T001 [P] Retarget the vanilla test suite — `git mv Tests/ZKPTests
   Tests/P256KTests`, `import ZKP` → `import P256K` (plus `ZKP.` → `P256K.`
   qualifiers and `#if canImport(ZKP)`/`Xcode` guards); `Package.swift`
   target renamed `ZKPTests` → `P256KTests` (deps `["ZKP"]` → `["P256K"]`,
@@ -26,6 +26,20 @@ the task.
   surface, mark-for-deletion in T003 if it binds zkp-only API (git history
   preserves it either way) · `Tests/ZKPTests/` → `Tests/P256KTests/`,
   `Package.swift`, `Projects/Sources/P256KTests`
+- [x] T013 [P] Retarget the C-binding smoke suite — `git mv
+  Tests/libsecp256k1zkpTests Tests/libsecp256k1BindingsTests`, collapse
+  the `#if canImport(libsecp256k1_zkp)` header to its `#else` arm
+  (`@testable import libsecp256k1` + `@testable import P256K`);
+  `Package.swift` target renamed `libsecp256k1zkpTests` →
+  `libsecp256k1BindingsTests` (deps `["ZKP", "libsecp256k1_zkp"]` →
+  `["P256K", "libsecp256k1"]`, `zkpModuleSettings` dropped);
+  `Projects/Sources/BindingsTests` symlink repoints to the renamed dir —
+  the Tuist `BindingsTests` target keeps its name, it already compiled
+  this file's vanilla arm. Kept rather than deleted: it is the only
+  `swift test` coverage that names `secp256k1_*` symbols (the vendored
+  upstream `tests.c` suite never exercises the Swift importer surface) ·
+  `Tests/libsecp256k1zkpTests/` → `Tests/libsecp256k1BindingsTests/`,
+  `Package.swift`, `Projects/Sources/BindingsTests`
 - [ ] T002 vendir re-destinations — `vendir.yml`: delete the
   `libsecp256k1_zkp` entry (the `depth: 0` SHA pin and its full-history
   residual go with it) and point the swift-crypto entry at
@@ -48,30 +62,30 @@ flattens the remaining `Sources/Shared/` into both targets, ZKP is intact,
 swift-crypto compiles as ordinary P256K source with no unhandled-file
 warnings; `vendir-check` passes over four destinations. *Note: T002
 removes `Sources/libsecp256k1_zkp/` from vendir but the directory itself
-stays until T003 — the vendir entry and the tree delete together.*
+stays until T003 — the vendir entry leaves here, the tree deletes there.*
 
 ## The atomic teardown
 
 - [ ] T003 One commit — every intermediate state fails to build (a
   declared target with no sources; a plugin `find`ing a deleted
   `Sources/Shared`): `Package.swift` drops `libsecp256k1_zkp` + `ZKP`
-  products, the `ZKP`/`libsecp256k1_zkp`/`libsecp256k1zkpTests` targets,
+  products, the `ZKP`/`libsecp256k1_zkp` targets,
   `zkpModuleDefines`, the eight zkp traits + `zkp` bundle trait, both
   `zkpModuleSettings` extensions, the `SharedSourcesPlugin` declaration,
   and both `plugins:` entries; `git mv Sources/Shared/* Sources/P256K/`
   (subdirs preserved — `Sources/Shared/README.md` folds into
   `Sources/AGENTS.md` in T007 and deletes here); delete
-  `Sources/ZKP/` (incl. `ZKP.docc`), `Sources/libsecp256k1_zkp/`,
-  `Plugins/SharedSourcesPlugin/`, `Tests/libsecp256k1zkpTests/`, both
-  `Placeholder.swift` files, `Scripts/rewrite-docc-shared-paths.swift`;
-  `vendir.lock.yml`/`vendir.yml` zkp entry deletion lands here (T002
-  staged it) so the vendir-owned dir deletes with its config;
-  `Projects/`: `P256K`'s `sources:` repoints at repo `Sources/P256K`
+  `Sources/ZKP/` (incl. `ZKP.docc`), `Sources/libsecp256k1_zkp/` (its
+  vendir entry left in T002 — the now-unmanaged tree is removed
+  outright), `Plugins/SharedSourcesPlugin/`, both `Placeholder.swift`
+  files, `Scripts/rewrite-docc-shared-paths.swift`; `Projects/`:
+  `P256K`'s `sources:` repoints at repo `Sources/P256K`
   (`../`-relative glob preferred — the 002 literal-`../` precedent — else
-  the `Projects/Sources/P256K` dir becomes a symlink per ADR 0001), the
-  `BindingsTests` target + `Projects/Sources/BindingsTests` symlink
-  delete · `Package.swift`, `Sources/` trees, `Tests/`, `Plugins/`,
-  `Scripts/`, `vendir.*`, `Projects/Project.swift`, `Projects/Sources/`
+  the `Projects/Sources/P256K` dir becomes a symlink per ADR 0001);
+  `lefthook.yml` drops the `swift build --target ZKP` pre-push hook — it
+  fails the moment the target is gone (the `swift test` hook stays) ·
+  `Package.swift`, `Sources/` trees, `Plugins/`,
+  `Scripts/`, `Projects/Project.swift`, `Projects/Sources/`, `lefthook.yml`
   *(bulk deletions exempt from line count; authored ≈ manifest edit +
   moves)*
 
@@ -126,7 +140,9 @@ deleted script or a `ZKP` target.
   vanilla consumers switch to `P256K` · `Sources/*/*.docc`
 - [ ] T009 Roadmap + changelog — `Development/Roadmap/`: a README note
   re-homing the zkp-tier phases (6 adaptor sigs, 8 BDHKE/DLEQ, 10/11 as
-  applicable) to the future dedicated package; `backlog.md` gains the
+  applicable) to the future dedicated package — sweep the phase files for
+  stale target names while there (the `phase-1` `libsecp256k1zkpTests`
+  note was already corrected alongside T013); `backlog.md` gains the
   `swift-secp256k1-zkp` extraction item (design sketch: new repo,
   `vendir.yml` `git:` sources pull this repo's `Sources/P256K/**` +
   `secp256k1-zkp` + `swift-crypto` — canonical shared surface stays here;
@@ -134,15 +150,15 @@ deleted script or a `ZKP` target.
   Windows item's plugin note is rewritten (the POSIX blocker is gone);
   `CHANGELOG.md` `[Unreleased]` breaking entry; `.github/AGENTS.md`
   conventions if the workflow list mentions the dropped pieces ·
-  `Development/Roadmap/{README,backlog}.md`, `CHANGELOG.md`,
-  `.github/AGENTS.md`
+  `Development/Roadmap/{README,backlog,phase-1-testing-foundation}.md`,
+  `CHANGELOG.md`, `.github/AGENTS.md`
 - [ ] T010 _Folded into the spec commit — ADR 0008 (revised in place as
   "ZKP products removed; shared sources fold into P256K") and the 0001
   supersession landed with the spec document set, since `adrs: [0008]`
   validates only against existing records._ · `Development/ADRs/`
 
-**Checkpoint:** `vale Development/` clean; a repo-wide
-`ZKP`/`SharedSourcesPlugin`/`Sources/Shared` grep returns only CHANGELOG
+**Checkpoint:** `vale Development/` clean; a repo-wide case-insensitive
+`zkp`/`SharedSourcesPlugin`/`Sources/Shared` grep returns only CHANGELOG
 history, the superseded ADR, roadmap/backlog notes, and the fold-aware
 doc wording; `plans --check` green.
 

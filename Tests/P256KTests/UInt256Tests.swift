@@ -29,12 +29,7 @@
 
 #if Xcode || ENABLE_UINT256
 
-    #if canImport(ZKP)
-        @testable import ZKP
-    #else
-        @testable import P256K
-    #endif
-
+    @testable import P256K
     import XCTest
 
     //===----------------------------------------------------------------------===//

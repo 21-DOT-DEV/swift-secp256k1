@@ -92,18 +92,16 @@ let package = Package(
                 + PackageDescription.CSetting.zkpModuleSettings
         ),
         .testTarget(
-            name: "libsecp256k1zkpTests",
-            dependencies: ["ZKP", "libsecp256k1_zkp"],
+            name: "libsecp256k1BindingsTests",
+            dependencies: ["P256K", "libsecp256k1"],
             swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
                 + PackageDescription.SwiftSetting.moduleSettings
-                + PackageDescription.SwiftSetting.zkpModuleSettings
         ),
         .testTarget(
-            name: "ZKPTests",
-            dependencies: ["ZKP"],
+            name: "P256KTests",
+            dependencies: ["P256K"],
             swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
                 + PackageDescription.SwiftSetting.moduleSettings
-                + PackageDescription.SwiftSetting.zkpModuleSettings
         )
     ],
     swiftLanguageModes: [.v6],

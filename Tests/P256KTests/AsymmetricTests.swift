@@ -8,12 +8,7 @@
 //  See the accompanying file LICENSE for information
 //
 
-#if canImport(ZKP)
-    @testable import ZKP
-#else
-    @testable import P256K
-#endif
-
+@testable import P256K
 import Testing
 
 struct AsymmetricTestSuite {
