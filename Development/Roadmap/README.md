@@ -33,7 +33,7 @@ Build the most reliable, secure, and developer-friendly Swift secp256k1 library 
 | **Module-rename migration & version adoption** | Most downstream consumers are stranded on the legacy `secp256k1` product name and old pins (e.g., 0.12.2, 0.18.0, 0.19.0). Primitives added only to `P256K` cannot reach them. Provide a migration path / compatibility story so new APIs are actually adoptable — the single highest adoption lever. | 🔜 Planned |
 | **swift-crypto Update** | Vendored swift-crypto updated via subtree plugin (3.11.1 → 4.2.0; now at 4.5.0). Availability attribute changes in `Sources/Shared/` resolved case-by-case (e.g., `UInt256.swift` retains attributes due to `StaticBigInt`). | ✅ Complete |
 | **UInt256 SecurityTests** | Add security test vectors for `UInt256`/`SIMDWordsInteger` to `Projects/Sources/SecurityTests/`: overflow detection, boundary correctness, power-of-two multiply paths, Codable parsing hardening. _(The `SecurityTests` target exists with DER/InvalidCurve/PointValidation/ScalarValidation/SignatureMalleability/ZeroSignature/Nonce coverage; UInt256 vectors are still absent.)_ | 🔜 Planned |
-| **Vendir migration** | Adopt vendir-driven vendoring (the pattern proven in swift-openssl), retiring `subtree.yaml`, the subtree CLI/plugin workflows, and most Dependabot configuration. Scheduled in Q1 of the 2026 funding window (shared 2026 roadmap). | 🔜 Planned |
+| **Vendir migration** | Adopt vendir-driven vendoring (the pattern proven in swift-openssl), retiring `subtree.yaml`, the subtree CLI/plugin workflows, and most Dependabot configuration. Scheduled in Q1 of the 2026 funding window (shared 2026 roadmap). | ✅ Complete |
 
 ---
 

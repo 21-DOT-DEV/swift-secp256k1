@@ -354,33 +354,16 @@ diffs — the gate's tests are gated by the same globs.
   through the Codable path, locking the parse contract this spec's
   zero-padded ADR references ride ·
   `Development/Tools/Tests/PlanIndexTests/PlanIndexTests.swift`
-- [ ] T029 [P] `vendir-check` executable target in `Development/Tools` —
-  a thin `main.swift` that locates `Scripts/vendir-check.sh` via
-  `git rev-parse --show-toplevel` run at the running binary's own
-  resolved path first (`Bundle.main.executableURL` — never
-  `CommandLine.arguments[0]`, which can be relative or a bare PATH
-  name), falling back to the caller's cwd, and `execv`s
-  `Scripts/vendir-check.sh` with the forwarded args — a real exec, not
-  `Process`, so signals and exit codes pass through untouched (`execv`
-  takes an absolute path and never searches `PATH` — resolve the script
-  first); `VENDIR_CHECK_ROOT` is forwarded untouched — it names the repo
-  under test (a T025 fixture carries no `Scripts/`), never the script's
-  home:
-  `swift run --package-path Development/Tools vendir-check` becomes
-  the local entry point matching `plans`, while CI keeps calling the
-  script bare (`ubuntu-slim` ships no Swift toolchain — the wrapper can
-  never be the gate's call site). Long term the executable *replaces*
-  the script: the checks migrate into Swift one at a time as a follow-up
-  (break that port out as its own task once this lands — the stable
-  `vendir-check` name means callers never notice the swap). The script
-  stays at `Scripts/` —
-  `Development/**` is `export-ignore` + `linguist-vendored` (source
-  archives drop it, diffs collapse it) and `development-docs.yml`
-  fires on every `Development/` edit. No new package deps, no
-  `PlanIndex` dep; a `vendir-check-test` sibling for T025's self-test
-  may ride the same wrapper pattern if wanted ·
-  `Development/Tools/Package.swift`,
-  `Development/Tools/Sources/vendir-check/main.swift`
+- [x] T029 _Deferred out of repo on re-review — the thin `execv`
+  wrapper only exists to locate `Scripts/vendir-check.sh` inside this
+  repository, and CI can never call it (`ubuntu-slim` has no Swift
+  toolchain), so in-repo it buys a `swift run` alias and nothing
+  else. The eventual Swift-native gate belongs in an external
+  tooling repo where it can serve every vendoring repo — its
+  allowlist would need generalizing past this repo's five pinned
+  destinations first. Break the external CLI out as its own
+  task/spec when the port starts; the local entry point stays
+  `Scripts/vendir-check.sh` bare_
 
 ## Verification and merge
 
@@ -389,11 +372,21 @@ diffs — the gate's tests are gated by the same globs.
   `swift run --package-path Development/Tools plans`; confirm `--check` exits
   clean · `Development/Specs/001-development-docs/{plan,tasks}.md`,
   `Development/{Specs,ADRs}/README.md`
-- [ ] T017 Full verification sweep per plan §5 — root `swift build`/`swift test`,
+- [x] T017 Full verification sweep per plan §5 — root `swift build`/`swift test`,
   Tuist generate + `libsecp256k1Tests` run, Wycheproof resource lookup,
   `vendir-check.yml` red/green on a stale-or-untracked-extraction probe,
-  `plans --check` + `vale Development/` clean
-- [ ] T018 Flip this spec's `status:` to `Implemented` and
+  `plans --check` + `vale Development/` clean. *Verified 2026-10-17:
+  `swift build` + `swift test` green (39/39); `tuist generate` produced
+  `XCFramework.xcworkspace`; `libsecp256k1Tests` exit 0 (215.6s);
+  `WycheproofTests` ** TEST SUCCEEDED **; bare `vendir-check.sh` exit 0
+  across all five checks; `vendir-check-test.sh` 40/40 — its fixture
+  cases are the stale/untracked-output, doctored-`ref:`, and
+  misspelled-key red probes; `plans --check` indexes current; `vale`
+  0/0/0; update-recipe dry-run on a scratch worktree — `ref:` 4.5.0 →
+  4.5.2 → `vendir sync` → only `Sources/Shared/swift-crypto`'s `sha:`
+  moved in `vendir.lock.yml` (to the real `4.5.2` tag commit
+  `da9d28d…`), zero extracted-file churn_
+- [x] T018 Flip this spec's `status:` to `Implemented` and
   `Development/Roadmap/README.md`'s vendir-migration row to ✅ at merge —
   the field records a repository fact, not a claim about checks
 

@@ -2,8 +2,8 @@
 feature: 002
 title: Replace git-subtree vendoring with vendir, deleting Vendor/ and the subtree tooling
 phase: null
-status: In Progress
-updated: 2026-10-11
+status: Implemented
+updated: 2026-10-17
 adrs: [0006, 0007]
 ---
 
@@ -83,10 +83,7 @@ path + swift-crypto LICENSE/NOTICE into the release zip);
 `.github/workflows/benchmark-pr.yml` (the fork-PR path per ADR 0007 —
 comment gated off fork PRs, comparison to the job summary,
 `!cancelled()` verdict); `Development/Tools` (the zero-padded-refs
-contract test in `PlanIndexTests`, plus a thin `vendir-check` executable
-target exec'ing `Scripts/vendir-check.sh` — the `swift run` local entry
-point; CI still calls the script bare since `ubuntu-slim` has no Swift
-toolchain); `.gitattributes`,
+contract test in `PlanIndexTests`); `.gitattributes`,
 `.swiftformat`, `.swiftlint.yml`, `.gitignore`;
 `AGENTS.md`, `Sources/AGENTS.md`, `Sources/Shared/README.md`, `.github/AGENTS.md`,
 `Development/constitution.md`; the 36 `Vendor/…` references in doc comments
