@@ -17,18 +17,14 @@
     #endif
 #endif
 
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 /// Internal backing implementation for a validated secp256k1 public key, storing
 /// serialized bytes, the derived x-only key, key parity, and an optional MuSig2
 /// aggregation cache.
 ///
 /// Kept `@usableFromInline` so it can back the public signing / Schnorr / ECDH / MuSig /
-/// Recovery public-key types across `Sources/Shared/*` without widening the public API
+/// Recovery public-key types across `Sources/P256K/*` without widening the public API
 /// surface. All derived forms (x-only, uncompressed, parsed `secp256k1_pubkey`) are
 /// reachable through this single backing type.
 ///
@@ -36,7 +32,7 @@
 /// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h),
 /// [`secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h),
 /// and (for the aggregation cache)
-/// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
+/// [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h).
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 @usableFromInline struct PublicKeyImplementation: Sendable {
     /// Serialized secp256k1 public key bytes in the key's ``P256K/Format``, as output by

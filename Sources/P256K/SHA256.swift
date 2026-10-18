@@ -9,12 +9,7 @@
 //
 
 public import Foundation
-
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 /// SHA-256 hash function
 /// ([RFC 6234](https://datatracker.ietf.org/doc/html/rfc6234))

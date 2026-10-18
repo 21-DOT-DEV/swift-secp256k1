@@ -9,12 +9,7 @@
 //
 
 public import Foundation
-
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 #if Xcode || ENABLE_MODULE_MUSIG
 
@@ -32,7 +27,7 @@ public import Foundation
         /// Aggregation is specified in
         /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) and
         /// implemented in
-        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
+        /// [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h).
         /// The aggregated nonce is computed once from all signers' ``P256K/Schnorr/Nonce``
         /// values and then shared with every signer before they call
         /// ``P256K/Schnorr/PrivateKey/partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)``.
@@ -179,37 +174,21 @@ public import Foundation
                 var pubnonce = secp256k1_musig_pubnonce()
                 var pubkey = publicKey.baseKey.rawRepresentation
 
-                #if canImport(zkp_bindings)
-                    guard secp256k1_musig_nonce_gen(
-                        context,
-                        &secnonce,
-                        &pubnonce,
-                        sessionID,
-                        Array(secretKey!.dataRepresentation),
-                        &pubkey,
-                        msg32,
-                        nil,
-                        extraInput32
-                    ).boolValue else {
-                        throw secp256k1Error.underlyingCryptoError
-                    }
-                #else
-                    var mutableSessionID = sessionID
+                var mutableSessionID = sessionID
 
-                    guard secp256k1_musig_nonce_gen(
-                        context,
-                        &secnonce,
-                        &pubnonce,
-                        &mutableSessionID,
-                        Array(secretKey!.dataRepresentation),
-                        &pubkey,
-                        msg32,
-                        nil,
-                        extraInput32
-                    ).boolValue else {
-                        throw secp256k1Error.underlyingCryptoError
-                    }
-                #endif
+                guard secp256k1_musig_nonce_gen(
+                    context,
+                    &secnonce,
+                    &pubnonce,
+                    &mutableSessionID,
+                    Array(secretKey!.dataRepresentation),
+                    &pubkey,
+                    msg32,
+                    nil,
+                    extraInput32
+                ).boolValue else {
+                    throw secp256k1Error.underlyingCryptoError
+                }
 
                 return NonceResult(
                     pubnonce: P256K.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) }),

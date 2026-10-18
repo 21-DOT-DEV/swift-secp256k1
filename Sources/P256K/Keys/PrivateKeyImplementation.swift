@@ -17,17 +17,13 @@
     #endif
 #endif
 
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 /// Internal backing implementation for a secp256k1 private key, storing 32 secret bytes
 /// as `SecureBytes` alongside the derived public key, x-only key, and key parity.
 ///
 /// Kept `@usableFromInline` so it can back the public signing / Schnorr / ECDH / Recovery
-/// key types across `Sources/Shared/*` without widening the public API surface. The
+/// key types across `Sources/P256K/*` without widening the public API surface. The
 /// structure caches the public-key derivations eagerly at construction time to avoid
 /// redundant calls to `secp256k1_ec_pubkey_create` on every signing operation.
 ///

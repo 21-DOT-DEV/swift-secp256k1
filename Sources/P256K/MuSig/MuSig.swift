@@ -9,12 +9,7 @@
 //
 
 public import Foundation
-
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 #if Xcode || ENABLE_MODULE_MUSIG
 
@@ -38,7 +33,7 @@ public import Foundation
         /// Key aggregation requires **no trusted dealer** — every signer runs the aggregation
         /// locally and arrives at the same result by deterministic protocol. The upstream C
         /// implementation
-        /// ([`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h))
+        /// ([`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h))
         /// is the normative reference for every method here; the Swift surface wraps those
         /// functions with type-safe session state.
         ///

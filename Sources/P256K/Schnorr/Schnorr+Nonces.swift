@@ -9,12 +9,7 @@
 //
 
 public import Foundation
-
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 #if Xcode || ENABLE_MODULE_MUSIG
 
@@ -23,7 +18,7 @@ public import Foundation
         /// The byte length of a BIP-327 serialized public nonce (66 bytes).
         ///
         /// Matches the `out66` buffer size of `secp256k1_musig_pubnonce_serialize` in
-        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
+        /// [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h).
         /// The in-memory struct `secp256k1_musig_pubnonce` is 132 bytes; this serialized
         /// form is the stable wire format.
         static let publicNonceByteCount = 66
@@ -33,7 +28,7 @@ public import Foundation
         ///
         /// > Warning: **Nonce reuse leaks the secret signing key.** The upstream
         /// > `secp256k1_musig_partial_sign` zeroes the secnonce after use (see
-        /// > [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)
+        /// > [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h)
         /// > `secp256k1_musig_nonce_gen`: *"This function overwrites the given secnonce with
         /// > zeros and will abort if given a secnonce that is all zeros."*). Never copy or
         /// > serialize the secret nonce bytes; always provide a unique `sessionID` per
