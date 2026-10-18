@@ -9,12 +9,7 @@
 //
 
 import Foundation
-
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 #if Xcode || ENABLE_MODULE_MUSIG
 
@@ -22,7 +17,7 @@ import Foundation
     public extension P256K.MuSig.PublicKey {
         /// Creates a new ``PublicKey`` by computing `agg_pk' = agg_pk + G × tweak` via
         /// `secp256k1_musig_pubkey_ec_tweak_add` (declared in
-        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)),
+        /// [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h)),
         /// updating the key aggregation cache in-place.
         ///
         /// Use this method when you need to **sign** for a

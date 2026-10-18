@@ -17,11 +17,7 @@
     #endif
 #endif
 
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 /// secp256k1 elliptic curve namespace providing ECDSA signing, Schnorr signatures
 /// ([BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)),
@@ -197,7 +193,7 @@ extension P256K {
         /// Size in bytes of the opaque `secp256k1_musig_partial_sig` in-memory struct (36).
         ///
         /// This is the struct size used for stack / heap allocation when holding a partial
-        /// signature in memory; see `secp256k1-zkp/include/secp256k1_musig.h` where
+        /// signature in memory; see `secp256k1/include/secp256k1_musig.h` where
         /// `secp256k1_musig_partial_sig` is declared as `unsigned char data[36]`.
         ///
         /// > Important: The 36-byte struct is **opaque**; callers must not inspect or persist

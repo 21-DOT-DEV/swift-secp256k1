@@ -9,12 +9,7 @@
 //
 
 public import Foundation
-
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 #if Xcode || ENABLE_MODULE_SCHNORRSIG
 

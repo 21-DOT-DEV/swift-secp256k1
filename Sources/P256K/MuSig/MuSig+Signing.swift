@@ -9,12 +9,7 @@
 //
 
 import Foundation
-
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 #if Xcode || ENABLE_MODULE_MUSIG
 
@@ -22,7 +17,7 @@ import Foundation
     public extension P256K.MuSig.PublicKey {
         /// Verifies one signer's ``P256K/Schnorr/PartialSignature`` against this aggregate
         /// public key using `secp256k1_musig_partial_sig_verify` (declared in
-        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)).
+        /// [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h)).
         ///
         /// Partial signature verification is optional in regular
         /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) MuSig2
@@ -118,21 +113,12 @@ import Foundation
             xonlyKeyAggregate.cache.copyToUnsafeMutableBytes(of: &cache.data)
             publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
-            #if canImport(libsecp256k1_zkp)
-                guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache, nil).boolValue,
-                      secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
-                      secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
-                else {
-                    throw secp256k1Error.underlyingCryptoError
-                }
-            #elseif canImport(libsecp256k1)
-                guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache).boolValue,
-                      secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
-                      secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
-                else {
-                    throw secp256k1Error.underlyingCryptoError
-                }
-            #endif
+            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache).boolValue,
+                  secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
+                  secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
+            else {
+                throw secp256k1Error.underlyingCryptoError
+            }
 
             return P256K.Schnorr.PartialSignature(
                 Data(bytes: &partialSignature, count: P256K.ByteLength.partialSignature),

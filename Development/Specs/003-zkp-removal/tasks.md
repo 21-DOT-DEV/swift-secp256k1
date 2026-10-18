@@ -120,11 +120,16 @@ scratch `xcodebuild` without `-skipPackagePluginValidation` builds.
 
 ## Mechanical sweeps
 
-- [ ] T004 Collapse the conditional imports — ~30 files'
+- [x] T004 Collapse the conditional imports — ~30 files'
   `#if canImport(libsecp256k1_zkp) … #elseif canImport(libsecp256k1) …
   #endif` become plain `import libsecp256k1` (the zkp arm is permanently
-  dead); `#if Xcode || ENABLE_MODULE_*` guards on retained traits stay ·
-  `Sources/P256K/**`
+  dead); the two non-import code forks collapse the same way —
+  `MuSig+Signing.swift`'s `secp256k1_musig_nonce_process` call keeps the
+  5-arg vendored signature (bitcoin-core/secp256k1#1479 dropped the
+  zkp-only `adaptor` arg) and `MuSig+Nonces.swift`'s
+  `canImport(zkp_bindings)` fork (the pre-rename module name, false on
+  every shipped layout) keeps its `#else` arm; `#if Xcode ||
+  ENABLE_MODULE_*` guards on retained traits stay · `Sources/P256K/**`
 - [ ] T005 CI sweep — `apple-builds.yml`: drop `-skipPackagePluginValidation`
   ×4 (the `Validate ZKP DocC` step left in T003 — the only step that
   reds a T003-only head); `docc-release.yml`: delete the ZKP
@@ -201,6 +206,15 @@ deleted script or a `ZKP` target.
   "ZKP products removed; shared sources fold into P256K") and the 0001
   supersession landed with the spec document set, since `adrs: [0008]`
   validates only against existing records._ · `Development/ADRs/`
+- [x] T014 Source doc-comment residue — repoint the nine
+  `secp256k1-zkp/include/secp256k1_musig.h` doc links to
+  `bitcoin-core/secp256k1` (the module's upstream home since
+  bitcoin-core/secp256k1#1479 — the links were stale before this spec)
+  and reword the three `Sources/Shared/*` doc cites to `Sources/P256K/*`
+  for the single-target layout; authored wording, not mechanical —
+  split from T004 so that commit stays purely compiler-verified, and
+  may land any time before T011's repo-wide grep gate ·
+  `Sources/P256K/**`
 
 **Checkpoint:** `vale Development/` clean; a repo-wide case-insensitive
 `zkp`/`SharedSourcesPlugin`/`Sources/Shared` grep returns only CHANGELOG

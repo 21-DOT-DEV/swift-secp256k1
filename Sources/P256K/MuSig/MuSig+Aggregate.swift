@@ -9,12 +9,7 @@
 //
 
 public import Foundation
-
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 #if Xcode || ENABLE_MODULE_MUSIG
 
@@ -27,7 +22,7 @@ public import Foundation
         /// aggregate public key via `secp256k1_musig_pubkey_agg`, sorting keys first with
         /// `secp256k1_ec_pubkey_sort` so the result is order-independent. Upstream
         /// reference:
-        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h).
+        /// [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h).
         ///
         /// The returned ``PublicKey`` includes the 197-byte `secp256k1_musig_keyagg_cache`
         /// needed for signing sessions and Taproot tweaking. Different orderings of the
@@ -195,7 +190,7 @@ public import Foundation
         /// struct body. The wire format is 32 bytes, produced by
         /// `secp256k1_musig_partial_sig_serialize` and consumed by
         /// `secp256k1_musig_partial_sig_parse`. See
-        /// [`secp256k1-zkp/include/secp256k1_musig.h`](https://github.com/BlockstreamResearch/secp256k1-zkp/blob/master/include/secp256k1_musig.h)
+        /// [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h)
         /// for the upstream declarations.
         ///
         /// ## Topics

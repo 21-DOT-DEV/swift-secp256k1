@@ -17,11 +17,7 @@
     #endif
 #endif
 
-#if canImport(libsecp256k1_zkp)
-    import libsecp256k1_zkp
-#elseif canImport(libsecp256k1)
-    import libsecp256k1
-#endif
+import libsecp256k1
 
 /// Internal backing implementation for a secp256k1 x-only public key
 /// ([BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)), storing
@@ -36,7 +32,7 @@
 /// ([`secp256k1/include/secp256k1_extrakeys.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_extrakeys.h)).
 ///
 /// Kept `@usableFromInline` so it can back the public Schnorr / ECDH / MuSig / Signing
-/// x-only key types across `Sources/Shared/*` without widening the public API surface.
+/// x-only key types across `Sources/P256K/*` without widening the public API surface.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 @usableFromInline struct XonlyKeyImplementation: Sendable {
     /// The 32-byte X coordinate of the x-only public key, as output by
