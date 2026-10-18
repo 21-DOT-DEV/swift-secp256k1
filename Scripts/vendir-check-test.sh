@@ -5,7 +5,8 @@
 # real `git init` + commit), runs the gate against it through
 # VENDIR_CHECK_ROOT, and asserts the exit code plus named output where a
 # finding names a path. A final leg asserts the gate passes on the real
-# tree. Lands inert — .github/workflows/vendir-check-test.yml (T026) calls it.
+# tree. .github/workflows/vendir-check-test.yml (T026) calls a bare run of
+# this suite in CI.
 #
 # Fixture remotes are file:// URLs widened through
 # VENDIR_CHECK_ALLOW_PROTOCOLS=file:https (per-invocation only — a suite-wide

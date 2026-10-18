@@ -202,7 +202,7 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
 
 ## The CI gate
 
-- [ ] T015 _Split into T019–T026 on re-review — the gate grows
+- [x] T015 _Split into T019–T026 on re-review — the gate grows
   incrementally rather than landing whole: the core sync check wires
   first (drift detection is the point; the rest is hardening), then each
   remaining check lands as a task-sized increment — script function +
@@ -319,18 +319,26 @@ clean, and no doc comment or guide references `Vendor/` outside history notes.
   plain bash — BATS would be a new test-framework dependency for one
   script, and new deps are an ask-first boundary. Lands inert —
   nothing calls it until T026 · `Scripts/vendir-check-test.sh`
-- [ ] T026 `.github/workflows/vendir-check-test.yml` — `ubuntu-slim`,
-  `permissions: {}`; runs the self-test on PRs touching
+- [x] T026 `.github/workflows/vendir-check-test.yml` — `ubuntu-slim`,
+  `permissions: {}`; runs the self-test on pushes to main and PRs touching
   `Scripts/vendir-check*` or `.github/workflows/vendir-check*`, plus a
   `schedule:`/`workflow_dispatch:` (the old prototype's
-  `sanitizer-test.yml` shape, minus the perl). Tick T015 here ·
-  `.github/workflows/vendir-check-test.yml`, `tasks.md` (T015 box)
+  `sanitizer-test.yml` shape, minus the perl; the push leg mirrors
+  `vendir-check.yml`/`development-docs.yml` — a merge skew across the
+  machinery files surfaces at push time, not the next weekly run, and the
+  schedule sits on a different weekday than the gate's so live-probe
+  coverage spreads instead of stacking). Tick T015 here ·
+  `.github/workflows/vendir-check-test.yml`,
+  `Scripts/vendir-check-test.sh`, `.github/AGENTS.md`, `tasks.md` (T015
+  box)
 
 **Checkpoint:** the gate exercises itself at every increment — every
 gate-group PR touches `vendir.yml`, `Scripts/vendir-check*`, or
 `.github/workflows/vendir-check*`, all inside the gate's trigger
 globs, so `vendir-check.yml` runs on its own diff from T020's PR
-onward and must pass (advisory, not required).
+onward and must pass (advisory, not required); from T026's PR onward
+`vendir-check-test.yml` runs the fixture suite on the same machinery
+diffs — the gate's tests are gated by the same globs.
 
 ## Adjacent hardening
 
