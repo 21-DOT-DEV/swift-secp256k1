@@ -10,13 +10,6 @@ directories:
   path: Sources/libsecp256k1
 - contents:
   - git:
-      commitTitle: 'Merge BlockstreamResearch/secp256k1-zkp#353: sync-upstream: Restore
-        SYNC_PAT...'
-      sha: 08d1cd0c9c35a5a151ba80c226d49ea949e90374
-    path: .
-  path: Sources/libsecp256k1_zkp
-- contents:
-  - git:
       commitTitle: Add module anchor to fix empty dynamic framework on Xcode 26 (#436)...
       sha: 1b6b2e274e85105bfa155183145a1dcfd63331f1
       tags:

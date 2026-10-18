@@ -126,13 +126,21 @@ or they warn on every build). No plugin declaration, no `plugins:`
 entries, no `developmentTargets` — the manifest needs no conditional
 surface beyond the existing `developmentDependencies` gate.
 
-**Ordering constraint (the atomic commit).** Three moves must land in one
-commit: the manifest teardown, the `Sources/Shared` → `Sources/P256K`
-fold, and the `Sources/libsecp256k1_zkp` vendir-entry deletion. Splitting
-them yields states that cannot build — a declared target with no source
-dir, or a plugin whose `find` runs on a deleted `Sources/Shared`. Bulk
-deletions are exempt from the line budget; the authored portion is the
-~100-line manifest edit plus the move, well inside review size.
+**Ordering constraint (the atomic commit).** The manifest teardown and
+the `Sources/Shared` → `Sources/P256K` fold must land in one commit —
+splitting them yields states that cannot build: a declared target with
+no source dir, or a plugin whose `find` runs on a deleted
+`Sources/Shared`. The fold relocates the vendored swift-crypto tree too,
+so its vendir re-destination lands in the same commit — moving it
+earlier strips `Digest`/`SecureBytes`/`CryptoKitError`/`ASN1` symbols
+from `ZKP` (the plugin sweeps only `Sources/Shared/`) and from the
+Tuist `P256K` target (whose `Shared` symlink reads `Sources/Shared/`);
+moving it later leaves vendir pointing at a deleted path
+([research.md](./research.md) §4). The `libsecp256k1_zkp` vendir-entry
+deletion stays prep (T002): the unmanaged tree sits harmlessly until
+this commit deletes it. Bulk deletions are exempt from the line budget;
+the authored portion is the ~100-line manifest edit plus the move, well
+inside review size.
 
 **Test suite.** `Tests/ZKPTests` is the vanilla suite (no `P256KTests`
 exists) — it `git mv`s to `Tests/P256KTests` with `import ZKP` → `import
@@ -189,9 +197,9 @@ environment-selected products (consumer-invariance — §3 of research.md).
 ## 4. Implementation steps
 
 Ordered as: independently-buildable prep first (test-suite retargets,
-vendir re-destination) → the atomic teardown commit → mechanical sweeps →
-CI/docs sweep → verification and merge. Full list with review slices:
-[tasks.md](./tasks.md).
+the zkp vendir-entry excision) → the atomic teardown commit → mechanical
+sweeps → CI/docs sweep → verification and merge. Full list with review
+slices: [tasks.md](./tasks.md).
 
 ## 5. Verification
 
