@@ -177,20 +177,25 @@ deleted script or a `ZKP` target.
   `exclude:` line — a scoped file never reaches a manifest edit, so the
   guard sits where the mechanism lives · `Sources/AGENTS.md`,
   `Package.swift`
-- [ ] T008 DocC — strip the "Trust the SharedSourcesPlugin" section from
-  `GettingStarted.md` and the plugin note from `MigratingToP256K.md`,
-  replacing with a migration line: `ZKP`/`libsecp256k1_zkp` products
-  removed in this release — vanilla consumers switch to `P256K`; sweep
-  every `zkp` trait reference out of both articles — the
-  `traits: ["zkp"]` copy-paste examples (`GettingStarted.md` ~line 89,
-  `MigratingToP256K.md` ~line 74; a consumer who copies one now hits an
-  unknown-trait error at resolution), the `zkp`-bundle paragraph
-  (`GettingStarted.md` ~line 93 — rewriting it also clears the DocC
-  inclusive-language note on `whitelist`), the "requires the `zkp`
-  trait" module-mapping rows and "behind the `zkp` package trait" line
-  (`MigratingToP256K.md` ~lines 100–103), and the `zkp`-named traits in
-  the trait-selection prose and missing-trait troubleshooting paragraph
-  (`MigratingToP256K.md` ~lines 68, 200) · `Sources/*/*.docc`
+- [x] T008 DocC — `GettingStarted.md`: the "Trust the
+  SharedSourcesPlugin" section becomes a no-plugins note anchored to
+  the boundary ("releases after the 0.23.x series ship no build
+  plugins — through 0.23.x the plugin still needs trust and the
+  `-skipPackagePluginValidation` flag"); the `traits: ["zkp"]`
+  example and `zkp`-bundle paragraph rewrite around
+  `ellswift`/`uint256` (rewriting also clears the DocC
+  inclusive-language note on `whitelist`) plus an error-recovery note
+  for stale `traits: ["zkp"]` manifests; `MigratingToP256K.md`: a
+  Step-1 warning records the `ZKP`/`libsecp256k1_zkp`/`zkp`-trait
+  removal ("after the 0.23.x series", pin `exact: "0.23.2"` **with
+  `traits: ["zkp"]` declared** — the trait still exists at 0.23.2 and
+  is what compiles the zkp-only modules there), the `traits: ["zkp"]`
+  example retargets to `ellswift`/`uint256`, the two module-mapping
+  rows stay annotated "removed after the 0.23.x series" (kept, not
+  swept — the trail serves ≤0.19.0 `import zkp` readers), the Step-3
+  plugin note becomes the same anchored no-plugins line (heading →
+  "Resolve and build"), and a new troubleshooting entry names the
+  unknown-trait resolution failure · `Sources/*/*.docc`
 - [ ] T009 Roadmap + changelog — `Development/Roadmap/`: a README note
   re-homing the zkp-tier phases (6 adaptor sigs, 8 BDHKE/DLEQ, 10/11 as
   applicable) to the future dedicated package — sweep the phase files for

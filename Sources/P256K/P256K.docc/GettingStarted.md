@@ -4,7 +4,7 @@
     @TitleHeading("How-to Guide")
 }
 
-Install P256K via Swift Package Manager, trust the SharedSourcesPlugin, and produce your first verified secp256k1 signature — the entry point for Swift developers building Bitcoin, Nostr, or Lightning Network functionality.
+Install P256K via Swift Package Manager and produce your first verified secp256k1 signature — the entry point for Swift developers building Bitcoin, Nostr, or Lightning Network functionality.
 
 ## Overview
 
@@ -41,6 +41,8 @@ Then import the module:
 import P256K
 ```
 
+> Note: Releases after the 0.23.x series ship no build plugins, so Xcode, headless CI, and Xcode Cloud build P256K without a trust prompt or `-skipPackagePluginValidation`. Through 0.23.x, the SharedSourcesPlugin still needs trust in Xcode and the flag for headless `xcodebuild`. After you upgrade past 0.23.x, you can remove the flag and any plugin-trust `ci_post_clone.sh` workaround.
+
 ### Your first signing operation
 
 With the dependency added, the smallest end-to-end check is an ECDSA sign-and-verify:
@@ -64,18 +66,6 @@ If `isValid` prints `true`, P256K is installed and operational. The returned ``P
 
 For deeper signing material — DER encoding for Bitcoin transactions, BIP-340 Schnorr, ECDH key agreement, key recovery — see the cross-references at the end of this article.
 
-### Trust the SharedSourcesPlugin
-
-`swift-secp256k1` ships a SwiftPM build-tool plugin named `SharedSourcesPlugin` that wires shared C source files from `libsecp256k1` into the `P256K` target at build time. Xcode requires explicit user trust before running any third-party build-tool plugin, so the first build after adding the package surfaces a trust prompt.
-
-In Xcode, an alert appears noting the plugin must be trusted before it can run. Approve via the dialog's **Trust & Enable Plugin** action — or right-click the package in the Project Navigator and choose **Trust & Enable Plugin** from the context menu. Trust persists for that project and survives package re-resolves.
-
-> Important: For headless CI (GitHub Actions, Jenkins, Xcode Server — anything running `xcodebuild` without a UI), pass `-skipPackagePluginValidation` to the build command. Without the flag, the build fails with `"SharedSourcesPlugin" is disabled` and no plugin output is produced.
-
-Building from the command line with `swift build` does **not** require plugin trust — plugin validation is an Xcode UX gate, not a SwiftPM CLI gate. CI pipelines invoking `swift build` or `swift test` directly skip this concern entirely.
-
-> Note: Using Xcode Cloud? A separate `defaults write` workaround in `ci_post_clone.sh` is required because Xcode Cloud has no interactive trust prompt. See the [Swift Forums discussion][swift-forums-xcode14-trust] for the current recipe and known caveats.
-
 ### Choosing modules with package traits
 
 P256K uses [SE-0450 Package Traits][se-0450] (Swift 6.1+) to let consumers select which secp256k1 modules compile in. By default, four traits are enabled: `ecdh`, `musig`, `recovery`, `schnorrsig`. Most use cases need nothing else.
@@ -86,11 +76,13 @@ To opt into additional modules, pass `traits:` in your dependency declaration:
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
     exact: "0.23.2",
-    traits: ["zkp"]
+    traits: ["ellswift", "uint256"]
 ),
 ```
 
-The `zkp` bundle trait enables every zero-knowledge-proof module — `bppp`, `ecdsaAdaptor`, `ecdsaS2C`, `ellswift`, `generator`, `rangeproof`, `schnorrsigHalfagg`, `surjectionproof`, `whitelist`. The `uint256` trait — which exposes the `UInt256` and `Int256` fixed-width integer types — is opt-in and requires macOS 15, iOS 18, macCatalyst 18, watchOS 11, tvOS 18, or visionOS 2 or later. The authoritative list of available traits lives in `Package.swift` itself.
+Two modules remain opt-in: the `ellswift` trait compiles upstream's ElligatorSwift C module (`secp256k1_ellswift_*`, reachable through `import libsecp256k1` — P256K has no Swift overlay for it), and the `uint256` trait exposes the `UInt256` and `Int256` fixed-width integer types, which require macOS 15, iOS 18, macCatalyst 18, watchOS 11, tvOS 18, or visionOS 2 or later. The authoritative list of available traits lives in `Package.swift` itself.
+
+> Note: A `zkp` bundle trait enabling zero-knowledge-proof modules shipped through the 0.23.x series and was removed with the `ZKP` and `libsecp256k1_zkp` products. If resolution fails on `traits: ["zkp"]` in an existing manifest, remove the trait — or, if you use the zkp-only modules, pin `exact: "0.23.2"` and keep `traits: ["zkp"]` (the trait still exists there and compiles those modules under `swift build`).
 
 > Note: Xcode does not currently resolve trait conditions for Swift settings; all optional modules compile when building in Xcode. Trait selection is enforced when building with `swift build` from the command line.
 
@@ -132,4 +124,3 @@ The generated playground includes a starter import; the ECDSA snippet shown abov
 [se-0450]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md
 [semver-4]: https://semver.org/#spec-item-4
 [swift-crypto]: https://github.com/apple/swift-crypto
-[swift-forums-xcode14-trust]: https://forums.swift.org/t/telling-xcode-14-beta-4-to-trust-build-tool-plugins-programatically/59305
