@@ -5,8 +5,8 @@
 **Status**: 🔜 Planned  
 **Funding**: Outside the 2026 funding window  
 **Reach**: demo / reference (reduces the "everyone hand-rolls it" tax)  
-**Depends On**: Phase 6 (adaptor sigs), Phase 4 (encodings)  
-**Last Updated**: 2026-06-05
+**Depends On**: Phase 6 (adaptor sigs — the `ecdsa_adaptor` C re-homed to the future `swift-secp256k1-zkp` package, spec 003 / ADR 0008), Phase 4 (encodings)  
+**Last Updated**: 2026-10-18
 
 Re-aimed from the original "Applications" phase toward the L2 strategy: no cohort asked for a generic MuSig2 demo, but ARK/Cube/Lightning are MuSig2- and adaptor-signature-centric.
 

@@ -112,11 +112,12 @@ Decisive measurements for choosing deletion over preservation:
 ## 5. The future repo this keeps open
 
 When zkp demand funds it, `swift-secp256k1-zkp` is a new repository —
-**not** a restore of the deleted target. Its `vendir.yml` pulls three
+**not** a restore of the deleted target. Its `vendir.yml` pulls two
 `git:` sources: `Sources/P256K/**` from *this* repo (the shared surface
 stays canonical here — a standalone ZKP compiles it directly, no copies,
-since only `libsecp256k1_zkp` ever links), `secp256k1-zkp`, and
-`swift-crypto`. Sync rides the existing `vendir-check` gate shape and
+since only `libsecp256k1_zkp` ever links — and the pull carries the
+committed `swift-crypto/` subtree, no second source needed) and
+`secp256k1-zkp`. Sync rides the existing `vendir-check` gate shape and
 the ADR-0007 centralized updater — zero bespoke machinery on either
 side. The zkp-tier roadmap phases (6/8/10/11) re-home there; this spec
 only updates the roadmap pointers, not the phase content.

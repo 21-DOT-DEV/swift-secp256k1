@@ -265,8 +265,9 @@ slices: [tasks.md](./tasks.md).
 
 - **The `swift-secp256k1-zkp` package** — the backlog entry (T009)
   sketches it: a new repo whose `vendir.yml` pulls `Sources/P256K/**`
-  (the shared surface — canonical stays here), `secp256k1-zkp`, and
-  `swift-crypto` as `git:` sources, riding the existing `vendir-check`
+  (the shared surface — canonical stays here; the committed
+  `swift-crypto/` subtree rides inside the pull) and `secp256k1-zkp`
+  as `git:` sources, riding the existing `vendir-check`
   gate shape and the ADR-0007 org updater. No bespoke sync machinery.
 - **Windows support** — the plugin's POSIX blocker is gone entirely;
   the backlog note (T009) rewrites to toolchain/CI work only.

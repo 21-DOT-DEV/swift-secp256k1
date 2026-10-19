@@ -3,8 +3,10 @@
 **Goal**: Enable code sharing between P256K and ZKP products without duplication  
 **Horizon**: ✅ Foundation  
 **Status**: ✅ Complete  
-**Last Updated**: 2025-12-26  
+**Last Updated**: 2026-10-18  
 **Blocks**: Phase 1; all primitive phases (4–11) that benefit from shared code
+
+> **Retired mechanism (2026-10-18):** the `SharedSourcesPlugin` this phase delivered was removed with the `ZKP`/`libsecp256k1_zkp` products (spec 003 / ADR 0008). There is now one Swift target — the shared sources compile directly from `Sources/P256K/`, so no sharing mechanism remains. The body below is the plan as it was executed.
 
 ---
 

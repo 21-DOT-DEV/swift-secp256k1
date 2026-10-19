@@ -3,7 +3,7 @@
 **Goal**: Establish continuous quality assurance with coverage, security scanning, fuzzing, and robust error testing  
 **Horizon**: 🔵 Now (continuous enabler)  
 **Status**: 🔜 Planned  
-**Last Updated**: 2026-06-05  
+**Last Updated**: 2026-10-18  
 **Depends On**: Phase 1 (Testing Foundation)  
 **Blocks**: primitive phases (4–11) — safe to add new crypto code
 
@@ -23,7 +23,7 @@ Integrate Coveralls for code coverage tracking via GitHub Actions, with tiered t
 - Coverage badge displayed in README
 - Tiered thresholds enforced:
   - Critical paths (signing, verification, key handling): ≥90%
-  - Core APIs (public P256K/ZKP): ≥80%
+  - Core APIs (public P256K): ≥80%
   - Overall floor: ≥70%
 - Coverage trends visible over time
 

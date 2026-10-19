@@ -4,9 +4,9 @@
 **Horizon**: 🟡 Next  
 **Status**: 🔜 Planned  
 **Reach**: ★★★☆☆ — developers, scripting/CI  
-**Depends On**: Phase 4 (encodings — address/npub output); Phase 6 optional (adaptor ceremonies)  
+**Depends On**: Phase 4 (encodings — address/npub output); Phase 6 optional (adaptor ceremonies — the adaptor C re-homed to the future `swift-secp256k1-zkp` package, spec 003)  
 **Funding**: Inside the 2026 funding window — Q5 (months 13–15) of the shared 2026 roadmap  
-**Last Updated**: 2026-08-01
+**Last Updated**: 2026-10-18
 
 Promoted from the [backlog](backlog.md) on 2026-08-01: the deferred CLI apps (MuSig2 CLI, address generator, ECDSA signing CLI, Schnorr verifier) merge into one executable. Scheduled in the 2026 funding round as scriptable access for developers and a low-friction demo surface for the encodings and primitives shipped in year one.
 
@@ -44,7 +44,7 @@ Promoted from the [backlog](backlog.md) on 2026-08-01: the deferred CLI apps (Mu
 ## Phase Dependencies & Sequencing
 
 1. **Core CLI** — after Phase 4 encodings (address/npub output)
-2. **MuSig2 ceremony mode** — rides shipped MuSig2; adaptor flows optional after Phase 6
+2. **MuSig2 ceremony mode** — rides shipped MuSig2; adaptor flows optional after Phase 6 (via the future `swift-secp256k1-zkp` package)
 3. **Homebrew formula** — with the first tagged CLI release
 
 ---

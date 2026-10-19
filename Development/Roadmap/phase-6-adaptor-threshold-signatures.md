@@ -1,20 +1,22 @@
-# Phase 6: Adaptor & Threshold Signatures (ZKP tier)
+# Phase 6: Adaptor & Threshold Signatures
 
-**Goal**: Turn the `ZKP` tier from a placeholder into real Swift wrappers over the vendored libsecp256k1-zkp C — starting with adaptor signatures, the strategic Bitcoin Layer-2 lever  
+**Goal**: Swift wrappers over the `secp256k1-zkp` fork's adaptor-signature C — the strategic Bitcoin Layer-2 lever — plus MuSig2 hardening for L2 use  
 **Horizon**: 🔵 Now  
 **Status**: 🔜 Planned  
 **Reach**: ★★★★☆ — Lightning PTLCs, ARK forfeits/swaps, Cube (the L2 strategic focus)  
-**Depends On**: `Sources/ZKP` is currently `Placeholder.swift`; the C modules are vendored  
+**Depends On**: the future `swift-secp256k1-zkp` package for the adaptor-signature C (`secp256k1-zkp` left this repo with the `ZKP` products — spec 003 / ADR 0008); MuSig2 already ships  
 **Blocks**: Phase 9 (L2 PTLC showcase)  
-**Last Updated**: 2026-06-05
+**Last Updated**: 2026-10-18
 
-Zone A (EC-native). The C is vendored; this phase builds the Swift surface — see the **Package Separation** section in [roadmap](README.md).
+Zone A (EC-native). The adaptor-signature C is no longer vendored — it lives in the `secp256k1-zkp` fork and returns with the future dedicated package (design sketch in [backlog](backlog.md)); the MuSig2-hardening and FROST-groundwork features below build on what already ships — see the **Package Separation** section in [roadmap](README.md).
 
 ---
 
 ## Features
 
 ### Adaptor Signatures (Schnorr / ECDSA)
+
+> **Re-homed (2026-10-18):** `ecdsa_adaptor` exists only in the `secp256k1-zkp` fork, which left this repo with the `ZKP` products (spec 003 / ADR 0008); this feature resumes in the future `swift-secp256k1-zkp` package — sketch in [backlog](backlog.md).
 
 **Purpose & User Value**: Point-time-locked contracts (Lightning PTLCs), ARK atomic forfeits/swaps, and Cube. Today every L2 effort hand-rolls or forgoes this.
 
@@ -23,7 +25,7 @@ Zone A (EC-native). The C is vendored; this phase builds the Swift surface — s
 - Test vectors from libsecp256k1-zkp pass
 - Docs + a working PTLC example
 
-**Notes**: First module to make `Sources/ZKP` real; consider promoting common paths toward `P256K`.
+**Notes**: Lands in the dedicated package rather than a `Sources/ZKP` here; that package still compiles this repo's `Sources/P256K/` as its canonical shared surface.
 
 ### MuSig2 L2 Ergonomics + Hardening
 
@@ -49,8 +51,7 @@ Zone A (EC-native). The C is vendored; this phase builds the Swift surface — s
 
 | Metric | Target |
 |--------|--------|
-| `ecdsa_adaptor` wrapper vector pass rate | 100% |
-| ZKP tier no longer a placeholder | Yes |
+| `ecdsa_adaptor` wrapper vector pass rate (in the future package) | 100% |
 | Working Lightning PTLC example | Yes |
 
 ---
@@ -59,5 +60,5 @@ Zone A (EC-native). The C is vendored; this phase builds the Swift surface — s
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| ZKP C API instability | Wrapper churn | Pin to the vendored version; track libsecp256k1-zkp |
+| zkp-fork C API instability | Wrapper churn | Pin the fork in the future package's `vendir.yml`; track BlockstreamResearch/secp256k1-zkp |
 | Adaptor-sig misuse (nonce reuse) | Key leakage | Safe-by-default API; document the danger; exit tests |

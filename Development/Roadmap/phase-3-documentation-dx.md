@@ -4,7 +4,7 @@
 **Horizon**: 🔵 Now (continuous enabler)  
 **Status**: 🚧 In Progress  
 **Funding**: Outside the 2026 funding window (ongoing, unfunded)  
-**Last Updated**: 2026-06-05  
+**Last Updated**: 2026-10-18  
 **Depends On**: Phase 2 (CI & Quality Gates) — can partially overlap  
 **Blocks**: Phase 9 (apps need documented APIs)
 
@@ -16,7 +16,7 @@ DocC catalog is live; documentation currently exists as **articles** (not yet in
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Initial DocC Setup | ✅ Done | Catalog configured; `P256K`/`ZKP` landing pages; CI publishes |
+| Initial DocC Setup | ✅ Done | Catalog configured; `P256K`/`ZKP` landing pages (the `ZKP` catalog was removed with the product — spec 003); CI publishes |
 | Quickstart | ✅ Done (article) | `GettingStarted.md` |
 | Getting Started (ECDSA) | ✅ Done (article) | `ECDSASigningAndBitcoinTransactions.md` |
 | Schnorr (BIP-340) | 🟡 Partial | Covered within signing/keys articles; no dedicated Schnorr article |
@@ -25,7 +25,7 @@ DocC catalog is live; documentation currently exists as **articles** (not yet in
 | MuSig2 | ✅ Done (article) | `MuSig2MultiSignatures.md` |
 | Recovering Public Keys | ✅ Done (article) | `RecoveringPublicKeys.md`; Bitcoin message signing (BIP-137) |
 | Silent Payments | 📄 Doc-only | `SilentPayments.md` article exists but **no implementation** — see Phase 10 (Native Protocols) |
-| UInt256 Audit | 🔜 Planned | Source moved ZKP → `Sources/Shared/` (see corrected note below) |
+| UInt256 Audit | 🔜 Planned | Source now in `Sources/P256K/UInt256/` (see corrected note below) |
 
 **Remaining**: deepen Key Formats; dedicated Schnorr/x-only article; UInt256 audit; optionally convert articles to interactive `.tutorial`s.
 
@@ -176,12 +176,12 @@ Advanced tutorial covering MuSig2 multi-party Schnorr signatures per BIP-327. Sm
 ### UInt256 Audit and Improvement
 
 **Purpose & User Value**:  
-Audit existing UInt256 implementation in ZKP for correctness, API ergonomics, and potential promotion to P256K. Initial implementation exists; this is review and refinement.
+Audit the UInt256 implementation in `Sources/P256K/UInt256/` for correctness, API ergonomics, and documentation. The implementation already ships inside `P256K`; this is review and refinement.
 
 **Success Metrics**:
 - UInt256 implementation reviewed for correctness
 - API ergonomics improved where needed
-- Decision made: keep in ZKP or promote to P256K
+- Home confirmed as `P256K` (the review's original "promote to P256K" question is already answered)
 - Documentation added for public API
 - Test coverage meets Phase 2 thresholds
 
@@ -189,7 +189,7 @@ Audit existing UInt256 implementation in ZKP for correctness, API ergonomics, an
 - Phase 2 coverage infrastructure (to measure current state)
 
 **Notes**:
-- **Updated 2026-06-05**: `UInt256` has been promoted from ZKP to `Sources/Shared/UInt256/` (now compiled into both `P256K` and `ZKP`). Cross-reference `Sources/Shared/UInt256/UInt256.swift` (+ `UInt256+Arithmetic/+FixedWidthInteger/+Modular/+Representation`), **not** the old `Sources/ZKP/UInt256.swift` path.
+- **Updated 2026-10-18**: `UInt256` was promoted from ZKP to `Sources/Shared/UInt256/` (2026-06-05), then folded into `Sources/P256K/UInt256/` when the `ZKP` product was removed (spec 003 / ADR 0008). Cross-reference `Sources/P256K/UInt256/UInt256.swift` (+ `UInt256+Arithmetic/+FixedWidthInteger/+Modular/+Representation`); neither earlier path resolves.
 - Pairs with the **UInt256 SecurityTests** high-priority item (security vectors not yet in `Projects/Sources/SecurityTests/`).
 - Consider: overflow behavior, constant-time properties, Swift Numerics alignment
 
@@ -209,10 +209,10 @@ DocC Setup ──► Quickstart ──► Getting Started (ECDSA)
 ```
 
 **Priority order (revised 2026-06-05 — most articles shipped; remaining work, strategy-ordered)**:
-1. **Bitcoin L2 signing guide** — MuSig2 (BIP-327) covenant/pooled signing + Schnorr **adaptor signatures** (ZKP) for ARK / Cube / Lightning. The MuSig2 article ships; extend with adaptor-sig + L2 framing.
+1. **Bitcoin L2 signing guide** — MuSig2 (BIP-327) covenant/pooled signing + Schnorr **adaptor signatures** for ARK / Cube / Lightning. The MuSig2 article ships; the adaptor-sig piece re-homes to the future `swift-secp256k1-zkp` package (Phase 6).
 2. Dedicated **Schnorr / BIP-340 + x-only + Taproot** article (L2, Nostr)
 3. **Key Formats deep-dive** — universal surface (raw/compressed/DER/x963/PEM)
-4. UInt256 audit (now in `Sources/Shared/`)
+4. UInt256 audit (now in `Sources/P256K/`)
 5. Interactive `.tutorial` conversion (optional; current docs are articles)
 
 (`RecoveringPublicKeys.md` already ships — relevant to Bitcoin message signing (BIP-137); keep as-is.)

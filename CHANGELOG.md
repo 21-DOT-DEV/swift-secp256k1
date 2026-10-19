@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+- **Breaking**: The `ZKP` and `libsecp256k1_zkp` products, the `zkp` bundle trait and its eight module traits, and the `SharedSourcesPlugin` build tool (spec 003 / ADR 0008) — the package now ships `P256K` + `libsecp256k1` with zero build plugins, so Xcode, headless CI, and Xcode Cloud build with no trust prompt or `-skipPackagePluginValidation`. Vanilla-surface consumers switch `.product(name: "ZKP")` / `import ZKP` to `P256K` (identical API); consumers of the zkp-only C modules pin `exact: "0.23.2"` with `traits: ["zkp"]` until a dedicated `swift-secp256k1-zkp` package exists — see the `MigratingToP256K` article
 - The `Vendor/` mirror, `subtree.yaml`, the `update-subtree.yml`/`check-subtree-updates.yml` workflows, and the `swift-plugin-subtree` dev dependency
 
 ## [0.23.2] - 2026-05-22

@@ -1,4 +1,4 @@
-# Phase 8: Blind Signatures & DLEQ (ZKP tier)
+# Phase 8: Blind Signatures & DLEQ
 
 **Goal**: Cashu's blind Diffie-Hellman key exchange (BDHKE) and NUT-12 discrete-log-equality proofs — secp256k1-native, for the ecash cohort  
 **Horizon**: 🟡 Next  
@@ -6,9 +6,9 @@
 **Funding**: Outside the 2026 funding window  
 **Reach**: ★★★☆☆ — Cashu (CashuSwift, macadamia, bitpoints, nutsack, CashuKit); every lib reimplements BDHKE  
 **Depends On**: SHA-256 + point ops (shipped); hash-to-curve  
-**Last Updated**: 2026-06-05
+**Last Updated**: 2026-10-18
 
-Zone A (EC-native). **MEDIUM confidence** — re-verify the exact constants against `cashubtc/nuts` primary specs before implementing (see Caveats).
+Zone A (EC-native) — builds entirely on vanilla primitives (point/scalar ops + SHA-256; the reference Cashu implementations run on plain libsecp256k1), so it is unaffected by the zkp-fork removal. **MEDIUM confidence** — re-verify the exact constants against `cashubtc/nuts` primary specs before implementing (see Caveats).
 
 ---
 
@@ -32,7 +32,7 @@ Zone A (EC-native). **MEDIUM confidence** — re-verify the exact constants agai
 **Success Metrics**:
 - Schnorr-style `(e, s)` proof; SHA-256 Fiat-Shamir challenge
 - Alice-side verification using blinding factor `r`
-**Notes**: A C `dleq_impl.h` exists **inside the adaptor module** and may not match NUT-12 byte-for-byte — likely a fresh, spec-conformant Swift authoring.
+**Notes**: A C `dleq_impl.h` exists inside the adaptor module — which was zkp-only and is no longer vendored — and may not match NUT-12 byte-for-byte anyway; the plan remains a fresh, spec-conformant Swift authoring.
 
 ---
 
