@@ -19,7 +19,7 @@ Add `swift-secp256k1` as a dependency in your `Package.swift`:
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.23.2"),
+    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.24.0"),
 ],
 targets: [
     .target(
@@ -75,14 +75,14 @@ To opt into additional modules, pass `traits:` in your dependency declaration:
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    exact: "0.23.2",
+    exact: "0.24.0",
     traits: ["ellswift", "uint256"]
 ),
 ```
 
 Two modules remain opt-in: the `ellswift` trait compiles upstream's ElligatorSwift C module (`secp256k1_ellswift_*`, reachable through `import libsecp256k1` — P256K has no Swift overlay for it), and the `uint256` trait exposes the `UInt256` and `Int256` fixed-width integer types, which require macOS 15, iOS 18, macCatalyst 18, watchOS 11, tvOS 18, or visionOS 2 or later. The authoritative list of available traits lives in `Package.swift` itself.
 
-> Note: A `zkp` bundle trait enabling zero-knowledge-proof modules shipped through the 0.23.x series and was removed with the `ZKP` and `libsecp256k1_zkp` products. If resolution fails on `traits: ["zkp"]` in an existing manifest, remove the trait — or, if you use the zkp-only modules, pin `exact: "0.23.2"` and keep `traits: ["zkp"]` (the trait still exists there and compiles those modules under `swift build`).
+> Warning: A `zkp` bundle trait enabling zero-knowledge-proof modules shipped through the 0.23.x series and was removed with the `ZKP` and `libsecp256k1_zkp` products. `0.23.x` receives no security fixes — pin it only until a dedicated zkp package ships ([SECURITY.md][security]). If resolution fails on `traits: ["zkp"]` in an existing manifest, remove the trait — or, if you use the zkp-only modules, pin `exact: "0.23.2"` and keep `traits: ["zkp"]` (the trait still exists there and compiles those modules under `swift build`).
 
 > Note: Xcode does not currently resolve trait conditions for Swift settings; all optional modules compile when building in Xcode. Trait selection is enforced when building with `swift build` from the command line.
 
@@ -93,7 +93,7 @@ Two modules remain opt-in: the `ellswift` trait compiles upstream's ElligatorSwi
 Add the following to your `Podfile`:
 
 ```ruby
-pod 'swift-secp256k1', '0.23.2'
+pod 'swift-secp256k1', '0.24.0'
 ```
 
 CocoaPods consumes a pre-built `P256K.xcframework` produced by the release pipeline rather than building from source. Swift Package Manager remains the recommended path and receives feature parity first; CocoaPods support may be deprecated in a future release.
@@ -122,5 +122,6 @@ The generated playground includes a starter import; the ECDSA snippet shown abov
 [bip-146]: https://github.com/bitcoin/bips/blob/master/bip-0146.mediawiki
 [libsecp256k1]: https://github.com/bitcoin-core/secp256k1
 [se-0450]: https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md
+[security]: https://github.com/21-DOT-DEV/swift-secp256k1/blob/main/SECURITY.md
 [semver-4]: https://semver.org/#spec-item-4
 [swift-crypto]: https://github.com/apple/swift-crypto

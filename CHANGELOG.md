@@ -7,14 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-10-19
+
 ### Added
 
 - swift-crypto's `LICENSE.txt`/`NOTICE.txt` now ship in the XCFramework zip
+- A `MigratingToP256K` DocC guide covering the `import secp256k1` → `import P256K` rename across the GigaBitcoin lineage — and how to tell when the move is a port, not a rename
 
 ### Changed
 
 - **Breaking**: `P256K.MuSig.Nonce.generate(sessionID:secretKey:publicKey:msg32:extraInput32:)` replaced by `generate(sessionSecretRand:secretKey:publicKey:msg32:extraInput32:)` taking the new `~Copyable` `P256K.MuSig.SessionSecretRand`, which is consumed by the call so session randomness cannot be reused and stores its bytes in auto-zeroing `SecureBytes` (the buffer handed to `secp256k1_musig_nonce_gen` is the value's own storage — zeroed in place on success and again on release); `msg32` is now `[UInt8]?` (`nil` = message not yet known, matching upstream's `NULL msg32`) in both `generate` overloads
 - Replaced git-subtree vendoring with vendir — upstream sources sync directly into `Sources/`/`Projects/` per `vendir.yml` + `vendir.lock.yml`; `libsecp256k1Tests` compiles the shipped `Sources/libsecp256k1` tree instead of a duplicated copy
+- The shipped `P256K.xcframework` is now built on Xcode 27 (Bitrise stack and release workflow pinned — the previous pipeline generated an Xcode project and used the runner default) and verified end-to-end before shipping — per-slice export allowlists plus real consumer builds on every platform (`Scripts/verify-p256k-xcframework.sh`) — instead of post-editing module interfaces; emitted interfaces carry Xcode 27's `P256K::P256K` module-selector spelling, so binary consumers (CocoaPods) need a Swift ≥6.3 toolchain to read them — source and SwiftPM builds are unaffected
 
 ### Fixed
 
@@ -25,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- **Breaking**: The `ZKP` and `libsecp256k1_zkp` products, the `zkp` bundle trait and its eight module traits, and the `SharedSourcesPlugin` build tool (spec 003 / ADR 0008) — the package now ships `P256K` + `libsecp256k1` with zero build plugins, so Xcode, headless CI, and Xcode Cloud build with no trust prompt or `-skipPackagePluginValidation`. Vanilla-surface consumers switch `.product(name: "ZKP")` / `import ZKP` to `P256K` (identical API); consumers of the zkp-only C modules pin `exact: "0.23.2"` with `traits: ["zkp"]` until a dedicated `swift-secp256k1-zkp` package exists — see the `MigratingToP256K` article
+- **Breaking**: The `ZKP` and `libsecp256k1_zkp` products, the `zkp` bundle trait and its eight module traits, and the `SharedSourcesPlugin` build tool (spec 003 / ADR 0008) — the package now ships `P256K` + `libsecp256k1` with zero build plugins, so Xcode, headless CI, and Xcode Cloud build with no trust prompt or `-skipPackagePluginValidation`. Vanilla-surface consumers switch `.product(name: "ZKP")` / `import ZKP` to `P256K` (identical API); consumers of the zkp-only C modules pin `exact: "0.23.2"` with `traits: ["zkp"]` — `0.23.x` receives no security fixes, so pin only until a dedicated `swift-secp256k1-zkp` package ships — see the `MigratingToP256K` article and [SECURITY.md](SECURITY.md)
 - The `Vendor/` mirror, `subtree.yaml`, the `update-subtree.yml`/`check-subtree-updates.yml` workflows, and the `swift-plugin-subtree` dev dependency
 
 ## [0.23.2] - 2026-05-22
