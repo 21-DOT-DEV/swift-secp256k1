@@ -2,8 +2,8 @@
 feature: 003
 title: Remove the ZKP products and fold shared sources into P256K, retiring the build plugin
 phase: null
-status: Planned
-updated: 2026-10-17
+status: Implemented
+updated: 2026-10-19
 adrs: [0008]
 ---
 
@@ -213,27 +213,27 @@ slices: [tasks.md](./tasks.md).
 
 ## 5. Verification
 
-- [ ] `swift build`, `swift test`, `swift build --target P256K` green;
+- [x] `swift build`, `swift test`, `swift build --target P256K` green;
   `swift package describe` shows two products, no `plugins:` anywhere
-- [ ] `Tests/P256KTests` runs the full former-ZKPTests suite and
+- [x] `Tests/P256KTests` runs the full former-ZKPTests suite and
   `Tests/libsecp256k1BindingsTests` the former-zkp smoke suite — no test
   files are deleted; the suite delta is rename-only, recorded in
   §5/CHANGELOG
-- [ ] `vendir sync --locked` reproduces all four destinations;
+- [x] `vendir sync --locked` reproduces all four destinations;
   `Scripts/vendir-check.sh` green on the updated allowlist
-- [ ] `xcodebuild` per the `apple-builds.yml` matrix with **no**
+- [x] `xcodebuild` per the `apple-builds.yml` matrix with **no**
   `-skipPackagePluginValidation`; `bitrise.yml` pipeline validates
   (yaml parse) and its `swift test` runs under `BUILD-P256K`
-- [ ] `tuist generate` + `libsecp256k1Tests` + `P256KTests` +
+- [x] `tuist generate` + `libsecp256k1Tests` + `P256KTests` +
   `BindingsTests` green through the repointed source resolution
-- [ ] DocC `--analyze` archive for `P256K` builds clean; symbol paths are
+- [x] DocC `--analyze` archive for `P256K` builds clean; symbol paths are
   committed repo paths (no rewrite step)
-- [ ] A scratch consumer manifest declaring `.product(name: "ZKP")` fails
+- [x] A scratch consumer manifest declaring `.product(name: "ZKP")` fails
   at resolution with a clear "no such product" error — the documented
   break
-- [ ] `swift test --package-path Development/Tools`,
+- [x] `swift test --package-path Development/Tools`,
   `plans --check`, `vale Development/` clean
-- [ ] Repo-wide case-insensitive grep for `zkp`/`SharedSourcesPlugin`/
+- [x] Repo-wide case-insensitive grep for `zkp`/`SharedSourcesPlugin`/
   `Sources/Shared` returns only history (CHANGELOG), the superseded ADR,
   and the future-repo backlog notes — case-sensitive `ZKP` cannot see
   `libsecp256k1_zkp`/`zkpTests` survivors

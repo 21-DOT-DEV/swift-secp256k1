@@ -224,7 +224,7 @@ deleted script or a `ZKP` target.
   conventions if the workflow list mentions the dropped pieces ·
   `Development/Roadmap/{README,backlog,phase-*}.md`,
   `CHANGELOG.md`, `.github/AGENTS.md`
-- [ ] T010 _Folded into the spec commit — ADR 0008 (revised in place as
+- [x] T010 _Folded into the spec commit — ADR 0008 (revised in place as
   "ZKP products removed; shared sources fold into P256K") and the 0001
   supersession landed with the spec document set, since `adrs: [0008]`
   validates only against existing records._ · `Development/ADRs/`
@@ -245,13 +245,13 @@ doc wording; `plans --check` green.
 
 ## Verification and merge
 
-- [ ] T011 Full §5 sweep — builds/tests/describe, suite-delta accounting,
+- [x] T011 Full §5 sweep — builds/tests/describe, suite-delta accounting,
   vendir-check green, flagless `xcodebuild`, Tuist generate + both test
   runs, DocC archive path spot-check (run under Xcode 26.4, CI's pin —
-  `apple-builds.yml:70`), scratch-consumer `ZKP` resolution
-  failure confirmed, dev-docs trio, final grep checklist — each result
-  recorded against its §5 box
-- [ ] T012 Flip this spec's `status:` to `Implemented` at merge — the
+  `apple-builds.yml`'s `docc` job `DEVELOPER_DIR`), scratch-consumer
+  `ZKP` resolution failure confirmed, dev-docs trio, final grep
+  checklist — each result recorded against its §5 box
+- [x] T012 Flip this spec's `status:` to `Implemented` at merge — the
   field records a repository fact, not a claim about checks ·
   `plan.md`, `tasks.md`
 

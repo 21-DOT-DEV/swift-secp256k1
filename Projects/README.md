@@ -23,7 +23,8 @@ swift package --disable-sandbox tuist generate -p Projects/ --no-open
 
 ### Run All Tests (macOS)
 ```bash
-xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme P256KTests -destination 'platform=macOS'
+xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme P256K -destination 'platform=macOS'
+xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme BindingsTests -destination 'platform=macOS'
 xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme SchnorrVectorTests -destination 'platform=macOS'
 xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme WycheproofTests -destination 'platform=macOS'
 xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme SecurityTests -destination 'platform=macOS'
@@ -32,8 +33,10 @@ xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme MuSig2Vector
 
 ### Run Individual Test Target
 ```bash
-xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme <TargetName> -destination 'platform=macOS'
+xcodebuild test -workspace Projects/XCFramework.xcworkspace -scheme <SchemeName> -destination 'platform=macOS'
 ```
+
+Scheme names, not target names: `P256KTests` runs inside the `P256K` scheme — there is no `P256KTests` scheme; every other test target has an own-name scheme. `xcodebuild -list -workspace Projects/XCFramework.xcworkspace` prints the full set.
 
 ### Run libsecp256k1Tests (upstream C suite)
 
