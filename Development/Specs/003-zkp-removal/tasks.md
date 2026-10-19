@@ -167,13 +167,16 @@ deleted script or a `ZKP` target.
   claim gets a stopgap tense correction pending T009's rewrite ·
   `README.md`, `AGENTS.md`, `SECURITY.md`,
   `Development/constitution.md`, `Development/Roadmap/backlog.md`
-- [ ] T007 `Sources/` docs — `Sources/AGENTS.md` rewritten for the
+- [x] T007 `Sources/` docs — `Sources/AGENTS.md` rewritten for the
   single-target layout (one Swift target, one C target, swift-crypto at
   `Sources/P256K/swift-crypto/`; the `Sources/Shared/README.md` content
   that still matters — ASN1 files are project-owned upstream copies, the
   license-file invariant — folds in here — recover it from git history;
-  the file deleted in T003, so nothing on disk remains to move) ·
-  `Sources/AGENTS.md`
+  the file deleted in T003, so nothing on disk remains to move); the
+  license invariant also lands as a comment on `Package.swift`'s
+  `exclude:` line — a scoped file never reaches a manifest edit, so the
+  guard sits where the mechanism lives · `Sources/AGENTS.md`,
+  `Package.swift`
 - [ ] T008 DocC — strip the "Trust the SharedSourcesPlugin" section from
   `GettingStarted.md` and the plugin note from `MigratingToP256K.md`,
   replacing with a migration line: `ZKP`/`libsecp256k1_zkp` products

@@ -32,6 +32,9 @@ let package = Package(
         .target(
             name: "P256K",
             dependencies: ["libsecp256k1"],
+            // The vendored license files must ship in the tree (Apache-2.0
+            // §4(a) license text, §4(d) notice) but stay uncompiled —
+            // keep both excluded.
             exclude: ["swift-crypto/LICENSE.txt", "swift-crypto/NOTICE.txt"],
             swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
                 + PackageDescription.SwiftSetting.moduleSettings
