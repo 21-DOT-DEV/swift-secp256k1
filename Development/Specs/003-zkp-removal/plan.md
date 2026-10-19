@@ -179,8 +179,9 @@ shrinks 5 → 4 destinations.
 permanently false, so the sweep replaces each with plain `import
 libsecp256k1` (mechanical, one commit). Two sites are code forks rather
 than imports — a `secp256k1_musig_nonce_process` call whose zkp arm
-passes the `adaptor` arg that upstream bitcoin-core/secp256k1#1479
-dropped, and a `canImport(zkp_bindings)` fork checking the pre-rename
+passes the zkp-only `adaptor` arg (upstream's musig module, merged via
+bitcoin-core/secp256k1#1479, never carried it), and a
+`canImport(zkp_bindings)` fork checking the pre-rename
 module name — each collapses to its live arm by the same rule. The `#if
 Xcode || ENABLE_MODULE_*` guards on retained traits stay untouched.
 Stale doc references ride a separate authored commit (T014) — nine

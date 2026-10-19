@@ -125,8 +125,9 @@ scratch `xcodebuild` without `-skipPackagePluginValidation` builds.
   #endif` become plain `import libsecp256k1` (the zkp arm is permanently
   dead); the two non-import code forks collapse the same way —
   `MuSig+Signing.swift`'s `secp256k1_musig_nonce_process` call keeps the
-  5-arg vendored signature (bitcoin-core/secp256k1#1479 dropped the
-  zkp-only `adaptor` arg) and `MuSig+Nonces.swift`'s
+  5-arg vendored signature (the `adaptor` arg exists only in the zkp
+  fork — upstream's module, merged via bitcoin-core/secp256k1#1479,
+  never carried it) and `MuSig+Nonces.swift`'s
   `canImport(zkp_bindings)` fork (the pre-rename module name, false on
   every shipped layout) keeps its `#else` arm; `#if Xcode ||
   ENABLE_MODULE_*` guards on retained traits stay · `Sources/P256K/**`

@@ -123,22 +123,18 @@ struct NonceSecurityTests {
         // require a full MuSig2 signing session. The compile-time guarantee is the test.
     }
 
-    // MARK: - NS-003: Constant session ID produces deterministic nonces
+    // MARK: - NS-003: Constant session randomness produces deterministic nonces
 
-    @Test("NS-003: Constant session ID with same inputs produces same nonce")
-    func constantSessionIDProducesSameNonce() throws {
+    @Test("NS-003: Constant session randomness with same inputs produces same nonce")
+    func constantSessionRandProducesSameNonce() throws {
         let privateKey = try P256K.Schnorr.PrivateKey()
         let publicKey = privateKey.publicKey
         let msg32 = SecurityTestVectors.NonceSecurity.testMessageHash
-        let constantSessionID = SecurityTestVectors.NonceSecurity.constantSessionID
+        let constantSessionRand = SecurityTestVectors.NonceSecurity.constantSessionRand
 
-        // Extend to expected size (133 bytes based on the API)
-        var sessionID = constantSessionID
-        sessionID.append(contentsOf: Array(repeating: 0x00, count: 133 - constantSessionID.count))
-
-        // Generate nonces with the same session ID
+        // Generate nonces with the same session randomness
         let nonce1 = try P256K.MuSig.Nonce.generate(
-            sessionID: sessionID,
+            sessionSecretRand: P256K.MuSig.SessionSecretRand(bytes: constantSessionRand),
             secretKey: privateKey,
             publicKey: publicKey,
             msg32: msg32,
@@ -146,7 +142,7 @@ struct NonceSecurityTests {
         )
 
         let nonce2 = try P256K.MuSig.Nonce.generate(
-            sessionID: sessionID,
+            sessionSecretRand: P256K.MuSig.SessionSecretRand(bytes: constantSessionRand),
             secretKey: privateKey,
             publicKey: publicKey,
             msg32: msg32,
@@ -154,28 +150,28 @@ struct NonceSecurityTests {
         )
 
         // With deterministic inputs, nonces should be identical
-        // This demonstrates why unique session IDs are critical
+        // This demonstrates why unique session randomness is critical
         let pubnonce1 = nonce1.pubnonce.dataRepresentation
         let pubnonce2 = nonce2.pubnonce.dataRepresentation
 
         #expect(
             pubnonce1 == pubnonce2,
-            "Same session ID + inputs should produce same nonce (demonstrating importance of randomness)"
+            "Same session randomness + inputs should produce same nonce (demonstrating importance of randomness)"
         )
     }
 
-    @Test("NS-003: Different session IDs produce different nonces")
-    func differentSessionIDsProduceDifferentNonces() throws {
+    @Test("NS-003: Different session randomness produces different nonces")
+    func differentSessionRandProducesDifferentNonces() throws {
         let privateKey = try P256K.Schnorr.PrivateKey()
         let publicKey = privateKey.publicKey
         let msg32 = SecurityTestVectors.NonceSecurity.testMessageHash
 
-        // Two different session IDs (extended to 133 bytes)
-        var sessionID1 = Array(repeating: UInt8(0x01), count: 133)
-        var sessionID2 = Array(repeating: UInt8(0x02), count: 133)
+        // Two different 32-byte session randomness values
+        let sessionRand1 = Array(repeating: UInt8(0x01), count: 32)
+        let sessionRand2 = Array(repeating: UInt8(0x02), count: 32)
 
         let nonce1 = try P256K.MuSig.Nonce.generate(
-            sessionID: sessionID1,
+            sessionSecretRand: P256K.MuSig.SessionSecretRand(bytes: sessionRand1),
             secretKey: privateKey,
             publicKey: publicKey,
             msg32: msg32,
@@ -183,7 +179,7 @@ struct NonceSecurityTests {
         )
 
         let nonce2 = try P256K.MuSig.Nonce.generate(
-            sessionID: sessionID2,
+            sessionSecretRand: P256K.MuSig.SessionSecretRand(bytes: sessionRand2),
             secretKey: privateKey,
             publicKey: publicKey,
             msg32: msg32,
@@ -195,7 +191,7 @@ struct NonceSecurityTests {
 
         #expect(
             pubnonce1 != pubnonce2,
-            "Different session IDs should produce different nonces"
+            "Different session randomness should produce different nonces"
         )
     }
 

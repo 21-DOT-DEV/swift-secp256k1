@@ -31,8 +31,8 @@ import libsecp256k1
         /// > [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h)
         /// > `secp256k1_musig_nonce_gen`: *"This function overwrites the given secnonce with
         /// > zeros and will abort if given a secnonce that is all zeros."*). Never copy or
-        /// > serialize the secret nonce bytes; always provide a unique `sessionID` per
-        /// > signing session.
+        /// > serialize the secret nonce bytes; always provide a unique
+        /// > ``P256K/MuSig/SessionSecretRand`` per signing session.
         struct SecureNonce: ~Copyable {
             /// The opaque 132-byte `secp256k1_musig_secnonce` struct bytes.
             ///

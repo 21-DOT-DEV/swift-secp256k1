@@ -119,8 +119,8 @@ Exit code 0 means the upstream suite passed.
 | **Wycheproof ECDH** | 7 vectors skipped (tcId: 496, 497, 502-505, 507) | Invalid curve OIDs that aren't secp256k1 |
 | **Wycheproof ECDH** | `InvalidAsn` flag skipped | Our strict ASN.1 parser rejects these; Wycheproof marks some as "acceptable" |
 | **Wycheproof ECDH** | `WrongCurve` flag skipped | Tests non-secp256k1 curves (P-256, P-384) — out of scope |
-| **MuSig2 Secnonce** | BIP-0327 vectors are 97 bytes; library uses 132 bytes | Internal `secp256k1_musig_secnonce` format differs from spec |
-| **MuSig2 Nonce Gen** | Cannot verify `expected_secnonce`/`expected_pubnonce` | API uses random sessionID internally; exact vector matching not possible |
+| **MuSig2 Secnonce** | BIP-0327 vectors are 97 bytes; library uses 132 bytes | Verified field-wise via upstream's own mapping (`k1‖k2` at struct offset 4, pubkey at offset 68); raw byte equality is not applicable |
+| **MuSig2 Nonce Gen** | Exact `expected_pubnonce`/`expected_secnonce` verification covers 1 of 4 cases | `aggpk`→`keyagg_cache` input not exposed (1 case — vendored C suite covers it); 0- and 38-byte messages not expressible in 32-byte `msg32` (2 cases — upstream skips them too) |
 | **MuSig2 Tweaking** | Cannot verify `expected` partial signatures | Library sorts keys internally; exact order differs from vectors |
 | **MuSig2 Key Agg** | Cannot verify `expected` aggregated key | Library sorts keys internally; result differs from vector order |
 | **NS-002** | Compile-time guarantee only | `SecureNonce` uses `~Copyable` to prevent reuse; no runtime test possible |

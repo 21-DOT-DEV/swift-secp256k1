@@ -30,8 +30,13 @@ import libsecp256k1
         /// - Parameter tweak: A 32-byte tweak scalar; must pass `secp256k1_ec_seckey_verify` and must not negate the aggregate key.
         /// - Parameter format: The serialization format of the returned ``PublicKey``; defaults to `.compressed`.
         /// - Returns: A new ``PublicKey`` equal to the original aggregate key plus the tweak times the generator.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the result is the point at infinity.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the result is the point at infinity.
         func add(_ tweak: [UInt8], format: P256K.Format = .compressed) throws -> Self {
+            guard tweak.count == P256K.ByteLength.dimension else {
+                throw secp256k1Error.incorrectParameterSize
+            }
+
             let context = P256K.Context.rawRepresentation
             var pubKey = secp256k1_pubkey()
             var cache = secp256k1_musig_keyagg_cache()
@@ -73,8 +78,13 @@ import libsecp256k1
         ///
         /// - Parameter tweak: A 32-byte tweak scalar; must pass `secp256k1_ec_seckey_verify` and must not negate the aggregate key.
         /// - Returns: A new ``XonlyKey`` representing the Taproot output key.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the result is the point at infinity.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the result is the point at infinity.
         func add(_ tweak: [UInt8]) throws -> Self {
+            guard tweak.count == P256K.ByteLength.dimension else {
+                throw secp256k1Error.incorrectParameterSize
+            }
+
             let context = P256K.Context.rawRepresentation
             var pubKey = secp256k1_pubkey()
             var cache = secp256k1_musig_keyagg_cache()
