@@ -152,7 +152,7 @@ deleted script or a `ZKP` target.
 
 ## Docs and roadmap
 
-- [ ] T006 Root docs — `README.md`: product list and the Package Traits
+- [x] T006 Root docs — `README.md`: product list and the Package Traits
   paragraph (zkp trait is gone; point the "full walkthrough" link text
   past plugin-trust language); root `AGENTS.md`: the `SharedSourcesPlugin`
   bullet becomes the single-target layout note ("`Sources/P256K/` is
@@ -161,8 +161,12 @@ deleted script or a `ZKP` target.
   "(and secp256k1-zkp)" and the Snippets bullet's two-C-binding
   rationale get the same pass, Commands unchanged; `SECURITY.md`'s
   wrapped-libraries list and `Development/constitution.md`'s scope
-  line + component table drop the zkp rows · `README.md`, `AGENTS.md`,
-  `SECURITY.md`, `Development/constitution.md`
+  line + component table drop the zkp rows; `backlog.md` gains the
+  deferred `Snippets/` re-evaluation item (the `AGENTS.md` note
+  points at it) and its `ZKP-tier modules` intro's `is vendored`
+  claim gets a stopgap tense correction pending T009's rewrite ·
+  `README.md`, `AGENTS.md`, `SECURITY.md`,
+  `Development/constitution.md`, `Development/Roadmap/backlog.md`
 - [ ] T007 `Sources/` docs — `Sources/AGENTS.md` rewritten for the
   single-target layout (one Swift target, one C target, swift-crypto at
   `Sources/P256K/swift-crypto/`; the `Sources/Shared/README.md` content
@@ -188,13 +192,19 @@ deleted script or a `ZKP` target.
   re-homing the zkp-tier phases (6 adaptor sigs, 8 BDHKE/DLEQ, 10/11 as
   applicable) to the future dedicated package — sweep the phase files for
   stale target names while there (the `phase-1` `libsecp256k1zkpTests`
-  note was already corrected alongside T013); `backlog.md` gains the
+  note was already corrected alongside T013); the README itself drops
+  two stale present-state lines — Phase 0's entry still describes the
+  retired shared-sources plugin (~line 86) and "the `ZKP` tier is
+  `Placeholder.swift`" describes a deleted product (~line 115);
+  `backlog.md` gains the
   `swift-secp256k1-zkp` extraction item (design sketch: new repo,
   `vendir.yml` `git:` sources pull this repo's `Sources/P256K/**` +
   `secp256k1-zkp` + `swift-crypto` — canonical shared surface stays here;
   rides the existing `vendir-check` shape and ADR-0007 updater), the
   Windows item's plugin note is rewritten (the POSIX blocker is gone),
-  and a new item records `DocC symbol extraction fails under
+  the `ZKP-tier modules` section is re-homed to the dedicated package
+  (its `is vendored` intro was stopgap-corrected at T006), and a new
+  item records `DocC symbol extraction fails under
   Xcode 27.0 — cause unconfirmed; pre-existing, unrelated to spec 003`
   (the three DocC jobs pin Xcode 26.4 by hand while
   `xcframework-release.yml` already runs 27.0 — whoever aligns them

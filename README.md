@@ -4,7 +4,7 @@
 
 *Previously known as `GigaBitcoin/secp256k1.swift` (module renamed to `P256K`).*
 
-Swift cryptography library for Bitcoin and Nostr. ECDSA, Schnorr Signatures, Elliptic Curve Diffie-Hellman (ECDH), and zero-knowledge proofs on **secp256k1**, Bitcoin's elliptic curve. The `P256K` module wraps [libsecp256k1](https://github.com/bitcoin-core/secp256k1) from Bitcoin Core.
+Swift cryptography library for Bitcoin and Nostr. ECDSA, Schnorr Signatures, Elliptic Curve Diffie-Hellman (ECDH), and MuSig2 multisignatures on **secp256k1**, Bitcoin's elliptic curve. The `P256K` module wraps [libsecp256k1](https://github.com/bitcoin-core/secp256k1) from Bitcoin Core.
 
 🌐 [Project page](https://21.dev/packages/p256k/) · 📚 [Documentation](https://docs.21.dev/documentation/p256k/)
 
@@ -47,11 +47,11 @@ Then include `P256K` as a target dependency:
 ]),
 ```
 
-Using CocoaPods, evaluating in a playground first, or want the full Xcode + plugin-trust walkthrough? See [Getting Started](https://docs.21.dev/documentation/p256k/gettingstarted#Alternative-installation-methods).
+Using CocoaPods or evaluating in a playground first? See [Getting Started](https://docs.21.dev/documentation/p256k/gettingstarted#Alternative-installation-methods).
 
 ## Package Traits
 
-This package uses [SE-0450 Package Traits](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md) (Swift 6.1+) for module selection. The defaults — `ecdh`, `musig`, `recovery`, `schnorrsig` — cover most use cases. To opt into other modules (ZKP bundle, `uint256`, etc.), see [Choosing modules with package traits](https://docs.21.dev/documentation/p256k/gettingstarted#Choosing-modules-with-package-traits) in Getting Started.
+This package uses [SE-0450 Package Traits](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0450-swiftpm-package-traits.md) (Swift 6.1+) for module selection. The defaults — `ecdh`, `musig`, `recovery`, `schnorrsig` — cover most use cases. To opt into other modules (`ellswift`, `uint256`), see [Choosing modules with package traits](https://docs.21.dev/documentation/p256k/gettingstarted#Choosing-modules-with-package-traits) in Getting Started.
 
 ## Swift Versions
 

@@ -1,16 +1,9 @@
 <!--
 Sync Impact Report (latest):
-- Version: 1.0.0 → 1.1.0 (MINOR — planning artifacts consolidated under Development/; decision records added; Principle V names the artifact that actually exists)
-- Change Type: Amendment (Principle V + document relocation)
-- Scope: This constitution moved from .specify/memory/constitution.md to Development/constitution.md, alongside Development/Roadmap/ (phase plan and phase files), Development/Specs/ (feature plans), and Development/ADRs/ (architecture decision records). Principle V previously required a `spec.md` per feature; the multi-file spec-kit format it named is replaced by a single `plan.md` per feature under `Development/Specs/`, with optional companion files (such as `tasks.md` and `research.md`) riding alongside. Three practices are added: correct a plan in place when review changes its design; graduate a decision that outlives its feature to a decision record; never append a status or review log to a plan.
-- Tooling: Development/Tools (a separate Swift package with its own unit tests, depending only on swift-yaml and swift-argument-parser, neither of which is a runtime dependency of any shipped product) validates plan and decision-record frontmatter against a declared schema that refuses unknown fields, checks the references between records (unique numbers, resolving and terminating supersede chains), and generates both index tables, so a feature's status exists in exactly one place. Checked by .github/workflows/development-docs.yml, with Vale rules under .vale/styles/Plans/ rejecting append-only log sections and running test-count totals.
-
-Initial creation (N/A → 1.0.0):
-- Structure: Two-tier (7 core principles + implementation practices in nested format)
-- Core Principles: I. Scope & Bitcoin Standards Alignment · II. Cryptographic Correctness · III. Key & Secret Handling · IV. API Design & Safety · V. Spec-First & Test-Driven Development · VI. Cross-Platform CI & Quality Gates · VII. Open Source Excellence
-- Enforcement: Three-tier model (MUST/SHOULD/MAY) with explicit MUST NOT
-- Governance: BDFL model with security-relevant change protocols
-- Compliance: Continuous CI + event-driven strategic review
+- Version: 1.1.0 → 1.1.1 (PATCH — non-semantic sync to shipped reality; no principle added, removed, or redefined)
+- Change Type: Clarification (dead references to removed products)
+- Scope: The `ZKP` and `libsecp256k1_zkp` products were removed and the shared sources folded into `P256K` per spec 003 / ADR 0008 — that decision happened there; this amendment only records it. Dead references dropped from: the Preamble scope line, the Principle I practice treating `ZKP` as the experimental extension tier, the Projects-folder workflow line assigning that role to `ZKP`, and the Technology Stack product table. No enforcement tier changed.
+- Tooling: No template propagation required — `Development/Specs/_template/` carries no references to the removed products.
 -->
 
 # Constitution for swift-secp256k1
@@ -19,7 +12,7 @@ Initial creation (N/A → 1.0.0):
 
 This constitution governs the **swift-secp256k1** package, a Swift wrapper around libsecp256k1 providing elliptic curve cryptography for Bitcoin.
 
-**Scope**: This repository only. Covers both `P256K` (primary) and `ZKP` (experimental extension) product lines, plus their underlying C bindings (`libsecp256k1`, `libsecp256k1_zkp`).
+**Scope**: This repository only. Covers the `P256K` product line and its underlying C bindings (`libsecp256k1`).
 
 **Philosophy**: Principles are technology-agnostic where possible. This is a zero-dependency cryptographic library—security, correctness, and simplicity take precedence over features.
 
@@ -40,7 +33,6 @@ This constitution governs the **swift-secp256k1** package, a Swift wrapper aroun
 - **MUST** maintain zero runtime dependencies beyond libsecp256k1 bindings
 - **MUST NOT** add dependencies without constitutional review and explicit justification
 - **MUST NOT** implement novel, unreviewed cryptographic constructions beyond core secp256k1 scope
-- **SHOULD** treat `ZKP` product as an experimental extension tier (adaptor signatures, range proofs, etc.)
 - **MAY** expose raw bindings for advanced users requiring full control
 
 **Compliance**: PRs adding new primitives or dependencies MUST include justification and constitutional review. CI blocks unapproved additions.
@@ -218,7 +210,7 @@ This constitution governs the **swift-secp256k1** package, a Swift wrapper aroun
 
 **Workflow**:
 - New APIs may be prototyped and tested in `Projects/` before integration
-- `ZKP` serves as the experimental tier; stable APIs promote to `P256K`
+- `P256K` is the sole Swift API surface — the `ZKP` experimental tier was removed (ADR 0008)
 - Detailed workflow documented in CONTRIBUTING.md
 
 ---
@@ -250,9 +242,7 @@ This constitution governs the **swift-secp256k1** package, a Swift wrapper aroun
 | Product | Type | Description |
 |---------|------|-------------|
 | `P256K` | Swift wrapper | Primary high-level API (stable focus) |
-| `ZKP` | Swift wrapper | Experimental extension (zkp primitives) |
 | `libsecp256k1` | C bindings | Raw bindings to libsecp256k1 |
-| `libsecp256k1_zkp` | C bindings | Raw bindings to libsecp256k1-zkp |
 
 ### Dependencies
 
@@ -329,13 +319,14 @@ Changes affecting cryptographic behavior require additional scrutiny:
 
 ## Version History
 
-**Version**: 1.1.0
+**Version**: 1.1.1
 **Ratified**: 2025-12-02
-**Last Amended**: 2026-10-04
+**Last Amended**: 2026-10-18
 
 **Changelog**:
 - **1.0.0** (2025-12-02): Initial constitution with 7 core principles, three-tier enforcement, BDFL governance, security-relevant change protocols.
 - **1.1.0** (2026-10-04): Planning artifacts consolidated under `Development/` (roadmap, feature plans, decision records); Principle V names `plan.md` as the per-feature artifact and adds corrected-in-place and decision-record-graduation practices; document relocated from `.specify/memory/`.
+- **1.1.1** (2026-10-18): Dead references to the removed `ZKP`/`libsecp256k1_zkp` products dropped from the Preamble scope, Principle I practices, Projects-folder workflow, and Technology Stack product table; no principle changed (spec 003 / ADR 0008).
 
 ---
 
