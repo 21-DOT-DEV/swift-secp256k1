@@ -1,7 +1,7 @@
 # swift-secp256k1 Product Roadmap
 
-**Version**: v2.1.0  
-**Last Updated**: 2026-10-04  
+**Version**: v2.2.0  
+**Last Updated**: 2026-10-18  
 **Constitution**: [constitution.md](../constitution.md)
 
 ---
@@ -31,7 +31,7 @@ Build the most reliable, secure, and developer-friendly Swift secp256k1 library 
 | Item | Description | Status |
 |------|-------------|--------|
 | **Module-rename migration & version adoption** | Most downstream consumers are stranded on the legacy `secp256k1` product name and old pins (e.g., 0.12.2, 0.18.0, 0.19.0). Primitives added only to `P256K` cannot reach them. Provide a migration path / compatibility story so new APIs are actually adoptable — the single highest adoption lever. | 🔜 Planned |
-| **swift-crypto Update** | Vendored swift-crypto updated via subtree plugin (3.11.1 → 4.2.0; now at 4.5.0). Availability attribute changes in `Sources/Shared/` resolved case-by-case (e.g., `UInt256.swift` retains attributes due to `StaticBigInt`). | ✅ Complete |
+| **swift-crypto Update** | Vendored swift-crypto updated via subtree plugin (3.11.1 → 4.2.0; now at 4.5.0). Availability attribute changes in `Sources/Shared/` (now `Sources/P256K/`) resolved case-by-case (e.g., `UInt256.swift` retains attributes due to `StaticBigInt`). | ✅ Complete |
 | **UInt256 SecurityTests** | Add security test vectors for `UInt256`/`SIMDWordsInteger` to `Projects/Sources/SecurityTests/`: overflow detection, boundary correctness, power-of-two multiply paths, Codable parsing hardening. _(The `SecurityTests` target exists with DER/InvalidCurve/PointValidation/ScalarValidation/SignatureMalleability/ZeroSignature/Nonce coverage; UInt256 vectors are still absent.)_ | 🔜 Planned |
 | **Vendir migration** | Adopt vendir-driven vendoring (the pattern proven in swift-openssl), retiring `subtree.yaml`, the subtree CLI/plugin workflows, and most Dependabot configuration. Scheduled in Q1 of the 2026 funding window (shared 2026 roadmap). | ✅ Complete |
 
@@ -81,21 +81,23 @@ Phases are **theme-based capability slices**, ordered by **downstream-consumer r
 
 _Funding note (2026-08-01):_ Phases 3, 8, and 9 sit outside the current 2026 funding window; Phase 9.5 (Q5) and Phase 10's Silent Payments (Q1) are scheduled inside it, per the shared 2026 outreach roadmap.
 
+_ZKP-tier residency (2026-10-18):_ the `ZKP`/`libsecp256k1_zkp` products and their vendored C fork left this repo (spec 003 / ADR 0008). Work that needs the fork's modules re-homes to a future dedicated `swift-secp256k1-zkp` package — Phase 6's adaptor-signature feature (`ecdsa_adaptor`), Phase 11's Schnorr half-aggregation (`schnorrsig_halfagg`), and the un-phased s2c/rangeproof modules; the design sketch lives in [backlog.md](backlog.md). Phases 8 (BDHKE/DLEQ) and 10 (Silent Payments, ellswift) call only the vanilla C library and stay — upstream libsecp256k1 v0.8.0 even added a native `silentpayments` module this package's v0.7.1 pin predates.
+
 ### Phase Summaries
 
-- **Phase 0 — Tooling Foundation** ✅ — SPM pre-build plugin sharing code between P256K and ZKP targets from one source.
+- **Phase 0 — Tooling Foundation** ✅ — single-source layout for the shared code; the build-plugin mechanism that delivered it was retired with the `ZKP` products (spec 003 / ADR 0008), and `Sources/P256K/` is now self-contained.
 - **Phase 1 — Testing Foundation** ✅ — Test architecture under `Projects/`: BIP-340 Schnorr, Wycheproof ECDSA/ECDH, MuSig2, CVE, and security vectors.
 - **Phase 2 — CI & Quality Gates** — Coveralls coverage (tiered), CodeQL, fuzzing, exit tests. *(Platform/benchmark CI exists; these deliverables not started.)*
 - **Phase 3 — Documentation & DX** 🚧 — DocC live at docs.21.dev (10 articles shipped); remaining: Key-Formats deep-dive, Schnorr/x-only article, interactive tutorials, UInt256 audit.
 - **Phase 4 — Encodings** — Bech32/Bech32m, NIP-19 + TLV, BOLT11/BOLT12, Base58Check/WIF. The highest-reach unbuilt work; every Nostr/Bitcoin/Lightning consumer hand-rolls it.
 - **Phase 5 — SHA-2 Hash & MAC Tower** — SHA-512, double-SHA256, HMAC-SHA256 (expose C), HMAC-SHA512 (mirror), HKDF, HMAC-DRBG. Cheap (cores in C); unblocks HD-wallet.
-- **Phase 6 — Adaptor & Threshold Signatures** — wrap the vendored `ecdsa_adaptor` C (Lightning PTLCs, ARK, Cube); FROST groundwork. The strategic L2 lever.
+- **Phase 6 — Adaptor & Threshold Signatures** — adaptor signatures wrap the `secp256k1-zkp` fork's `ecdsa_adaptor` module and re-home to the future `swift-secp256k1-zkp` package (see residency note above); the phase's MuSig2 L2 hardening and FROST groundwork stay here. The strategic L2 lever.
 - **Phase 7 — HD-Wallet & Key Derivation** — BIP-32 CKD + xpub/xprv serialization, BIP-39 (PBKDF2-SHA512 + wordlist), HASH160/RIPEMD-160 (low). Depends on Phase 5.
 - **Phase 8 — Blind Signatures & DLEQ** — Cashu BDHKE (hash-to-curve, DST `Secp256k1_HashToCurve_Cashu_`) + NUT-12 DLEQ. Re-verify constants before implementing.
 - **Phase 9 — Applications / L2 Showcase** — MuSig2 SwiftUI app re-aimed at L2 (ARK/Cube covenant signing, Lightning PTLC) + NIP-19 / BIP-137 samples.
 - **Phase 9.5 — Command-Line Tool** — key generation, signing, verification, and address/npub encoding in the terminal; Homebrew distribution. Promoted from the backlog for the 2026 funding window.
-- **Phase 10 — secp256k1-Native Protocols** — Silent Payments (BIP-352), ellswift / BIP-324 v2 transport.
-- **Phase 11 — Forward-looking Signatures** — FROST threshold (draft), Schnorr half-aggregation.
+- **Phase 10 — secp256k1-Native Protocols** — Silent Payments (BIP-352; upstream shipped a `silentpayments` module in libsecp256k1 v0.8.0 — this package's pin is v0.7.1), ellswift / BIP-324 v2 transport (vendored via the `ellswift` trait, unwrapped in Swift).
+- **Phase 11 — Forward-looking Signatures** — Schnorr half-aggregation needs the zkp fork's `schnorrsig_halfagg` module and re-homes to the future package; FROST threshold signing (draft BIP) stays tracked here with its C home undecided.
 - **Backlog** — Data structures (Bloom/Golomb/Merkle), niche primitives, Windows support.
 
 ---
@@ -112,7 +114,7 @@ Priorities are informed by how downstream apps and libraries actually use the pa
 - **The EC-signature layer is already complete** (Schnorr, ECDSA + recovery, MuSig2, ECDH, x-only, tweaks) — it already covers BOLT11/12 signing, Lightning Sphinx ECDH, ARK/Cube MuSig2, NIP-01, and Cashu BDHKE point ops. The remaining work is **utility primitives** (encodings, hashing, MAC/KDF) — i.e., Phases 4–8.
 - **Module-era skew is the top adoption lever** — most consumers are stranded on the legacy `secp256k1` product name + old pins; primitives added only to `P256K` don't reach them.
 - **Most-used surfaces already ship but were roadmap-invisible** — key-format serialization (universal) and ECDH (Nostr/Cashu; Lightning Sphinx). Harden + document, don't rebuild.
-- **Adaptor signatures are vendored-C-only** — the `ZKP` tier is `Placeholder.swift`; Phase 6 wraps the existing C.
+- **Adaptor signatures are upstream-fork-only** — `ecdsa_adaptor` lives in `secp256k1-zkp`, which left this repo with the `ZKP` products; that work resumes in the future dedicated package (Phase 6).
 
 ---
 
@@ -137,7 +139,7 @@ Priorities are informed by how downstream apps and libraries actually use the pa
 - **Foundation (Phase 0 → 1)** ✅ unblocks all new cryptographic code.
 - **Phase 5 (SHA-2 Tower)** enables **Phase 7 (HD-Wallet)** (HMAC-SHA512/PBKDF2) and feeds **Phase 8 (DLEQ uses SHA-256)**.
 - **Phase 4 (Encodings)** feeds **Phase 7** (Base58Check for xpub/xprv) and **Phase 9** (address/invoice display).
-- **Phase 6 (Adaptor sigs)** enables **Phase 9** (PTLC demo) and the L2 strategy.
+- **Phase 6 (adaptor sigs)** enables **Phase 9**'s PTLC demo and the L2 strategy — transitively gated on the future `swift-secp256k1-zkp` package (residency note above).
 - **Phase 9.5 (CLI)** depends on **Phase 4** (address/npub encodings); MuSig2 ceremony mode rides shipped MuSig2.
 - **Phase 2 (CI)** + **Phase 3 (Docs)** are continuous enabler tracks that overlap everything.
 - **Zone-D primitives** (ChaCha20, scrypt, AES, SHA-3) are **not** roadmap items — they come from swift-openssl (see Package Separation).
@@ -175,3 +177,4 @@ Priorities are informed by how downstream apps and libraries actually use the pa
 | **v2.0.0** | **2026-06-05** | **Restructured** | Re-architected into **12 demand-ordered, theme-based phases on Now/Next/Later horizons** (RICE/WSJF by downstream reach); added the centralized **Package Separation (swift-secp256k1 ↔ swift-openssl)** section (Zone A–D + priority/fallback rule); promoted ZKP-tier / BDHKE / Silent-Payments / ellswift / BIP-32-serialization from backlog to first-class phases; **folded the standalone `downstream-demand.md` + `foundational-toolkit-research.md` into this fileset (distilled) and removed them**; resolved ChaCha20 → sourced from swift-openssl (NIP-44 = composition) |
 | **v2.1.0** | **2026-08-01** | **MINOR** | 2026 funding-round alignment (shared 2026 outreach roadmap): promoted the CLI from backlog to **Phase 9.5** (scheduled Q5); added the **vendir migration** high-priority item (Q1); funding-window annotations — Phases 3/8/9 outside, Phase 10 Silent Payments pulled in (Q1) |
 | v2.1.1 | 2026-10-04 | PATCH | Corrected the stale "swift-crypto 4.2.0 Update" status (the work shipped; the vendored tag is now 4.5.0). Relocated the roadmap fileset to `Development/Roadmap/` as part of the planning-artifacts consolidation; no content changes beyond the status fix. |
+| **v2.2.0** | **2026-10-18** | **MINOR** | ZKP-product removal sweep (spec 003 / ADR 0008): re-homed the zkp-C-dependent features — Phase 6 adaptor signatures, Phase 11 Schnorr half-aggregation, and the s2c/rangeproof backlog modules — to a future dedicated `swift-secp256k1-zkp` package (canonical sketch in `backlog.md`); confirmed Phases 8/10 need only the vanilla C library and stay (noted upstream's new v0.8.0 `silentpayments` module); corrected the stale Phase-0 plugin, `Placeholder.swift`, and `Sources/Shared/` claims |

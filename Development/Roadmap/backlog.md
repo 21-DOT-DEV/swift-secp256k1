@@ -7,14 +7,22 @@
 
 ---
 
-## ZKP-tier modules not yet phased
+## Future package: `swift-secp256k1-zkp`
 
-`libsecp256k1_zkp` C was vendored through `0.23.2` (removed in spec 003); these are lower-priority than the phased adaptor sigs (Phase 6) and BDHKE/DLEQ (Phase 8):
+### Extract the zkp product line into a dedicated package
+
+**Status**: Deferred — to be specced when zkp demand funds it (spec 003 / ADR 0008)  
+**Priority**: Low — gated on demand, not machinery  
+**Notes**: A new repository, not a restore of the removed targets. Its `vendir.yml` pulls two `git:` sources: this repo's `Sources/P256K/**` — the shared Swift surface stays canonical here, and the pull carries the vendored `swift-crypto/` subtree and `P256K.docc` with it, keeping both version-coupled to the surface they serve (a separate `apple/swift-crypto` source is the variant for independent bumps, but then the P256K pull needs `excludePaths` on `Sources/P256K/swift-crypto/**` or the tree double-vendors — duplicate `Digest`/`SecureBytes` definitions) — and BlockstreamResearch's `secp256k1-zkp` (resume point: this repo's last pin `08d1cd0c`, which predates the fork's `frost` module). Two target names do the work: the C target is named `libsecp256k1` so the pulled `import libsecp256k1` lines resolve verbatim — the post-removal import sweep left zero zkp-conditional imports — and SwiftPM's graph-wide target-name uniqueness then makes the two packages mutually exclusive at resolution, which is exactly the drop-in-replacement property (a consumer needing both could try `moduleAliases`, untested through the vendored imports); the Swift target is named `P256K`, making migration manifest-only — `import P256K` and the `P256K.*` API are unchanged. The future manifest re-declares the zkp module traits against the fork's `ENABLE_MODULE_*` defines; sync rides the existing `vendir-check` gate shape and the ADR-0007 centralized updater — no bespoke machinery on either side. The `rust-secp256k1-zkp` precedent nuances the model: it re-exports vanilla `rust-secp256k1` and its `-zkp-sys` crate prefix-renames every vendored symbol so both coexist — our vendir no-patch rule can't carry symbol renaming, so module-name exclusivity is the honest equivalent. Candidate scope — everything that needed the fork's C: Phase 6's adaptor-signature feature (`ecdsa_adaptor`; the fork's `musig` module also adds a zkp-only `adaptor` arg to `secp256k1_musig_nonce_process` — Schnorr adaptor signatures), Phase 11's Schnorr half-aggregation (`schnorrsig_halfagg`), FROST, and the un-phased modules below — vendored here through `0.23.2`, never wrapped:
 
 | C module | Capability | Cohort | Priority |
 |----------|-----------|--------|----------|
 | `secp256k1_ecdsa_s2c` | Sign-to-contract / anti-exfil | Bitcoin | Low |
 | `secp256k1_rangeproof` / `secp256k1_surjectionproof` | Confidential assets | Liquid-style | Low |
+
+The fork's remaining experimental modules (`generator`, `bppp`, `whitelist`) were vendored but never wrapped and carry no demand signal.
+
+**Acceptance**: A `Development/Specs/` entry scopes the package in its own repo; `vendir sync` reproduces both sources; the result builds with zero plugins.
 
 ---
 
@@ -50,9 +58,9 @@ General-purpose structures supporting specific BIPs (in-repo vs recommend-extern
 
 ### Windows Build Support
 
-**Status**: Deferred — placeholder `#if os(Windows)` in `Plugin.swift`  
+**Status**: Deferred — no plugin-era blocker remains  
 **Priority**: Low (Windows is not a primary Swift platform)  
-**Notes**: `SharedSourcesPlugin` uses POSIX `find + cp`; Windows needs `robocopy /E` or `xcopy /E /I` + a Windows CI runner.  
+**Notes**: The `SharedSourcesPlugin`'s POSIX `find + cp` blocker retired with the plugin (spec 003); what is left is a Windows CI runner plus whatever portability fixes `Sources/P256K` and the vendored C tree still need — none of it re-verified since the removal.  
 **Acceptance**: `swift build` succeeds on Windows without symlink errors; Windows CI job passes.
 
 ---
@@ -96,6 +104,13 @@ General-purpose structures supporting specific BIPs (in-repo vs recommend-extern
 **Priority**: Low — documentation nicety; fenced ` ```swift` blocks in catalog articles already carry examples  
 **Notes**: SE-0356 snippet targets auto-link every library product in the package, so the two-C-product collision that motivated ADR 0003 can no longer occur — `P256K` already depends on `libsecp256k1`. Unvalidated: the DocC `@Snippet` pipeline is untested on the pinned toolchain, and snippets build only under `swift build --build-snippets`, so adoption needs a CI leg or they rot unbuilt. Per-snippet dependency scoping is still unshipped upstream — snippets can import only host-package modules (`P256K`, `libsecp256k1`), which suffices.  
 **Acceptance**: A spec (`Development/Specs/NNN-*`) decides the shape; a `Snippets/` file compiles under `swift build --build-snippets`, a `@Snippet` directive renders in the P256K DocC archive, and CI gains a snippet-build leg.
+
+### DocC symbol extraction fails under Xcode 27.0
+
+**Status**: Known limitation — pre-existing, cause unconfirmed; unrelated to spec 003  
+**Priority**: Low — workaround in place  
+**Notes**: DocC archive builds fail at symbol extraction under Xcode 27.0, so the DocC-producing jobs — `apple-builds.yml`'s DocC Validation and `docc-release.yml` — pin Xcode 26.4 by hand (`development-docs.yml` pins the same toolchain, though its plans-checker and Vale work never produces a DocC archive) while `xcframework-release.yml` and Bitrise already run 27.0 — whoever aligns the pins trips this. The 26.4 pins are the documented workaround until the failure is diagnosed.  
+**Acceptance**: DocC archives build clean under Xcode 27.0 and the hand-pins drop.
 
 ---
 

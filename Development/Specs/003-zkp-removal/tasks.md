@@ -196,7 +196,7 @@ deleted script or a `ZKP` target.
   plugin note becomes the same anchored no-plugins line (heading →
   "Resolve and build"), and a new troubleshooting entry names the
   unknown-trait resolution failure · `Sources/*/*.docc`
-- [ ] T009 Roadmap + changelog — `Development/Roadmap/`: a README note
+- [x] T009 Roadmap + changelog — `Development/Roadmap/`: a README note
   re-homing the zkp-tier phases (6 adaptor sigs, 8 BDHKE/DLEQ, 10/11 as
   applicable) to the future dedicated package — sweep the phase files for
   stale target names while there (the `phase-1` `libsecp256k1zkpTests`
@@ -206,20 +206,23 @@ deleted script or a `ZKP` target.
   `Placeholder.swift`" describes a deleted product (~line 115);
   `backlog.md` gains the
   `swift-secp256k1-zkp` extraction item (design sketch: new repo,
-  `vendir.yml` `git:` sources pull this repo's `Sources/P256K/**` +
-  `secp256k1-zkp` + `swift-crypto` — canonical shared surface stays here;
+  `vendir.yml` `git:` sources pull this repo's `Sources/P256K/**` — the
+  committed `swift-crypto/` subtree rides inside it — plus
+  `secp256k1-zkp`; a `libsecp256k1`-named C target keeps the pulled
+  imports verbatim and makes the packages mutually exclusive;
+  canonical shared surface stays here;
   rides the existing `vendir-check` shape and ADR-0007 updater), the
   Windows item's plugin note is rewritten (the POSIX blocker is gone),
   the `ZKP-tier modules` section is re-homed to the dedicated package
   (its `is vendored` intro was stopgap-corrected at T006), and a new
   item records `DocC symbol extraction fails under
   Xcode 27.0 — cause unconfirmed; pre-existing, unrelated to spec 003`
-  (the three DocC jobs pin Xcode 26.4 by hand while
+  (the DocC-producing jobs pin Xcode 26.4 by hand while
   `xcframework-release.yml` already runs 27.0 — whoever aligns them
   trips this);
   `CHANGELOG.md` `[Unreleased]` breaking entry; `.github/AGENTS.md`
   conventions if the workflow list mentions the dropped pieces ·
-  `Development/Roadmap/{README,backlog,phase-1-testing-foundation}.md`,
+  `Development/Roadmap/{README,backlog,phase-*}.md`,
   `CHANGELOG.md`, `.github/AGENTS.md`
 - [ ] T010 _Folded into the spec commit — ADR 0008 (revised in place as
   "ZKP products removed; shared sources fold into P256K") and the 0001

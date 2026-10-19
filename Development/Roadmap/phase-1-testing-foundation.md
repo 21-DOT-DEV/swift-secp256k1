@@ -3,8 +3,8 @@
 **Goal**: Establish robust, exhaustive testing infrastructure for cryptographic correctness  
 **Horizon**: ✅ Foundation  
 **Status**: ✅ Complete  
-**Last Updated**: 2025-12-26  
-**Depends On**: Phase 0 (SPM Plugin)  
+**Last Updated**: 2026-10-18  
+**Depends On**: Phase 0 (shared-source tooling — the SPM plugin it delivered was retired with the `ZKP` products, spec 003 / ADR 0008)  
 **Blocks**: Phase 2 (CI); all primitive phases (4–11)
 
 ---
@@ -53,7 +53,7 @@ Implement BIP-340 official test vectors under `Projects/` to validate Schnorr si
 ### Wycheproof Test Vectors
 
 **Purpose & User Value**:  
-Implement Google Wycheproof test vectors from vendored `Vendor/secp256k1/src/wycheproof/` to validate ECDSA and ECDH implementations against known edge cases and attack vectors.
+Implement Google Wycheproof test vectors from vendored `Projects/Resources/WycheproofTests/secp256k1/` to validate ECDSA and ECDH implementations against known edge cases and attack vectors.
 
 **Success Metrics**:
 - 100% of applicable Wycheproof vectors pass
@@ -65,7 +65,7 @@ Implement Google Wycheproof test vectors from vendored `Vendor/secp256k1/src/wyc
 - Test architecture (above)
 
 **Notes**:
-- Vectors already vendored at `Vendor/secp256k1/src/wycheproof/`
+- Vectors vendored at `Projects/Resources/WycheproofTests/secp256k1/`
 - Parse JSON directly; use existing `.h` files as reference
 
 ---
@@ -91,14 +91,14 @@ Research and implement tests for known secp256k1-related CVEs to ensure the libr
 
 ---
 
-### Native secp256k1 and secp256k1-zkp Tests
+### Native secp256k1 and secp256k1-zkp Tests (zkp suite retired — see Notes)
 
 **Purpose & User Value**:  
-Run the native C test suites from libsecp256k1 (under `Projects/`) and libsecp256k1-zkp (via `Package.swift`) to ensure the vendored libraries function correctly on all platforms.
+Run the native C test suites from libsecp256k1 (under `Projects/`) and libsecp256k1-zkp (via `Package.swift` — retired with the `ZKP` products) to ensure the vendored libraries function correctly on all platforms.
 
 **Success Metrics**:
 - Native secp256k1 tests pass on all platforms
-- Native secp256k1-zkp tests pass on all platforms
+- Native secp256k1-zkp tests pass on all platforms (suite retired — re-homed; see Notes)
 - Tests integrated into CI pipeline
 - Clear mapping between native test failures and Swift wrapper issues
 
@@ -106,7 +106,7 @@ Run the native C test suites from libsecp256k1 (under `Projects/`) and libsecp25
 - Test architecture (above)
 
 **Notes**:
-- secp256k1 tests: `Vendor/secp256k1/src/tests.c`
+- secp256k1 tests: `Projects/Sources/libsecp256k1Tests/src/tests.c`
 - Consider running `tests_exhaustive.c` on schedule (slow but thorough)
 - zkp-module tests re-home to the future `swift-secp256k1-zkp` package
   (the `libsecp256k1zkpTests` target retargeted to the vanilla stack as
@@ -122,7 +122,7 @@ Test Architecture ──► BIP-340 Vectors ──► Wycheproof Vectors
        └──► CVE Research ──► CVE Tests ◄─────────┘
        │
        └──► Native secp256k1 Tests
-       └──► Native secp256k1-zkp Tests
+       └──► Native secp256k1-zkp Tests (re-homed)
 ```
 
 1. **Test Architecture** — first (unblocks all others)

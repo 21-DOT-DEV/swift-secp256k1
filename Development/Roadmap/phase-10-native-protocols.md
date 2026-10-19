@@ -6,7 +6,7 @@
 **Funding**: Silent Payments pulled into the 2026 funding window (Q1 of the shared 2026 roadmap); ellswift / BIP-324 transport remains ⚪ Later  
 **Reach**: ★★★☆☆ — Bitcoin advanced  
 **Depends On**: Phase 4 (encodings), EC ops (shipped)  
-**Last Updated**: 2026-06-05
+**Last Updated**: 2026-10-18
 
 ---
 
@@ -15,13 +15,13 @@
 ### Silent Payments (BIP-352)
 
 **Purpose & User Value**: Reusable payment addresses without on-chain address reuse — a hot Bitcoin topic. Pure secp256k1 (ECDH + tweaks).
-**Status**: A `SilentPayments.md` DocC article exists but **no implementation**. Decision: implement, or relabel the article as aspirational.
+**Status**: A `SilentPayments.md` DocC article exists but **no implementation**. Upstream resolved the hard part: libsecp256k1 v0.8.0 (2026-08) added a `silentpayments` BIP-352 module — this package's vendir pin is v0.7.1, so the phase becomes a pin bump plus a trait-gated wrapper rather than fresh authoring. The "implement vs. relabel the article" decision is unchanged until then.
 **Success Metrics**: BIP-352 test vectors pass; sender/receiver flows.
 
 ### ellswift / BIP-324 v2 Transport
 
 **Purpose & User Value**: ElligatorSwift point encoding for the v2 encrypted P2P transport.
-**Status**: The C `ellswift` module is **vendored but unwrapped** in Swift.
+**Status**: The C `ellswift` module is vendored (the `ellswift` trait compiles it into `libsecp256k1`) but has **no `P256K` Swift overlay**.
 **Success Metrics**: Swift wrapper over `secp256k1_ellswift_*`; BIP-324 vectors.
 
 ---
