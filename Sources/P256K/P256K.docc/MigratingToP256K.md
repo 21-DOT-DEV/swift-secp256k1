@@ -65,15 +65,17 @@ The pin uses `exact:` because the package is pre-1.0: under [SemVer §4][semver-
 
 GitHub redirects the old `GigaBitcoin` URL, so a stale URL may still resolve — but pin the canonical `21-DOT-DEV` URL so your manifest names the repository that actually receives updates. If you are coming from a fork (jb55, Damus, or another), replace the fork URL entirely: the fork is frozen, and this step rejoins the maintained line.
 
-Most migrations need no package traits — the default set (`ecdh`, `musig`, `recovery`, `schnorrsig`) covers the core ``P256K`` module. The optional modules are off by default under [SE-0450 package traits][se-0450]: if your old code used the ZKP modules (`zkp` / `zkp_bindings`), ElligatorSwift (`ellswift`), or `UInt256` (`uint256`), enable the matching trait in the dependency.
+Most migrations need no package traits — the default set (`ecdh`, `musig`, `recovery`, `schnorrsig`) covers the core ``P256K`` module. The optional modules are off by default under [SE-0450 package traits][se-0450]: if your old code used ElligatorSwift (`ellswift`) or `UInt256` (`uint256`), enable the matching trait in the dependency.
 
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
     exact: "0.23.2",
-    traits: ["zkp"]   // ZKP bundle; add "ellswift" or "uint256" as needed
+    traits: ["ellswift", "uint256"]   // optional modules; most migrations need neither
 ),
 ```
+
+> Warning: The `ZKP` and `libsecp256k1_zkp` products — and the `zkp` bundle trait that enabled them — were removed after the 0.23.x series. If your old code imported `zkp`, `zkp_bindings`, `ZKP`, or `libsecp256k1_zkp`, those modules are gone from current releases: pin `exact: "0.23.2"` (the last 0.23.x release) and declare `traits: ["zkp"]` — the trait still exists there and compiles those modules under `swift build` — until a dedicated zkp package ships.
 
 Xcode compiles every optional module regardless of traits, so a missing trait bites only `swift build` (see Troubleshooting). The full trait list is in <doc:GettingStarted>.
 
@@ -97,20 +99,20 @@ Four module names were renamed in 0.20.0; apply whichever your project imports:
 |---|---|
 | `secp256k1` | `P256K` |
 | `secp256k1_bindings` | `libsecp256k1` |
-| `zkp` | `ZKP` (requires the `zkp` trait) |
-| `zkp_bindings` | `libsecp256k1_zkp` (requires the `zkp` trait) |
+| `zkp` | `ZKP` (removed after the 0.23.x series) |
+| `zkp_bindings` | `libsecp256k1_zkp` (removed after the 0.23.x series) |
 
-The `ZKP` and `libsecp256k1_zkp` modules also sit behind the `zkp` package trait — if you used them, enable that trait as shown in Step 1.
+The `ZKP` and `libsecp256k1_zkp` products are gone from current releases — if you used them, see the removal note in Step 1.
 
 Make the change as two scoped replacements — `import secp256k1` → `import P256K`, then `secp256k1.` (including the trailing dot) → `P256K.` — using your editor's project-wide find with whole-word matching, and review the resulting diff. The compiler will flag anything the search misses.
 
 > Warning: Do not blanket-replace the bare token `secp256k1`. The error type is still named ``secp256k1Error`` after the rename, and the curve name legitimately appears in comments, string literals, and BIP references. Replacing every `secp256k1` would rename ``secp256k1Error`` to a type that does not exist. Scope the replacement to `import secp256k1` and the `secp256k1.` prefix only.
 
-### Step 3 — Resolve, trust the plugin, and build
+### Step 3 — Resolve and build
 
 Refresh the resolved dependency graph, then build. From the command line, `swift package resolve` (or `swift package update`) re-pins against the new URL; in Xcode, the package resolves on the next build. If SPM clings to the old repository, see Troubleshooting.
 
-> Note: New since the GigaBitcoin era, ``P256K`` compiles its C sources through a `SharedSourcesPlugin` build-tool plugin. If your previous setup predates it, the first Xcode build surfaces a one-time **Trust & Enable Plugin** prompt, and headless CI running `xcodebuild` needs `-skipPackagePluginValidation`. Building with `swift build` requires no trust step. See <doc:GettingStarted> for the full plugin-trust and CI details.
+> Note: Releases after the 0.23.x series ship no build plugins, so Xcode, headless CI, and Xcode Cloud build ``P256K`` without a trust prompt or `-skipPackagePluginValidation`. Through 0.23.x, the SharedSourcesPlugin still needs trust in Xcode and the flag for headless `xcodebuild`. After you upgrade past 0.23.x, you can remove the flag and any plugin-trust `ci_post_clone.sh` workaround.
 
 ### Verify the migration
 
@@ -126,7 +128,7 @@ let signature = privateKey.signature(for: message)   // non-throwing on Signing.
 print(privateKey.publicKey.isValidSignature(signature, for: message))  // true
 ```
 
-If it prints `true`, the dependency, the import, and the plugin are wired correctly. Build your remaining targets; the compiler flags any leftover `secp256k1.` references the find-replace missed. For the broader API — ``P256K/Schnorr`` for BIP-340, ``P256K/KeyAgreement`` for ECDH, ``P256K/MuSig`` for BIP-327 — the surface matches what you used before the rename.
+If it prints `true`, the dependency and the import are wired correctly. Build your remaining targets; the compiler flags any leftover `secp256k1.` references the find-replace missed. For the broader API — ``P256K/Schnorr`` for BIP-340, ``P256K/KeyAgreement`` for ECDH, ``P256K/MuSig`` for BIP-327 — the surface matches what you used before the rename.
 
 ### Coming from the raw libsecp256k1 C API
 
@@ -197,7 +199,9 @@ Boilertalk and status-im also ship via CocoaPods, so if that's how you consume t
 
 **Two packages both vend `secp256k1`.** If your graph pulls in both Boilertalk's `secp256k1` and a pre-rename GigaBitcoin `secp256k1`, the module names collide. Completing the move to `P256K` resolves the clash, because the maintained module no longer uses the `secp256k1` name.
 
-**Optional modules or types missing under `swift build`.** ZKP features, ElligatorSwift, and `UInt256` are gated behind non-default package traits. Enable the matching trait — `zkp`, `ellswift`, or `uint256` — in your dependency (Step 1). Because Xcode ignores trait conditions and compiles them anyway, this fails only on the command line: a build that works in Xcode but breaks under `swift build` is almost always a missing trait.
+**Optional modules or types missing under `swift build`.** ElligatorSwift and `UInt256` are gated behind non-default package traits. Enable the matching trait — `ellswift` or `uint256` — in your dependency (Step 1). Because Xcode ignores trait conditions and compiles them anyway, this fails only on the command line: a build that works in Xcode but breaks under `swift build` is almost always a missing trait.
+
+**Resolution fails on an unknown trait named `zkp`.** The `zkp` bundle trait was removed with the `ZKP` and `libsecp256k1_zkp` products after the 0.23.x series — delete it from `traits:` in your dependency. If you use the zkp-only modules, pin `exact: "0.23.2"` (the last 0.23.x release) and keep `traits: ["zkp"]` — the trait still exists there and compiles those modules under `swift build` — until a dedicated zkp package ships.
 
 **A transitive dependency still pins the old URL.** While you migrate, another dependency (say, a Lightning library) may still depend on the pre-rename `secp256k1` package. The resolver allows both — their package identities and Swift module names differ — but each bundles its own copy of libsecp256k1 exporting the *same* C symbols, which can surface at link time as `duplicate symbol '_secp256k1_ec_pubkey_create'` (and similar). Whether it triggers depends on your linkage and target layout. Resolve it by completing the migration on both sides: move the transitive dependency to `P256K`, or pin a version of it that already has. This is the one case where a one-target-at-a-time migration may not link cleanly.
 
