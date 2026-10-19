@@ -9,7 +9,7 @@
 
 ## ZKP-tier modules not yet phased
 
-`libsecp256k1_zkp` C is vendored; these are lower-priority than the phased adaptor sigs (Phase 6) and BDHKE/DLEQ (Phase 8):
+`libsecp256k1_zkp` C was vendored through `0.23.2` (removed in spec 003); these are lower-priority than the phased adaptor sigs (Phase 6) and BDHKE/DLEQ (Phase 8):
 
 | C module | Capability | Cohort | Priority |
 |----------|-----------|--------|----------|
@@ -85,6 +85,17 @@ General-purpose structures supporting specific BIPs (in-repo vs recommend-extern
 **Status**: Split out of the MuSig nonce fix into its own PR (2026-10-18) — drafted, then reverted to keep the security diff pure  
 **Priority**: Low  
 **Notes**: `Sources/P256K` doc comments link `bitcoin-core/secp256k1` headers on `blob/master`; the vendir pin is `v0.7.1` = commit `1a53f4961f337b4d166c25fce72ef0dc88806618` — verified 2026-10-18: the annotated tag dereferences to the `vendir.lock.yml` SHA (`git ls-remote … refs/tags/v0.7.1^{}`), so `blob/v0.7.1` URLs resolve to the vendored tree. The repoint sweeps ~35 URLs across `Sources/P256K` (incl. 2 `.docc` articles) and should land as a dedicated change; a pin bump should re-sweep the same URLs. Optional automation: extend `Scripts/vendir-check.sh` with a link-consistency probe against the locked ref. `SECURITY.md`'s upstream `SECURITY.md` link correctly stays on `master` (a living policy doc, not pinned code).
+
+---
+
+## Documentation
+
+### Re-evaluate the `Snippets/` directory (SE-0356)
+
+**Status**: Deferred — the duplicate `secp256k1_*`-symbol blocker retired with the `libsecp256k1_zkp` product (spec 003 / ADR 0008); ADR 0003 recorded the original call  
+**Priority**: Low — documentation nicety; fenced ` ```swift` blocks in catalog articles already carry examples  
+**Notes**: SE-0356 snippet targets auto-link every library product in the package, so the two-C-product collision that motivated ADR 0003 can no longer occur — `P256K` already depends on `libsecp256k1`. Unvalidated: the DocC `@Snippet` pipeline is untested on the pinned toolchain, and snippets build only under `swift build --build-snippets`, so adoption needs a CI leg or they rot unbuilt. Per-snippet dependency scoping is still unshipped upstream — snippets can import only host-package modules (`P256K`, `libsecp256k1`), which suffices.  
+**Acceptance**: A spec (`Development/Specs/NNN-*`) decides the shape; a `Snippets/` file compiles under `swift build --build-snippets`, a `@Snippet` directive renders in the P256K DocC archive, and CI gains a snippet-build leg.
 
 ---
 

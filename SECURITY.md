@@ -27,9 +27,10 @@ This package is pre-1.0 ([SemVer major version zero](https://semver.org/#spec-it
 
 ## Upstream Dependencies
 
-This package wraps [libsecp256k1](https://github.com/bitcoin-core/secp256k1) and [libsecp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp) via Swift's C interoperability.
+This package wraps [libsecp256k1](https://github.com/bitcoin-core/secp256k1) via Swift's C interoperability.
 
-Vulnerabilities in the underlying C libraries should be reported directly to their respective projects:
+Vulnerabilities in the underlying C library should be reported directly to its project:
 
 - **libsecp256k1**: See [bitcoin-core/secp256k1 SECURITY.md](https://github.com/bitcoin-core/secp256k1/blob/master/SECURITY.md)
-- **libsecp256k1-zkp**: See [BlockstreamResearch/secp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp)
+
+Releases `0.20.0` through `0.23.2` also embedded [libsecp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp); vulnerabilities in that library should be reported to the BlockstreamResearch project.
