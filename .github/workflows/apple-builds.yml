@@ -16,7 +16,6 @@ jobs:
         run: |
           xcrun xcodebuild \
             -skipMacroValidation \
-            -skipPackagePluginValidation \
             build \
             -scheme swift-secp256k1-Package \
             -destination generic/platform=iOS
@@ -30,7 +29,6 @@ jobs:
         run: |
           xcrun xcodebuild \
             -skipMacroValidation \
-            -skipPackagePluginValidation \
             build \
             -scheme swift-secp256k1-Package \
             -destination generic/platform=tvOS
@@ -44,7 +42,6 @@ jobs:
         run: |
           xcrun xcodebuild \
             -skipMacroValidation \
-            -skipPackagePluginValidation \
             build \
             -scheme swift-secp256k1-Package \
             -destination generic/platform=watchOS
@@ -58,7 +55,6 @@ jobs:
         run: |
           xcrun xcodebuild \
             -skipMacroValidation \
-            -skipPackagePluginValidation \
             build \
             -scheme swift-secp256k1-Package \
             -destination generic/platform=visionOS

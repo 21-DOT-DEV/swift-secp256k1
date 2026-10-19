@@ -298,8 +298,8 @@ SWIFT_INSTALL_OBJC_HEADER = YES
 //
 // Matches the upcoming feature Package.swift enables for SwiftPM builds
 // (SE-0409): a bare `import` becomes internal, so the 30 `import
-// libsecp256k1`/`libsecp256k1_zkp` sites in Sources/Shared stay out of the
-// public .swiftinterface with no post-emit rewrite. Declarations that must
+// libsecp256k1` sites in Sources/P256K stay out of the public
+// .swiftinterface with no post-emit rewrite. Declarations that must
 // stay visible already use `public import` (Foundation, SwiftSystem); a
 // public API that leaks a C type fails to compile.
 
