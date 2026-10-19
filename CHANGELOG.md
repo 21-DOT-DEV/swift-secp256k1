@@ -13,7 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking**: `P256K.MuSig.Nonce.generate(sessionID:secretKey:publicKey:msg32:extraInput32:)` replaced by `generate(sessionSecretRand:secretKey:publicKey:msg32:extraInput32:)` taking the new `~Copyable` `P256K.MuSig.SessionSecretRand`, which is consumed by the call so session randomness cannot be reused and stores its bytes in auto-zeroing `SecureBytes` (the buffer handed to `secp256k1_musig_nonce_gen` is the value's own storage — zeroed in place on success and again on release); `msg32` is now `[UInt8]?` (`nil` = message not yet known, matching upstream's `NULL msg32`) in both `generate` overloads
 - Replaced git-subtree vendoring with vendir — upstream sources sync directly into `Sources/`/`Projects/` per `vendir.yml` + `vendir.lock.yml`; `libsecp256k1Tests` compiles the shipped `Sources/libsecp256k1` tree instead of a duplicated copy
+
+### Fixed
+
+- `P256K.MuSig.Nonce.generate` no longer reads (and, for `sessionID`, writes) past the end of short input arrays — `sessionSecretRand` is a 32-byte type invariant, and `msg32`/`extraInput32` must be exactly 32 bytes when present or `secp256k1Error.incorrectParameterSize` is thrown before reaching libsecp256k1
+- MuSig `partialSignature(for:…)` and both `MuSig` tweak methods now throw `secp256k1Error.incorrectParameterSize` on non-32-byte digest/tweak inputs instead of an out-of-bounds C read
+- `secretKey: nil` no longer crashes on a force unwrap in `P256K.MuSig.Nonce.generate` — `nil` reaches upstream as `NULL` as documented, and a non-`nil` key is read from its `SecureBytes` backing rather than a temporary copy
+- Internally generated session randomness is now the correct 32 bytes (was 133 — the extra bytes were never read upstream)
 
 ### Removed
 

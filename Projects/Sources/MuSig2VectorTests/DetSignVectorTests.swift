@@ -88,11 +88,11 @@ struct DetSignVectorTests {
         let privateKey = try P256K.Schnorr.PrivateKey()
         let message = try vectors.msgs[0].bytes
 
-        // Generate nonces with same sessionID
-        let sessionID = [UInt8](repeating: 0x42, count: 133)
+        // Generate nonces with same session randomness
+        let sessionRand = [UInt8](repeating: 0x42, count: 32)
 
         let nonce1 = try P256K.MuSig.Nonce.generate(
-            sessionID: sessionID,
+            sessionSecretRand: P256K.MuSig.SessionSecretRand(bytes: sessionRand),
             secretKey: privateKey,
             publicKey: privateKey.publicKey,
             msg32: message,
@@ -100,17 +100,17 @@ struct DetSignVectorTests {
         )
 
         let nonce2 = try P256K.MuSig.Nonce.generate(
-            sessionID: sessionID,
+            sessionSecretRand: P256K.MuSig.SessionSecretRand(bytes: sessionRand),
             secretKey: privateKey,
             publicKey: privateKey.publicKey,
             msg32: message,
             extraInput32: nil
         )
 
-        // Same sessionID should produce same nonces
+        // Same session randomness should produce same nonces
         #expect(
             nonce1.pubnonce.dataRepresentation == nonce2.pubnonce.dataRepresentation,
-            "Same sessionID should produce same nonces"
+            "Same session randomness should produce same nonces"
         )
     }
 }

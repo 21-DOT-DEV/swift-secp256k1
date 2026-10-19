@@ -82,13 +82,14 @@ import libsecp256k1
         /// ``P256K/MuSig/PublicKey/isValidSignature(_:publicKey:nonce:for:)`` afterwards to
         /// detect computation errors.
         ///
-        /// - Parameter digest: The message digest to sign.
+        /// - Parameter digest: The message digest to sign; must be exactly 32 bytes.
         /// - Parameter pubnonce: This signer's own public nonce from nonce generation.
         /// - Parameter secureNonce: This signer's secret nonce (`~Copyable`); consumed and zeroed on return.
         /// - Parameter publicNonceAggregate: The ``P256K/MuSig/Nonce`` aggregated from all signers' public nonces.
         /// - Parameter xonlyKeyAggregate: The x-only form of the ``P256K/MuSig/aggregate(_:)`` result.
         /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if signing fails or the secnonce was already used.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `digest` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if signing fails or the secnonce was already used.
         func partialSignature<D: Digest>(
             for digest: D,
             pubnonce: P256K.Schnorr.Nonce,
@@ -104,6 +105,11 @@ import libsecp256k1
             var session = secp256k1_musig_session()
             var aggnonce = secp256k1_musig_aggnonce()
             var partialSignature = [UInt8](repeating: 0, count: P256K.ByteLength.partialSignature)
+            let messageBytes = Array(digest)
+
+            guard messageBytes.count == P256K.ByteLength.dimension else {
+                throw secp256k1Error.incorrectParameterSize
+            }
 
             guard secp256k1_keypair_create(context, &keypair, Array(dataRepresentation)).boolValue else {
                 fatalError("secp256k1_keypair_create failed with valid key — library bug")
@@ -113,7 +119,7 @@ import libsecp256k1
             xonlyKeyAggregate.cache.copyToUnsafeMutableBytes(of: &cache.data)
             publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
-            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, Array(digest), &cache).boolValue,
+            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, messageBytes, &cache).boolValue,
                   secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
                   secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
             else {
@@ -128,13 +134,14 @@ import libsecp256k1
 
         /// Convenience overload of ``partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)`` that derives the x-only key from a ``P256K/MuSig/PublicKey``.
         ///
-        /// - Parameter digest: The message digest to sign.
+        /// - Parameter digest: The message digest to sign; must be exactly 32 bytes.
         /// - Parameter pubnonce: This signer's public nonce.
         /// - Parameter secureNonce: This signer's secret nonce; consumed and zeroed on return.
         /// - Parameter publicNonceAggregate: The ``P256K/MuSig/Nonce`` from all signers' public nonces.
         /// - Parameter publicKeyAggregate: The ``P256K/MuSig/PublicKey`` returned by ``P256K/MuSig/aggregate(_:)``.
         /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if signing fails or the secnonce was already used.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `digest` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if signing fails or the secnonce was already used.
         func partialSignature<D: Digest>(
             for digest: D,
             pubnonce: P256K.Schnorr.Nonce,

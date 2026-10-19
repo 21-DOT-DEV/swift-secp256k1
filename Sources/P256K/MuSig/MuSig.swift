@@ -43,7 +43,10 @@ import libsecp256k1
         /// this order may produce invalid or insecure signatures:
         ///
         /// 1. **Key aggregation**: Call ``aggregate(_:)`` once with all signers' public keys.
-        /// 2. **Nonce generation**: Each signer calls ``Nonce/generate(secretKey:publicKey:msg32:extraInput32:)`` with a unique session ID.
+        /// 2. **Nonce generation**: Each signer calls ``Nonce/generate(secretKey:publicKey:msg32:extraInput32:)``,
+        ///    which supplies a fresh ``SessionSecretRand`` internally. The
+        ///    ``Nonce/generate(sessionSecretRand:secretKey:publicKey:msg32:extraInput32:)`` overload
+        ///    exists for deterministic inputs such as test vectors — never reuse a value across sessions.
         /// 3. **Nonce aggregation**: Collect all ``P256K/Schnorr/Nonce`` values; any party calls ``Nonce/init(aggregating:)``.
         /// 4. **Partial signing**: Each signer calls ``P256K/Schnorr/PrivateKey/partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)``.
         /// 5. **Signature aggregation**: Any party calls ``aggregateSignatures(_:)``.
@@ -53,7 +56,7 @@ import libsecp256k1
         /// **Nonce reuse leaks the secret signing key.** The ``P256K/Schnorr/SecureNonce`` type is `~Copyable`
         /// to prevent accidental duplication. The underlying `secp256k1_musig_secnonce` struct is
         /// zeroed by `secp256k1_musig_partial_sign` after use; never copy or serialize the secret
-        /// nonce bytes. Always provide a unique `sessionID` per signing session.
+        /// nonce bytes. Always provide a unique ``SessionSecretRand`` per signing session.
         ///
         /// ### Taproot Compatibility
         ///
@@ -73,6 +76,7 @@ import libsecp256k1
         ///
         /// ### Session Types
         /// - ``AggregateSignature``
+        /// - ``SessionSecretRand``
         enum MuSig {
             /// secp256k1 MuSig2 aggregate public key produced by ``aggregate(_:)`` via `secp256k1_musig_pubkey_agg`, used for partial signature verification and Taproot tweaking.
             ///

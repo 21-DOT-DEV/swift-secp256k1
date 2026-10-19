@@ -40,7 +40,7 @@ import libsecp256k1
         /// - ``init(dataRepresentation:)``
         /// - ``init(aggregating:)``
         /// - ``generate(secretKey:publicKey:msg32:extraInput32:)``
-        /// - ``generate(sessionID:secretKey:publicKey:msg32:extraInput32:)``
+        /// - ``generate(sessionSecretRand:secretKey:publicKey:msg32:extraInput32:)``
         ///
         /// ### Serialization
         /// - ``dataRepresentation``
@@ -120,27 +120,31 @@ import libsecp256k1
                 return Data(output)
             }
 
-            /// Generates a fresh nonce pair for one MuSig2 signing session using a random 133-byte session ID.
+            /// Generates a fresh nonce pair for one MuSig2 signing session with internally generated session randomness.
             ///
-            /// > Warning: **Nonce reuse leaks the secret signing key.** This overload generates the
-            /// > session ID internally from `SecureBytes`. Never reuse a ``P256K/Schnorr/SecureNonce``
-            /// > across multiple signing sessions. The returned ``NonceResult`` is `~Copyable` to
-            /// > prevent accidental duplication of the secret nonce.
+            /// > Warning: **Nonce reuse leaks the secret signing key.** This overload generates a
+            /// > fresh ``SessionSecretRand`` internally — the recommended path per BIP-327, which
+            /// > requires a fresh uniformly random value per session. Never reuse a
+            /// > ``P256K/Schnorr/SecureNonce`` across multiple signing sessions. The returned
+            /// > ``NonceResult`` is `~Copyable` to prevent accidental duplication of the secret nonce.
             ///
             /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance by binding the nonce to the key.
             /// - Parameter publicKey: The signer's public key; the generated secret nonce is bound to this key and cannot sign for any other.
-            /// - Parameter msg32: The 32-byte message to be signed, if known at nonce generation time.
+            /// - Parameter msg32: The 32-byte message to be signed; `nil` if not yet known.
+            ///   Providing it binds the nonce to the message, increasing misuse-resistance.
             /// - Parameter extraInput32: Optional 32 bytes of additional entropy (e.g., current timestamp) passed to `secp256k1_musig_nonce_gen`.
             /// - Returns: A `~Copyable` ``NonceResult`` containing the public nonce (to share) and secret nonce (to consume when signing).
-            /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_musig_nonce_gen` fails.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `msg32` or `extraInput32` is
+            ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError`` if
+            ///   `secp256k1_musig_nonce_gen` fails.
             public static func generate(
                 secretKey: P256K.Schnorr.PrivateKey?,
                 publicKey: P256K.Schnorr.PublicKey,
-                msg32: [UInt8],
+                msg32: [UInt8]?,
                 extraInput32: [UInt8]? = nil
             ) throws -> NonceResult {
                 try generate(
-                    sessionID: Array(SecureBytes(count: 133)),
+                    sessionSecretRand: SessionSecretRand(),
                     secretKey: secretKey,
                     publicKey: publicKey,
                     msg32: msg32,
@@ -148,25 +152,30 @@ import libsecp256k1
                 )
             }
 
-            /// Generates a fresh nonce pair for one MuSig2 signing session using a caller-supplied session ID.
+            /// Generates a fresh nonce pair for one MuSig2 signing session using a caller-supplied ``SessionSecretRand``.
             ///
-            /// > Warning: **Nonce reuse leaks the secret signing key.** The `sessionID` **must be
-            /// > unique** across all calls to this function — it is consumed (zeroed) by
-            /// > `secp256k1_musig_nonce_gen` to prevent reuse at the C level. Never store or
-            /// > serialize the secret nonce. The returned ``NonceResult`` is `~Copyable`.
+            /// > Warning: **Nonce reuse leaks the secret signing key.** Each ``SessionSecretRand``
+            /// > must be used for exactly one call — the value is consumed, so reuse is prevented
+            /// > at compile time by the type's `~Copyable` conformance rather than relying on the
+            /// > caller to discard the bytes. `secp256k1_musig_nonce_gen` additionally zeroes the
+            /// > value's own `SecureBytes` buffer in place on success. Never store or serialize the secret nonce. The
+            /// > returned ``NonceResult`` is `~Copyable`.
             ///
-            /// - Parameter sessionID: Uniformly random bytes used as `session_secrand32`; must never repeat. Invalidated after the call.
+            /// - Parameter sessionSecretRand: Secret, uniformly random session input consumed by this call — see ``SessionSecretRand``.
             /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance.
             /// - Parameter publicKey: The signer's public key; the secret nonce is bound to this key.
-            /// - Parameter msg32: The 32-byte message to sign, if known at nonce generation time.
+            /// - Parameter msg32: The 32-byte message to sign; `nil` if not yet known.
+            ///   Providing it binds the nonce to the message, increasing misuse-resistance.
             /// - Parameter extraInput32: Optional 32 bytes of additional entropy passed to `secp256k1_musig_nonce_gen`.
             /// - Returns: A `~Copyable` ``NonceResult`` with the public nonce (to share) and secret nonce (to consume).
-            /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_musig_nonce_gen` fails.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `msg32` or `extraInput32` is
+            ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError`` if
+            ///   `secp256k1_musig_nonce_gen` fails.
             public static func generate(
-                sessionID: [UInt8],
+                sessionSecretRand: consuming SessionSecretRand,
                 secretKey: P256K.Schnorr.PrivateKey?,
                 publicKey: P256K.Schnorr.PublicKey,
-                msg32: [UInt8],
+                msg32: [UInt8]?,
                 extraInput32: [UInt8]?
             ) throws -> NonceResult {
                 let context = P256K.Context.rawRepresentation
@@ -174,19 +183,51 @@ import libsecp256k1
                 var pubnonce = secp256k1_musig_pubnonce()
                 var pubkey = publicKey.baseKey.rawRepresentation
 
-                var mutableSessionID = sessionID
+                if let msg32, msg32.count != P256K.ByteLength.dimension {
+                    throw secp256k1Error.incorrectParameterSize
+                }
+                if let extraInput32, extraInput32.count != P256K.ByteLength.dimension {
+                    throw secp256k1Error.incorrectParameterSize
+                }
 
-                guard secp256k1_musig_nonce_gen(
-                    context,
-                    &secnonce,
-                    &pubnonce,
-                    &mutableSessionID,
-                    Array(secretKey!.dataRepresentation),
-                    &pubkey,
-                    msg32,
-                    nil,
-                    extraInput32
-                ).boolValue else {
+                // `sessionSecretRand` holds the only `SecureBytes` reference (the type is
+                // `~Copyable`), so `withUnsafeMutableBytes` yields a pointer into its own
+                // buffer — upstream zeroes that storage in place on success, and the
+                // `SecureBytes` backing `memset_s`-zeroes it on release either way.
+                let nonceGenerated = try sessionSecretRand.bytes.withUnsafeMutableBytes { rand -> Bool in
+                    guard let sessionSecrand = rand.bindMemory(to: UInt8.self).baseAddress else {
+                        throw secp256k1Error.underlyingCryptoError
+                    }
+                    // Read the secret key from its `SecureBytes` backing rather than
+                    // copying into a temporary array that would be freed unzeroed.
+                    if let secretKey {
+                        return secretKey.key.withUnsafeBytes { key in
+                            secp256k1_musig_nonce_gen(
+                                context,
+                                &secnonce,
+                                &pubnonce,
+                                sessionSecrand,
+                                key.bindMemory(to: UInt8.self).baseAddress,
+                                &pubkey,
+                                msg32,
+                                nil,
+                                extraInput32
+                            ).boolValue
+                        }
+                    }
+                    return secp256k1_musig_nonce_gen(
+                        context,
+                        &secnonce,
+                        &pubnonce,
+                        sessionSecrand,
+                        nil,
+                        &pubkey,
+                        msg32,
+                        nil,
+                        extraInput32
+                    ).boolValue
+                }
+                guard nonceGenerated else {
                     throw secp256k1Error.underlyingCryptoError
                 }
 
@@ -206,6 +247,59 @@ import libsecp256k1
             public let pubnonce: P256K.Schnorr.Nonce
             /// The secret nonce to pass exactly once to ``P256K/Schnorr/PrivateKey/partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)``.
             public let secnonce: P256K.Schnorr.SecureNonce
+        }
+
+        /// The 32 bytes of secret, uniformly random input (`session_secrand32`) that
+        /// `secp256k1_musig_nonce_gen` mixes into every MuSig2 nonce derivation.
+        ///
+        /// Modeled as `~Copyable` so a value cannot be duplicated and must be consumed by
+        /// ``Nonce/generate(sessionSecretRand:secretKey:publicKey:msg32:extraInput32:)`` —
+        /// reusing this input produces identical nonces and leaks the secret signing key.
+        /// The randomness lives in `SecureBytes`, the same auto-zeroing storage used for
+        /// private keys and shared secrets: `secp256k1_musig_nonce_gen` zeroes this value's
+        /// own buffer in place on a successful call, and the `SecureBytes` backing runs
+        /// `memset_s` when the value is released — covering never-consumed values and calls
+        /// where upstream returns failure (it only guarantees zeroing on success).
+        ///
+        /// Like libsecp256k1's own best-effort model, this does not cover copies outside
+        /// the value's control: the caller's source array passed to ``init(bytes:)`` (per
+        /// that initializer's warning) and any bytes the compiler may spill to the stack
+        /// or the OS may page out — OS-level `mlock` protection is out of scope.
+        ///
+        /// ## Topics
+        /// - ``init()``
+        /// - ``init(bytes:)``
+        /// - ``byteCount``
+        struct SessionSecretRand: ~Copyable {
+            /// The exact byte count `secp256k1_musig_nonce_gen` reads and zeroes: 32.
+            public static let byteCount = 32
+
+            /// The 32-byte session secret randomness consumed by `secp256k1_musig_nonce_gen`,
+            /// held in auto-zeroing ``SecureBytes`` storage.
+            var bytes: SecureBytes
+
+            /// Generates fresh uniformly random session randomness from the system CSPRNG — the recommended path.
+            public init() {
+                self.bytes = SecureBytes(count: Self.byteCount)
+            }
+
+            /// Creates session randomness from caller-supplied bytes, e.g. deterministic test
+            /// vectors or an external entropy source such as a hardware RNG.
+            ///
+            /// > Warning: The bytes **must be uniformly random and kept secret** — even from
+            /// > co-signers. If a co-signer can predict them, they can recompute the secret
+            /// > nonce and extract the secret key from the partial signature. Each value is
+            /// > consumed by exactly one signing session. The source array is not zeroed —
+            /// > discard or zero it yourself after constructing this value.
+            ///
+            /// - Parameter bytes: Exactly ``byteCount`` (32) bytes of secret uniform randomness.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `bytes.count` is not exactly 32.
+            public init(bytes: [UInt8]) throws {
+                guard bytes.count == Self.byteCount else {
+                    throw secp256k1Error.incorrectParameterSize
+                }
+                self.bytes = SecureBytes(bytes: bytes)
+            }
         }
     }
 

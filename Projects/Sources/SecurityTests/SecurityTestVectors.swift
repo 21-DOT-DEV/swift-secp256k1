@@ -345,8 +345,8 @@ enum SecurityTestVectors {
         /// NS-001: Test message for deterministic nonce verification
         static let testMessage: [UInt8] = Array("test message for deterministic nonce".utf8)
 
-        /// NS-003: Constant session ID (should produce same nonce with same inputs)
-        static let constantSessionID: [UInt8] = Array(repeating: 0x42, count: 32)
+        /// NS-003: Constant session randomness (should produce same nonce with same inputs)
+        static let constantSessionRand: [UInt8] = Array(repeating: 0x42, count: 32)
 
         /// Valid 32-byte message hash for MuSig2 operations
         static let testMessageHash: [UInt8] = [
