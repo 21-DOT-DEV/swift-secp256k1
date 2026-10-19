@@ -131,7 +131,7 @@ scratch `xcodebuild` without `-skipPackagePluginValidation` builds.
   `canImport(zkp_bindings)` fork (the pre-rename module name, false on
   every shipped layout) keeps its `#else` arm; `#if Xcode ||
   ENABLE_MODULE_*` guards on retained traits stay · `Sources/P256K/**`
-- [ ] T005 CI sweep — `apple-builds.yml`: drop `-skipPackagePluginValidation`
+- [x] T005 CI sweep — `apple-builds.yml`: drop `-skipPackagePluginValidation`
   ×4 (the `Validate ZKP DocC` step left in T003 — the only step that
   reds a T003-only head); `docc-release.yml`: delete the ZKP
   archive build/rewrite/sanity/smoke steps and the P256K rewrite step

@@ -76,15 +76,6 @@ jobs:
             --checkout-path "$GITHUB_WORKSPACE" \
             --output-path ./docs/P256K.doccarchive
 
-      - name: Rewrite SharedSourcesPlugin paths in P256K archive
-        # SharedSourcesPlugin (Plugins/SharedSourcesPlugin/Plugin.swift) `cp`s
-        # Sources/Shared/*.swift into each target's plugin work directory, so
-        # DocC's symbol-graph extractor records the COPIED path. Combined with
-        # --source-service-base-url above, that produces 404 GitHub links for
-        # every Shared/ symbol. Rewrite to canonical Sources/Shared/<...>.swift
-        # paths and assert zero remaining ghosts before sanity-checking.
-        run: swift Scripts/rewrite-docc-shared-paths.swift ./docs/P256K.doccarchive ./Sources/Shared
-
       - name: Sanity-check P256K archive
         run: |
           test -d ./docs/P256K.doccarchive
@@ -108,62 +99,15 @@ jobs:
           test -f /tmp/p256k-merge-test-static/index.html
           test -d /tmp/p256k-merge-test-static/documentation/p256k
 
-      - name: Build ZKP DocC Archive
-        env:
-          SOURCE_SERVICE_BASE_URL: "https://github.com/${{ github.repository }}/blob/${{ github.event.inputs.release_tag || github.ref_name }}"
-        run: |
-          swift package \
-            --allow-writing-to-directory ./docs \
-            generate-documentation \
-            --target ZKP \
-            --analyze \
-            --warnings-as-errors \
-            --enable-experimental-markdown-output \
-            --transform-for-static-hosting \
-            --experimental-transform-for-static-hosting-with-content \
-            --source-service github \
-            --source-service-base-url "$SOURCE_SERVICE_BASE_URL" \
-            --checkout-path "$GITHUB_WORKSPACE" \
-            --output-path ./docs/ZKP.doccarchive
-
-      - name: Rewrite SharedSourcesPlugin paths in ZKP archive
-        # See P256K rewrite step above for context.
-        run: swift Scripts/rewrite-docc-shared-paths.swift ./docs/ZKP.doccarchive ./Sources/Shared
-
-      - name: Sanity-check ZKP archive
-        run: |
-          test -d ./docs/ZKP.doccarchive
-          test -f ./docs/ZKP.doccarchive/metadata.json
-
-          BUNDLE_ID=$(jq -r '.bundleID // empty' ./docs/ZKP.doccarchive/metadata.json)
-          echo "ZKP bundle ID: ${BUNDLE_ID}"
-          [ -n "$BUNDLE_ID" ] || { echo "::error::ZKP metadata.json missing bundleID"; exit 1; }
-
-          MD_COUNT=$(find ./docs/ZKP.doccarchive -name '*.md' | wc -l | tr -d ' ')
-          echo "ZKP markdown file count: ${MD_COUNT}"
-          [ "$MD_COUNT" -gt 0 ] || { echo "::error::No ZKP .md files found"; exit 1; }
-
-      - name: Smoke-test ZKP merge + static hosting
-        run: |
-          xcrun docc merge ./docs/ZKP.doccarchive \
-            --output-path /tmp/zkp-merge-test.doccarchive
-          xcrun docc process-archive transform-for-static-hosting \
-            /tmp/zkp-merge-test.doccarchive \
-            --output-path /tmp/zkp-merge-test-static
-          test -f /tmp/zkp-merge-test-static/index.html
-          test -d /tmp/zkp-merge-test-static/documentation/zkp
-
-      - name: Zip both archives
+      - name: Zip P256K archive
         run: |
           cp LICENSE docs/LICENSE
           cd docs
           7z a -tzip -mx=9 P256K.doccarchive.zip P256K.doccarchive LICENSE
-          7z a -tzip -mx=9 ZKP.doccarchive.zip   ZKP.doccarchive   LICENSE
 
       - name: Upload to Release
         run: |
           gh release upload "$RELEASE_TAG" docs/P256K.doccarchive.zip --clobber
-          gh release upload "$RELEASE_TAG" docs/ZKP.doccarchive.zip   --clobber
 
       - name: Write step summary
         # GitHub computes + exposes the asset SHA-256 automatically (visible on
@@ -172,8 +116,6 @@ jobs:
         run: |
           P256K_SIZE=$(ls -lh docs/P256K.doccarchive.zip | awk '{print $5}')
           P256K_SHA=$(shasum -a 256 docs/P256K.doccarchive.zip | awk '{print $1}')
-          ZKP_SIZE=$(ls -lh docs/ZKP.doccarchive.zip | awk '{print $5}')
-          ZKP_SHA=$(shasum -a 256 docs/ZKP.doccarchive.zip | awk '{print $1}')
           {
             echo ""
             echo "### DocC Release"
@@ -183,5 +125,4 @@ jobs:
             echo "| Archive | Size | SHA-256 |"
             echo "|---|---|---|"
             echo "| \`P256K.doccarchive.zip\` | $P256K_SIZE | \`$P256K_SHA\` |"
-            echo "| \`ZKP.doccarchive.zip\` | $ZKP_SIZE | \`$ZKP_SHA\` |"
           } >> "$GITHUB_STEP_SUMMARY"

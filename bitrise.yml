@@ -10,15 +10,14 @@ meta:
     machine_type_id: g2.mac.medium
 trigger_map:
 - push_branch: main
-  pipeline: PIPELINE-P256K-ZKP
+  pipeline: PIPELINE-P256K
 - pull_request_source_branch: '*'
-  pipeline: PIPELINE-P256K-ZKP
+  pipeline: PIPELINE-P256K
 pipelines:  
-  PIPELINE-P256K-ZKP:
+  PIPELINE-P256K:
     stages:
     - CLONE: {}
     - P256K: {}
-    - ZKP: {}
 stages:
   CLONE:
     workflows:
@@ -26,9 +25,6 @@ stages:
   P256K:
     workflows:
     - BUILD-P256K: {}
-  ZKP:
-    workflows:
-    - BUILD-ZKP: {}
 workflows:
   SWIFT-SECP256K1:
     steps:
@@ -57,12 +53,12 @@ workflows:
     - deploy-to-bitrise-io:
         inputs:
         - pipeline_intermediate_files: "$BITRISE_SOURCE_DIR:BITRISE_SOURCE_DIR"
-  BUILD-ZKP:
+  BUILD-P256K:
     before_run:
     - PULL-PACKAGE-FILES
     steps:
     - script:
-        title: BUILD ZKP
+        title: TEST P256K (TRAITS)
         timeout: 720
         inputs:
         - content: |-
@@ -71,10 +67,6 @@ workflows:
             set -ex
 
             swift test --traits ecdh,musig,recovery,schnorrsig,uint256
-  BUILD-P256K:
-    before_run:
-    - PULL-PACKAGE-FILES
-    steps:
     - script:
         title: BUILD & TEST P256K
         timeout: 360
