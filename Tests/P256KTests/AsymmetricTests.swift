@@ -82,6 +82,21 @@ struct AsymmetricTestSuite {
         #expect(privateKey.publicKey.dataRepresentation == publicKey.dataRepresentation, "Public key data representations should match")
     }
 
+    @Test("x-only key rejects malformed coordinates at construction")
+    func xonlyKeyRejectsMalformed() throws {
+        // A malformed x-only key must fail at init — `secp256k1_xonly_pubkey_parse`
+        // reads a fixed 32 bytes, and an unparseable stored key could otherwise
+        // reach `fatalError` in downstream operations like `negation`.
+        #expect(throws: secp256k1Error.incorrectKeySize) {
+            _ = try P256K.Signing.XonlyKey(dataRepresentation: [UInt8](repeating: 2, count: 16), keyParity: 0)
+        }
+
+        // 0xFF×32 ≥ the field order p — the x coordinate never lifts to a curve point.
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.Signing.XonlyKey(dataRepresentation: [UInt8](repeating: 0xFF, count: 32), keyParity: 0)
+        }
+    }
+
     @Test("Public Key Combination Test")
     func pubkeyCombine() throws {
         let publicKeyBytes1 = try "021b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014".bytes

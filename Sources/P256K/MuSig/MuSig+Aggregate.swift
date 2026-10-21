@@ -32,9 +32,13 @@ import libsecp256k1
         /// - Parameter pubkeys: All signers' ``P256K/Schnorr/PublicKey`` values; must
         ///   contain at least one key.
         /// - Returns: An aggregate ``PublicKey`` with an embedded key aggregation cache.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if sorting or aggregation
-        ///   fails.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `pubkeys` is empty;
+        ///   ``secp256k1Error/underlyingCryptoError`` if sorting or aggregation fails.
         static func aggregate(_ pubkeys: [P256K.Schnorr.PublicKey]) throws -> P256K.MuSig.PublicKey {
+            guard pubkeys.isEmpty == false else {
+                throw secp256k1Error.incorrectParameterSize
+            }
+
             let context = P256K.Context.rawRepresentation
             let format = P256K.Format.compressed
             var pubKeyLen = format.length
@@ -99,7 +103,7 @@ import libsecp256k1
             /// Stable wire format identical to a single-signer BIP-340 signature. Produced
             /// by `secp256k1_musig_partial_sig_agg` after all signers submit their
             /// partial signatures.
-            public var dataRepresentation: Data
+            public private(set) var dataRepresentation: Data
 
             /// Creates an ``AggregateSignature`` from a 64-byte raw representation.
             ///
@@ -144,23 +148,55 @@ import libsecp256k1
         ///   values; must include every participant's partial signature.
         /// - Returns: A 64-byte ``AggregateSignature`` that may be verified with
         ///   `secp256k1_schnorrsig_verify`.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if
-        ///   `secp256k1_musig_partial_sig_agg` fails.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `partialSignatures` is
+        ///   empty; ``secp256k1Error/underlyingCryptoError`` if the signatures were made
+        ///   against different sessions or `secp256k1_musig_partial_sig_agg` fails.
         static func aggregateSignatures(
             _ partialSignatures: [P256K.Schnorr.PartialSignature]
         ) throws -> P256K.MuSig.AggregateSignature {
+            guard partialSignatures.isEmpty == false else {
+                throw secp256k1Error.incorrectParameterSize
+            }
+
             let context = P256K.Context.rawRepresentation
             var signature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
             var session = secp256k1_musig_session()
 
-            partialSignatures.first?.session.copyToUnsafeMutableBytes(of: &session.data)
+            // `secp256k1_musig_session_load` checks the blob's magic prefix inside
+            // `ARG_CHECK`, which aborts on mismatch — validate before the copy so
+            // malformed state throws instead of terminating the process. Upstream's
+            // model is a single shared session, so every signature must carry the
+            // same session blob — mixing sessions would silently aggregate under
+            // the first signature's session.
+            guard let sessionBytes = partialSignatures.first?.session,
+                  MuSigOpaqueState.isValidSession(sessionBytes),
+                  partialSignatures.allSatisfy({ $0.session == sessionBytes }) else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
+            sessionBytes.copyToUnsafeMutableBytes(of: &session.data)
+
+            // Every wire blob must parse into a live `secp256k1_musig_partial_sig`;
+            // `partial_sig_load` aborts on a zeroed or malformed struct, and a
+            // parse failure previously went unchecked here.
+            var partialSigs = [secp256k1_musig_partial_sig]()
+            partialSigs.reserveCapacity(partialSignatures.count)
+
+            for partialSignature in partialSignatures {
+                var partialSig = secp256k1_musig_partial_sig()
+                guard secp256k1_musig_partial_sig_parse(
+                    context,
+                    &partialSig,
+                    Array(partialSignature.dataRepresentation)
+                ).boolValue else {
+                    throw secp256k1Error.underlyingCryptoError
+                }
+                partialSigs.append(partialSig)
+            }
 
             guard PointerArrayUtility.withUnsafePointerArray(
-                partialSignatures.map {
-                    var partialSig = secp256k1_musig_partial_sig()
-                    _ = secp256k1_musig_partial_sig_parse(context, &partialSig, Array($0.dataRepresentation))
-                    return partialSig
-                }, { pointers in
+                partialSigs,
+                { pointers in
                     secp256k1_musig_partial_sig_agg(context, &signature, &session, pointers, pointers.count).boolValue
                 }
             ) else {
@@ -186,10 +222,11 @@ import libsecp256k1
         /// after all partial signatures are aggregated into a
         /// ``P256K/MuSig/AggregateSignature``.
         ///
-        /// Internally the signature bytes are the opaque 36-byte `secp256k1_musig_partial_sig`
-        /// struct body. The wire format is 32 bytes, produced by
+        /// The stored bytes are the canonical 32-byte wire format produced by
         /// `secp256k1_musig_partial_sig_serialize` and consumed by
-        /// `secp256k1_musig_partial_sig_parse`. See
+        /// `secp256k1_musig_partial_sig_parse` — not the 36-byte opaque
+        /// `secp256k1_musig_partial_sig` struct, which is rebuilt via the parse
+        /// entry point at each use site. See
         /// [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h)
         /// for the upstream declarations.
         ///
@@ -202,42 +239,68 @@ import libsecp256k1
         /// - ``dataRepresentation``
         /// - ``session``
         struct PartialSignature: ContiguousBytes {
-            /// The opaque 36-byte `secp256k1_musig_partial_sig` struct bytes.
+            /// The 32-byte canonical wire representation of the partial signature.
             ///
-            /// The in-memory struct layout is not a stable wire format across libsecp256k1
-            /// versions — the 32-byte wire form comes from
-            /// `secp256k1_musig_partial_sig_serialize`. The full 36-byte buffer is retained
-            /// here because the Swift layer passes it directly into
-            /// `secp256k1_musig_partial_sig_agg` without re-parsing.
-            public var dataRepresentation: Data
+            /// Validated at construction by `secp256k1_musig_partial_sig_parse` —
+            /// the encoded scalar must be below the curve order — and rebuilt
+            /// through that parse entry point at each upstream use rather than
+            /// copied into the 36-byte opaque struct.
+            public private(set) var dataRepresentation: Data
 
             /// The 133-byte `secp256k1_musig_session` state required for aggregation and
             /// verification.
             ///
             /// Opaque upstream struct holding the per-session state (aggregate nonce,
             /// message hash, tweak state, etc.) populated by `secp256k1_musig_nonce_process`
-            /// and consumed by `secp256k1_musig_partial_sig_agg`. Treat as a within-process
-            /// session token; not a stable serialization format.
-            public var session: Data
+            /// and consumed by `secp256k1_musig_partial_sig_agg`. Validated at
+            /// construction by exact length and the upstream magic prefix. Treat as a
+            /// within-process session token; not a stable serialization format.
+            public private(set) var session: Data
 
-            /// Creates a ``PartialSignature`` from raw partial signature bytes and session data.
+            /// Creates a ``PartialSignature`` from serialized partial signature bytes and session data.
             ///
-            /// - Parameter dataRepresentation: The serialized partial signature data (36 bytes from `secp256k1_musig_partial_sig_serialize`).
-            /// - Parameter session: The 133-byte `secp256k1_musig_session` state.
-            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count does not match the expected partial signature length.
-            public init<D: DataProtocol>(dataRepresentation: D, session: D) throws {
-                guard dataRepresentation.count == P256K.ByteLength.partialSignature else {
+            /// - Parameter dataRepresentation: The 32-byte wire form from
+            ///   `secp256k1_musig_partial_sig_serialize` (or another BIP-327 implementation).
+            /// - Parameter session: The 133-byte `secp256k1_musig_session` state blob.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `dataRepresentation` is
+            ///   not exactly 32 bytes or `session` is not exactly 133 bytes;
+            ///   ``secp256k1Error/underlyingCryptoError`` if the scalar fails
+            ///   `secp256k1_musig_partial_sig_parse` or `session` lacks the upstream
+            ///   magic prefix.
+            public init<D: DataProtocol, S: DataProtocol>(dataRepresentation: D, session: S) throws {
+                guard dataRepresentation.count == P256K.ByteLength.dimension else {
                     throw secp256k1Error.incorrectParameterSize
+                }
+                guard session.count == MuSigOpaqueState.sessionByteCount else {
+                    throw secp256k1Error.incorrectParameterSize
+                }
+
+                var partialSig = secp256k1_musig_partial_sig()
+
+                // `secp256k1_musig_partial_sig_parse` reads exactly 32 bytes and
+                // rejects out-of-range scalars; `session_load` would `abort()` on
+                // a missing magic prefix, so both are checked up front.
+                guard secp256k1_musig_partial_sig_parse(
+                    P256K.Context.rawRepresentation,
+                    &partialSig,
+                    Array(dataRepresentation)
+                ).boolValue else {
+                    throw secp256k1Error.underlyingCryptoError
+                }
+
+                guard MuSigOpaqueState.isValidSession(session) else {
+                    throw secp256k1Error.underlyingCryptoError
                 }
 
                 self.dataRepresentation = Data(dataRepresentation)
                 self.session = Data(session)
             }
 
-            /// Creates a ``PartialSignature`` from pre-validated partial signature and session data.
-            /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.partialSignature` (36).
+            /// Creates a ``PartialSignature`` from pre-validated wire-form partial signature and session data.
+            /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.dimension` (32) and `session.count` must equal ``MuSigOpaqueState/sessionByteCount``.
             init(_ dataRepresentation: Data, session: Data) {
-                precondition(dataRepresentation.count == P256K.ByteLength.partialSignature, "Invalid partial signature size")
+                precondition(dataRepresentation.count == P256K.ByteLength.dimension, "Invalid partial signature size")
+                precondition(session.count == MuSigOpaqueState.sessionByteCount, "Invalid session size")
                 self.dataRepresentation = dataRepresentation
                 self.session = session
             }

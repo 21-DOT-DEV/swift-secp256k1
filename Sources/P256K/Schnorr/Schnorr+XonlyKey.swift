@@ -61,15 +61,15 @@ import libsecp256k1
                 baseKey.keyParity.boolValue
             }
 
-            /// Cached `secp256k1_pubkey` bytes associated with this x-only key, avoiding
-            /// re-derivation on each operation that needs the full curve point.
+            /// The 197-byte `secp256k1_musig_keyagg_cache` associated with this x-only
+            /// key when it was produced by MuSig key aggregation; empty otherwise.
             ///
-            /// > Important: These bytes are the opaque upstream `secp256k1_pubkey` struct
-            /// > and are **not** a stable serialization format across libsecp256k1
+            /// > Important: These bytes are the opaque upstream `secp256k1_musig_keyagg_cache`
+            /// > struct and are **not** a stable serialization format across libsecp256k1
             /// > versions. Treat as a within-process session token; use
             /// > ``P256K/Schnorr/PublicKey/dataRepresentation`` for persistence.
             ///
-            /// - Returns: The cached `secp256k1_pubkey` bytes, or empty `Data` if no cache
+            /// - Returns: The cached key-aggregation bytes, or empty `Data` if no cache
             ///   was supplied to ``init(dataRepresentation:keyParity:cache:)``.
             public var cache: Data {
                 Data(baseKey.cache)
@@ -94,11 +94,16 @@ import libsecp256k1
             /// - Parameter data: The 32-byte X coordinate of the x-only public key.
             /// - Parameter keyParity: The Y-coordinate parity as an `Int32`: `0` = even,
             ///   `1` = odd.
-            /// - Parameter cache: Optional pre-computed `secp256k1_pubkey` bytes associated
-            ///   with the x-only key; pass an empty array to have the backing
-            ///   implementation recompute the full pubkey on demand.
-            public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0, cache: [UInt8] = []) {
-                self.baseKey = XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity, cache: cache)
+            /// - Parameter cache: The 197-byte `secp256k1_musig_keyagg_cache` from a MuSig
+            ///   ``P256K/MuSig/aggregate(_:)`` call; pass `[]` (the default) for a
+            ///   verification-only key.
+            /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not exactly 32 bytes;
+            ///   ``secp256k1Error/incorrectParameterSize`` if `cache` is non-empty but not
+            ///   exactly 197 bytes; ``secp256k1Error/underlyingCryptoError`` if the coordinate
+            ///   fails `secp256k1_xonly_pubkey_parse` (out of range or no curve point) or
+            ///   `cache` lacks the upstream magic prefix.
+            public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0, cache: [UInt8] = []) throws {
+                self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity, cache: cache)
             }
 
             /// Determines if two x-only keys are equal.

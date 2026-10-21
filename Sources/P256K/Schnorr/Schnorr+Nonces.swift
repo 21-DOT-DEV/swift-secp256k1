@@ -34,12 +34,14 @@ import libsecp256k1
         /// > serialize the secret nonce bytes; always provide a unique
         /// > ``P256K/MuSig/SessionSecretRand`` per signing session.
         struct SecureNonce: ~Copyable {
-            /// The opaque 132-byte `secp256k1_musig_secnonce` struct bytes.
+            /// The opaque 132-byte `secp256k1_musig_secnonce` struct bytes, held in
+            /// auto-zeroing `SecureBytes` storage — the secret nonce is secret key
+            /// material until `secp256k1_musig_partial_sign` consumes it.
             ///
             /// Internal-visibility storage; the `~Copyable` conformance prevents consumers
             /// from accessing these bytes outside the one-shot partial-signing flow that
             /// zeroes them after use.
-            let data: Data
+            let data: SecureBytes
 
             /// Wraps raw secret-nonce bytes produced by upstream nonce-generation helpers.
             ///
@@ -47,7 +49,7 @@ import libsecp256k1
             /// the MuSig nonce-generation entry points.
             ///
             /// - Parameter data: The 132-byte opaque `secp256k1_musig_secnonce` buffer.
-            init(_ data: Data) {
+            init(_ data: SecureBytes) {
                 self.data = data
             }
         }
@@ -106,26 +108,21 @@ import libsecp256k1
                 self.pubnonce = Swift.withUnsafeBytes(of: nonce) { Data($0) }
             }
 
-            /// Provides access to the raw bytes of the public nonce.
-            ///
-            /// Note this exposes the **132-byte internal struct**, not the 66-byte wire
-            /// format; use ``dataRepresentation`` for the serialized form.
+            /// Provides access to the 66-byte BIP-327 wire form of the public nonce —
+            /// the same bytes ``dataRepresentation`` returns.
             ///
             /// - Parameter body: A closure that takes an `UnsafeRawBufferPointer` and
             ///   returns a value.
             /// - Returns: The value returned by the closure.
             public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-                try pubnonce.withUnsafeBytes(body)
+                try dataRepresentation.withUnsafeBytes(body)
             }
 
-            /// Returns an iterator over the bytes of the public nonce.
-            ///
-            /// Iterates over the **132-byte internal struct bytes**, not the 66-byte wire
-            /// format.
+            /// Returns an iterator over the 66-byte BIP-327 wire form of the public nonce.
             ///
             /// - Returns: An iterator for the public nonce data.
             public func makeIterator() -> Data.Iterator {
-                pubnonce.makeIterator()
+                dataRepresentation.makeIterator()
             }
 
             /// A 66-byte data representation of the public nonce in BIP-327 wire format,
@@ -137,7 +134,12 @@ import libsecp256k1
 
                 pubnonce.copyToUnsafeMutableBytes(of: &nonce.data)
 
-                _ = secp256k1_musig_pubnonce_serialize(context, &output, &nonce)
+                // `pubnonce` was produced upstream (nonce_gen or a successful
+                // parse), so the load inside serialize cannot fail.
+                precondition(
+                    secp256k1_musig_pubnonce_serialize(context, &output, &nonce).boolValue,
+                    "secp256k1_musig_pubnonce_serialize failed on upstream-produced nonce — library bug"
+                )
 
                 return Data(output)
             }

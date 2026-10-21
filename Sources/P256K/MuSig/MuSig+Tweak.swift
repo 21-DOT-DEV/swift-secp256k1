@@ -31,10 +31,18 @@ import libsecp256k1
         /// - Parameter format: The serialization format of the returned ``PublicKey``; defaults to `.compressed`.
         /// - Returns: A new ``PublicKey`` equal to the original aggregate key plus the tweak times the generator.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
-        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the result is the point at infinity.
+        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid, the result is the
+        ///   point at infinity, or this key lacks a usable key aggregation cache.
         func add(_ tweak: [UInt8], format: P256K.Format = .compressed) throws -> Self {
             guard tweak.count == P256K.ByteLength.dimension else {
                 throw secp256k1Error.incorrectParameterSize
+            }
+
+            // `keyagg_cache_load` checks the blob's magic prefix inside `ARG_CHECK`,
+            // which aborts on a zeroed or malformed struct — a missing or corrupt
+            // cache must throw before the copy, not reach upstream.
+            guard MuSigOpaqueState.isValidKeyAggregationCache(keyAggregationCache) else {
+                throw secp256k1Error.underlyingCryptoError
             }
 
             let context = P256K.Context.rawRepresentation
@@ -79,10 +87,18 @@ import libsecp256k1
         /// - Parameter tweak: A 32-byte tweak scalar; must pass `secp256k1_ec_seckey_verify` and must not negate the aggregate key.
         /// - Returns: A new ``XonlyKey`` representing the Taproot output key.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
-        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the result is the point at infinity.
+        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid, the result is the
+        ///   point at infinity, or this key lacks a usable key aggregation cache.
         func add(_ tweak: [UInt8]) throws -> Self {
             guard tweak.count == P256K.ByteLength.dimension else {
                 throw secp256k1Error.incorrectParameterSize
+            }
+
+            // `keyagg_cache_load` checks the blob's magic prefix inside `ARG_CHECK`,
+            // which aborts on a zeroed or malformed struct — a missing or corrupt
+            // cache must throw before the copy, not reach upstream.
+            guard MuSigOpaqueState.isValidKeyAggregationCache(self.cache) else {
+                throw secp256k1Error.underlyingCryptoError
             }
 
             let context = P256K.Context.rawRepresentation
@@ -102,9 +118,11 @@ import libsecp256k1
             }
 
             return Self(
-                dataRepresentation: xonlyBytes,
-                keyParity: keyParity,
-                cache: Swift.withUnsafeBytes(of: cache.data) { [UInt8]($0) }
+                baseKey: XonlyKeyImplementation(
+                    validatedBytes: xonlyBytes,
+                    keyParity: keyParity,
+                    cache: Swift.withUnsafeBytes(of: cache.data) { [UInt8]($0) }
+                )
             )
         }
     }

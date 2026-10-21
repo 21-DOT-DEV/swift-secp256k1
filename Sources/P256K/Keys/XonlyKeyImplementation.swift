@@ -62,32 +62,107 @@ import libsecp256k1
         Data(bytes)
     }
 
-    /// The `secp256k1_xonly_pubkey` struct populated from `bytes` via direct memory copy.
+    /// The `secp256k1_xonly_pubkey` struct populated by `secp256k1_xonly_pubkey_parse`.
+    ///
+    /// The struct's `data` field holds upstream's internal field-element
+    /// encoding, not the serialized coordinate — it must be built through the
+    /// parse entry point. `bytes` was validated at initialization, so the parse
+    /// is infallible; a failure indicates memory corruption or an upstream
+    /// defect (and an all-zero struct would abort inside `xonly_pubkey_load`).
     var rawRepresentation: secp256k1_xonly_pubkey {
         var xonlyKey = secp256k1_xonly_pubkey()
-        dataRepresentation.copyToUnsafeMutableBytes(of: &xonlyKey.data)
+        precondition(
+            secp256k1_xonly_pubkey_parse(
+                P256K.Context.rawRepresentation,
+                &xonlyKey,
+                bytes
+            ).boolValue,
+            "validated x-only key failed re-parse — library bug"
+        )
         return xonlyKey
     }
 
     /// Backing initialization that generates a x-only public key from a raw representation.
+    ///
+    /// Validates that the coordinate is exactly 32 bytes and lifts to a curve point via
+    /// `secp256k1_xonly_pubkey_parse`, so an `XonlyKeyImplementation` always holds
+    /// parseable key bytes — downstream `xonly_pubkey_parse`/`xonly_pubkey_tweak_add`
+    /// calls can rely on that invariant.
     /// - Parameter data: A data representation of the key.
+    /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not exactly 32 bytes;
+    ///   ``secp256k1Error/underlyingCryptoError`` if the X coordinate fails
+    ///   `secp256k1_xonly_pubkey_parse` (out of range or no curve point).
     @usableFromInline init<D: ContiguousBytes>(
         dataRepresentation data: D,
         keyParity: Int32,
         cache: [UInt8] = []
-    ) {
-        self.bytes = data.bytes
+    ) throws {
+        let bytes = data.bytes
+        var xonlyKey = secp256k1_xonly_pubkey()
+
+        // Upstream reads exactly 32 bytes from the input pointer.
+        guard bytes.count == P256K.ByteLength.dimension else {
+            throw secp256k1Error.incorrectKeySize
+        }
+
+        guard secp256k1_xonly_pubkey_parse(
+            P256K.Context.rawRepresentation,
+            &xonlyKey,
+            bytes
+        ).boolValue else {
+            throw secp256k1Error.underlyingCryptoError
+        }
+
+        // A non-empty cache must be a complete `secp256k1_musig_keyagg_cache`
+        // blob: upstream checks its 4-byte magic inside `ARG_CHECK` on every
+        // `keyagg_cache_load`, which aborts the process on mismatch.
+        if cache.isEmpty == false {
+            guard cache.count == MuSigOpaqueState.keyAggregationCacheByteCount else {
+                throw secp256k1Error.incorrectParameterSize
+            }
+            guard MuSigOpaqueState.isValidKeyAggregationCache(cache) else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+        }
+
+        self.bytes = bytes
         self.keyParity = keyParity
         self.cache = cache.bytes
     }
 
-    /// Backing initialization that sets the public key from a x-only public key object.
-    /// - Parameter bytes: a x-only public key in byte form
+    /// Non-throwing initialization for bytes already proven valid by a
+    /// libsecp256k1 operation (e.g. `secp256k1_xonly_pubkey_serialize` output).
+    ///
+    /// Asserts the invariant rather than throwing — matching
+    /// ``PrivateKeyImplementation/init(validatedBytes:format:)``: internal callers
+    /// pass upstream-produced bytes only, so a precondition failure means an
+    /// internal bug, not public input.
     @usableFromInline init(
-        _ bytes: [UInt8],
+        validatedBytes bytes: [UInt8],
         keyParity: Int32,
         cache: [UInt8]
     ) {
+        precondition(bytes.count == P256K.ByteLength.dimension, "Invalid x-only key size")
+        precondition(
+            cache.isEmpty || cache.count == MuSigOpaqueState.keyAggregationCacheByteCount,
+            "Invalid key aggregation cache size"
+        )
+
+        // `bytes` are produced by upstream serialization or an already-validated
+        // key, so a parse failure indicates an internal bug; the check runs in
+        // debug builds only to keep `.xonly` accessors off the hot path.
+        assert(
+            { () -> Bool in
+                var xonlyKey = secp256k1_xonly_pubkey()
+                return secp256k1_xonly_pubkey_parse(
+                    P256K.Context.rawRepresentation,
+                    &xonlyKey,
+                    bytes
+                ).boolValue
+            }(),
+            "validatedBytes failed x-only parse — internal bug"
+        )
+
         self.bytes = bytes
         self.keyParity = keyParity
         self.cache = cache

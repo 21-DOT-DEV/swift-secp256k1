@@ -32,16 +32,21 @@ let recoverySignature = privateKey.signature(for: message)
 
 ### Reconstructing the Signing Key
 
-Lift the signer's verifying key out of the message and signature in one step:
+Lift the signer's verifying key out of the message and signature in one step. Recovery is a fallible operation — a well-formed signature can still fail to recover — so the initializer throws:
 
 ```swift
 import P256K
 
-let recoveredKey = P256K.Recovery.PublicKey(message, signature: recoverySignature)
+let recoveredKey = try P256K.Recovery.PublicKey(message, signature: recoverySignature)
 
 // The recovered key matches the original
 recoveredKey.dataRepresentation == privateKey.publicKey.dataRepresentation
 ```
+
+> Important: Public-key recovery is **not** authentication. Anyone holding a valid
+> `(message, signature)` pair recovers the same key — recovery proves only that *some*
+> key produced the signature. To authenticate, compare the recovered key against an
+> expected value (a known public key, address, or fingerprint) before trusting it.
 
 You can also lift from a hash digest directly:
 
@@ -49,7 +54,7 @@ You can also lift from a hash digest directly:
 import P256K
 
 let digest = SHA256.hash(data: message)
-let recoveredKey = P256K.Recovery.PublicKey(digest, signature: recoverySignature)
+let recoveredKey = try P256K.Recovery.PublicKey(digest, signature: recoverySignature)
 ```
 
 ### Compact Representation and Recovery ID
@@ -63,6 +68,11 @@ let compact = recoverySignature.compactRepresentation
 // compact.signature -- 64-byte compact ECDSA signature
 // compact.recoveryId -- Int32 (0, 1, 2, or 3)
 ```
+
+`dataRepresentation` returns the combined 65-byte wire form — the 64-byte compact body
+followed by the recovery-ID byte — suitable for persisting or transmitting the signature
+as a single blob. It is accepted again by
+``P256K/Recovery/ECDSASignature/init(dataRepresentation:)``.
 
 Reconstruct from the compact form:
 
@@ -85,8 +95,8 @@ import P256K
 let standardSignature = recoverySignature.normalize
 
 // Access standard formats
-standardSignature.dataRepresentation   // 64-byte compact
-standardSignature.derRepresentation    // DER-encoded
+standardSignature.compactRepresentation // 64-byte compact `r || s`
+standardSignature.derRepresentation     // DER-encoded
 ```
 
 > Important: The converted signature is **not guaranteed to be lower-S normalized** and may fail `secp256k1_ecdsa_verify`. If your application requires lower-S form (e.g., Bitcoin Core's [BIP-146][bip-146] LOW_S rule), pass the result through `secp256k1_ecdsa_signature_normalize` before verifying.

@@ -32,7 +32,8 @@ import libsecp256k1
         ///   `TapTweak` tagged hash).
         /// - Returns: A new ``P256K/Schnorr/PrivateKey`` whose x-only public key is the
         ///   Taproot-tweaked form of the original.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or
         ///   any upstream step fails.
         func add(_ tweak: [UInt8]) throws -> Self {
             let context = P256K.Context.rawRepresentation
@@ -40,6 +41,10 @@ import libsecp256k1
             var privateBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
             var xonly = secp256k1_xonly_pubkey()
             var keyParity = Int32()
+
+            guard tweak.count == P256K.ByteLength.dimension else {
+                throw secp256k1Error.incorrectParameterSize
+            }
 
             guard secp256k1_keypair_create(context, &keypair, key.bytes).boolValue,
                   secp256k1_keypair_xonly_tweak_add(context, &keypair, tweak).boolValue,
@@ -69,7 +74,8 @@ import libsecp256k1
         ///   `TapTweak` tagged hash).
         /// - Returns: A new ``P256K/Schnorr/XonlyKey`` equal to the Taproot-tweaked
         ///   x-only public key.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid, the
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid, the
         ///   result is the point at infinity, or the consistency check fails.
         func add(_ tweak: [UInt8]) throws -> Self {
             let context = P256K.Context.rawRepresentation
@@ -79,6 +85,11 @@ import libsecp256k1
             var xonlyBytes = [UInt8](repeating: 0, count: P256K.ByteLength.dimension)
             var keyParity = Int32()
 
+            guard tweak.count == P256K.ByteLength.dimension else {
+                throw secp256k1Error.incorrectParameterSize
+            }
+
+            // `bytes` is guaranteed a validated 32-byte coordinate by construction.
             guard secp256k1_xonly_pubkey_parse(context, &inXonlyPubKey, bytes).boolValue,
                   secp256k1_xonly_pubkey_tweak_add(context, &pubKey, &inXonlyPubKey, tweak).boolValue,
                   secp256k1_xonly_pubkey_from_pubkey(context, &outXonlyPubKey, &keyParity, &pubKey).boolValue,
@@ -87,7 +98,13 @@ import libsecp256k1
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            return Self(dataRepresentation: xonlyBytes, keyParity: keyParity)
+            return Self(
+                baseKey: XonlyKeyImplementation(
+                    validatedBytes: xonlyBytes,
+                    keyParity: keyParity,
+                    cache: []
+                )
+            )
         }
     }
 #endif

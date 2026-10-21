@@ -27,11 +27,16 @@ public extension P256K.Signing.PrivateKey {
     /// - Parameter tweak: A 32-byte tweak scalar; must not produce a result that is zero
     ///   modulo `n`.
     /// - Returns: A new ``PrivateKey`` with the tweaked secret scalar.
-    /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
+    /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+    ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
     ///   result is zero modulo `n`.
     func add(_ tweak: [UInt8]) throws -> Self {
         let context = P256K.Context.rawRepresentation
         var privateBytes = key.bytes
+
+        guard tweak.count == P256K.ByteLength.dimension else {
+            throw secp256k1Error.incorrectParameterSize
+        }
 
         guard secp256k1_ec_seckey_tweak_add(context, &privateBytes, tweak).boolValue,
               secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
@@ -50,11 +55,16 @@ public extension P256K.Signing.PrivateKey {
     ///
     /// - Parameter tweak: A 32-byte tweak scalar; must be non-zero and less than `n`.
     /// - Returns: A new ``PrivateKey`` with the scaled secret scalar.
-    /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
+    /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+    ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
     ///   result fails `secp256k1_ec_seckey_verify`.
     func multiply(_ tweak: [UInt8]) throws -> Self {
         let context = P256K.Context.rawRepresentation
         var privateBytes = key.bytes
+
+        guard tweak.count == P256K.ByteLength.dimension else {
+            throw secp256k1Error.incorrectParameterSize
+        }
 
         guard secp256k1_ec_seckey_tweak_mul(context, &privateBytes, tweak).boolValue,
               secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
@@ -81,13 +91,18 @@ public extension P256K.Signing.PublicKey {
     ///   to `.compressed`.
     /// - Returns: A new ``PublicKey`` equal to the original key plus the tweak times the
     ///   generator.
-    /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
+    /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+    ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
     ///   result is the point at infinity.
     func add(_ tweak: [UInt8], format: P256K.Format = .compressed) throws -> Self {
         let context = P256K.Context.rawRepresentation
         var pubKey = baseKey.rawRepresentation
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
+
+        guard tweak.count == P256K.ByteLength.dimension else {
+            throw secp256k1Error.incorrectParameterSize
+        }
 
         guard secp256k1_ec_pubkey_tweak_add(context, &pubKey, tweak).boolValue,
               secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
@@ -108,13 +123,18 @@ public extension P256K.Signing.PublicKey {
     ///   to `.compressed`.
     /// - Returns: A new ``PublicKey`` equal to the original key multiplied by the tweak
     ///   scalar.
-    /// - Throws: ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
+    /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+    ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
     ///   result is the point at infinity.
     func multiply(_ tweak: [UInt8], format: P256K.Format = .compressed) throws -> Self {
         let context = P256K.Context.rawRepresentation
         var pubKey = baseKey.rawRepresentation
         var pubKeyLen = format.length
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
+
+        guard tweak.count == P256K.ByteLength.dimension else {
+            throw secp256k1Error.incorrectParameterSize
+        }
 
         guard secp256k1_ec_pubkey_tweak_mul(context, &pubKey, tweak).boolValue,
               secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {

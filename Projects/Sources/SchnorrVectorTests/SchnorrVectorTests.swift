@@ -85,7 +85,7 @@ struct SchnorrVectorTests {
     private func verifyVector(_ vector: BIP340Vector) -> Bool {
         do {
             let publicKeyBytes = try vector.publicKey.bytes
-            let xonlyKey = P256K.Schnorr.XonlyKey(dataRepresentation: publicKeyBytes)
+            let xonlyKey = try P256K.Schnorr.XonlyKey(dataRepresentation: publicKeyBytes)
 
             let signatureBytes = try vector.signature.bytes
             let signature = try P256K.Schnorr.SchnorrSignature(dataRepresentation: signatureBytes)

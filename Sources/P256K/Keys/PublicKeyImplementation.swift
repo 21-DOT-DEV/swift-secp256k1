@@ -75,7 +75,7 @@ import libsecp256k1
 
     /// The x-only public key derived from this public key, used for Schnorr signature verification.
     @usableFromInline var xonly: XonlyKeyImplementation {
-        XonlyKeyImplementation(xonlyBytes, keyParity: keyParity, cache: cache)
+        XonlyKeyImplementation(validatedBytes: xonlyBytes, keyParity: keyParity, cache: cache)
     }
 
     /// The serialized public key bytes as `Data`, in the key's ``P256K/Format``.
@@ -90,21 +90,38 @@ import libsecp256k1
         var pubKeyLen = P256K.ByteLength.uncompressedPublicKey
         var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-        _ = secp256k1_ec_pubkey_serialize(
-            context,
-            &pubKeyBytes,
-            &pubKeyLen,
-            &pubKey,
-            P256K.Format.uncompressed.rawValue
+        // `pubKey` was rebuilt by `rawRepresentation` from validated bytes, so
+        // serialization is infallible; a failure indicates a library bug.
+        precondition(
+            secp256k1_ec_pubkey_serialize(
+                context,
+                &pubKeyBytes,
+                &pubKeyLen,
+                &pubKey,
+                P256K.Format.uncompressed.rawValue
+            ).boolValue,
+            "secp256k1_ec_pubkey_serialize failed on validated key — library bug"
         )
 
         return Data(pubKeyBytes)
     }
 
     /// The parsed `secp256k1_pubkey` struct reconstructed from `bytes` via `secp256k1_ec_pubkey_parse`.
+    ///
+    /// `bytes` was validated at initialization, so the parse is infallible; a
+    /// failure indicates memory corruption or an upstream defect (a parse
+    /// failure zeroes the struct, which would abort inside `pubkey_load`).
     var rawRepresentation: secp256k1_pubkey {
         var pubKey = secp256k1_pubkey()
-        _ = secp256k1_ec_pubkey_parse(P256K.Context.rawRepresentation, &pubKey, bytes, bytes.count)
+        precondition(
+            secp256k1_ec_pubkey_parse(
+                P256K.Context.rawRepresentation,
+                &pubKey,
+                bytes,
+                bytes.count
+            ).boolValue,
+            "validated public key failed re-parse — library bug"
+        )
         return pubKey
     }
 
@@ -140,6 +157,18 @@ import libsecp256k1
             format: format
         )
 
+        // A non-empty cache must be a complete `secp256k1_musig_keyagg_cache`
+        // blob: upstream checks its 4-byte magic inside `ARG_CHECK` on every
+        // `keyagg_cache_load`, which aborts the process on mismatch.
+        if cache.isEmpty == false {
+            guard cache.count == MuSigOpaqueState.keyAggregationCacheByteCount else {
+                throw secp256k1Error.incorrectParameterSize
+            }
+            guard MuSigOpaqueState.isValidKeyAggregationCache(cache) else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+        }
+
         self.bytes = data.bytes
         self.format = format
         self.cache = cache.bytes
@@ -155,6 +184,10 @@ import libsecp256k1
         format: P256K.Format,
         cache: [UInt8] = []
     ) {
+        precondition(
+            cache.isEmpty || cache.count == MuSigOpaqueState.keyAggregationCacheByteCount,
+            "Invalid key aggregation cache size"
+        )
         self.bytes = bytes
         self.format = format
         self.cache = cache
@@ -171,6 +204,10 @@ import libsecp256k1
         var xonlyBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
 
         precondition(
+            cache.isEmpty || cache.count == MuSigOpaqueState.keyAggregationCacheByteCount,
+            "Invalid key aggregation cache size"
+        )
+        precondition(
             secp256k1_ec_pubkey_parse(context, &pubKey, bytes, format.length).boolValue &&
                 secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue &&
                 secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &xonlyPubKey).boolValue,
@@ -185,6 +222,10 @@ import libsecp256k1
     }
 
     /// Backing initialization that sets the public key from a xonly key object.
+    ///
+    /// Relies on the ``XonlyKeyImplementation`` invariant — its `bytes` are always a
+    /// validated 32-byte coordinate — so the lifted compressed key is parseable by
+    /// construction.
     /// - Parameter xonlyKey: a xonly key object
     @usableFromInline init(xonlyKey: XonlyKeyImplementation) {
         let yCoord: [UInt8] = xonlyKey.keyParity.boolValue ? [3] : [2]
@@ -199,26 +240,40 @@ import libsecp256k1
     #if Xcode || ENABLE_MODULE_RECOVERY
         /// Backing initialization that sets the public key from a digest and recoverable signature.
         /// - Parameters:
-        ///   - digest: The digest that was signed.
+        ///   - digest: The digest that was signed; normalized to the 32-byte `msg32`
+        ///     value per SEC1 §4.1.3 (leftmost 32 bytes for longer digests, integer
+        ///     value for shorter).
         ///   - signature: The signature to recover the public key from
         ///   - format: the format of the public key object
+        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ecdsa_recover` rejects the
+        ///   signature (zero `r`/`s`, an X coordinate with no curve point, or a point-at-infinity result).
         @usableFromInline init<D: Digest>(
             _ digest: D,
             signature: P256K.Recovery.ECDSASignature,
             format: P256K.Format
-        ) {
+        ) throws {
             let context = P256K.Context.rawRepresentation
+            let digestBytes = digest.msg32Bytes
+            let signatureBytes = signature.dataRepresentation
             var keyParity = Int32()
             var pubKeyLen = format.length
             var pubKey = secp256k1_pubkey()
             var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
             var recoverySignature = secp256k1_ecdsa_recoverable_signature()
 
-            signature.dataRepresentation.copyToUnsafeMutableBytes(of: &recoverySignature.data)
-
-            guard secp256k1_ecdsa_recover(context, &pubKey, &recoverySignature, Array(digest)).boolValue,
-                  secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
-                fatalError("secp256k1_ecdsa_recover failed with valid signature — library bug")
+            // The recoverable signature object is built through the sanctioned
+            // parse entry point — never fabricated by copying raw bytes into the
+            // struct, which could encode states upstream's contract forbids
+            // (a recovery ID ≥ 4 trips `VERIFY_CHECK` inside `secp256k1_ecdsa_recover`).
+            guard secp256k1_ecdsa_recoverable_signature_parse_compact(
+                context,
+                &recoverySignature,
+                Array(signatureBytes.prefix(P256K.ByteLength.signature)),
+                Int32(signatureBytes[P256K.ByteLength.signature])
+            ).boolValue,
+                secp256k1_ecdsa_recover(context, &pubKey, &recoverySignature, digestBytes).boolValue,
+                secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+                throw secp256k1Error.underlyingCryptoError
             }
 
             var xonlyPubKey = secp256k1_xonly_pubkey()

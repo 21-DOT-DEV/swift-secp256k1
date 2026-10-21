@@ -175,7 +175,7 @@ let messageData = "We're all Satoshi.".data(using: .utf8)!
 let recoverySignature = privateKey.signature(for: messageData)
 
 // Recover an ECDSA public key from a signature
-let publicKey = P256K.Recovery.PublicKey(messageData, signature: recoverySignature)
+let publicKey = try! P256K.Recovery.PublicKey(messageData, signature: recoverySignature)
 
 // Convert a recoverable signature into a normal signature
 let signature = recoverySignature.normalize

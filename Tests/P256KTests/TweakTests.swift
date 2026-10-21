@@ -48,4 +48,34 @@ struct TweakTestSuite {
         // Verify original public key remains correct
         #expect(expectedPublicKey == String(bytes: privateKey.publicKey.dataRepresentation))
     }
+
+    @Test("Verify tweak APIs reject non-32-byte tweaks")
+    func invalidTweakSizeThrows() throws {
+        // Upstream tweak functions read a fixed 32 bytes — a shorter input is
+        // an out-of-bounds read, not a validation failure.
+        let privateKey = try P256K.Signing.PrivateKey()
+        let publicKey = privateKey.publicKey
+        let schnorrPrivateKey = try P256K.Schnorr.PrivateKey()
+        let xonlyKey = schnorrPrivateKey.xonly
+        let shortTweak = [UInt8](repeating: 1, count: 16)
+
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try privateKey.add(shortTweak)
+        }
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try privateKey.multiply(shortTweak)
+        }
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try publicKey.add(shortTweak)
+        }
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try publicKey.multiply(shortTweak)
+        }
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try schnorrPrivateKey.add(shortTweak)
+        }
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try xonlyKey.add(shortTweak)
+        }
+    }
 }

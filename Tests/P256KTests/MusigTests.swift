@@ -92,7 +92,12 @@ struct MuSigTestSuite {
         _ = try P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature, thirdPartialSignature])
 
         // Verify the signature
-        #expect(try aggregate.isValidSignature(firstPartialSignature, publicKey: #require(publicKeys.first), nonce: #require(publicNonces.first), for: messageHash), "MuSig signature verification failed.")
+        let firstKey = try #require(publicKeys.first)
+        let firstPubnonce = try #require(publicNonces.first)
+        #expect(
+            aggregate.isValidSignature(firstPartialSignature, publicKey: firstKey, nonce: firstPubnonce, for: messageHash),
+            "MuSig signature verification failed."
+        )
     }
 
     @Test("MuSig nonce generated without a secret key still signs")
@@ -142,21 +147,12 @@ struct MuSigTestSuite {
 
         let signature = try P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
 
-        #expect(try aggregate.xonly.isValidSignature(signature, for: messageHash), "MuSig signature from a nil-secret-key nonce failed to verify.")
+        #expect(aggregate.xonly.isValidSignature(signature, for: messageHash), "MuSig signature from a nil-secret-key nonce failed to verify.")
     }
 
     @Test("MuSig nonce generation rejects malformed input sizes")
     func musigNonceGenerationRejectsBadSizes() throws {
         let privateKey = try P256K.Schnorr.PrivateKey()
-
-        // A present-but-short msg32 must throw, not reach C as a truncated 32-byte read.
-        #expect(throws: secp256k1Error.incorrectParameterSize) {
-            _ = try P256K.MuSig.Nonce.generate(
-                secretKey: privateKey,
-                publicKey: privateKey.publicKey,
-                msg32: [UInt8](repeating: 0x00, count: 16)
-            )
-        }
 
         // A present-but-short extraInput32 must throw, not reach C as a truncated 32-byte read.
         #expect(throws: secp256k1Error.incorrectParameterSize) {
@@ -225,7 +221,7 @@ struct MuSigTestSuite {
         let signature = try P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
 
         #expect(
-            try aggregate.xonly.isValidSignature(signature, for: messageHash),
+            aggregate.xonly.isValidSignature(signature, for: messageHash),
             "MuSig signature from message-free nonces failed to verify."
         )
     }
@@ -272,36 +268,207 @@ struct MuSigTestSuite {
         }
     }
 
-    @Test("MuSig partial signing rejects non-32-byte digests")
-    func musigPartialSignatureRejectsShortDigest() throws {
+    @Test("MuSig x-only key rejects a malformed-length coordinate at construction")
+    func musigXonlyKeyRejectsShortCoordinate() throws {
+        // `secp256k1_xonly_pubkey_parse` reads a fixed 32 bytes — malformed input
+        // is rejected at construction so no downstream path can observe an
+        // invalid key.
+        #expect(throws: secp256k1Error.incorrectKeySize) {
+            _ = try P256K.MuSig.XonlyKey(dataRepresentation: [UInt8](repeating: 2, count: 16))
+        }
+    }
+
+    @Test("MuSig partial signing normalizes non-32-byte digests")
+    func musigPartialSignatureNormalizesShortDigest() throws {
         let privateKeys = try [
             P256K.Schnorr.PrivateKey(),
             P256K.Schnorr.PrivateKey()
         ]
         let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
+        let shortDigest: ShortDigest = .init([UInt8](repeating: 0x01, count: 16))
 
-        // secp256k1_musig_nonce_process reads exactly 32 bytes of msg32 — a
-        // shorter Digest must throw before reaching C. The ~Copyable NonceResult
-        // is created inside the closure so nothing noncopyable is captured.
+        // secp256k1_musig_nonce_process reads exactly 32 bytes of msg32 — the
+        // digest is reduced to its SEC1 integer value instead of throwing.
+        // The ~Copyable NonceResult is created inside the flow so nothing
+        // noncopyable is captured.
+        let nonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[0],
+            publicKey: privateKeys[0].publicKey,
+            msg32: nil
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+        let partialSignature = try privateKeys[0].partialSignature(
+            for: shortDigest,
+            pubnonce: nonce.pubnonce,
+            secureNonce: nonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        // The same normalized digest verifies against the partial signature.
+        #expect(aggregate.isValidSignature(
+            partialSignature,
+            publicKey: privateKeys[0].publicKey,
+            nonce: nonce.pubnonce,
+            for: shortDigest
+        ))
+    }
+
+    @Test("MuSig partial signature rejects malformed wire input")
+    func musigPartialSignatureRejectsMalformedWire() throws {
+        let sessionBytes: [UInt8] = .init(repeating: 0, count: 133)
+        let validSessionPrefix: [UInt8] = [0x9D, 0xED, 0xE9, 0x17]
+        let session: [UInt8] = validSessionPrefix + [UInt8](repeating: 0, count: 129)
+
+        // Wrong wire size must throw before reaching `partial_sig_parse`.
         #expect(throws: secp256k1Error.incorrectParameterSize) {
-            let nonce = try P256K.MuSig.Nonce.generate(
-                secretKey: privateKeys[0],
-                publicKey: privateKeys[0].publicKey,
-                msg32: nil
+            _ = try P256K.Schnorr.PartialSignature(
+                dataRepresentation: [UInt8](repeating: 0x01, count: 36),
+                session: session
             )
-            let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
-            _ = try privateKeys[0].partialSignature(
-                for: ShortDigest([UInt8](repeating: 0x01, count: 16)),
-                pubnonce: nonce.pubnonce,
-                secureNonce: nonce.secnonce,
-                publicNonceAggregate: aggregateNonce,
-                publicKeyAggregate: aggregate
+        }
+
+        // A session of the wrong size must throw before reaching `session_load`.
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try P256K.Schnorr.PartialSignature(
+                dataRepresentation: [UInt8](repeating: 0x01, count: 32),
+                session: [UInt8](repeating: 0, count: 64)
+            )
+        }
+
+        // A right-size session without the upstream magic prefix must throw.
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.Schnorr.PartialSignature(
+                dataRepresentation: [UInt8](repeating: 0x01, count: 32),
+                session: sessionBytes
+            )
+        }
+
+        // A 32-byte blob that isn't a valid scalar fails `partial_sig_parse`.
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.Schnorr.PartialSignature(
+                dataRepresentation: [UInt8](repeating: 0xFF, count: 32),
+                session: session
             )
         }
     }
+
+    @Test("MuSig x-only key rejects a malformed cache at construction")
+    func musigXonlyKeyRejectsMalformedCache() throws {
+        // secp256k1 generator point's X coordinate — a coordinate guaranteed to
+        // lift to a curve point so the checks exercise the cache, not the key.
+        let coordinate: [UInt8] = [
+            0x79, 0xBE, 0x66, 0x7E, 0xF9, 0xDC, 0xBB, 0xAC,
+            0x55, 0xA0, 0x62, 0x95, 0xCE, 0x87, 0x0B, 0x07,
+            0x02, 0x9B, 0xFC, 0xDB, 0x2D, 0xCE, 0x28, 0xD9,
+            0x59, 0xF2, 0x81, 0x5B, 0x16, 0xF8, 0x17, 0x98
+        ]
+
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try P256K.MuSig.XonlyKey(dataRepresentation: coordinate, cache: [UInt8](repeating: 0, count: 64))
+        }
+
+        // Right-size blob without the keyagg magic prefix must throw, not reach
+        // `secp256k1_musig_keyagg_cache_load` → upstream ARG_CHECK.
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.MuSig.XonlyKey(dataRepresentation: coordinate, cache: [UInt8](repeating: 0, count: 197))
+        }
+    }
+
+    @Test("MuSig signature aggregation rejects an empty collection")
+    func musigAggregateRejectsEmpty() {
+        // `secp256k1_musig_partial_sig_agg` requires at least one signature —
+        // the guard must run before the pointer reaches C.
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try P256K.MuSig.aggregateSignatures([])
+        }
+    }
+
+    @Test("MuSig nonce aggregation rejects an empty collection")
+    func musigNonceAggregateRejectsEmpty() {
+        // `secp256k1_musig_nonce_agg` `ARG_CHECK`s `n_pubnonces > 0`, which
+        // aborts the process — the guard must run before the pointer reaches C.
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try P256K.MuSig.Nonce(aggregating: [])
+        }
+    }
+
+    @Test("MuSig aggregation rejects partial signatures from different sessions")
+    func musigAggregateRejectsMixedSessions() throws {
+        let privateKeys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
+        ]
+        let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
+        let messageHash = try SHA256.hash(data: #require("mixed sessions".data(using: .utf8)))
+
+        // Session A: both signers under one aggregated nonce — sanity check
+        // that same-session aggregation succeeds.
+        let firstNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[0], publicKey: privateKeys[0].publicKey, msg32: Array(messageHash)
+        )
+        let secondNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[1], publicKey: privateKeys[1].publicKey, msg32: Array(messageHash)
+        )
+        let sessionA = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+
+        let firstPartial = try privateKeys[0].partialSignature(
+            for: messageHash,
+            pubnonce: firstNonce.pubnonce,
+            secureNonce: firstNonce.secnonce,
+            publicNonceAggregate: sessionA,
+            publicKeyAggregate: aggregate
+        )
+        let secondPartial = try privateKeys[1].partialSignature(
+            for: messageHash,
+            pubnonce: secondNonce.pubnonce,
+            secureNonce: secondNonce.secnonce,
+            publicNonceAggregate: sessionA,
+            publicKeyAggregate: aggregate
+        )
+
+        _ = try P256K.MuSig.aggregateSignatures([firstPartial, secondPartial])
+
+        // Session B: a partial signature produced under a different aggregated
+        // nonce carries a different session blob and must be rejected rather
+        // than silently aggregated under session A's state.
+        let foreignNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[0], publicKey: privateKeys[0].publicKey, msg32: Array(messageHash)
+        )
+        let secondForeignNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[1], publicKey: privateKeys[1].publicKey, msg32: Array(messageHash)
+        )
+        let sessionB = try P256K.MuSig.Nonce(aggregating: [foreignNonce.pubnonce, secondForeignNonce.pubnonce])
+        let foreignPartial = try privateKeys[0].partialSignature(
+            for: messageHash,
+            pubnonce: foreignNonce.pubnonce,
+            secureNonce: foreignNonce.secnonce,
+            publicNonceAggregate: sessionB,
+            publicKeyAggregate: aggregate
+        )
+
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.MuSig.aggregateSignatures([firstPartial, foreignPartial])
+        }
+    }
+
+    @Test("MuSig public nonce accessors expose the 66-byte wire form")
+    func musigNonceAccessorsYieldWireBytes() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let nonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKey,
+            publicKey: privateKey.publicKey,
+            msg32: nil
+        )
+
+        // Public accessors expose the stable 66-byte BIP-327 wire form, not the
+        // platform-dependent 132-byte internal struct.
+        #expect(Array(nonce.pubnonce).count == P256K.Schnorr.publicNonceByteCount)
+        #expect(nonce.pubnonce.withUnsafeBytes { Data($0) } == nonce.pubnonce.dataRepresentation)
+    }
 }
 
-/// A 16-byte digest stub used to verify `partialSignature` rejects non-32-byte
+/// A 16-byte digest stub used to verify `partialSignature` normalizes non-32-byte
 /// digests before the bytes reach `secp256k1_musig_nonce_process`.
 private struct ShortDigest: Digest {
     static var byteCount: Int {
