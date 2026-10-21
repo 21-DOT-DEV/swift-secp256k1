@@ -65,7 +65,9 @@ struct ECDSAWycheproofTests {
         #expect(!validVectors.isEmpty, "No valid ECDSA vectors found")
 
         for (pubKey, vector) in validVectors {
-            if shouldSkip(vector: vector) { continue }
+            if shouldSkip(vector: vector) {
+                continue
+            }
 
             let result = testVector(vector, publicKey: pubKey)
             #expect(result, "Valid vector tcId=\(vector.tcId) should pass: \(vector.comment)")
@@ -80,7 +82,9 @@ struct ECDSAWycheproofTests {
         #expect(!invalidVectors.isEmpty, "No invalid ECDSA vectors found")
 
         for (pubKey, vector) in invalidVectors {
-            if shouldSkip(vector: vector) { continue }
+            if shouldSkip(vector: vector) {
+                continue
+            }
 
             let result = testVector(vector, publicKey: pubKey)
             #expect(!result, "Invalid vector tcId=\(vector.tcId) should fail: \(vector.comment)")

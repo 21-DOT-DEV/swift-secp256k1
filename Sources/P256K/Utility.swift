@@ -25,6 +25,32 @@ public extension ContiguousBytes {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension Sequence where Element == UInt8 {
+    /// Normalizes a byte sequence to the fixed 32-byte `msg32` value upstream
+    /// libsecp256k1 message parameters read.
+    ///
+    /// Follows the SEC1 §4.1.3 / FIPS 186-5 digest-to-integer reduction for a
+    /// 256-bit group order: inputs longer than 32 bytes contribute their
+    /// leftmost 32 bytes; shorter inputs contribute their integer value,
+    /// equivalent to left-padding with zeros. This matches the reduction applied
+    /// by Go `crypto/ecdsa` (`hashToInt`), OpenSSL (`bits2int`), and CryptoKit's
+    /// `signature(for:)` APIs.
+    var msg32Bytes: [UInt8] {
+        let bytes = Array(self)
+        switch bytes.count {
+        case P256K.ByteLength.dimension:
+            return bytes
+
+        case ..<P256K.ByteLength.dimension:
+            return [UInt8](repeating: 0, count: P256K.ByteLength.dimension - bytes.count) + bytes
+
+        default:
+            return Array(bytes.prefix(P256K.ByteLength.dimension))
+        }
+    }
+}
+
 public extension Data {
     /// Copies up to `MemoryLayout<T>.size` bytes from this `Data` into the raw memory of
     /// `value`, used to populate opaque C structs such as `secp256k1_pubkey` and
@@ -99,41 +125,6 @@ extension Int32 {
     }
 }
 
-/// Internal-visibility extraction of the opaque byte buffer inside
-/// `secp256k1_ecdsa_signature`.
-extension secp256k1_ecdsa_signature {
-    /// A `Data` copy of the opaque 64-byte `data` array inside the upstream
-    /// `secp256k1_ecdsa_signature` struct.
-    ///
-    /// Used only for in-memory comparisons / hashing within the Swift wrapper. The bytes
-    /// are **not** a stable serialization format across libsecp256k1 versions; external
-    /// transmission uses the compact (64-byte) or DER serializations produced by
-    /// `secp256k1_ecdsa_signature_serialize_compact` and
-    /// `secp256k1_ecdsa_signature_serialize_der`.
-    var dataValue: Data {
-        var mutableSig = self
-        return Data(bytes: &mutableSig.data, count: MemoryLayout.size(ofValue: data))
-    }
-}
-
-#if Xcode || ENABLE_MODULE_RECOVERY
-    /// Internal-visibility extraction of the opaque byte buffer inside
-    /// `secp256k1_ecdsa_recoverable_signature`.
-    extension secp256k1_ecdsa_recoverable_signature {
-        /// A `Data` copy of the opaque 65-byte `data` array inside the upstream
-        /// `secp256k1_ecdsa_recoverable_signature` struct.
-        ///
-        /// Used only for in-memory comparisons within the Swift wrapper. Wire-format
-        /// persistence should use
-        /// `secp256k1_ecdsa_recoverable_signature_serialize_compact`, which produces a
-        /// 64-byte compact signature plus a separate recovery-ID byte.
-        var dataValue: Data {
-            var mutableSig = self
-            return Data(bytes: &mutableSig.data, count: MemoryLayout.size(ofValue: data))
-        }
-    }
-#endif
-
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension String {
     /// Creates a lowercase hex-encoded string from `bytes`, backed by the `hexString`
@@ -164,6 +155,48 @@ public extension String {
             // The `BytesUtil.swift` Array extension expects lowercase strings.
             try Array(hexString: lowercased())
         }
+    }
+}
+
+/// Byte-level validators for the opaque `secp256k1_musig_*` state blobs that
+/// public APIs accept for session/cache persistence.
+///
+/// Upstream checks each struct's leading 4-byte magic inside `ARG_CHECK` in the
+/// `*_load` helpers (`src/modules/musig/session_impl.h`,
+/// `src/modules/musig/keyagg_impl.h`), which invokes the default
+/// illegal-argument callback — `abort()` — on mismatch. Every blob copied into
+/// one of these structs is therefore validated at the Swift boundary first so a
+/// malformed or truncated blob surfaces a thrown error instead of terminating
+/// the process. The magic values are pinned to the vendored libsecp256k1
+/// version (`vendir.yml`); if upstream ever changes them the vendir bump's
+/// `libsecp256k1Tests` run surfaces the drift.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+enum MuSigOpaqueState {
+    /// `sizeof(secp256k1_musig_keyagg_cache)` — 197 bytes
+    /// (`secp256k1/include/secp256k1_musig.h`).
+    static let keyAggregationCacheByteCount = 197
+
+    /// `sizeof(secp256k1_musig_session)` — 133 bytes.
+    static let sessionByteCount = 133
+
+    /// Leading 4 bytes written by `secp256k1_musig_keyagg_cache_save` and checked
+    /// by `keyagg_cache_load` (`src/modules/musig/keyagg_impl.h`).
+    static let keyAggregationCacheMagic: [UInt8] = [0xF4, 0xAD, 0xBB, 0xDF]
+
+    /// Leading 4 bytes checked by `secp256k1_musig_session_load`
+    /// (`src/modules/musig/session_impl.h`).
+    static let sessionMagic: [UInt8] = [0x9D, 0xED, 0xE9, 0x17]
+
+    /// `true` when `bytes` is a complete `secp256k1_musig_keyagg_cache` blob
+    /// carrying the upstream magic prefix — safe to pass to a `*_load` path.
+    static func isValidKeyAggregationCache(_ bytes: some Collection<UInt8>) -> Bool {
+        bytes.count == keyAggregationCacheByteCount && bytes.prefix(4).elementsEqual(keyAggregationCacheMagic)
+    }
+
+    /// `true` when `bytes` is a complete `secp256k1_musig_session` blob carrying
+    /// the upstream magic prefix.
+    static func isValidSession(_ bytes: some Collection<UInt8>) -> Bool {
+        bytes.count == sessionByteCount && bytes.prefix(4).elementsEqual(sessionMagic)
     }
 }
 

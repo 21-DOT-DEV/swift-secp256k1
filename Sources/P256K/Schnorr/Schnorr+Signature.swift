@@ -45,7 +45,7 @@ import libsecp256k1
             /// Stable wire format suitable for Bitcoin Taproot witnesses, Nostr events, and
             /// any other context consuming BIP-340 signatures. The two 32-byte halves are
             /// the big-endian X-coordinate of the nonce point `R` and the scalar `s`.
-            public var dataRepresentation: Data
+            public private(set) var dataRepresentation: Data
 
             /// Creates a ``SchnorrSignature`` from a 64-byte raw representation.
             ///
@@ -99,8 +99,13 @@ import libsecp256k1
         ///   - digest: The pre-computed message digest to sign.
         ///   - auxiliaryRand: Exactly 32 bytes of auxiliary randomness for BIP-340 nonce derivation; pass zeroed bytes to disable.
         /// - Returns: A 64-byte ``SchnorrSignature``.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if signature production fails.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `auxiliaryRand` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if signature production fails.
         public func signature<D: Digest>(for digest: D, auxiliaryRand: [UInt8]) throws -> P256K.Schnorr.SchnorrSignature {
+            guard auxiliaryRand.count == P256K.ByteLength.dimension else {
+                throw secp256k1Error.incorrectParameterSize
+            }
+
             var hashDataBytes = Array(digest).bytes
             var randomBytes = auxiliaryRand
 
@@ -180,6 +185,7 @@ import libsecp256k1
             let context = P256K.Context.rawRepresentation
             var pubKey = secp256k1_xonly_pubkey()
 
+            // `bytes` is guaranteed a validated 32-byte coordinate by construction.
             return secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
                 secp256k1_schnorrsig_verify(
                     context,

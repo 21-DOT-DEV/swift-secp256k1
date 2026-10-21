@@ -79,8 +79,11 @@ public extension P256K.Signing {
         ///
         /// - Parameter data: The 32-byte X coordinate of the x-only public key.
         /// - Parameter keyParity: The Y-coordinate parity as `Int32`: `0` = even, `1` = odd.
-        public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32) {
-            self.baseKey = XonlyKeyImplementation(dataRepresentation: data.bytes, keyParity: keyParity)
+        /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if the coordinate fails
+        ///   `secp256k1_xonly_pubkey_parse` (out of range or no curve point).
+        public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32) throws {
+            self.baseKey = try XonlyKeyImplementation(dataRepresentation: data.bytes, keyParity: keyParity)
         }
     }
 }

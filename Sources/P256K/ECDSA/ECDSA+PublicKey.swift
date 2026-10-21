@@ -120,11 +120,15 @@ public extension P256K.Signing {
 
         /// Creates a compressed secp256k1 public key from an x-only key by prepending the 0x02 (even-Y) or 0x03 (odd-Y) parity prefix.
         ///
+        /// `XonlyKey` validates its coordinate at construction, so the lifted point is
+        /// parseable by construction and this initializer cannot fail.
+        ///
         /// - Parameter xonlyKey: The x-only public key to convert.
         public init(xonlyKey: XonlyKey) {
             let key = XonlyKeyImplementation(
-                dataRepresentation: xonlyKey.bytes,
-                keyParity: xonlyKey.parity ? 1 : 0
+                validatedBytes: xonlyKey.bytes,
+                keyParity: xonlyKey.parity ? 1 : 0,
+                cache: []
             )
             self.baseKey = PublicKeyImplementation(xonlyKey: key)
         }

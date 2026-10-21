@@ -170,15 +170,21 @@ import libsecp256k1
 
                 /// Recovers the signer's public key from a message and its ``ECDSASignature`` via `secp256k1_ecdsa_recover`, hashing `data` with SHA-256 first.
                 ///
+                /// Recovery is a fallible operation: a well-formed signature can still
+                /// fail to recover (a zero `r` or `s`, an X coordinate with no curve
+                /// point, or a point-at-infinity result). A failure here reflects
+                /// invalid signature data, not a library defect.
+                ///
                 /// - Parameter data: The original message; it is SHA-256 hashed before recovery.
                 /// - Parameter signature: The 65-byte ``ECDSASignature`` containing the compact signature and recovery ID.
                 /// - Parameter format: The serialization format of the recovered key; defaults to `.compressed`.
+                /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ecdsa_recover` rejects the signature.
                 public init<D: DataProtocol>(
                     _ data: D,
                     signature: P256K.Recovery.ECDSASignature,
                     format: P256K.Format = .compressed
-                ) {
-                    self.baseKey = PublicKeyImplementation(
+                ) throws {
+                    self.baseKey = try PublicKeyImplementation(
                         SHA256.hash(data: data),
                         signature: signature,
                         format: format
@@ -187,15 +193,23 @@ import libsecp256k1
 
                 /// Recovers the signer's public key from a pre-computed digest and its ``ECDSASignature`` via `secp256k1_ecdsa_recover`.
                 ///
-                /// - Parameter digest: The pre-computed message digest that was signed.
+                /// Recovery is a fallible operation: a well-formed signature can still
+                /// fail to recover (a zero `r` or `s`, an X coordinate with no curve
+                /// point, or a point-at-infinity result). A failure here reflects
+                /// invalid signature data, not a library defect.
+                ///
+                /// - Parameter digest: The pre-computed message digest that was signed; reduced to
+                ///   the 32-byte `msg32` value per SEC1 §4.1.3 (leftmost 32 bytes for longer digests,
+                ///   integer value for shorter).
                 /// - Parameter signature: The 65-byte ``ECDSASignature`` containing the compact signature and recovery ID.
                 /// - Parameter format: The serialization format of the recovered key; defaults to `.compressed`.
+                /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ecdsa_recover` rejects the signature.
                 public init<D: Digest>(
                     _ digest: D,
                     signature: P256K.Recovery.ECDSASignature,
                     format: P256K.Format = .compressed
-                ) {
-                    self.baseKey = PublicKeyImplementation(digest, signature: signature, format: format)
+                ) throws {
+                    self.baseKey = try PublicKeyImplementation(digest, signature: signature, format: format)
                 }
 
                 /// Creates a recovery public key from a validated backing implementation.

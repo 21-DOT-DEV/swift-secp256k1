@@ -45,7 +45,8 @@ import libsecp256k1
         /// ### Serialization
         /// - ``dataRepresentation``
         struct Nonce: ContiguousBytes, Sequence {
-            /// The raw 66-byte `secp256k1_musig_aggnonce` struct bytes.
+            /// The raw `secp256k1_musig_aggnonce` struct bytes (132 bytes); parse-validated
+            /// at construction or produced by `secp256k1_musig_nonce_agg`.
             let aggregatedNonce: Data
 
             /// Creates a MuSig2 aggregated nonce from its 66-byte BIP-327 wire representation via `secp256k1_musig_aggnonce_parse`.
@@ -74,10 +75,16 @@ import libsecp256k1
             /// material is leaked.
             ///
             /// - Parameter pubnonces: All signers' ``P256K/Schnorr/Nonce`` public nonces; must include every participant.
-            /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_musig_nonce_agg` fails.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `pubnonces` is empty —
+            ///   upstream `ARG_CHECK`s `n_pubnonces > 0`, which aborts the process;
+            ///   ``secp256k1Error/underlyingCryptoError`` if `secp256k1_musig_nonce_agg` fails.
             public init(aggregating pubnonces: [P256K.Schnorr.Nonce]) throws {
                 let context = P256K.Context.rawRepresentation
                 var aggNonce = secp256k1_musig_aggnonce()
+
+                guard pubnonces.isEmpty == false else {
+                    throw secp256k1Error.incorrectParameterSize
+                }
 
                 guard PointerArrayUtility.withUnsafePointerArray(
                     pubnonces.map {
@@ -94,17 +101,18 @@ import libsecp256k1
                 self.aggregatedNonce = Data(Swift.withUnsafeBytes(of: aggNonce) { Data($0) })
             }
 
-            /// Calls `body` with an unsafe pointer to the aggregated nonce's raw bytes.
+            /// Calls `body` with an unsafe pointer to the 66-byte BIP-327 wire form —
+            /// the same bytes ``dataRepresentation`` returns.
             ///
             /// - Parameter body: A closure receiving an `UnsafeRawBufferPointer` over the nonce data.
             /// - Returns: The value returned by `body`.
             public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-                try aggregatedNonce.withUnsafeBytes(body)
+                try dataRepresentation.withUnsafeBytes(body)
             }
 
-            /// Returns an iterator over the 66 bytes of the aggregated nonce.
+            /// Returns an iterator over the 66-byte BIP-327 wire form of the aggregated nonce.
             public func makeIterator() -> Data.Iterator {
-                aggregatedNonce.makeIterator()
+                dataRepresentation.makeIterator()
             }
 
             /// The 66-byte BIP-327 wire representation of the aggregated nonce, serialized via `secp256k1_musig_aggnonce_serialize`.
@@ -115,7 +123,12 @@ import libsecp256k1
 
                 aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
-                _ = secp256k1_musig_aggnonce_serialize(context, &output, &aggnonce)
+                // `aggregatedNonce` was produced upstream (nonce_agg or a
+                // successful parse), so the load inside serialize cannot fail.
+                precondition(
+                    secp256k1_musig_aggnonce_serialize(context, &output, &aggnonce).boolValue,
+                    "secp256k1_musig_aggnonce_serialize failed on upstream-produced nonce — library bug"
+                )
 
                 return Data(output)
             }
@@ -130,11 +143,13 @@ import libsecp256k1
             ///
             /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance by binding the nonce to the key.
             /// - Parameter publicKey: The signer's public key; the generated secret nonce is bound to this key and cannot sign for any other.
-            /// - Parameter msg32: The 32-byte message to be signed; `nil` if not yet known.
+            /// - Parameter msg32: The message to be signed; `nil` if not yet known. Any length is
+            ///   accepted — the bytes are reduced to the 32-byte `msg32` value per SEC1 §4.1.3
+            ///   (leftmost 32 bytes for longer inputs, integer value for shorter).
             ///   Providing it binds the nonce to the message, increasing misuse-resistance.
             /// - Parameter extraInput32: Optional 32 bytes of additional entropy (e.g., current timestamp) passed to `secp256k1_musig_nonce_gen`.
             /// - Returns: A `~Copyable` ``NonceResult`` containing the public nonce (to share) and secret nonce (to consume when signing).
-            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `msg32` or `extraInput32` is
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `extraInput32` is
             ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError`` if
             ///   `secp256k1_musig_nonce_gen` fails.
             public static func generate(
@@ -164,11 +179,13 @@ import libsecp256k1
             /// - Parameter sessionSecretRand: Secret, uniformly random session input consumed by this call — see ``SessionSecretRand``.
             /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance.
             /// - Parameter publicKey: The signer's public key; the secret nonce is bound to this key.
-            /// - Parameter msg32: The 32-byte message to sign; `nil` if not yet known.
+            /// - Parameter msg32: The message to sign; `nil` if not yet known. Any length is
+            ///   accepted — the bytes are reduced to the 32-byte `msg32` value per SEC1 §4.1.3
+            ///   (leftmost 32 bytes for longer inputs, integer value for shorter).
             ///   Providing it binds the nonce to the message, increasing misuse-resistance.
             /// - Parameter extraInput32: Optional 32 bytes of additional entropy passed to `secp256k1_musig_nonce_gen`.
             /// - Returns: A `~Copyable` ``NonceResult`` with the public nonce (to share) and secret nonce (to consume).
-            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `msg32` or `extraInput32` is
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `extraInput32` is
             ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError`` if
             ///   `secp256k1_musig_nonce_gen` fails.
             public static func generate(
@@ -182,10 +199,8 @@ import libsecp256k1
                 var secnonce = secp256k1_musig_secnonce()
                 var pubnonce = secp256k1_musig_pubnonce()
                 var pubkey = publicKey.baseKey.rawRepresentation
+                let msg32Bytes = msg32?.msg32Bytes
 
-                if let msg32, msg32.count != P256K.ByteLength.dimension {
-                    throw secp256k1Error.incorrectParameterSize
-                }
                 if let extraInput32, extraInput32.count != P256K.ByteLength.dimension {
                     throw secp256k1Error.incorrectParameterSize
                 }
@@ -209,7 +224,7 @@ import libsecp256k1
                                 sessionSecrand,
                                 key.bindMemory(to: UInt8.self).baseAddress,
                                 &pubkey,
-                                msg32,
+                                msg32Bytes,
                                 nil,
                                 extraInput32
                             ).boolValue
@@ -222,7 +237,7 @@ import libsecp256k1
                         sessionSecrand,
                         nil,
                         &pubkey,
-                        msg32,
+                        msg32Bytes,
                         nil,
                         extraInput32
                     ).boolValue
@@ -233,7 +248,7 @@ import libsecp256k1
 
                 return NonceResult(
                     pubnonce: P256K.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) }),
-                    secnonce: P256K.Schnorr.SecureNonce(Swift.withUnsafeBytes(of: secnonce) { Data($0) })
+                    secnonce: P256K.Schnorr.SecureNonce(Swift.withUnsafeBytes(of: secnonce) { SecureBytes(bytes: $0) })
                 )
             }
         }

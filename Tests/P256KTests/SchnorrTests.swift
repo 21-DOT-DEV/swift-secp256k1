@@ -69,6 +69,33 @@ struct SchnorrTestSuite {
         #expect(privateKey.xonly.isValid(signature, for: &messageDigest))
     }
 
+    @Test("Schnorr signing rejects a non-32-byte auxiliaryRand")
+    func shortAuxRandThrows() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let digest = SHA256.hash(data: "We're all Satoshi.".data(using: .utf8)!)
+
+        // `auxiliaryRand` feeds upstream's `ndata` pointer, which reads a fixed
+        // 32 bytes — a shorter input is an out-of-bounds read, not a signing failure.
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try privateKey.signature(for: digest, auxiliaryRand: [UInt8](repeating: 1, count: 16))
+        }
+    }
+
+    @Test("x-only key rejects malformed coordinates at construction")
+    func xonlyKeyRejectsMalformed() throws {
+        // `secp256k1_xonly_pubkey_parse` reads a fixed 32 bytes and requires the
+        // coordinate to lift to a curve point — malformed input is rejected at
+        // construction so no downstream path can observe an invalid key.
+        #expect(throws: secp256k1Error.incorrectKeySize) {
+            _ = try P256K.Schnorr.XonlyKey(dataRepresentation: [UInt8](repeating: 2, count: 16))
+        }
+
+        // 0xFF×32 ≥ the field order p — the x coordinate never lifts to a curve point.
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.Schnorr.XonlyKey(dataRepresentation: [UInt8](repeating: 0xFF, count: 32))
+        }
+    }
+
     @Test("Test Schnorr Negating")
     func schnorrNegating() throws {
         let privateBytes = try "56baa476b36a5b1548279f5bf57b82db39e594aee7912cde30977b8e80e6edca".bytes

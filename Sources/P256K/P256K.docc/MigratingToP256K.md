@@ -124,7 +124,7 @@ import P256K
 
 let privateKey = try P256K.Signing.PrivateKey()
 let message = "migration check".data(using: .utf8)!
-let signature = privateKey.signature(for: message)   // non-throwing on Signing.PrivateKey since 0.23.0
+let signature = privateKey.signature(for: message)
 print(privateKey.publicKey.isValidSignature(signature, for: message))  // true
 ```
 
@@ -204,6 +204,8 @@ Boilertalk and status-im also ship via CocoaPods, so if that's how you consume t
 **Resolution fails on an unknown trait named `zkp`.** The `zkp` bundle trait was removed with the `ZKP` and `libsecp256k1_zkp` products after the 0.23.x series — delete it from `traits:` in your dependency. If you use the zkp-only modules, pin `exact: "0.23.2"` (the last 0.23.x release) and keep `traits: ["zkp"]` — the trait still exists there and compiles those modules under `swift build`. `0.23.x` receives no security fixes — pin it only until a dedicated zkp package ships ([SECURITY.md][security]).
 
 **A transitive dependency still pins the old URL.** While you migrate, another dependency (say, a Lightning library) may still depend on the pre-rename `secp256k1` package. The resolver allows both — their package identities and Swift module names differ — but each bundles its own copy of libsecp256k1 exporting the *same* C symbols, which can surface at link time as `duplicate symbol '_secp256k1_ec_pubkey_create'` (and similar). Whether it triggers depends on your linkage and target layout. Resolve it by completing the migration on both sides: move the transitive dependency to `P256K`, or pin a version of it that already has. This is the one case where a one-target-at-a-time migration may not link cleanly.
+
+**Persisted signature `dataRepresentation` bytes fail to load or verify after upgrading.** Releases after 0.24.0 store canonical wire formats in `dataRepresentation` on all three signature types — 64-byte `r || s` for ``P256K/Signing/ECDSASignature``, 65-byte `r || s || recoveryId` for ``P256K/Recovery/ECDSASignature``, and the 32-byte serialized partial signature for ``P256K/Schnorr/PartialSignature`` — where ≤0.24.0 persisted the platform-dependent bytes of the underlying C structs. Old blobs may still parse under the new initializers but decode as different values (a struct dump is *not* a valid compact signature), so verification fails or the initializer throws. The migration is to persist `compactRepresentation` / DER / serialized forms — which were already canonical — and rebuild any stored `dataRepresentation` values from them; do not attempt to reinterpret old `dataRepresentation` bytes in place. The same applies to MuSig session blobs persisted by `PartialSignature/session`, whose 133-byte form now requires the upstream magic prefix to load.
 
 ## See Also
 

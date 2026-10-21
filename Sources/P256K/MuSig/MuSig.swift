@@ -176,10 +176,13 @@ import libsecp256k1
 
                 /// Creates a MuSig aggregate public key from its x-only form, restoring the key aggregation cache.
                 ///
+                /// `XonlyKey` validates its coordinate at construction, so the lifted point
+                /// is parseable by construction and this initializer cannot fail.
+                ///
                 /// - Parameter xonlyKey: An ``XonlyKey`` whose ``XonlyKey/cache`` was preserved from the original ``aggregate(_:)`` call.
                 public init(xonlyKey: XonlyKey) {
                     let key = XonlyKeyImplementation(
-                        dataRepresentation: xonlyKey.bytes,
+                        validatedBytes: xonlyKey.bytes,
                         keyParity: xonlyKey.parity ? 1 : 0,
                         cache: xonlyKey.cache.bytes
                     )
@@ -190,8 +193,9 @@ import libsecp256k1
                 ///
                 /// - Parameter data: Serialized public key bytes matching `format.length`.
                 /// - Parameter format: The serialization format of `data`.
-                /// - Parameter cache: The 197-byte `secp256k1_musig_keyagg_cache` from the original ``aggregate(_:)`` call; required for signing sessions.
-                /// - Throws: ``secp256k1Error/underlyingCryptoError`` if parsing via `secp256k1_ec_pubkey_parse` fails.
+                /// - Parameter cache: The 197-byte `secp256k1_musig_keyagg_cache` from the original ``aggregate(_:)`` call; required for signing sessions. Pass `[]` for a verification-only key.
+                /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `cache` is non-empty but not exactly 197 bytes;
+                ///   ``secp256k1Error/underlyingCryptoError`` if parsing via `secp256k1_ec_pubkey_parse` fails or `cache` lacks the upstream magic prefix.
                 public init<D: ContiguousBytes>(
                     dataRepresentation data: D,
                     format: P256K.Format,
@@ -279,9 +283,13 @@ import libsecp256k1
                 ///
                 /// - Parameter data: The 32-byte X coordinate of the aggregate public key.
                 /// - Parameter keyParity: The Y-coordinate parity (`0` = even, `1` = odd) as returned by `secp256k1_xonly_pubkey_from_pubkey`.
-                /// - Parameter cache: The 197-byte `secp256k1_musig_keyagg_cache` from the original ``aggregate(_:)`` call.
-                public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0, cache: [UInt8] = []) {
-                    self.baseKey = XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity, cache: cache)
+                /// - Parameter cache: The 197-byte `secp256k1_musig_keyagg_cache` from the original ``aggregate(_:)`` call; `[]` (the default) produces a verification-only key.
+                /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not exactly 32 bytes;
+                ///   ``secp256k1Error/incorrectParameterSize`` if `cache` is non-empty but not exactly 197 bytes;
+                ///   ``secp256k1Error/underlyingCryptoError`` if the coordinate fails
+                ///   `secp256k1_xonly_pubkey_parse` (out of range or no curve point) or `cache` lacks the upstream magic prefix.
+                public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0, cache: [UInt8] = []) throws {
+                    self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity, cache: cache)
                 }
 
                 /// Returns `true` if both x-only keys have identical 32-byte X coordinates.
@@ -301,13 +309,6 @@ import libsecp256k1
         var dataValue: Data {
             var mutableSession = self
             return Data(bytes: &mutableSession.data, count: MemoryLayout.size(ofValue: data))
-        }
-    }
-
-    extension secp256k1_musig_partial_sig {
-        var dataValue: Data {
-            var mutableSig = self
-            return Data(bytes: &mutableSig.data, count: MemoryLayout.size(ofValue: data))
         }
     }
 

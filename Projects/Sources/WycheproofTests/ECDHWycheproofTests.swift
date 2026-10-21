@@ -63,7 +63,9 @@ struct ECDHWycheproofTests {
         #expect(!validVectors.isEmpty, "No valid ECDH vectors found")
 
         for vector in validVectors {
-            if shouldSkip(vector: vector) { continue }
+            if shouldSkip(vector: vector) {
+                continue
+            }
 
             let result = testVector(vector)
             #expect(result, "Valid vector tcId=\(vector.tcId) should pass: \(vector.comment)")
@@ -76,7 +78,9 @@ struct ECDHWycheproofTests {
         #expect(!invalidVectors.isEmpty, "No invalid ECDH vectors found")
 
         for vector in invalidVectors {
-            if shouldSkip(vector: vector) { continue }
+            if shouldSkip(vector: vector) {
+                continue
+            }
 
             let result = testVector(vector)
             #expect(!result, "Invalid vector tcId=\(vector.tcId) should fail: \(vector.comment)")

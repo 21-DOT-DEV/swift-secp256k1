@@ -54,7 +54,7 @@ import P256K
 let privateKey = try P256K.Signing.PrivateKey()
 let message = "Hello, secp256k1!".data(using: .utf8)!
 
-// Sign — SHA-256 is applied internally; signature(for:) is non-throwing.
+// Sign — SHA-256 is applied internally.
 let signature = privateKey.signature(for: message)
 
 // Verify against the matching public key.

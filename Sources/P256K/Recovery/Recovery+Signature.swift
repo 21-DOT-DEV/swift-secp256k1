@@ -77,38 +77,30 @@ import libsecp256k1
         /// ### Conversion
         /// - ``normalize``
         struct ECDSASignature: ContiguousBytes, DataSignature {
-            /// The raw 65-byte internal representation of the
-            /// `secp256k1_ecdsa_recoverable_signature` struct.
+            /// The 65-byte canonical wire representation: `r || s` in big-endian
+            /// (64 bytes) followed by the 1-byte recovery ID.
             ///
-            /// The internal layout is the opaque upstream struct body (declared as
-            /// `unsigned char data[65]` in
-            /// [`secp256k1/include/secp256k1_recovery.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_recovery.h)).
-            /// It is **not** a stable wire format across libsecp256k1 versions — for
-            /// cross-process persistence, use ``compactRepresentation`` and transmit the
-            /// `signature + recoveryId` bytes alongside each other.
-            public var dataRepresentation: Data
+            /// This is the same `signature || UInt8(recoveryId)` concatenation described
+            /// on ``ECDSACompactSignature`` for Bitcoin signed-message workflows
+            /// ([BIP-137](https://github.com/bitcoin/bips/blob/master/bip-0137.mediawiki),
+            /// [BIP-322](https://github.com/bitcoin/bips/blob/master/bip-0322.mediawiki)), and is a stable, portable
+            /// format suitable for persistence and transmission. Every value is
+            /// validated at construction time — `r` and `s` must be below the curve
+            /// order and the recovery ID must be in `0...3` — so a well-formed
+            /// ``ECDSASignature`` always parses cleanly. The upstream
+            /// `secp256k1_ecdsa_recoverable_signature` object is rebuilt through
+            /// `secp256k1_ecdsa_recoverable_signature_parse_compact` at each point of
+            /// use rather than stored.
+            public private(set) var dataRepresentation: Data
 
-            /// The 64-byte compact serialization and 1-byte recovery ID, produced by `secp256k1_ecdsa_recoverable_signature_serialize_compact`.
+            /// The 64-byte compact serialization and 1-byte recovery ID, matching the output of `secp256k1_ecdsa_recoverable_signature_serialize_compact`.
+            ///
+            /// The stored ``dataRepresentation`` is already this wire form, so the
+            /// accessor splits it without an upstream call.
             public var compactRepresentation: ECDSACompactSignature {
-                let context = P256K.Context.rawRepresentation
-                var recoveryId = Int32()
-                var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
-                var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
-
-                dataRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
-
-                guard secp256k1_ecdsa_recoverable_signature_serialize_compact(
-                    context,
-                    &compactSignature,
-                    &recoveryId,
-                    &recoverableSignature
-                ).boolValue else {
-                    fatalError("secp256k1_ecdsa_recoverable_signature_serialize_compact failed — library bug")
-                }
-
-                return P256K.Recovery.ECDSACompactSignature(
-                    signature: Data(bytes: &compactSignature, count: P256K.ByteLength.signature),
-                    recoveryId: recoveryId
+                P256K.Recovery.ECDSACompactSignature(
+                    signature: dataRepresentation.prefix(P256K.ByteLength.signature),
+                    recoveryId: Int32(dataRepresentation.last ?? 0)
                 )
             }
 
@@ -124,50 +116,98 @@ import libsecp256k1
                 let context = P256K.Context.rawRepresentation
                 var normalizedSignature = secp256k1_ecdsa_signature()
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
+                var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
 
-                dataRepresentation.copyToUnsafeMutableBytes(of: &recoverableSignature.data)
-
-                guard secp256k1_ecdsa_recoverable_signature_convert(
+                // Stored bytes are validated at init, so the re-parse is
+                // infallible in practice; a failure indicates memory corruption
+                // or an upstream defect, not bad input.
+                guard secp256k1_ecdsa_recoverable_signature_parse_compact(
                     context,
-                    &normalizedSignature,
-                    &recoverableSignature
-                ).boolValue else {
-                    fatalError("secp256k1_ecdsa_recoverable_signature_convert failed — library bug")
+                    &recoverableSignature,
+                    Array(dataRepresentation.prefix(P256K.ByteLength.signature)),
+                    Int32(dataRepresentation[P256K.ByteLength.signature])
+                ).boolValue,
+                    secp256k1_ecdsa_recoverable_signature_convert(
+                        context,
+                        &normalizedSignature,
+                        &recoverableSignature
+                    ).boolValue,
+                    secp256k1_ecdsa_signature_serialize_compact(
+                        context,
+                        &compactSignature,
+                        &normalizedSignature
+                    ).boolValue else {
+                    fatalError("secp256k1 recoverable signature re-parse failed on init-validated bytes — library bug")
                 }
 
-                return P256K.Signing.ECDSASignature(normalizedSignature.dataValue)
+                return P256K.Signing.ECDSASignature(Data(compactSignature))
             }
 
-            /// Creates an ``ECDSASignature`` from a 65-byte raw recoverable signature representation.
+            /// Creates an ``ECDSASignature`` from the canonical 65-byte wire form
+            /// (`r || s` big-endian + 1-byte recovery ID).
             ///
-            /// - Parameter dataRepresentation: Exactly 65 bytes (`P256K.ByteLength.signature + 1`) in the internal recoverable signature format.
-            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count is not 65.
+            /// The bytes are validated by
+            /// `secp256k1_ecdsa_recoverable_signature_parse_compact`: `r` and `s`
+            /// must be below the curve order and the recovery ID must be in `0...3`.
+            ///
+            /// - Parameter dataRepresentation: Exactly 65 bytes (`P256K.ByteLength.signature + 1`) in the canonical `r || s || recoveryId` wire format.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count is not 65;
+            ///   ``secp256k1Error/underlyingCryptoError`` if the recovery ID is out of range or `r`/`s` overflow the curve order.
             public init<D: DataProtocol>(dataRepresentation: D) throws {
                 guard dataRepresentation.count == P256K.ByteLength.signature + 1 else {
                     throw secp256k1Error.incorrectParameterSize
                 }
 
-                self.dataRepresentation = Data(dataRepresentation)
+                let signatureBytes = Array(dataRepresentation)
+                var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
+
+                // The recovery ID range check must precede the parse call:
+                // upstream's `ARG_CHECK(recid >= 0 && recid <= 3)` invokes the
+                // default illegal-argument callback, which aborts the process
+                // (see bitcoin-core/secp256k1#751).
+                guard signatureBytes[P256K.ByteLength.signature] <= 3,
+                      secp256k1_ecdsa_recoverable_signature_parse_compact(
+                          P256K.Context.rawRepresentation,
+                          &recoverableSignature,
+                          Array(signatureBytes.prefix(P256K.ByteLength.signature)),
+                          Int32(signatureBytes[P256K.ByteLength.signature])
+                      ).boolValue else {
+                    throw secp256k1Error.underlyingCryptoError
+                }
+
+                self.dataRepresentation = Data(signatureBytes)
             }
 
-            /// Creates an ``ECDSASignature`` from a pre-validated 65-byte data value.
-            /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.signature + 1` (65).
+            /// Creates an ``ECDSASignature`` from a pre-validated 65-byte wire-format data value.
+            /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.signature + 1` (65) and hold validated `r || s || recoveryId` bytes.
             init(_ dataRepresentation: Data) {
                 precondition(dataRepresentation.count == P256K.ByteLength.signature + 1, "Invalid recoverable signature size")
                 self.dataRepresentation = dataRepresentation
             }
 
-            /// Creates an ``ECDSASignature`` from a 64-byte compact representation and recovery ID via `secp256k1_ecdsa_recoverable_signature_parse_compact`.
+            /// Creates an ``ECDSASignature`` from a 64-byte compact representation and recovery ID, validated by `secp256k1_ecdsa_recoverable_signature_parse_compact`.
             ///
             /// - Parameter compactRepresentation: The 64-byte compact ECDSA signature (`r || s`).
             /// - Parameter recoveryId: The recovery ID (0–3) from the original signing operation.
-            /// - Throws: ``secp256k1Error/underlyingCryptoError`` if parsing fails.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `compactRepresentation` is not exactly 64 bytes;
+            ///   ``secp256k1Error/underlyingCryptoError`` if `recoveryId` is out of range or `r`/`s` overflow the curve order.
             public init<D: DataProtocol>(compactRepresentation: D, recoveryId: Int32) throws {
-                let context = P256K.Context.rawRepresentation
+                guard compactRepresentation.count == P256K.ByteLength.signature else {
+                    throw secp256k1Error.incorrectParameterSize
+                }
+
+                // The recovery ID range check must precede the parse call:
+                // upstream's `ARG_CHECK(recid >= 0 && recid <= 3)` invokes the
+                // default illegal-argument callback, which aborts the process
+                // (see bitcoin-core/secp256k1#751).
+                guard (0...3).contains(recoveryId) else {
+                    throw secp256k1Error.underlyingCryptoError
+                }
+
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
 
                 guard secp256k1_ecdsa_recoverable_signature_parse_compact(
-                    context,
+                    P256K.Context.rawRepresentation,
                     &recoverableSignature,
                     Array(compactRepresentation),
                     recoveryId
@@ -175,7 +215,7 @@ import libsecp256k1
                     throw secp256k1Error.underlyingCryptoError
                 }
 
-                self.dataRepresentation = recoverableSignature.dataValue
+                self.dataRepresentation = Data(compactRepresentation) + [UInt8(recoveryId)]
             }
 
             /// Calls `body` with an unsafe pointer to the signature's 65 raw bytes.
@@ -197,16 +237,23 @@ import libsecp256k1
 
         /// Generates a recoverable ECDSA signature from a pre-computed digest via `secp256k1_ecdsa_sign_recoverable` with RFC 6979 deterministic nonce generation.
         ///
+        /// Digests of any length are accepted: the digest is reduced to the 32-byte
+        /// `msg32` value per SEC1 §4.1.3 — the leftmost 32 bytes for longer digests,
+        /// the integer value (left-padded with zeros) for shorter ones.
+        ///
         /// - Parameter digest: The pre-computed message digest to sign.
         /// - Returns: A 65-byte ``ECDSASignature`` from which the signer's ``PublicKey`` can be recovered.
         public func signature<D: Digest>(for digest: D) -> Signature {
             let context = P256K.Context.rawRepresentation
+            let digestBytes = digest.msg32Bytes
             var signature = secp256k1_ecdsa_recoverable_signature()
+            var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
+            var recoveryId = Int32()
 
             guard secp256k1_ecdsa_sign_recoverable(
                 context,
                 &signature,
-                Array(digest),
+                digestBytes,
                 Array(dataRepresentation),
                 nil,
                 nil
@@ -214,7 +261,16 @@ import libsecp256k1
                 fatalError("secp256k1_ecdsa_sign_recoverable failed with valid key — library bug")
             }
 
-            return P256K.Recovery.ECDSASignature(signature.dataValue)
+            guard secp256k1_ecdsa_recoverable_signature_serialize_compact(
+                context,
+                &compactSignature,
+                &recoveryId,
+                &signature
+            ).boolValue else {
+                fatalError("secp256k1_ecdsa_recoverable_signature_serialize_compact failed — library bug")
+            }
+
+            return P256K.Recovery.ECDSASignature(Data(compactSignature) + [UInt8(recoveryId)])
         }
     }
 

@@ -15,9 +15,8 @@ import libsecp256k1
 
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public extension P256K.Signing {
-    /// 64-byte secp256k1 ECDSA signature in libsecp256k1 internal format, convertible to and
-    /// from DER (variable-length, up to 72 bytes) and compact (exactly 64 bytes)
-    /// representations.
+    /// 64-byte secp256k1 ECDSA signature in canonical compact wire format (`r || s`
+    /// in big-endian), convertible to and from DER (variable-length, up to 72 bytes).
     ///
     /// ## Overview
     ///
@@ -27,11 +26,11 @@ public extension P256K.Signing {
     /// normalization is required because `secp256k1_ecdsa_verify` only accepts lower-S
     /// signatures; a non-normalized signature will always fail verification.
     ///
-    /// The internal 64-byte `data` buffer is the opaque `secp256k1_ecdsa_signature` struct
-    /// body declared in
-    /// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h).
-    /// Its byte layout is **not** a stable wire format across libsecp256k1 versions — use
-    /// ``compactRepresentation`` or ``derRepresentation`` for persistence / transmission.
+    /// ``dataRepresentation`` stores the canonical wire bytes — identical to
+    /// ``compactRepresentation`` and to CryptoKit's `rawRepresentation` — so it is a
+    /// stable format suitable for persistence and transmission. The upstream
+    /// `secp256k1_ecdsa_signature` object is rebuilt from these bytes at each point
+    /// of use rather than stored.
     ///
     /// ## Topics
     ///
@@ -44,29 +43,45 @@ public extension P256K.Signing {
     /// - ``compactRepresentation``
     /// - ``derRepresentation``
     struct ECDSASignature: ContiguousBytes, NISTECDSASignature, CompactSignature {
-        /// The 64-byte opaque `secp256k1_ecdsa_signature` struct buffer.
+        /// The 64-byte canonical wire representation: `r || s` in big-endian.
         ///
-        /// The internal layout is not a stable wire format — use ``compactRepresentation``
-        /// or ``derRepresentation`` for cross-process persistence. The bytes here are
-        /// retained across Swift-layer operations to avoid repeat parsing; the upstream
-        /// struct stores the `(r, s)` pair in a version-specific packed form.
-        public var dataRepresentation: Data
+        /// This is the same form ``compactRepresentation`` returns — a stable,
+        /// portable encoding suitable for persistence and transmission, identical
+        /// to CryptoKit's `rawRepresentation`. Every value is validated at
+        /// construction time by `secp256k1_ecdsa_signature_parse_compact` — `r`
+        /// and `s` must be below the curve order — so a well-formed
+        /// ``ECDSASignature`` always parses cleanly. The upstream
+        /// `secp256k1_ecdsa_signature` object is rebuilt at each point of use
+        /// rather than stored.
+        public private(set) var dataRepresentation: Data
 
-        /// Creates an ``ECDSASignature`` from a 64-byte raw representation.
+        /// Creates an ``ECDSASignature`` from the canonical 64-byte wire form
+        /// (`r || s` in big-endian).
         ///
-        /// - Parameter dataRepresentation: Exactly 64 bytes in libsecp256k1 internal format (`r || s`).
-        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count is not 64.
+        /// - Parameter dataRepresentation: Exactly 64 bytes in compact format (`r || s` in big-endian).
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count is not 64;
+        ///   ``secp256k1Error/underlyingCryptoError`` if `r` or `s` is at or above the curve order.
         public init<D: DataProtocol>(dataRepresentation: D) throws {
             guard dataRepresentation.count == P256K.ByteLength.signature else {
                 throw secp256k1Error.incorrectParameterSize
             }
 
+            var signature = secp256k1_ecdsa_signature()
+
+            guard secp256k1_ecdsa_signature_parse_compact(
+                P256K.Context.rawRepresentation,
+                &signature,
+                Array(dataRepresentation)
+            ).boolValue else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
             self.dataRepresentation = Data(dataRepresentation)
         }
 
-        /// Initializes ECDSASignature from the raw representation.
+        /// Initializes ECDSASignature from pre-validated canonical `r || s` bytes.
         /// - Parameters:
-        ///   - dataRepresentation: A data representation of the key as a collection of contiguous bytes.
+        ///   - dataRepresentation: A data representation of the signature as a collection of contiguous bytes.
         /// - Precondition: `dataRepresentation.count` must equal `P256K.ByteLength.signature`.
         init(_ dataRepresentation: Data) {
             precondition(dataRepresentation.count == P256K.ByteLength.signature, "Invalid ECDSA signature size")
@@ -81,6 +96,7 @@ public extension P256K.Signing {
             let context = P256K.Context.rawRepresentation
             let derSignatureBytes = Array(derRepresentation)
             var signature = secp256k1_ecdsa_signature()
+            var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
 
             guard secp256k1_ecdsa_signature_parse_der(
                 context,
@@ -91,26 +107,29 @@ public extension P256K.Signing {
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            self.dataRepresentation = signature.dataValue
+            // A DER parse that succeeded yields in-range scalars, so the compact
+            // re-serialization is infallible.
+            guard secp256k1_ecdsa_signature_serialize_compact(
+                context,
+                &compactSignature,
+                &signature
+            ).boolValue else {
+                fatalError("secp256k1_ecdsa_signature_serialize_compact failed on parsed signature — library bug")
+            }
+
+            self.dataRepresentation = Data(compactSignature)
         }
 
         /// Creates an ``ECDSASignature`` by parsing a 64-byte compact representation via `secp256k1_ecdsa_signature_parse_compact`.
         ///
+        /// The compact representation is exactly the canonical wire form stored in
+        /// ``dataRepresentation``, so this is equivalent to ``init(dataRepresentation:)``.
+        ///
         /// - Parameter compactRepresentation: Exactly 64 bytes in compact format (`r || s` in big-endian).
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if parsing fails.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `compactRepresentation` is not exactly
+        ///   64 bytes; ``secp256k1Error/underlyingCryptoError`` if `r` or `s` is at or above the curve order.
         public init<D: DataProtocol>(compactRepresentation: D) throws {
-            let context = P256K.Context.rawRepresentation
-            var signature = secp256k1_ecdsa_signature()
-
-            guard secp256k1_ecdsa_signature_parse_compact(
-                context,
-                &signature,
-                Array(compactRepresentation)
-            ).boolValue else {
-                throw secp256k1Error.underlyingCryptoError
-            }
-
-            self.dataRepresentation = signature.dataValue
+            try self.init(dataRepresentation: compactRepresentation)
         }
 
         /// Calls `body` with an unsafe pointer to the signature's raw bytes.
@@ -121,28 +140,14 @@ public extension P256K.Signing {
             try dataRepresentation.withUnsafeBytes(body)
         }
 
-        /// The 64-byte compact representation of the signature (`r || s` in big-endian),
-        /// produced by `secp256k1_ecdsa_signature_serialize_compact`.
+        /// The 64-byte compact representation of the signature (`r || s` in big-endian).
         ///
         /// Stable wire format suitable for Bitcoin witness fields, Nostr events, and other
         /// contexts that expect a fixed-length signature. The two 32-byte halves are the
-        /// big-endian encodings of the `r` and `s` scalars respectively.
+        /// big-endian encodings of the `r` and `s` scalars respectively — identical to
+        /// the stored ``dataRepresentation``, which is already this canonical wire form.
         public var compactRepresentation: Data {
-            let context = P256K.Context.rawRepresentation
-            var signature = secp256k1_ecdsa_signature()
-            var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
-
-            dataRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
-
-            guard secp256k1_ecdsa_signature_serialize_compact(
-                context,
-                &compactSignature,
-                &signature
-            ).boolValue else {
-                fatalError("secp256k1_ecdsa_signature_serialize_compact failed with valid signature — library bug")
-            }
-
-            return Data(bytes: &compactSignature, count: P256K.ByteLength.signature)
+            dataRepresentation
         }
 
         /// The variable-length DER-encoded representation of the signature (up to 72
@@ -158,15 +163,21 @@ public extension P256K.Signing {
             var derSignatureLength = 80
             var derSignature = [UInt8](repeating: 0, count: derSignatureLength)
 
-            dataRepresentation.copyToUnsafeMutableBytes(of: &signature.data)
-
-            guard secp256k1_ecdsa_signature_serialize_der(
+            // Stored bytes were validated by `parse_compact` at init, so the
+            // re-parse is infallible in practice; a failure indicates memory
+            // corruption or an upstream defect, not bad input.
+            guard secp256k1_ecdsa_signature_parse_compact(
                 context,
-                &derSignature,
-                &derSignatureLength,
-                &signature
-            ).boolValue else {
-                fatalError("secp256k1_ecdsa_signature_serialize_der failed with valid signature — library bug")
+                &signature,
+                Array(dataRepresentation)
+            ).boolValue,
+                secp256k1_ecdsa_signature_serialize_der(
+                    context,
+                    &derSignature,
+                    &derSignatureLength,
+                    &signature
+                ).boolValue else {
+                fatalError("secp256k1 signature re-parse/serialize failed on init-validated bytes — library bug")
             }
 
             return Data(bytes: &derSignature, count: derSignatureLength)
@@ -180,16 +191,22 @@ public extension P256K.Signing {
 extension P256K.Signing.PrivateKey: DigestSigner {
     /// Generates a lower-S normalized ECDSA signature over the secp256k1 elliptic curve using RFC 6979 deterministic nonce generation.
     ///
+    /// Digests of any length are accepted: the digest is reduced to the 32-byte
+    /// `msg32` value per SEC1 §4.1.3 — the leftmost 32 bytes for longer digests,
+    /// the integer value (left-padded with zeros) for shorter ones.
+    ///
     /// - Parameter digest: The pre-computed message digest to sign.
     /// - Returns: An ``ECDSASignature`` in lower-S normalized form, ready for verification via the `isValidSignature(_:for:)` overloads on ``P256K/Signing/PublicKey``.
     public func signature<D: Digest>(for digest: D) -> P256K.Signing.ECDSASignature {
         let context = P256K.Context.rawRepresentation
+        let digestBytes = digest.msg32Bytes
         var signature = secp256k1_ecdsa_signature()
+        var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
 
         guard secp256k1_ecdsa_sign(
             context,
             &signature,
-            Array(digest),
+            digestBytes,
             Array(dataRepresentation),
             nil,
             nil
@@ -197,7 +214,15 @@ extension P256K.Signing.PrivateKey: DigestSigner {
             fatalError("secp256k1_ecdsa_sign failed with valid key — library bug")
         }
 
-        return P256K.Signing.ECDSASignature(signature.dataValue)
+        guard secp256k1_ecdsa_signature_serialize_compact(
+            context,
+            &compactSignature,
+            &signature
+        ).boolValue else {
+            fatalError("secp256k1_ecdsa_signature_serialize_compact failed — library bug")
+        }
+
+        return P256K.Signing.ECDSASignature(Data(compactSignature))
     }
 }
 
@@ -218,18 +243,33 @@ extension P256K.Signing.PrivateKey: Signer {
 extension P256K.Signing.PublicKey: DigestValidator {
     /// Verifies an ECDSA signature against a pre-computed digest using `secp256k1_ecdsa_verify`, which requires the signature to be in lower-S normalized form.
     ///
+    /// Digests of any length are accepted: the digest is reduced to the 32-byte
+    /// `msg32` value per SEC1 §4.1.3 — the leftmost 32 bytes for longer digests,
+    /// the integer value (left-padded with zeros) for shorter ones — so a
+    /// signature produced by a signer that applies the same standard reduction
+    /// verifies as `true`.
+    ///
     /// - Parameters:
     ///   - signature: The ``ECDSASignature`` to verify; must be in lower-S normalized form.
     ///   - digest: The digest that was signed.
     /// - Returns: `true` if the signature is valid for `digest` under this public key, `false` otherwise.
     public func isValidSignature<D: Digest>(_ signature: P256K.Signing.ECDSASignature, for digest: D) -> Bool {
         let context = P256K.Context.rawRepresentation
+        let digestBytes = digest.msg32Bytes
         var ecdsaSignature = secp256k1_ecdsa_signature()
         var publicKey = baseKey.rawRepresentation
 
-        signature.dataRepresentation.copyToUnsafeMutableBytes(of: &ecdsaSignature.data)
+        // Stored signature bytes were validated at init, so this re-parse cannot
+        // fail; a failure would fail closed as an unverifiable signature.
+        guard secp256k1_ecdsa_signature_parse_compact(
+            context,
+            &ecdsaSignature,
+            signature.dataRepresentation.bytes
+        ).boolValue else {
+            return false
+        }
 
-        return secp256k1_ecdsa_verify(context, &ecdsaSignature, Array(digest), &publicKey).boolValue
+        return secp256k1_ecdsa_verify(context, &ecdsaSignature, digestBytes, &publicKey).boolValue
     }
 }
 

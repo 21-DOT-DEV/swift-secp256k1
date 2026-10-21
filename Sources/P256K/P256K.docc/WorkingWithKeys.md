@@ -140,7 +140,8 @@ import P256K
 // Full key → x-only (drops the parity bit from the wire form, retains it in XonlyKey.parity)
 let xonly = ecdsaPublicKey.xonly
 
-// X-only → full key (uses the retained parity to reconstruct the point)
+// X-only → full key (uses the retained parity to reconstruct the point —
+// cannot fail: the coordinate was validated when the XonlyKey was built)
 let fullKey = P256K.Signing.PublicKey(xonlyKey: xonly)
 ```
 
