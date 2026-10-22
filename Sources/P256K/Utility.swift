@@ -12,10 +12,9 @@ public import Foundation
 import libsecp256k1
 
 /// A `ContiguousBytes` type that permits copying its byte material out of its
-/// storage, opting into the ``Swift/ContiguousBytes/byteArray`` convenience
-/// accessor.
+/// storage, opting into the `byteArray` convenience accessor.
 ///
-/// The marker is the compile-time gate on ``Swift/ContiguousBytes/byteArray``:
+/// The marker is the compile-time gate on `byteArray`:
 /// the accessor is declared only for `Self: CopyableBytes`, so reading it on a
 /// non-conforming type fails to build. `SecureBytes` deliberately does not conform — it holds
 /// secret material (private keys, secret nonces, shared secrets) in storage
@@ -101,7 +100,7 @@ public extension ContiguousBytes where Self: CopyableBytes {
 /// `baseAddress` is optional, forcing a `guard let` + `bindMemory` dance at
 /// every call site. These helpers unwrap once, so `body` receives a pointer
 /// that passes straight into `secp256k1_*` calls. The pointer *borrows* the
-/// storage — no copy is made — so unlike ``Swift/ContiguousBytes/byteArray``
+/// storage — no copy is made — so unlike `byteArray`
 /// the helpers are equally safe on `SecureBytes` secret material; the pointer
 /// is valid only inside `body` and must not escape it.
 ///
