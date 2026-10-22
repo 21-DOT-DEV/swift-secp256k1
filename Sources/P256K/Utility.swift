@@ -47,18 +47,31 @@ extension SharedSecret: CopyableBytes {}
 extension HashDigest: CopyableBytes {}
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.ECDSASignature: CopyableBytes {}
-@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
-extension P256K.Recovery.ECDSASignature: CopyableBytes {}
-@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
-extension P256K.Schnorr.SchnorrSignature: CopyableBytes {}
-@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
-extension P256K.Schnorr.Nonce: CopyableBytes {}
-@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
-extension P256K.MuSig.Nonce: CopyableBytes {}
-@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
-extension P256K.MuSig.AggregateSignature: CopyableBytes {}
-@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
-extension P256K.Schnorr.PartialSignature: CopyableBytes {}
+
+// The remaining conformers live behind the same package-trait module gates
+// (`ENABLE_MODULE_*`) as the types themselves — dependency builds that opt out
+// of a module's trait (e.g. `Projects/`'s `traits: ["uint256"]`) compile the
+// type's sources out entirely.
+#if Xcode || ENABLE_MODULE_RECOVERY
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    extension P256K.Recovery.ECDSASignature: CopyableBytes {}
+#endif
+
+#if Xcode || ENABLE_MODULE_SCHNORRSIG
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    extension P256K.Schnorr.SchnorrSignature: CopyableBytes {}
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    extension P256K.Schnorr.Nonce: CopyableBytes {}
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    extension P256K.Schnorr.PartialSignature: CopyableBytes {}
+#endif
+
+#if Xcode || ENABLE_MODULE_MUSIG
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    extension P256K.MuSig.Nonce: CopyableBytes {}
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    extension P256K.MuSig.AggregateSignature: CopyableBytes {}
+#endif
 
 public extension ContiguousBytes where Self: CopyableBytes {
     /// The raw bytes of this value as a `[UInt8]` array, equivalent to
@@ -95,6 +108,7 @@ public extension ContiguousBytes where Self: CopyableBytes {
 /// Guards report through ``P256K/invariantFailure`` rather than `precondition`
 /// — the conditions are unreachable at every call site, and `-Ounchecked`
 /// builds compile `precondition` out entirely.
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension ContiguousBytes {
     /// Borrows the contiguous storage as an `UnsafePointer<UInt8>` for the
     /// duration of `body`.
