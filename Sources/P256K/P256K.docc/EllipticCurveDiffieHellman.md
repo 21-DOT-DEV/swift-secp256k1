@@ -49,7 +49,7 @@ import P256K
 let aliceShared = alicePrivateKey.sharedSecretFromKeyAgreement(with: bobPublicKey)
 let bobShared = bobPrivateKey.sharedSecretFromKeyAgreement(with: alicePublicKey)
 
-// aliceShared.bytes == bobShared.bytes
+// aliceShared.byteArray == bobShared.byteArray
 ```
 
 The returned ``SharedSecret`` wraps the **raw serialized EC point** in compressed form (33 bytes: `0x02`/`0x03` prefix + 32-byte x-coordinate). This differs from libsecp256k1's upstream default (`secp256k1_ecdh_hash_function_sha256`, which would return a SHA-256 of the compressed point) — this package surfaces the unhashed point so callers can pipe it into whatever KDF their protocol requires.
@@ -65,7 +65,7 @@ let sharedUncompressed = alicePrivateKey.sharedSecretFromKeyAgreement(
     with: bobPublicKey,
     format: .uncompressed
 )
-// sharedUncompressed.bytes.count == 65
+// sharedUncompressed.byteArray.count == 65
 ```
 
 Choose compressed unless interoperability with a protocol that requires uncompressed encoding (for example, some legacy ECIES variants, or specific OpenSSL-generated key material) forces the larger form. See <doc:WorkingWithKeys> for the broader format-selection story.
@@ -79,7 +79,7 @@ The raw shared point should not be used directly as a symmetric key. Always run 
 ```swift
 import P256K
 
-let symmetricKey = SHA256.hash(data: aliceShared.bytes)
+let symmetricKey = SHA256.hash(data: aliceShared.byteArray)
 // 32-byte key suitable for AES-256 or ChaCha20
 ```
 
@@ -91,11 +91,11 @@ import P256K
 
 let tagged = SHA256.taggedHash(
     tag: "BIP0352/SharedSecret".data(using: .utf8)!,
-    data: aliceShared.bytes
+    data: aliceShared.byteArray
 )
 ```
 
-**HKDF (when you need multiple keys from one shared secret, or a non-SHA-256 underlying hash):** use Apple's `swift-crypto` `HKDF` API or `CryptoKit.HKDF` with `aliceShared.bytes` as input keying material.
+**HKDF (when you need multiple keys from one shared secret, or a non-SHA-256 underlying hash):** use Apple's `swift-crypto` `HKDF` API or `CryptoKit.HKDF` with `aliceShared.byteArray` as input keying material.
 
 ### Protocols Using ECDH on secp256k1
 

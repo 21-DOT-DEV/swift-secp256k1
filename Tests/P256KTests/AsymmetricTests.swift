@@ -109,7 +109,7 @@ struct AsymmetricTestSuite {
 
         let expectedCombinedKey = try "03d6a3a9d62c7650fcac18f9ee68c7a004ebad71b7581b683062213ad9f37ddb28".bytes
 
-        #expect(combinedPublicKey.dataRepresentation.bytes == expectedCombinedKey, "Combined public key does not match the expected value.")
+        #expect(combinedPublicKey.dataRepresentation.byteArray == expectedCombinedKey, "Combined public key does not match the expected value.")
     }
 
     @Test("Uncompressed Public Key Test")
@@ -119,7 +119,7 @@ struct AsymmetricTestSuite {
             format: .compressed
         )
         let uncompressed = pubkey.uncompressedRepresentation
-        #expect(String(bytes: uncompressed.bytes) == "04a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba270b2031fef3acf8e13ea7a395e375491bdc37be1cd79e073d82bfd5ba8d35d68")
+        #expect(String(bytes: uncompressed.byteArray) == "04a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba270b2031fef3acf8e13ea7a395e375491bdc37be1cd79e073d82bfd5ba8d35d68")
     }
 
     @Test("Private Key PEM Test")

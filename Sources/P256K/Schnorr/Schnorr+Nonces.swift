@@ -40,8 +40,10 @@ import libsecp256k1
             ///
             /// Internal-visibility storage; the `~Copyable` conformance prevents consumers
             /// from accessing these bytes outside the one-shot partial-signing flow that
-            /// zeroes them after use.
-            let data: SecureBytes
+            /// zeroes them after use. `var` so `secp256k1_musig_partial_sign` can bind
+            /// the storage in place via `withUnsafeMutableBytes` — upstream zeroes
+            /// these bytes directly on a successful call.
+            var data: SecureBytes
 
             /// The public key this nonce is bound to — the `publicKey` argument of
             /// ``P256K/MuSig/Nonce/generate(sessionSecretRand:secretKey:publicKey:msg32:extraInput32:)``.

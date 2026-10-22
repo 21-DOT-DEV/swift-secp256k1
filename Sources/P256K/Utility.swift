@@ -11,17 +11,167 @@
 public import Foundation
 import libsecp256k1
 
-public extension ContiguousBytes {
+/// A `ContiguousBytes` type that permits copying its byte material out of its
+/// storage, opting into the ``Swift/ContiguousBytes/byteArray`` convenience
+/// accessor.
+///
+/// The marker is the compile-time gate on ``Swift/ContiguousBytes/byteArray``:
+/// the accessor is declared only for `Self: CopyableBytes`, so reading it on a
+/// non-conforming type fails to build. `SecureBytes` deliberately does not conform — it holds
+/// secret material (private keys, secret nonces, shared secrets) in storage
+/// that `memset_s`-zeroes on deallocation, and materializing a fresh `[UInt8]`
+/// copy would outlive the `withUnsafeBytes` scope and be freed without
+/// zeroing. Secret material reaches libsecp256k1 through borrowed
+/// `withUnsafeBytes` / `withUnsafeMutableBytes` pointers instead, and C
+/// outputs land directly in `SecureBytes` storage via
+/// `init(unsafeUninitializedCapacity:initializingWith:)`.
+///
+/// Conformances ship for the standard byte containers (`Foundation.Data`,
+/// `Swift.Array`, `Swift.ArraySlice`) and for the library types whose public
+/// API already exposes their byte material — digests, signatures, and public
+/// nonces — plus ``SharedSecret``, whose `withUnsafeBytes` is the documented
+/// extraction path (``HashDigest``, ``P256K/Signing/ECDSASignature``,
+/// ``P256K/Recovery/ECDSASignature``, ``P256K/Schnorr/SchnorrSignature``,
+/// ``P256K/Schnorr/Nonce``, ``P256K/MuSig/Nonce``,
+/// ``P256K/MuSig/AggregateSignature``, ``P256K/Schnorr/PartialSignature``).
+/// Callers may conform their own `ContiguousBytes` types.
+public protocol CopyableBytes {}
+
+extension Data: CopyableBytes {}
+extension Array: CopyableBytes where Element == UInt8 {}
+extension ArraySlice: CopyableBytes where Element == UInt8 {}
+
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension SharedSecret: CopyableBytes {}
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension HashDigest: CopyableBytes {}
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension P256K.Signing.ECDSASignature: CopyableBytes {}
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension P256K.Recovery.ECDSASignature: CopyableBytes {}
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension P256K.Schnorr.SchnorrSignature: CopyableBytes {}
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension P256K.Schnorr.Nonce: CopyableBytes {}
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension P256K.MuSig.Nonce: CopyableBytes {}
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension P256K.MuSig.AggregateSignature: CopyableBytes {}
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension P256K.Schnorr.PartialSignature: CopyableBytes {}
+
+public extension ContiguousBytes where Self: CopyableBytes {
     /// The raw bytes of this value as a `[UInt8]` array, equivalent to
     /// `withUnsafeBytes { Array($0) }`.
     ///
-    /// Convenience accessor used throughout swift-secp256k1 to marshal arbitrary
-    /// `ContiguousBytes` conformers (`Data`, `[UInt8]`, `SecureBytes`, etc.) into a byte
-    /// array for passing to upstream C functions that expect `const unsigned char *`.
-    /// The copy is unavoidable when the upstream API requires a guaranteed-contiguous
-    /// buffer with a known length.
-    @inlinable var bytes: [UInt8] {
+    /// Convenience accessor used throughout swift-secp256k1 to marshal
+    /// `CopyableBytes` conformers (`Data`, `[UInt8]`, digests, public key
+    /// material, etc.) into a byte array for passing to upstream C functions
+    /// that expect `const unsigned char *`.
+    @inlinable var byteArray: [UInt8] {
         withUnsafeBytes { bytesPtr in Array(bytesPtr) }
+    }
+
+    /// Deprecated alias for ``byteArray`` — Foundation's `Data.bytes`
+    /// (`RawSpan`) shadows this member on `Data` under newer SDKs, so the old
+    /// name could not resolve reliably across conformers.
+    @available(*, deprecated, renamed: "byteArray")
+    @inlinable var bytes: [UInt8] {
+        byteArray
+    }
+}
+
+/// Typed-pointer borrows for the upstream C boundary.
+///
+/// Upstream libsecp256k1 parameters are `ARG_NONNULL`, which Swift imports as
+/// non-optional pointers — while `withUnsafeBytes` yields a buffer whose
+/// `baseAddress` is optional, forcing a `guard let` + `bindMemory` dance at
+/// every call site. These helpers unwrap once, so `body` receives a pointer
+/// that passes straight into `secp256k1_*` calls. The pointer *borrows* the
+/// storage — no copy is made — so unlike ``Swift/ContiguousBytes/byteArray``
+/// the helpers are equally safe on `SecureBytes` secret material; the pointer
+/// is valid only inside `body` and must not escape it.
+///
+/// Guards report through ``P256K/invariantFailure`` rather than `precondition`
+/// — the conditions are unreachable at every call site, and `-Ounchecked`
+/// builds compile `precondition` out entirely.
+extension ContiguousBytes {
+    /// Borrows the contiguous storage as an `UnsafePointer<UInt8>` for the
+    /// duration of `body`.
+    ///
+    /// - Parameter body: A closure receiving a non-optional pointer to the
+    ///   first byte.
+    /// - Returns: The value produced by `body`.
+    /// - Note: An empty buffer has no base address to lend — an unreachable
+    ///   internal invariant reported through ``P256K/invariantFailure``. Every
+    ///   call site binds fixed-size (≥32-byte) buffers.
+    @usableFromInline
+    func withUnsafeBytePointer<Result>(
+        _ body: (UnsafePointer<UInt8>) throws -> Result
+    ) rethrows -> Result {
+        try withUnsafeBytes { buffer in
+            guard let pointer = buffer.bindMemory(to: UInt8.self).baseAddress else {
+                P256K.invariantFailure("Cannot borrow a pointer to empty ContiguousBytes storage")
+            }
+            return try body(pointer)
+        }
+    }
+}
+
+extension SecureBytes {
+    /// `withUnsafeBytePointer` for the mutable storage: upstream writes — or
+    /// zeroes — the `SecureBytes` backing in place.
+    ///
+    /// - Parameter body: A closure receiving a non-optional mutable pointer to
+    ///   the first byte.
+    /// - Returns: The value produced by `body`.
+    /// - Note: The storage must be non-empty — an unreachable internal
+    ///   invariant reported through ``P256K/invariantFailure``.
+    @usableFromInline
+    mutating func withUnsafeMutableBytePointer<Result>(
+        _ body: (UnsafeMutablePointer<UInt8>) throws -> Result
+    ) rethrows -> Result {
+        try withUnsafeMutableBytes(boundTo: UInt8.self, body)
+    }
+
+    /// Binds the `SecureBytes` storage as a typed C-struct pointer for the
+    /// duration of `body`, letting upstream write opaque structs
+    /// (`secp256k1_musig_secnonce`) directly into zeroizing storage.
+    ///
+    /// `bindMemory` rebinds the backing's element type: reading the storage
+    /// back through the `Collection` (`UInt8`) conformance is formally reading
+    /// rebound memory until the buffer is unbound — safe for the POD
+    /// byte-array structs bound here (alignment 1, opaque `unsigned char`
+    /// fields), and no caller reads the bytes after binding.
+    ///
+    /// - Parameters:
+    ///   - type: The POD struct type to bind the storage as.
+    ///   - body: A closure receiving a non-optional pointer bound to `type`.
+    /// - Returns: The value produced by `body`.
+    /// - Note: An empty buffer, a shortfall of `MemoryLayout<T>.size` bytes, or
+    ///   misaligned storage is an unreachable internal invariant reported
+    ///   through ``P256K/invariantFailure``.
+    @usableFromInline
+    mutating func withUnsafeMutableBytes<T, Result>(
+        boundTo type: T.Type,
+        _ body: (UnsafeMutablePointer<T>) throws -> Result
+    ) rethrows -> Result {
+        try withUnsafeMutableBytes { buffer in
+            guard let baseAddress = buffer.baseAddress else {
+                P256K.invariantFailure("Cannot borrow a pointer to empty SecureBytes storage")
+            }
+            guard buffer.count >= MemoryLayout<T>.size,
+                  UInt(bitPattern: baseAddress) % UInt(MemoryLayout<T>.alignment) == 0
+            else {
+                P256K.invariantFailure(
+                    "Cannot bind \(T.self) (\(MemoryLayout<T>.size) bytes, alignment \(MemoryLayout<T>.alignment)) into SecureBytes storage of \(buffer.count) bytes"
+                )
+            }
+            guard let pointer = buffer.bindMemory(to: type).baseAddress else {
+                P256K.invariantFailure("Cannot bind \(T.self) into SecureBytes storage")
+            }
+            return try body(pointer)
+        }
     }
 }
 

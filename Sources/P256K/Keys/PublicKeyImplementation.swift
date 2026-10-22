@@ -152,7 +152,7 @@ import libsecp256k1
         var keyParity = Int32()
 
         self.xonlyBytes = try XonlyKeyImplementation.generate(
-            bytes: data.bytes,
+            bytes: data.withUnsafeBytes { Array($0) },
             keyParity: &keyParity,
             format: format
         )
@@ -169,9 +169,9 @@ import libsecp256k1
             }
         }
 
-        self.bytes = data.bytes
+        self.bytes = data.withUnsafeBytes { Array($0) }
         self.format = format
-        self.cache = cache.bytes
+        self.cache = cache.byteArray
         self.keyParity = keyParity
     }
 
@@ -311,7 +311,7 @@ import libsecp256k1
     /// - Returns: The serialized public key bytes in the requested format.
     /// - Throws: ``secp256k1Error/incorrectKeySize`` if `privateBytes` is not 32 bytes; ``secp256k1Error/underlyingCryptoError`` if `privateBytes` fails secret-key verification.
     static func generate(
-        bytes privateBytes: inout SecureBytes,
+        bytes privateBytes: SecureBytes,
         format: P256K.Format
     ) throws -> [UInt8] {
         guard privateBytes.count == P256K.ByteLength.privateKey else {
@@ -326,10 +326,16 @@ import libsecp256k1
         // `privateBytes` is caller-supplied material, so the verify can
         // legitimately fail; once verified, derivation and serialization are
         // contract-unreachable.
-        guard secp256k1_ec_seckey_verify(context, privateBytes.bytes).boolValue else {
+        let verified = privateBytes.withUnsafeBytePointer { keyPtr in
+            secp256k1_ec_seckey_verify(context, keyPtr).boolValue
+        }
+        guard verified else {
             throw secp256k1Error.underlyingCryptoError
         }
-        guard secp256k1_ec_pubkey_create(context, &pubKey, privateBytes.bytes).boolValue else {
+        let created = privateBytes.withUnsafeBytePointer { keyPtr in
+            secp256k1_ec_pubkey_create(context, &pubKey, keyPtr).boolValue
+        }
+        guard created else {
             P256K.invariantFailure("secp256k1_ec_pubkey_create failed on verified key — library bug")
         }
         guard secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {

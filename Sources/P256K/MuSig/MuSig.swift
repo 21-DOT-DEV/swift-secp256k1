@@ -184,7 +184,7 @@ import libsecp256k1
                     let key = XonlyKeyImplementation(
                         validatedBytes: xonlyKey.bytes,
                         keyParity: xonlyKey.parity ? 1 : 0,
-                        cache: xonlyKey.cache.bytes
+                        cache: xonlyKey.cache.byteArray
                     )
                     self.baseKey = PublicKeyImplementation(xonlyKey: key)
                 }

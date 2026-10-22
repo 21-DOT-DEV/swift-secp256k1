@@ -98,7 +98,18 @@ import libsecp256k1
         ///   An upstream signing failure is unreachable on a validated key and would
         ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
         public func signature<D: Digest>(for digest: D) throws -> P256K.Schnorr.SchnorrSignature {
-            try signature(for: digest, auxiliaryRand: SecureBytes(count: P256K.ByteLength.dimension).bytes)
+            var hashDataBytes = Array(digest)
+            let auxiliaryRand = SecureBytes(count: P256K.ByteLength.dimension)
+
+            // The generated randomness stays in `SecureBytes` storage — the
+            // pointer borrows it for the call rather than copying into a
+            // plain array that would be freed unzeroed.
+            return try auxiliaryRand.withUnsafeBytePointer { randPtr in
+                try signature(
+                    message: &hashDataBytes,
+                    auxiliaryRand: UnsafeMutableRawPointer(mutating: randPtr)
+                )
+            }
         }
 
         /// Generates a BIP-340 Schnorr signature from a pre-computed digest using caller-supplied auxiliary randomness.
@@ -116,7 +127,7 @@ import libsecp256k1
                 throw secp256k1Error.incorrectParameterSize
             }
 
-            var hashDataBytes = Array(digest).bytes
+            var hashDataBytes = Array(digest)
             var randomBytes = auxiliaryRand
 
             return try signature(message: &hashDataBytes, auxiliaryRand: &randomBytes)
@@ -149,10 +160,21 @@ import libsecp256k1
             let context = P256K.Context.rawRepresentation
             let magic = P256K.Schnorr.magic
             var keypair = secp256k1_keypair()
+            // `secp256k1_keypair` embeds the secret scalar and upstream never
+            // zeroes caller-owned memory — scrub the local after its last use
+            // rather than leave the residue in the stack frame.
+            defer {
+                Swift.withUnsafeMutableBytes(of: &keypair) { buffer in
+                    _ = memset_s(buffer.baseAddress, buffer.count, 0, buffer.count)
+                }
+            }
             var signature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
             var extraParams = secp256k1_schnorrsig_extraparams(magic: magic, noncefp: nil, ndata: auxiliaryRand)
 
-            guard secp256k1_keypair_create(context, &keypair, Array(dataRepresentation)).boolValue else {
+            let created = key.withUnsafeBytePointer { keyPtr in
+                secp256k1_keypair_create(context, &keypair, keyPtr).boolValue
+            }
+            guard created else {
                 P256K.invariantFailure("secp256k1_keypair_create failed in Schnorr signing with validated key — library bug")
             }
 
@@ -189,7 +211,7 @@ import libsecp256k1
         ///   - digest: The pre-computed digest that was signed. Must be the same digest type and data used when signing.
         /// - Returns: `true` if the signature is valid for `digest` under this x-only public key, `false` otherwise.
         public func isValidSignature<D: Digest>(_ signature: P256K.Schnorr.SchnorrSignature, for digest: D) -> Bool {
-            var hashDataBytes = Array(digest).bytes
+            var hashDataBytes = Array(digest)
 
             return isValid(signature, for: &hashDataBytes)
         }
@@ -208,7 +230,7 @@ import libsecp256k1
             return secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
                 secp256k1_schnorrsig_verify(
                     context,
-                    signature.dataRepresentation.bytes,
+                    signature.dataRepresentation.byteArray,
                     message,
                     message.count,
                     &pubKey

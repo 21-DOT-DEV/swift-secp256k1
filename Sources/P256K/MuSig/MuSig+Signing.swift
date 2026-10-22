@@ -120,8 +120,15 @@ import libsecp256k1
         ) throws -> P256K.Schnorr.PartialSignature {
             let context = P256K.Context.rawRepresentation
             var signature = secp256k1_musig_partial_sig()
-            var secnonce = secp256k1_musig_secnonce()
             var keypair = secp256k1_keypair()
+            // `secp256k1_keypair` embeds the secret scalar and upstream never
+            // zeroes caller-owned memory — scrub the local after its last use
+            // rather than leave the residue in the stack frame.
+            defer {
+                Swift.withUnsafeMutableBytes(of: &keypair) { buffer in
+                    _ = memset_s(buffer.baseAddress, buffer.count, 0, buffer.count)
+                }
+            }
             var cache = secp256k1_musig_keyagg_cache()
             var session = secp256k1_musig_session()
             var aggnonce = secp256k1_musig_aggnonce()
@@ -149,13 +156,13 @@ import libsecp256k1
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            guard secp256k1_keypair_create(context, &keypair, Array(dataRepresentation)).boolValue else {
+            let keypairCreated = key.withUnsafeBytePointer { keyPtr in
+                secp256k1_keypair_create(context, &keypair, keyPtr).boolValue
+            }
+            guard keypairCreated else {
                 P256K.invariantFailure("secp256k1_keypair_create failed in MuSig partial signing with validated key — library bug")
             }
 
-            withUnsafeMutableBytes(of: &secnonce.data) { dst in
-                dst.copyBytes(from: secureNonce.data)
-            }
             xonlyKeyAggregate.cache.copyToUnsafeMutableBytes(of: &cache.data)
             publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
@@ -171,7 +178,21 @@ import libsecp256k1
             guard secp256k1_musig_nonce_process(context, &session, &aggnonce, messageBytes, &cache).boolValue else {
                 P256K.invariantFailure("secp256k1_musig_nonce_process failed on validated session inputs — library bug")
             }
-            guard secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue else {
+            // `secp256k1_musig_secnonce` is an opaque byte-array struct — bind
+            // the consumed nonce's own `SecureBytes` storage so upstream reads
+            // and zeroes it in place on success (the `SecureBytes` backing also
+            // `memset_s`-zeroes it on release either way).
+            let partialSigned = secureNonce.data.withUnsafeMutableBytes(boundTo: secp256k1_musig_secnonce.self) { secnonce in
+                secp256k1_musig_partial_sign(
+                    context,
+                    &signature,
+                    secnonce,
+                    &keypair,
+                    &cache,
+                    &session
+                ).boolValue
+            }
+            guard partialSigned else {
                 P256K.invariantFailure("secp256k1_musig_partial_sign failed on fresh consumed nonce — library bug")
             }
             guard secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue else {
@@ -252,7 +273,7 @@ import libsecp256k1
             return secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
                 secp256k1_schnorrsig_verify(
                     context,
-                    signature.dataRepresentation.bytes,
+                    signature.dataRepresentation.byteArray,
                     message,
                     message.count,
                     &pubKey

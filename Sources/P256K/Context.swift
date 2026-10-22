@@ -127,15 +127,7 @@ public extension P256K {
         ///   the process terminates via `fatalError`.
         /// - Returns: An opaque pointer to the newly created and randomized secp256k1 context.
         public static func create() -> OpaquePointer {
-            var randomBytes = SecureBytes(count: P256K.ByteLength.privateKey).bytes
-            // `.bytes` copies the seed out of the self-zeroing `SecureBytes`
-            // storage into a plain array — `memset_s`-scrub it once randomization
-            // is done (a plain write could be elided, the array being dead).
-            defer {
-                randomBytes.withUnsafeMutableBytes { ptr in
-                    _ = memset_s(ptr.baseAddress, ptr.count, 0, ptr.count)
-                }
-            }
+            let seed = SecureBytes(count: P256K.ByteLength.privateKey)
 
             guard let context = secp256k1_context_create(Self.rawValue) else {
                 P256K.invariantFailure("secp256k1_context_create returned nil — library bug")
@@ -156,7 +148,9 @@ public extension P256K {
                 P256K.invariantFailure("libsecp256k1 internal consistency check failed: \(message.map { String(cString: $0) } ?? "<null>")")
             }, nil)
 
-            guard secp256k1_context_randomize(context, &randomBytes).boolValue else {
+            guard seed.withUnsafeBytePointer({ seedPtr in
+                secp256k1_context_randomize(context, seedPtr).boolValue
+            }) else {
                 P256K.invariantFailure("secp256k1_context_randomize failed — library bug")
             }
 

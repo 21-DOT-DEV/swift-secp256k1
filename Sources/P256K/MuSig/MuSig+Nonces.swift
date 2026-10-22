@@ -95,10 +95,10 @@ import libsecp256k1
                         return pubnonce
                     }
                 ) { pointers in
-                        guard secp256k1_musig_nonce_agg(context, &aggNonce, pointers, pointers.count).boolValue else {
-                            P256K.invariantFailure("secp256k1_musig_nonce_agg failed on validated nonces — library bug")
-                        }
+                    guard secp256k1_musig_nonce_agg(context, &aggNonce, pointers, pointers.count).boolValue else {
+                        P256K.invariantFailure("secp256k1_musig_nonce_agg failed on validated nonces — library bug")
                     }
+                }
 
                 self.aggregatedNonce = Data(Swift.withUnsafeBytes(of: aggNonce) { Data($0) })
             }
@@ -203,7 +203,11 @@ import libsecp256k1
                 extraInput32: [UInt8]?
             ) throws -> NonceResult {
                 let context = P256K.Context.rawRepresentation
-                var secnonce = secp256k1_musig_secnonce()
+                // `secp256k1_musig_secnonce` is an opaque byte-array struct — the
+                // `SecureBytes` storage is bound as its memory below so upstream
+                // writes the secret nonce in place rather than onto a stack copy
+                // that would be abandoned unzeroed.
+                var secnonce = SecureBytes(bytes: [UInt8](repeating: 0, count: MemoryLayout<secp256k1_musig_secnonce>.size))
                 var pubnonce = secp256k1_musig_pubnonce()
                 var pubkey = publicKey.baseKey.rawRepresentation
                 let msg32Bytes = msg32?.msg32Bytes
@@ -233,38 +237,37 @@ import libsecp256k1
                 // `~Copyable`), so `withUnsafeMutableBytes` yields a pointer into its own
                 // buffer — upstream zeroes that storage in place on success, and the
                 // `SecureBytes` backing `memset_s`-zeroes it on release either way.
-                let nonceGenerated = try sessionSecretRand.bytes.withUnsafeMutableBytes { rand -> Bool in
-                    guard let sessionSecrand = rand.bindMemory(to: UInt8.self).baseAddress else {
-                        throw secp256k1Error.underlyingCryptoError
-                    }
+                let nonceGenerated = sessionSecretRand.bytes.withUnsafeMutableBytePointer { sessionSecrand in
                     // Read the secret key from its `SecureBytes` backing rather than
                     // copying into a temporary array that would be freed unzeroed.
-                    if let secretKey {
-                        return secretKey.key.withUnsafeBytes { key in
-                            secp256k1_musig_nonce_gen(
-                                context,
-                                &secnonce,
-                                &pubnonce,
-                                sessionSecrand,
-                                key.bindMemory(to: UInt8.self).baseAddress,
-                                &pubkey,
-                                msg32Bytes,
-                                nil,
-                                extraInput32
-                            ).boolValue
+                    secnonce.withUnsafeMutableBytes(boundTo: secp256k1_musig_secnonce.self) { secnonce in
+                        if let secretKey {
+                            return secretKey.key.withUnsafeBytePointer { keyPtr in
+                                secp256k1_musig_nonce_gen(
+                                    context,
+                                    secnonce,
+                                    &pubnonce,
+                                    sessionSecrand,
+                                    keyPtr,
+                                    &pubkey,
+                                    msg32Bytes,
+                                    nil,
+                                    extraInput32
+                                ).boolValue
+                            }
                         }
+                        return secp256k1_musig_nonce_gen(
+                            context,
+                            secnonce,
+                            &pubnonce,
+                            sessionSecrand,
+                            nil,
+                            &pubkey,
+                            msg32Bytes,
+                            nil,
+                            extraInput32
+                        ).boolValue
                     }
-                    return secp256k1_musig_nonce_gen(
-                        context,
-                        &secnonce,
-                        &pubnonce,
-                        sessionSecrand,
-                        nil,
-                        &pubkey,
-                        msg32Bytes,
-                        nil,
-                        extraInput32
-                    ).boolValue
                 }
                 // Every argument was validated above — an all-zero
                 // `sessionSecretRand` is rejected by both ``SessionSecretRand``
@@ -277,10 +280,7 @@ import libsecp256k1
 
                 return NonceResult(
                     pubnonce: P256K.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) }),
-                    secnonce: P256K.Schnorr.SecureNonce(
-                        Swift.withUnsafeBytes(of: secnonce) { SecureBytes(bytes: $0) },
-                        publicKey: publicKey
-                    )
+                    secnonce: P256K.Schnorr.SecureNonce(secnonce, publicKey: publicKey)
                 )
             }
         }

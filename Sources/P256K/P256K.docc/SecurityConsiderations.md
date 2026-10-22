@@ -65,6 +65,10 @@ Never compare secret bytes using standard `==` on `Data` or `[UInt8]`, as this m
 
 P256K uses `SecureBytes` internally for private key storage. When a `SecureBytes` value is deallocated, its memory is overwritten with zeros using `memset_s` (or an equivalent that the compiler cannot optimize away). This prevents secret key material from lingering in memory after the key object is destroyed.
 
+Secret material reaches libsecp256k1 through borrowed `withUnsafeBytes` / `withUnsafeMutableBytes` pointers, and upstream writes secret outputs directly into `SecureBytes` storage — private keys, MuSig2 secret nonces, ECDH shared secrets, and the context randomization seed are never copied into plain arrays or `Data` at the C boundary. The one secret-bearing struct that must live on the stack, `secp256k1_keypair`, is `memset_s`-zeroed after its last use in each signing and tweak path — a convention new C-boundary code must also follow, since nothing enforces it automatically. The `byteArray` convenience accessor is gated on a ``CopyableBytes`` marker protocol that `SecureBytes` does not conform to, so reading `.byteArray` (or its deprecated `.bytes` alias) on secret storage fails to compile.
+
+> Warning: **Zeroization is best-effort, not guaranteed.** The compiler may spill secret material to registers or stack locations outside `SecureBytes` storage, the OS may page memory before it is zeroed, and copies the caller makes through public accessors (`dataRepresentation`, `bytes` on public types, `Data` conversions) escape the zeroization scope entirely. This matches libsecp256k1's own model — it minimizes residual copies but cannot eliminate every transient copy a compiler or operating system creates.
+
 ### ECDSA Signature Malleability
 
 An ECDSA signature `(r, s)` has a counterpart `(r, n - s)` that is also valid for the same message and public key. This **malleability** can cause problems in systems that use the signature as a unique transaction identifier (e.g., Bitcoin before SegWit).

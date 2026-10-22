@@ -32,18 +32,24 @@ public extension P256K.Signing.PrivateKey {
     ///   result is zero modulo `n`.
     func add(_ tweak: [UInt8]) throws -> Self {
         let context = P256K.Context.rawRepresentation
-        var privateBytes = key.bytes
+        var privateBytes = SecureBytes(bytes: key)
 
         guard tweak.count == P256K.ByteLength.dimension else {
             throw secp256k1Error.incorrectParameterSize
         }
 
-        guard secp256k1_ec_seckey_tweak_add(context, &privateBytes, tweak).boolValue else {
+        let tweaked = privateBytes.withUnsafeMutableBytePointer { keyPtr in
+            secp256k1_ec_seckey_tweak_add(context, keyPtr, tweak).boolValue
+        }
+        guard tweaked else {
             throw secp256k1Error.underlyingCryptoError
         }
         // A successful tweak produces a valid scalar by contract — the
         // verification re-check cannot legitimately fail.
-        guard secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
+        let verified = privateBytes.withUnsafeBytePointer { keyPtr in
+            secp256k1_ec_seckey_verify(context, keyPtr).boolValue
+        }
+        guard verified else {
             P256K.invariantFailure("secp256k1_ec_seckey_verify failed on tweaked key — library bug")
         }
 
@@ -64,18 +70,24 @@ public extension P256K.Signing.PrivateKey {
     ///   result fails `secp256k1_ec_seckey_verify`.
     func multiply(_ tweak: [UInt8]) throws -> Self {
         let context = P256K.Context.rawRepresentation
-        var privateBytes = key.bytes
+        var privateBytes = SecureBytes(bytes: key)
 
         guard tweak.count == P256K.ByteLength.dimension else {
             throw secp256k1Error.incorrectParameterSize
         }
 
-        guard secp256k1_ec_seckey_tweak_mul(context, &privateBytes, tweak).boolValue else {
+        let tweaked = privateBytes.withUnsafeMutableBytePointer { keyPtr in
+            secp256k1_ec_seckey_tweak_mul(context, keyPtr, tweak).boolValue
+        }
+        guard tweaked else {
             throw secp256k1Error.underlyingCryptoError
         }
         // A successful tweak produces a valid scalar by contract — the
         // verification re-check cannot legitimately fail.
-        guard secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
+        let verified = privateBytes.withUnsafeBytePointer { keyPtr in
+            secp256k1_ec_seckey_verify(context, keyPtr).boolValue
+        }
+        guard verified else {
             P256K.invariantFailure("secp256k1_ec_seckey_verify failed on tweaked key — library bug")
         }
 

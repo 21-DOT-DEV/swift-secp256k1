@@ -96,7 +96,7 @@ import libsecp256k1
         keyParity: Int32,
         cache: [UInt8] = []
     ) throws {
-        let bytes = data.bytes
+        let bytes = data.withUnsafeBytes { Array($0) }
         var xonlyKey = secp256k1_xonly_pubkey()
 
         // Upstream reads exactly 32 bytes from the input pointer.
@@ -126,7 +126,7 @@ import libsecp256k1
 
         self.bytes = bytes
         self.keyParity = keyParity
-        self.cache = cache.bytes
+        self.cache = cache.byteArray
     }
 
     /// Non-throwing initialization for bytes already proven valid by a

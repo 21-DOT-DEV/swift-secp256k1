@@ -164,11 +164,14 @@ struct BindingsTestSuite {
         var sharedSecret2 = [UInt8](repeating: 0, count: 32)
 
         #expect(secp256k1_ec_pubkey_parse(context, &pub, privateKey1.publicKey.bytes, privateKey1.publicKey.bytes.count) == 1, "Failed to parse public key.")
-        #expect(secp256k1_ecdh(context, &sharedSecret2, &pub, privateKey2.baseKey.key.bytes, nil, nil) == 1, "Failed to compute ECDH shared secret.")
+        let ecdhResult = privateKey2.baseKey.key.withUnsafeBytePointer { keyPtr in
+            secp256k1_ecdh(context, &sharedSecret2, &pub, keyPtr, nil, nil)
+        }
+        #expect(ecdhResult == 1, "Failed to compute ECDH shared secret.")
 
-        let symmerticKey = SHA256.hash(data: sharedSecret1.bytes)
+        let symmerticKey = SHA256.hash(data: sharedSecret1.byteArray)
 
-        #expect(symmerticKey.bytes == sharedSecret2, "Shared secrets do not match.")
+        #expect(symmerticKey.byteArray == sharedSecret2, "Shared secrets do not match.")
     }
 
     /// Pubkey Combine Bindings Test

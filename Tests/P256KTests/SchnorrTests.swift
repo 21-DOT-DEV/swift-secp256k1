@@ -38,13 +38,13 @@ struct SchnorrTestSuite {
         let privateKeyBytes = try expectedPrivateKey.bytes
         let throwKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
         let privateKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
-        var messageDigest: [UInt8] = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.bytes
+        var messageDigest: [UInt8] = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.byteArray
         var auxRand = try "f50c8c99e39a82f125fa83186b5f2483f39fb0fb56269c755689313a177be6ea".bytes
 
         let signature = try privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
 
         // Verify the signature matches the expected signature
-        #expect(String(bytes: signature.dataRepresentation.bytes) == expectedSignature)
+        #expect(String(bytes: signature.dataRepresentation.byteArray) == expectedSignature)
 
         // Verify the signature is valid
         #expect(privateKey.xonly.isValid(signature, for: &messageDigest))
