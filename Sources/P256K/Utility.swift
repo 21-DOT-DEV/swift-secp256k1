@@ -118,6 +118,7 @@ extension ContiguousBytes {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension SecureBytes {
     /// `withUnsafeBytePointer` for the mutable storage: upstream writes — or
     /// zeroes — the `SecureBytes` backing in place.
