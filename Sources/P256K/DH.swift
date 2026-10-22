@@ -112,12 +112,11 @@ extension SharedSecret: Equatable {
     /// - Returns: A Boolean value that's `true` if the shared secret and the
     /// collection of binary data are equivalent.
     public static func == <D: DataProtocol>(lhs: Self, rhs: D) -> Bool {
-        if rhs.regions.count != 1 {
-            let rhsContiguous = Data(rhs)
-            return safeCompare(lhs, rhsContiguous)
-        } else {
-            return safeCompare(lhs, rhs.regions.first!)
+        if rhs.regions.count == 1, let region = rhs.regions.first {
+            return safeCompare(lhs, region)
         }
+
+        return safeCompare(lhs, Data(rhs))
     }
 }
 

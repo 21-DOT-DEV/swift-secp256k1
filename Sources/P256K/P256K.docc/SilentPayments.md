@@ -94,7 +94,7 @@ let k: UInt32 = 0
 let kBytes = withUnsafeBytes(of: k.bigEndian) { Data($0) }
 let sharedSecret = SHA256.taggedHash(
     tag: "BIP0352/SharedSecret".data(using: .utf8)!,
-    data: Data(sharedPoint.bytes) + kBytes
+    data: Data(sharedPoint.byteArray) + kBytes
 )
 
 // Step 4: P_k = B + sharedSecret·G — produce the BIP-341 x-only output key.
@@ -149,7 +149,7 @@ while true {
     let kBytes = withUnsafeBytes(of: k.bigEndian) { Data($0) }
     let sharedSecret = SHA256.taggedHash(
         tag: "BIP0352/SharedSecret".data(using: .utf8)!,
-        data: Data(sharedPoint.bytes) + kBytes
+        data: Data(sharedPoint.byteArray) + kBytes
     )
     let candidate = try bobSpendKey.add(Array(sharedSecret))
     let candidateXonly = candidate.xonly.bytes  // [UInt8] of length 32

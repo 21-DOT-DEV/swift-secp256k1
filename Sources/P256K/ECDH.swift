@@ -380,14 +380,31 @@ import libsecp256k1
         ) -> SharedSecret {
             let context = P256K.Context.rawRepresentation
             var publicKey = publicKeyShare.baseKey.rawRepresentation
-            var sharedSecret = [UInt8](repeating: 0, count: format.length)
             var data = [UInt8](repeating: format == .compressed ? 1 : 0, count: 1)
 
-            guard secp256k1_ecdh(context, &sharedSecret, &publicKey, baseKey.key.bytes, hashClosure(), &data).boolValue else {
-                P256K.invariantFailure("secp256k1_ecdh failed with valid keys — library bug")
+            // The shared secret is written by upstream directly into `SecureBytes`
+            // storage — no plain array copy of secret material is materialized.
+            let sharedSecret = SecureBytes(unsafeUninitializedCapacity: format.length) { buffer, initializedCount in
+                let computed = baseKey.key.withUnsafeBytePointer { keyPtr in
+                    guard let outPtr = buffer.bindMemory(to: UInt8.self).baseAddress else {
+                        return false
+                    }
+                    return secp256k1_ecdh(
+                        context,
+                        outPtr,
+                        &publicKey,
+                        keyPtr,
+                        hashClosure(),
+                        &data
+                    ).boolValue
+                }
+                guard computed else {
+                    P256K.invariantFailure("secp256k1_ecdh failed with valid keys — library bug")
+                }
+                initializedCount = buffer.count
             }
 
-            return SharedSecret(ss: SecureBytes(bytes: sharedSecret), format: format)
+            return SharedSecret(ss: sharedSecret, format: format)
         }
 
         /// Returns a `secp256k1_ecdh` hash function closure that serializes the shared EC

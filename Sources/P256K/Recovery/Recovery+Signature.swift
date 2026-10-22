@@ -250,14 +250,17 @@ import libsecp256k1
             var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
             var recoveryId = Int32()
 
-            guard secp256k1_ecdsa_sign_recoverable(
-                context,
-                &signature,
-                digestBytes,
-                Array(dataRepresentation),
-                nil,
-                nil
-            ).boolValue else {
+            let signed = key.withUnsafeBytePointer { keyPtr in
+                secp256k1_ecdsa_sign_recoverable(
+                    context,
+                    &signature,
+                    digestBytes,
+                    keyPtr,
+                    nil,
+                    nil
+                ).boolValue
+            }
+            guard signed else {
                 P256K.invariantFailure("secp256k1_ecdsa_sign_recoverable failed with valid key — library bug")
             }
 

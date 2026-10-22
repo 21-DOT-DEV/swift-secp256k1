@@ -87,6 +87,14 @@ import libsecp256k1
                 /// the public API surface.
                 private let baseKey: PrivateKeyImplementation
 
+                /// The raw 32-byte secret key bytes as `SecureBytes`.
+                ///
+                /// Internal-visibility accessor used by Swift-side recoverable-signing helpers.
+                /// External callers use ``dataRepresentation`` for a `Data` copy.
+                var key: SecureBytes {
+                    baseKey.key
+                }
+
                 /// The secp256k1 public key derived from this private key, as a ``Recovery/PublicKey``.
                 ///
                 /// Computed on every access via `secp256k1_ec_pubkey_create`. For high-frequency

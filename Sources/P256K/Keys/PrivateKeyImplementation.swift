@@ -87,8 +87,11 @@ import libsecp256k1
 
     /// The additive inverse of this private key modulo the secp256k1 curve order, produced by `secp256k1_ec_seckey_negate`.
     @usableFromInline var negation: Self {
-        var privateBytes = privateBytes.bytes
-        guard secp256k1_ec_seckey_negate(P256K.Context.rawRepresentation, &privateBytes).boolValue else {
+        var privateBytes = privateBytes
+        let negated = privateBytes.withUnsafeMutableBytePointer { keyPtr in
+            secp256k1_ec_seckey_negate(P256K.Context.rawRepresentation, keyPtr).boolValue
+        }
+        guard negated else {
             P256K.invariantFailure("secp256k1_ec_seckey_negate failed with valid key — library bug")
         }
 
@@ -106,7 +109,7 @@ import libsecp256k1
         self.keyParity = 0
         self.format = format
         self.privateBytes = privateKey
-        self.publicBytes = try PublicKeyImplementation.generate(bytes: &privateBytes, format: format)
+        self.publicBytes = try PublicKeyImplementation.generate(bytes: privateKey, format: format)
         self.xonlyBytes = try XonlyKeyImplementation.generate(
             bytes: publicBytes,
             keyParity: &keyParity,
@@ -126,7 +129,7 @@ import libsecp256k1
         self.keyParity = 0
         self.format = format
         self.privateBytes = privateKey
-        self.publicBytes = try PublicKeyImplementation.generate(bytes: &privateBytes, format: format)
+        self.publicBytes = try PublicKeyImplementation.generate(bytes: privateKey, format: format)
         self.xonlyBytes = try XonlyKeyImplementation.generate(
             bytes: publicBytes,
             keyParity: &keyParity,
@@ -135,9 +138,8 @@ import libsecp256k1
     }
 
     /// Non-throwing initialization for bytes already proven valid by a libsecp256k1 operation (e.g. negation).
-    init(validatedBytes bytes: [UInt8], format: P256K.Format) {
+    init(validatedBytes bytes: SecureBytes, format: P256K.Format) {
         let context = P256K.Context.rawRepresentation
-        let privateKey = SecureBytes(bytes: bytes)
         var keyParity = Int32()
         var pubKeyLen = format.length
         var pubKey = secp256k1_pubkey()
@@ -145,10 +147,16 @@ import libsecp256k1
         var xonlyPubKey = secp256k1_xonly_pubkey()
         var xonlyBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
 
-        guard secp256k1_ec_seckey_verify(context, privateKey.bytes).boolValue else {
+        let verified = bytes.withUnsafeBytePointer { keyPtr in
+            secp256k1_ec_seckey_verify(context, keyPtr).boolValue
+        }
+        guard verified else {
             P256K.invariantFailure("secp256k1_ec_seckey_verify failed for validated private key — library bug")
         }
-        guard secp256k1_ec_pubkey_create(context, &pubKey, privateKey.bytes).boolValue else {
+        let created = bytes.withUnsafeBytePointer { keyPtr in
+            secp256k1_ec_pubkey_create(context, &pubKey, keyPtr).boolValue
+        }
+        guard created else {
             P256K.invariantFailure("secp256k1_ec_pubkey_create failed for validated private key — library bug")
         }
         guard secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
@@ -167,7 +175,7 @@ import libsecp256k1
 
         self.keyParity = keyParity
         self.format = format
-        self.privateBytes = privateKey
+        self.privateBytes = bytes
         self.publicBytes = pubBytes
         self.xonlyBytes = xonlyBytes
     }

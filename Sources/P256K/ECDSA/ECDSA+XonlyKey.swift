@@ -83,7 +83,7 @@ public extension P256K.Signing {
         ///   ``secp256k1Error/underlyingCryptoError`` if the coordinate fails
         ///   `secp256k1_xonly_pubkey_parse` (out of range or no curve point).
         public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32) throws {
-            self.baseKey = try XonlyKeyImplementation(dataRepresentation: data.bytes, keyParity: keyParity)
+            self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity)
         }
     }
 }

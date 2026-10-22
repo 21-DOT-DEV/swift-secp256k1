@@ -38,7 +38,14 @@ import libsecp256k1
         func add(_ tweak: [UInt8]) throws -> Self {
             let context = P256K.Context.rawRepresentation
             var keypair = secp256k1_keypair()
-            var privateBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
+            // `secp256k1_keypair` embeds the tweaked secret scalar — scrub the
+            // local after its last use rather than leave the residue in the
+            // stack frame.
+            defer {
+                Swift.withUnsafeMutableBytes(of: &keypair) { buffer in
+                    _ = memset_s(buffer.baseAddress, buffer.count, 0, buffer.count)
+                }
+            }
             var xonly = secp256k1_xonly_pubkey()
             var keyParity = Int32()
 
@@ -50,14 +57,24 @@ import libsecp256k1
             // pure accessors around the tweak are contract-unreachable failures;
             // only the tweak itself can legitimately fail (invalid scalar or
             // point-at-infinity result).
-            guard secp256k1_keypair_create(context, &keypair, key.bytes).boolValue else {
+            let created = key.withUnsafeBytePointer { keyPtr in
+                secp256k1_keypair_create(context, &keypair, keyPtr).boolValue
+            }
+            guard created else {
                 P256K.invariantFailure("secp256k1_keypair_create failed in Taproot tweak with validated key — library bug")
             }
             guard secp256k1_keypair_xonly_tweak_add(context, &keypair, tweak).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
             }
-            guard secp256k1_keypair_sec(context, &privateBytes, &keypair).boolValue else {
-                P256K.invariantFailure("secp256k1_keypair_sec failed on upstream-created keypair — library bug")
+            // The tweaked secret is written by upstream directly into
+            // `SecureBytes` storage — no plain array copy is materialized.
+            let privateBytes = SecureBytes(unsafeUninitializedCapacity: P256K.ByteLength.privateKey) { buffer, initializedCount in
+                guard let secPtr = buffer.bindMemory(to: UInt8.self).baseAddress,
+                      secp256k1_keypair_sec(context, secPtr, &keypair).boolValue
+                else {
+                    P256K.invariantFailure("secp256k1_keypair_sec failed on upstream-created keypair — library bug")
+                }
+                initializedCount = buffer.count
             }
             guard secp256k1_keypair_xonly_pub(context, &xonly, &keyParity, &keypair).boolValue else {
                 P256K.invariantFailure("secp256k1_keypair_xonly_pub failed on upstream-created keypair — library bug")

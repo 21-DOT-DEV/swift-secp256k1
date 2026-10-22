@@ -27,7 +27,7 @@ struct ECDHTestSuite {
         let sharedSecret1 = privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey, format: .uncompressed)
         let sharedSecret2 = privateKey2.sharedSecretFromKeyAgreement(with: privateKey1.publicKey, format: .uncompressed)
 
-        #expect(sharedSecret1.bytes == sharedSecret2.bytes, "Shared secrets should be equal")
+        #expect(sharedSecret1.byteArray == sharedSecret2.byteArray, "Shared secrets should be equal")
     }
 
     @Test("Test Key Agreement Public Key Tweak Addition")
@@ -43,13 +43,13 @@ struct ECDHTestSuite {
         let sharedSecret1 = privateKey1.sharedSecretFromKeyAgreement(with: privateKey2.publicKey)
         let sharedSecret2 = privateKey2.sharedSecretFromKeyAgreement(with: publicKey1)
 
-        #expect(sharedSecret1.bytes == sharedSecret2.bytes, "Shared secrets should be equal")
+        #expect(sharedSecret1.byteArray == sharedSecret2.byteArray, "Shared secrets should be equal")
 
-        let symmetricKey1 = SHA256.hash(data: sharedSecret1.bytes)
-        let symmetricKey2 = SHA256.hash(data: sharedSecret2.bytes)
+        let symmetricKey1 = SHA256.hash(data: sharedSecret1.byteArray)
+        let symmetricKey2 = SHA256.hash(data: sharedSecret2.byteArray)
 
-        let sharedSecretSign1 = try P256K.Schnorr.PrivateKey(dataRepresentation: symmetricKey1.bytes)
-        let sharedSecretSign2 = try P256K.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
+        let sharedSecretSign1 = try P256K.Schnorr.PrivateKey(dataRepresentation: symmetricKey1.byteArray)
+        let sharedSecretSign2 = try P256K.Signing.PrivateKey(dataRepresentation: symmetricKey2.byteArray)
 
         let privateTweak1 = try sharedSecretSign1.add(privateSign1.publicKey.xonly.bytes)
         let publicTweak2 = try sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)

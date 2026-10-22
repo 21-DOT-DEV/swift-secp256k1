@@ -41,17 +41,35 @@
         #endif
     #endif
 
-    /// A constant-time comparison function for any two collections of bytes.
+    /// A constant-time comparison function for any two contiguous byte
+    /// containers.
+    ///
+    /// Both operands are borrowed through `withUnsafeBytes` and compared in
+    /// place — no `[UInt8]` copy ever leaves zeroizing `SecureBytes` storage
+    /// (the shape upstream swift-crypto's `openSSLSafeCompare` uses).
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     func safeCompare<LHS: ContiguousBytes, RHS: ContiguousBytes>(_ lhs: LHS, _ rhs: RHS) -> Bool {
-        let lBytes = lhs.bytes
-        let rBytes = rhs.bytes
+        lhs.withUnsafeBytes { lhsPointer in
+            rhs.withUnsafeBytes { rhsPointer in
+                constantTimeCompare(lhsPointer, rhsPointer)
+            }
+        }
+    }
 
-        guard lBytes.count == rBytes.count else {
+    /// A straightforward constant-time comparison function for any two collections of bytes.
+    ///
+    /// Comparison time is equal only for operands of the **same length** — a
+    /// length mismatch returns early, so the caller-visible timing channel is
+    /// the operand lengths, not their contents (the same contract as upstream
+    /// swift-crypto's `constantTimeCompare`).
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    func constantTimeCompare<LHS: Collection, RHS: Collection>(_ lhs: LHS, _ rhs: RHS) -> Bool
+        where LHS.Element == UInt8, RHS.Element == UInt8 {
+        guard lhs.count == rhs.count else {
             return false
         }
 
-        return zip(lBytes, rBytes).reduce(into: 0) { $0 |= $1.0 ^ $1.1 } == 0
+        return zip(lhs, rhs).reduce(into: 0) { $0 |= $1.0 ^ $1.1 } == 0
     }
 
 #endif // Linux or !SwiftPM

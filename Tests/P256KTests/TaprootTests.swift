@@ -28,7 +28,7 @@ struct TaprootTestSuite {
         )
 
         let outputKeyBytes = try "a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c".bytes
-        let outputKey = try internalKey.add(tweakHash.bytes)
+        let outputKey = try internalKey.add(tweakHash.byteArray)
 
         #expect(outputKey.bytes == outputKeyBytes, "Output key bytes should match expected")
     }
@@ -59,13 +59,13 @@ struct TaprootTestSuite {
 
         let aliceExpectedLeafHash = "c81451874bd9ebd4b6fd4bba1f84cdfb533c532365d22a0a702205ff658b17c9"
 
-        #expect(String(bytes: Array(aliceLeafHash).bytes) == aliceExpectedLeafHash, "Alice's leaf hash mismatch")
+        #expect(String(bytes: Array(aliceLeafHash).byteArray) == aliceExpectedLeafHash, "Alice's leaf hash mismatch")
 
         let bobBytes = try "81b637d8fcd2c6da6359e6963113a1170de795e4b725b84d1e0b4cfd9ec58ce9".bytes
         let bob = try P256K.Signing.PrivateKey(dataRepresentation: bobBytes)
         let preimageBytes = try "6c60f404f8167a38fc70eaf8aa17ac351023bef86bcb9d1086a19afe95bd5333".bytes
         var bobScript = OP_SHA256
-        bobScript += Data([UInt8(preimageBytes.count)] + preimageBytes.bytes)
+        bobScript += Data([UInt8(preimageBytes.count)] + preimageBytes.byteArray)
         bobScript += OP_EQUALVERIFY
         bobScript += Data([UInt8(bob.publicKey.xonly.bytes.count)] + bob.publicKey.xonly.bytes)
         bobScript += OP_CHECKSIG
@@ -76,7 +76,7 @@ struct TaprootTestSuite {
 
         let bobExpectedLeafHash = "632c8632b4f29c6291416e23135cf78ecb82e525788ea5ed6483e3c6ce943b42"
 
-        #expect(String(bytes: Array(bobLeafHash).bytes) == bobExpectedLeafHash, "Bob's leaf hash mismatch")
+        #expect(String(bytes: Array(bobLeafHash).byteArray) == bobExpectedLeafHash, "Bob's leaf hash mismatch")
 
         var leftHash, rightHash: Data
         if aliceLeafHash < bobLeafHash {
@@ -94,6 +94,6 @@ struct TaprootTestSuite {
 
         let expectedMerkleRoot = "41646f8c1fe2a96ddad7f5471bc4fee7da98794ef8c45a4f4fc6a559d60c9f6b"
 
-        #expect(String(bytes: Array(merkleRoot).bytes) == expectedMerkleRoot, "Merkle root mismatch")
+        #expect(String(bytes: Array(merkleRoot).byteArray) == expectedMerkleRoot, "Merkle root mismatch")
     }
 }

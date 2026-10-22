@@ -205,14 +205,17 @@ extension P256K.Signing.PrivateKey: DigestSigner {
         var signature = secp256k1_ecdsa_signature()
         var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
 
-        guard secp256k1_ecdsa_sign(
-            context,
-            &signature,
-            digestBytes,
-            Array(dataRepresentation),
-            nil,
-            nil
-        ).boolValue else {
+        let signed = key.withUnsafeBytePointer { keyPtr in
+            secp256k1_ecdsa_sign(
+                context,
+                &signature,
+                digestBytes,
+                keyPtr,
+                nil,
+                nil
+            ).boolValue
+        }
+        guard signed else {
             P256K.invariantFailure("secp256k1_ecdsa_sign failed with valid key — library bug")
         }
 
@@ -266,7 +269,7 @@ extension P256K.Signing.PublicKey: DigestValidator {
         guard secp256k1_ecdsa_signature_parse_compact(
             context,
             &ecdsaSignature,
-            signature.dataRepresentation.bytes
+            signature.dataRepresentation.byteArray
         ).boolValue else {
             return false
         }

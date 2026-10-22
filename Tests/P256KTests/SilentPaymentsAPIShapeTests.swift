@@ -74,7 +74,7 @@ struct SilentPaymentsAPIShapeSuite {
         let kBytes = withUnsafeBytes(of: k.bigEndian) { Data($0) }
         let aliceSharedSecret = try SHA256.taggedHash(
             tag: #require("BIP0352/SharedSecret".data(using: .utf8)),
-            data: Data(aliceSharedPoint.bytes) + kBytes
+            data: Data(aliceSharedPoint.byteArray) + kBytes
         )
 
         // Step 4: P_0 = B_spend + sharedSecret·G — derive the BIP-341 x-only output key.
@@ -116,14 +116,14 @@ struct SilentPaymentsAPIShapeSuite {
         let bobSharedPoint = tweakedScanECDH.sharedSecretFromKeyAgreement(with: summedInputPubKey)
 
         #expect(
-            Data(aliceSharedPoint.bytes) == Data(bobSharedPoint.bytes),
+            Data(aliceSharedPoint.byteArray) == Data(bobSharedPoint.byteArray),
             "ECDH produces identical shared point on both sides — the BIP-352 core invariant"
         )
 
         // Step 3: derive shared_secret_0 on Bob's side.
         let bobSharedSecret = try SHA256.taggedHash(
             tag: #require("BIP0352/SharedSecret".data(using: .utf8)),
-            data: Data(bobSharedPoint.bytes) + kBytes
+            data: Data(bobSharedPoint.byteArray) + kBytes
         )
 
         // Step 4: candidate_0 = B_spend + bobSharedSecret·G

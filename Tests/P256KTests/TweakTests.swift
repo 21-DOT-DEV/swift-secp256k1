@@ -29,6 +29,8 @@ struct TweakTestSuite {
         #expect(String(bytes: tweakedPrivateKey.dataRepresentation) == expectedTweakedPrivateKey)
         // Verify original public key remains correct
         #expect(expectedPublicKey == String(bytes: privateKey.publicKey.dataRepresentation))
+        // The tweak mutates a copy — the original key's bytes are unchanged
+        #expect(privateKey.dataRepresentation == Data(privateKeyBytes))
     }
 
     @Test("Verify private key tweak addition produces expected result")
@@ -47,6 +49,22 @@ struct TweakTestSuite {
         #expect(String(bytes: tweakedPrivateKey.dataRepresentation) == expectedTweakedPrivateKey)
         // Verify original public key remains correct
         #expect(expectedPublicKey == String(bytes: privateKey.publicKey.dataRepresentation))
+        // The tweak mutates a copy — the original key's bytes are unchanged
+        #expect(privateKey.dataRepresentation == Data(privateKeyBytes))
+    }
+
+    @Test("Verify tweak/negation never mutate the original private key")
+    func privateKeyOperationsDoNotMutateOriginal() throws {
+        let privateKeyBytes = try "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed".bytes
+        let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
+        let tweak = [UInt8](repeating: 1, count: P256K.ByteLength.dimension)
+
+        _ = try privateKey.add(tweak)
+        #expect(privateKey.dataRepresentation == Data(privateKeyBytes), "add() mutated the original key")
+        _ = try privateKey.multiply(tweak)
+        #expect(privateKey.dataRepresentation == Data(privateKeyBytes), "multiply() mutated the original key")
+        _ = privateKey.negation
+        #expect(privateKey.dataRepresentation == Data(privateKeyBytes), "negation mutated the original key")
     }
 
     @Test("Verify tweak APIs reject non-32-byte tweaks")
