@@ -53,7 +53,7 @@ let package = Package(
         ),
         .testTarget(
             name: "P256KTests",
-            dependencies: ["P256K"],
+            dependencies: ["P256K", "libsecp256k1"],
             swiftSettings: PackageDescription.SwiftSetting.upcomingFeatures
                 + PackageDescription.SwiftSetting.moduleSettings
         )

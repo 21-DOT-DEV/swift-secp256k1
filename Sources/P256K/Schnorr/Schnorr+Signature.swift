@@ -86,9 +86,17 @@ import libsecp256k1
         /// to protect against fault attacks. When the digest was produced using BIP-340 Tagged Hashes,
         /// the resulting signature is fully BIP-340 compliant.
         ///
-        /// - Parameter digest: The pre-computed message digest to sign.
+        /// > Note: The digest's raw bytes are passed to `secp256k1_schnorrsig_sign_custom` **at their
+        /// > natural length** as the message — BIP-340 (as amended) and the upstream custom signing
+        /// > API both accept arbitrary-length messages. This differs from the ECDSA, Recovery, and
+        /// > MuSig `Digest` overloads, which reduce the digest to a 32-byte `msg32` per SEC1 §4.1.3
+        /// > because their upstream entry points consume exactly 32 bytes.
+        ///
+        /// - Parameter digest: The pre-computed message digest to sign; signed at its natural byte length.
         /// - Returns: A 64-byte ``SchnorrSignature``.
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if signature production fails.
+        /// - Throws: Never throws in practice; `throws` is retained for API stability.
+        ///   An upstream signing failure is unreachable on a validated key and would
+        ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
         public func signature<D: Digest>(for digest: D) throws -> P256K.Schnorr.SchnorrSignature {
             try signature(for: digest, auxiliaryRand: SecureBytes(count: P256K.ByteLength.dimension).bytes)
         }
@@ -96,11 +104,13 @@ import libsecp256k1
         /// Generates a BIP-340 Schnorr signature from a pre-computed digest using caller-supplied auxiliary randomness.
         ///
         /// - Parameters:
-        ///   - digest: The pre-computed message digest to sign.
+        ///   - digest: The pre-computed message digest to sign; signed at its natural byte length
+        ///     (no `msg32` reduction — the upstream API accepts arbitrary-length messages).
         ///   - auxiliaryRand: Exactly 32 bytes of auxiliary randomness for BIP-340 nonce derivation; pass zeroed bytes to disable.
         /// - Returns: A 64-byte ``SchnorrSignature``.
-        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `auxiliaryRand` is not exactly 32 bytes;
-        ///   ``secp256k1Error/underlyingCryptoError`` if signature production fails.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `auxiliaryRand` is not exactly 32 bytes.
+        ///   An upstream signing failure is unreachable on a validated key and would
+        ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
         public func signature<D: Digest>(for digest: D, auxiliaryRand: [UInt8]) throws -> P256K.Schnorr.SchnorrSignature {
             guard auxiliaryRand.count == P256K.ByteLength.dimension else {
                 throw secp256k1Error.incorrectParameterSize
@@ -124,7 +134,9 @@ import libsecp256k1
         ///   - auxiliaryRand: Pointer to 32 bytes of auxiliary randomness, or `nil` to use zero auxiliary data.
         ///   - strict: If `true`, throws ``secp256k1Error/incorrectParameterSize`` when `message.count` is not 32.
         /// - Returns: A 64-byte ``SchnorrSignature``.
-        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `strict` is `true` and the message is not 32 bytes; ``secp256k1Error/underlyingCryptoError`` if signing fails.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `strict` is `true` and the message is not 32 bytes.
+        ///   An upstream signing failure is unreachable on a validated key and would
+        ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
         public func signature(
             message: inout [UInt8],
             auxiliaryRand: UnsafeMutableRawPointer?,
@@ -141,9 +153,12 @@ import libsecp256k1
             var extraParams = secp256k1_schnorrsig_extraparams(magic: magic, noncefp: nil, ndata: auxiliaryRand)
 
             guard secp256k1_keypair_create(context, &keypair, Array(dataRepresentation)).boolValue else {
-                fatalError("secp256k1_keypair_create failed with valid key — library bug")
+                P256K.invariantFailure("secp256k1_keypair_create failed in Schnorr signing with validated key — library bug")
             }
 
+            // The keypair was just created from validated key material and no
+            // custom nonce function is installed (`noncefp` is nil), so
+            // `secp256k1_schnorrsig_sign_custom` cannot legitimately fail.
             guard secp256k1_schnorrsig_sign_custom(
                 context,
                 &signature,
@@ -152,7 +167,7 @@ import libsecp256k1
                 &keypair,
                 &extraParams
             ).boolValue else {
-                throw secp256k1Error.underlyingCryptoError
+                P256K.invariantFailure("secp256k1_schnorrsig_sign_custom failed on validated keypair — library bug")
             }
 
             return P256K.Schnorr.SchnorrSignature(Data(bytes: signature, count: P256K.ByteLength.signature))
@@ -164,6 +179,10 @@ import libsecp256k1
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension P256K.Schnorr.XonlyKey: DigestValidator {
         /// Verifies a BIP-340 Schnorr signature against a pre-computed digest using `secp256k1_schnorrsig_verify`.
+        ///
+        /// > Note: The digest's raw bytes are verified as the message **at their natural length**,
+        /// > matching the ``P256K/Schnorr/PrivateKey`` `signature(for:)` overloads — there is no
+        /// > `msg32` reduction here as there is on the ECDSA and Recovery verification paths.
         ///
         /// - Parameters:
         ///   - signature: The 64-byte ``SchnorrSignature`` to verify.

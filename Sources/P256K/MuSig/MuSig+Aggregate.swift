@@ -32,8 +32,11 @@ import libsecp256k1
         /// - Parameter pubkeys: All signers' ``P256K/Schnorr/PublicKey`` values; must
         ///   contain at least one key.
         /// - Returns: An aggregate ``PublicKey`` with an embedded key aggregation cache.
-        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `pubkeys` is empty;
-        ///   ``secp256k1Error/underlyingCryptoError`` if sorting or aggregation fails.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `pubkeys` is empty.
+        ///   A point-at-infinity aggregate — which upstream declares unreachable and
+        ///   guards only with a release-stripped `VERIFY_CHECK` — terminates through
+        ///   ``P256K/setInvariantViolationHandler(_:)`` inside serialization rather
+        ///   than producing a bogus key.
         static func aggregate(_ pubkeys: [P256K.Schnorr.PublicKey]) throws -> P256K.MuSig.PublicKey {
             guard pubkeys.isEmpty == false else {
                 throw secp256k1Error.incorrectParameterSize
@@ -46,19 +49,34 @@ import libsecp256k1
             var cache = secp256k1_musig_keyagg_cache()
             var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-            guard PointerArrayUtility
-                .withUnsafePointerArray(pubkeys.map { $0.baseKey.rawRepresentation }, { pointers in
-                    secp256k1_ec_pubkey_sort(context, &pointers, pointers.count).boolValue &&
-                        secp256k1_musig_pubkey_agg(context, nil, &cache, pointers, pointers.count).boolValue
-                }), secp256k1_musig_pubkey_get(context, &aggPubkey, &cache).boolValue,
-                secp256k1_ec_pubkey_serialize(
-                    context,
-                    &pubBytes,
-                    &pubKeyLen,
-                    &aggPubkey,
-                    format.rawValue
-                ).boolValue else {
-                throw secp256k1Error.underlyingCryptoError
+            // Every pubkey was parse-validated at construction, so sorting and
+            // aggregating them cannot legitimately fail. Upstream calls a
+            // point-at-infinity aggregate unreachable ("negligible probability" —
+            // the per-key coefficients are hash-derived) and guards it only with
+            // `VERIFY_CHECK`, which is compiled out in release builds — in that
+            // case `pubkey_load`'s `ARG_CHECK` inside `ec_pubkey_serialize` reports
+            // through the installed invariant handler before the process ends.
+            PointerArrayUtility
+                .withUnsafePointerArray(pubkeys.map { $0.baseKey.rawRepresentation }) { pointers in
+                    guard secp256k1_ec_pubkey_sort(context, &pointers, pointers.count).boolValue else {
+                        P256K.invariantFailure("secp256k1_ec_pubkey_sort failed on validated keys — library bug")
+                    }
+                    guard secp256k1_musig_pubkey_agg(context, nil, &cache, pointers, pointers.count).boolValue else {
+                        P256K.invariantFailure("secp256k1_musig_pubkey_agg failed on validated keys — library bug")
+                    }
+                }
+
+            guard secp256k1_musig_pubkey_get(context, &aggPubkey, &cache).boolValue else {
+                P256K.invariantFailure("secp256k1_musig_pubkey_get failed on upstream-written cache — library bug")
+            }
+            guard secp256k1_ec_pubkey_serialize(
+                context,
+                &pubBytes,
+                &pubKeyLen,
+                &aggPubkey,
+                format.rawValue
+            ).boolValue else {
+                P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on aggregate key — library bug")
             }
 
             return Self.PublicKey(
@@ -268,10 +286,7 @@ import libsecp256k1
             ///   `secp256k1_musig_partial_sig_parse` or `session` lacks the upstream
             ///   magic prefix.
             public init<D: DataProtocol, S: DataProtocol>(dataRepresentation: D, session: S) throws {
-                guard dataRepresentation.count == P256K.ByteLength.dimension else {
-                    throw secp256k1Error.incorrectParameterSize
-                }
-                guard session.count == MuSigOpaqueState.sessionByteCount else {
+                guard dataRepresentation.count == P256K.ByteLength.dimension, session.count == MuSigOpaqueState.sessionByteCount else {
                     throw secp256k1Error.incorrectParameterSize
                 }
 
@@ -284,11 +299,7 @@ import libsecp256k1
                     P256K.Context.rawRepresentation,
                     &partialSig,
                     Array(dataRepresentation)
-                ).boolValue else {
-                    throw secp256k1Error.underlyingCryptoError
-                }
-
-                guard MuSigOpaqueState.isValidSession(session) else {
+                ).boolValue, MuSigOpaqueState.isValidSession(session) else {
                     throw secp256k1Error.underlyingCryptoError
                 }
 

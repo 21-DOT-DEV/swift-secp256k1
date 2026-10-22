@@ -76,8 +76,7 @@ import libsecp256k1
             ///
             /// - Parameter pubnonces: All signers' ``P256K/Schnorr/Nonce`` public nonces; must include every participant.
             /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `pubnonces` is empty —
-            ///   upstream `ARG_CHECK`s `n_pubnonces > 0`, which aborts the process;
-            ///   ``secp256k1Error/underlyingCryptoError`` if `secp256k1_musig_nonce_agg` fails.
+            ///   upstream `ARG_CHECK`s `n_pubnonces > 0`, which aborts the process.
             public init(aggregating pubnonces: [P256K.Schnorr.Nonce]) throws {
                 let context = P256K.Context.rawRepresentation
                 var aggNonce = secp256k1_musig_aggnonce()
@@ -86,17 +85,20 @@ import libsecp256k1
                     throw secp256k1Error.incorrectParameterSize
                 }
 
-                guard PointerArrayUtility.withUnsafePointerArray(
+                // Every ``P256K/Schnorr/Nonce`` was parse-validated at
+                // construction, so `musig_nonce_agg`'s only failure mode — a
+                // `pubnonce_load` failure — is unreachable.
+                PointerArrayUtility.withUnsafePointerArray(
                     pubnonces.map {
                         var pubnonce = secp256k1_musig_pubnonce()
                         $0.pubnonce.copyToUnsafeMutableBytes(of: &pubnonce.data)
                         return pubnonce
-                    }, { pointers in
-                        secp256k1_musig_nonce_agg(context, &aggNonce, pointers, pointers.count).boolValue
                     }
-                ) else {
-                    throw secp256k1Error.underlyingCryptoError
-                }
+                ) { pointers in
+                        guard secp256k1_musig_nonce_agg(context, &aggNonce, pointers, pointers.count).boolValue else {
+                            P256K.invariantFailure("secp256k1_musig_nonce_agg failed on validated nonces — library bug")
+                        }
+                    }
 
                 self.aggregatedNonce = Data(Swift.withUnsafeBytes(of: aggNonce) { Data($0) })
             }
@@ -125,10 +127,9 @@ import libsecp256k1
 
                 // `aggregatedNonce` was produced upstream (nonce_agg or a
                 // successful parse), so the load inside serialize cannot fail.
-                precondition(
-                    secp256k1_musig_aggnonce_serialize(context, &output, &aggnonce).boolValue,
-                    "secp256k1_musig_aggnonce_serialize failed on upstream-produced nonce — library bug"
-                )
+                guard secp256k1_musig_aggnonce_serialize(context, &output, &aggnonce).boolValue else {
+                    P256K.invariantFailure("secp256k1_musig_aggnonce_serialize failed on upstream-produced nonce — library bug")
+                }
 
                 return Data(output)
             }
@@ -141,7 +142,7 @@ import libsecp256k1
             /// > ``P256K/Schnorr/SecureNonce`` across multiple signing sessions. The returned
             /// > ``NonceResult`` is `~Copyable` to prevent accidental duplication of the secret nonce.
             ///
-            /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance by binding the nonce to the key.
+            /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance by binding the nonce to the key. Must match `publicKey` when provided.
             /// - Parameter publicKey: The signer's public key; the generated secret nonce is bound to this key and cannot sign for any other.
             /// - Parameter msg32: The message to be signed; `nil` if not yet known. Any length is
             ///   accepted — the bytes are reduced to the 32-byte `msg32` value per SEC1 §4.1.3
@@ -150,8 +151,11 @@ import libsecp256k1
             /// - Parameter extraInput32: Optional 32 bytes of additional entropy (e.g., current timestamp) passed to `secp256k1_musig_nonce_gen`.
             /// - Returns: A `~Copyable` ``NonceResult`` containing the public nonce (to share) and secret nonce (to consume when signing).
             /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `extraInput32` is
-            ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError`` if
-            ///   `secp256k1_musig_nonce_gen` fails.
+            ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError``
+            ///   if `secretKey` is provided but does not match `publicKey`. An upstream
+            ///   `secp256k1_musig_nonce_gen` failure is unreachable on the
+            ///   validated inputs and reports through
+            ///   ``P256K/setInvariantViolationHandler(_:)`` instead.
             public static func generate(
                 secretKey: P256K.Schnorr.PrivateKey?,
                 publicKey: P256K.Schnorr.PublicKey,
@@ -177,7 +181,7 @@ import libsecp256k1
             /// > returned ``NonceResult`` is `~Copyable`.
             ///
             /// - Parameter sessionSecretRand: Secret, uniformly random session input consumed by this call — see ``SessionSecretRand``.
-            /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance.
+            /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance. Must match `publicKey` when provided.
             /// - Parameter publicKey: The signer's public key; the secret nonce is bound to this key.
             /// - Parameter msg32: The message to sign; `nil` if not yet known. Any length is
             ///   accepted — the bytes are reduced to the 32-byte `msg32` value per SEC1 §4.1.3
@@ -186,8 +190,11 @@ import libsecp256k1
             /// - Parameter extraInput32: Optional 32 bytes of additional entropy passed to `secp256k1_musig_nonce_gen`.
             /// - Returns: A `~Copyable` ``NonceResult`` with the public nonce (to share) and secret nonce (to consume).
             /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `extraInput32` is
-            ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError`` if
-            ///   `secp256k1_musig_nonce_gen` fails.
+            ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError``
+            ///   if `secretKey` is provided but does not match `publicKey`. An upstream
+            ///   `secp256k1_musig_nonce_gen` failure is unreachable on the
+            ///   validated inputs and reports through
+            ///   ``P256K/setInvariantViolationHandler(_:)`` instead.
             public static func generate(
                 sessionSecretRand: consuming SessionSecretRand,
                 secretKey: P256K.Schnorr.PrivateKey?,
@@ -203,6 +210,23 @@ import libsecp256k1
 
                 if let extraInput32, extraInput32.count != P256K.ByteLength.dimension {
                     throw secp256k1Error.incorrectParameterSize
+                }
+
+                // `secp256k1_musig_nonce_gen` never verifies that `secretKey` matches
+                // `publicKey` — upstream binds `publicKey` into the secnonce and lets
+                // `partial_sign`'s `ARG_CHECK` abort on the mismatch at signing time.
+                // Reject it here so the mismatch throws rather than terminating later.
+                // Compare the canonical point identity (x-only bytes + parity), not
+                // `dataRepresentation`, which reflects each key's stored `Format` —
+                // the same point in compressed vs uncompressed form is the same key.
+                if let secretKey {
+                    let signingKey = secretKey.publicKey.baseKey
+                    let boundKey = publicKey.baseKey
+                    guard signingKey.xonlyBytes == boundKey.xonlyBytes,
+                          signingKey.keyParity == boundKey.keyParity
+                    else {
+                        throw secp256k1Error.underlyingCryptoError
+                    }
                 }
 
                 // `sessionSecretRand` holds the only `SecureBytes` reference (the type is
@@ -242,13 +266,21 @@ import libsecp256k1
                         extraInput32
                     ).boolValue
                 }
+                // Every argument was validated above — an all-zero
+                // `sessionSecretRand` is rejected by both ``SessionSecretRand``
+                // initializers, and all other inputs are construction-validated
+                // — so a `nonce_gen` failure indicates corruption or an
+                // upstream defect.
                 guard nonceGenerated else {
-                    throw secp256k1Error.underlyingCryptoError
+                    P256K.invariantFailure("secp256k1_musig_nonce_gen failed on validated inputs — library bug")
                 }
 
                 return NonceResult(
                     pubnonce: P256K.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) }),
-                    secnonce: P256K.Schnorr.SecureNonce(Swift.withUnsafeBytes(of: secnonce) { SecureBytes(bytes: $0) })
+                    secnonce: P256K.Schnorr.SecureNonce(
+                        Swift.withUnsafeBytes(of: secnonce) { SecureBytes(bytes: $0) },
+                        publicKey: publicKey
+                    )
                 )
             }
         }
@@ -294,8 +326,19 @@ import libsecp256k1
             var bytes: SecureBytes
 
             /// Generates fresh uniformly random session randomness from the system CSPRNG — the recommended path.
+            ///
+            /// Terminates via ``P256K/setInvariantViolationHandler(_:)`` if the system
+            /// CSPRNG returns all zeros — treated as an operating-system entropy defect
+            /// rather than a caller error, matching the defense upstream applies inside
+            /// `secp256k1_musig_nonce_gen`.
             public init() {
                 self.bytes = SecureBytes(count: Self.byteCount)
+                // A broken CSPRNG returning all zeros would trip
+                // `secp256k1_musig_nonce_gen`'s own zero check — reject it at
+                // construction like ``init(bytes:)`` does.
+                guard !Self.isAllZero(bytes) else {
+                    P256K.invariantFailure("system CSPRNG produced all-zero session randomness — operating-system entropy defect")
+                }
             }
 
             /// Creates session randomness from caller-supplied bytes, e.g. deterministic test
@@ -308,12 +351,32 @@ import libsecp256k1
             /// > discard or zero it yourself after constructing this value.
             ///
             /// - Parameter bytes: Exactly ``byteCount`` (32) bytes of secret uniform randomness.
-            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `bytes.count` is not exactly 32.
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `bytes.count` is not exactly 32;
+            ///   ``secp256k1Error/underlyingCryptoError`` if `bytes` is all zero — the same
+            ///   value `secp256k1_musig_nonce_gen` rejects as a faulty-RNG defense.
             public init(bytes: [UInt8]) throws {
                 guard bytes.count == Self.byteCount else {
                     throw secp256k1Error.incorrectParameterSize
                 }
+                guard !Self.isAllZero(bytes) else {
+                    throw secp256k1Error.underlyingCryptoError
+                }
                 self.bytes = SecureBytes(bytes: bytes)
+            }
+
+            /// All-zero test matching upstream's `secp256k1_is_zero_array`: ORs every
+            /// byte inside `withUnsafeBytes` — reading the buffer in place rather than
+            /// copying the secret into a plain array that would be freed unzeroed — and
+            /// tests the accumulator once, so the check takes the same time for every
+            /// input.
+            static func isAllZero(_ bytes: some ContiguousBytes) -> Bool {
+                bytes.withUnsafeBytes { buffer in
+                    var accumulator: UInt8 = 0
+                    for byte in buffer {
+                        accumulator |= byte
+                    }
+                    return accumulator == 0
+                }
             }
         }
     }

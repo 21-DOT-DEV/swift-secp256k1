@@ -137,7 +137,7 @@ import libsecp256k1
                         &compactSignature,
                         &normalizedSignature
                     ).boolValue else {
-                    fatalError("secp256k1 recoverable signature re-parse failed on init-validated bytes — library bug")
+                    P256K.invariantFailure("secp256k1_ecdsa_recoverable_signature_parse_compact failed on init-validated bytes — library bug")
                 }
 
                 return P256K.Signing.ECDSASignature(Data(compactSignature))
@@ -258,7 +258,7 @@ import libsecp256k1
                 nil,
                 nil
             ).boolValue else {
-                fatalError("secp256k1_ecdsa_sign_recoverable failed with valid key — library bug")
+                P256K.invariantFailure("secp256k1_ecdsa_sign_recoverable failed with valid key — library bug")
             }
 
             guard secp256k1_ecdsa_recoverable_signature_serialize_compact(
@@ -267,7 +267,7 @@ import libsecp256k1
                 &recoveryId,
                 &signature
             ).boolValue else {
-                fatalError("secp256k1_ecdsa_recoverable_signature_serialize_compact failed — library bug")
+                P256K.invariantFailure("secp256k1_ecdsa_recoverable_signature_serialize_compact failed — library bug")
             }
 
             return P256K.Recovery.ECDSASignature(Data(compactSignature) + [UInt8(recoveryId)])

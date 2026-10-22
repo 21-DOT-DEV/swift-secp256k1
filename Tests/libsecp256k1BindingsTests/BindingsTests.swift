@@ -14,7 +14,7 @@ struct BindingsTestSuite {
     @Test("Uncompressed Key pair creation bindings")
     func uncompressedKeypairCreationBindings() throws {
         // Initialize context
-        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+        let context = try #require(secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY)))
 
         // Destroy context after execution
         defer { secp256k1_context_destroy(context) }
@@ -47,7 +47,7 @@ struct BindingsTestSuite {
     @Test("Compressed Key pair creation bindings")
     func compressedKeypairCreationBindings() throws {
         // Initialize context
-        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+        let context = try #require(secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY)))
 
         // Destroy context after execution
         defer { secp256k1_context_destroy(context) }
@@ -72,9 +72,9 @@ struct BindingsTestSuite {
 
     /// ECDH Test
     @Test("ECDH Binding Test")
-    func ecdhBindings() {
+    func ecdhBindings() throws {
         // Initialize context
-        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+        let context = try #require(secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY)))
 
         // Destroy context after execution
         defer { secp256k1_context_destroy(context) }
@@ -93,7 +93,7 @@ struct BindingsTestSuite {
     @Test("Extra Keys Bindings Test")
     func extraKeysBindings() throws {
         // Initialize context
-        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+        let context = try #require(secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY)))
 
         // Destroy context after execution
         defer { secp256k1_context_destroy(context) }
@@ -112,7 +112,7 @@ struct BindingsTestSuite {
     @Test("Recovery Bindings Test")
     func recoveryBindings() throws {
         // Initialize context
-        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+        let context = try #require(secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY)))
 
         // Destroy context after execution
         defer { secp256k1_context_destroy(context) }
@@ -132,7 +132,7 @@ struct BindingsTestSuite {
     @Test("Schnorr Bindings Test")
     func schnorrBindings() throws {
         // Initialize context
-        let context = secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY))!
+        let context = try #require(secp256k1_context_create(UInt32(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY)))
 
         // Destroy context after execution
         defer { secp256k1_context_destroy(context) }

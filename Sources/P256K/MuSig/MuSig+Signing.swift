@@ -105,7 +105,12 @@ import libsecp256k1
         ///   must carry the key aggregation ``P256K/MuSig/XonlyKey/cache`` from that call.
         /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
         /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `xonlyKeyAggregate` lacks a
-        ///   usable key aggregation cache, if signing fails, or if the secnonce was already used.
+        ///   usable key aggregation cache, or if `secureNonce` was generated for a different
+        ///   public key than this signing key (BIP-327 binds the signer's public key into the
+        ///   secret nonce; upstream enforces the match via an aborting `ARG_CHECK`, which is
+        ///   unreachable after this method's own check). Other upstream signing failures are
+        ///   unreachable on the validated inputs and report through
+        ///   ``P256K/setInvariantViolationHandler(_:)`` instead of throwing.
         func partialSignature<D: Digest>(
             for digest: D,
             pubnonce: P256K.Schnorr.Nonce,
@@ -130,8 +135,22 @@ import libsecp256k1
                 throw secp256k1Error.underlyingCryptoError
             }
 
+            // `secp256k1_musig_partial_sign` `ARG_CHECK`s that the public key bound
+            // inside the secnonce matches the signing keypair, and aborts on
+            // mismatch — check it here so a caller mixing a nonce generated for a
+            // different key gets an error instead of a process abort. BIP-327
+            // performs the same check in its signing step. Compare the canonical
+            // point identity (x-only bytes + parity): `dataRepresentation` is
+            // format-dependent, so the same point in a different `Format` is the
+            // same key and must not throw.
+            guard secureNonce.publicKey.baseKey.xonlyBytes == publicKey.baseKey.xonlyBytes,
+                  secureNonce.publicKey.baseKey.keyParity == publicKey.baseKey.keyParity
+            else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
             guard secp256k1_keypair_create(context, &keypair, Array(dataRepresentation)).boolValue else {
-                fatalError("secp256k1_keypair_create failed with valid key — library bug")
+                P256K.invariantFailure("secp256k1_keypair_create failed in MuSig partial signing with validated key — library bug")
             }
 
             withUnsafeMutableBytes(of: &secnonce.data) { dst in
@@ -140,11 +159,23 @@ import libsecp256k1
             xonlyKeyAggregate.cache.copyToUnsafeMutableBytes(of: &cache.data)
             publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
-            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, messageBytes, &cache).boolValue,
-                  secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue,
-                  secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue
-            else {
-                throw secp256k1Error.underlyingCryptoError
+            // Every operand below is upstream-produced or construction-validated
+            // in this same call — `publicNonceAggregate` was parse-validated as a
+            // ``P256K/MuSig/Nonce``, `secureNonce` is consumed `~Copyable` state
+            // from ``P256K/MuSig/Nonce/generate`` bound to this key (checked
+            // above), the keypair was just created, and the session/cache carry
+            // validated magic prefixes — so a failure can only indicate
+            // corruption or an upstream defect. rust-secp256k1's MuSig
+            // bindings reach the same conclusion: `partial_sign` panics on the
+            // reuse path rather than returning `Result`.
+            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, messageBytes, &cache).boolValue else {
+                P256K.invariantFailure("secp256k1_musig_nonce_process failed on validated session inputs — library bug")
+            }
+            guard secp256k1_musig_partial_sign(context, &signature, &secnonce, &keypair, &cache, &session).boolValue else {
+                P256K.invariantFailure("secp256k1_musig_partial_sign failed on fresh consumed nonce — library bug")
+            }
+            guard secp256k1_musig_partial_sig_serialize(context, &partialSignature, &signature).boolValue else {
+                P256K.invariantFailure("secp256k1_musig_partial_sig_serialize failed on upstream-produced signature — library bug")
             }
 
             return P256K.Schnorr.PartialSignature(
@@ -164,7 +195,10 @@ import libsecp256k1
         /// - Parameter publicKeyAggregate: The ``P256K/MuSig/PublicKey`` returned by ``P256K/MuSig/aggregate(_:)``.
         /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
         /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `publicKeyAggregate` lacks a
-        ///   usable key aggregation cache, if signing fails, or if the secnonce was already used.
+        ///   usable key aggregation cache, or if `secureNonce` was generated for a different
+        ///   public key than this signing key. Other upstream signing failures are
+        ///   unreachable on the validated inputs and report through
+        ///   ``P256K/setInvariantViolationHandler(_:)`` instead of throwing.
         func partialSignature<D: Digest>(
             for digest: D,
             pubnonce: P256K.Schnorr.Nonce,

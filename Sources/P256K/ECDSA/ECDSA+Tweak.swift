@@ -38,9 +38,13 @@ public extension P256K.Signing.PrivateKey {
             throw secp256k1Error.incorrectParameterSize
         }
 
-        guard secp256k1_ec_seckey_tweak_add(context, &privateBytes, tweak).boolValue,
-              secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
+        guard secp256k1_ec_seckey_tweak_add(context, &privateBytes, tweak).boolValue else {
             throw secp256k1Error.underlyingCryptoError
+        }
+        // A successful tweak produces a valid scalar by contract — the
+        // verification re-check cannot legitimately fail.
+        guard secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_seckey_verify failed on tweaked key — library bug")
         }
 
         return Self(baseKey: PrivateKeyImplementation(validatedBytes: privateBytes, format: .compressed))
@@ -66,9 +70,13 @@ public extension P256K.Signing.PrivateKey {
             throw secp256k1Error.incorrectParameterSize
         }
 
-        guard secp256k1_ec_seckey_tweak_mul(context, &privateBytes, tweak).boolValue,
-              secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
+        guard secp256k1_ec_seckey_tweak_mul(context, &privateBytes, tweak).boolValue else {
             throw secp256k1Error.underlyingCryptoError
+        }
+        // A successful tweak produces a valid scalar by contract — the
+        // verification re-check cannot legitimately fail.
+        guard secp256k1_ec_seckey_verify(context, privateBytes).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_seckey_verify failed on tweaked key — library bug")
         }
 
         return Self(baseKey: PrivateKeyImplementation(validatedBytes: privateBytes, format: .compressed))
@@ -104,9 +112,11 @@ public extension P256K.Signing.PublicKey {
             throw secp256k1Error.incorrectParameterSize
         }
 
-        guard secp256k1_ec_pubkey_tweak_add(context, &pubKey, tweak).boolValue,
-              secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+        guard secp256k1_ec_pubkey_tweak_add(context, &pubKey, tweak).boolValue else {
             throw secp256k1Error.underlyingCryptoError
+        }
+        guard secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on tweaked key — library bug")
         }
 
         return Self(baseKey: PublicKeyImplementation(validatedBytes: pubKeyBytes, format: format))
@@ -136,9 +146,11 @@ public extension P256K.Signing.PublicKey {
             throw secp256k1Error.incorrectParameterSize
         }
 
-        guard secp256k1_ec_pubkey_tweak_mul(context, &pubKey, tweak).boolValue,
-              secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+        guard secp256k1_ec_pubkey_tweak_mul(context, &pubKey, tweak).boolValue else {
             throw secp256k1Error.underlyingCryptoError
+        }
+        guard secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on tweaked key — library bug")
         }
 
         return Self(baseKey: PublicKeyImplementation(validatedBytes: pubKeyBytes, format: format))

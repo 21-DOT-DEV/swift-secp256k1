@@ -71,14 +71,13 @@ import libsecp256k1
     /// defect (and an all-zero struct would abort inside `xonly_pubkey_load`).
     var rawRepresentation: secp256k1_xonly_pubkey {
         var xonlyKey = secp256k1_xonly_pubkey()
-        precondition(
-            secp256k1_xonly_pubkey_parse(
-                P256K.Context.rawRepresentation,
-                &xonlyKey,
-                bytes
-            ).boolValue,
-            "validated x-only key failed re-parse — library bug"
-        )
+        guard secp256k1_xonly_pubkey_parse(
+            P256K.Context.rawRepresentation,
+            &xonlyKey,
+            bytes
+        ).boolValue else {
+            P256K.invariantFailure("secp256k1_xonly_pubkey_parse failed on validated key — library bug")
+        }
         return xonlyKey
     }
 
@@ -135,7 +134,7 @@ import libsecp256k1
     ///
     /// Asserts the invariant rather than throwing — matching
     /// ``PrivateKeyImplementation/init(validatedBytes:format:)``: internal callers
-    /// pass upstream-produced bytes only, so a precondition failure means an
+    /// pass upstream-produced bytes only, so an assertion failure means an
     /// internal bug, not public input.
     @usableFromInline init(
         validatedBytes bytes: [UInt8],
@@ -173,7 +172,7 @@ import libsecp256k1
     /// - Parameter keyParity: Updated with 0 if the Y coordinate is even, 1 if odd.
     /// - Parameter format: The serialization format of `publicBytes`.
     /// - Returns: The 32-byte x-only public key (X coordinate).
-    /// - Throws: ``secp256k1Error/incorrectKeySize`` if byte count does not match `format.length`; ``secp256k1Error/underlyingCryptoError`` if key derivation fails.
+    /// - Throws: ``secp256k1Error/incorrectKeySize`` if byte count does not match `format.length`; ``secp256k1Error/underlyingCryptoError`` if `publicBytes` fails public-key parsing.
     static func generate(
         bytes publicBytes: [UInt8],
         keyParity: inout Int32,
@@ -188,10 +187,15 @@ import libsecp256k1
         var xonlyPubKey = secp256k1_xonly_pubkey()
         var xonlyBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
 
-        guard secp256k1_ec_pubkey_parse(context, &pubKey, publicBytes, format.length).boolValue,
-              secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue,
-              secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &xonlyPubKey).boolValue else {
+        // `publicBytes` is caller-supplied, so the parse can legitimately fail.
+        guard secp256k1_ec_pubkey_parse(context, &pubKey, publicBytes, format.length).boolValue else {
             throw secp256k1Error.underlyingCryptoError
+        }
+        guard secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue else {
+            P256K.invariantFailure("secp256k1_xonly_pubkey_from_pubkey failed on parsed key — library bug")
+        }
+        guard secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &xonlyPubKey).boolValue else {
+            P256K.invariantFailure("secp256k1_xonly_pubkey_serialize failed on derived key — library bug")
         }
 
         return xonlyBytes

@@ -49,7 +49,6 @@
         /// It represents a node in an OID hierarchy, and is usually represented as an ordered sequence of numbers.
         ///
         /// We mostly don't care about the semantics of the thing, we just care about being able to store and compare them.
-        @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         struct ASN1ObjectIdentifier: ASN1ImplicitlyTaggable {
             static var defaultIdentifier: ASN1.ASN1Identifier {
                 .objectIdentifier
@@ -173,24 +172,20 @@
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension ASN1.ASN1ObjectIdentifier {
-        @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         enum NamedCurves {
             static let secp256k1: ASN1.ASN1ObjectIdentifier = [1, 3, 132, 0, 10]
         }
 
-        @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         enum HashFunctions {
             static let sha256: ASN1.ASN1ObjectIdentifier = [2, 16, 840, 1, 101, 3, 4, 2, 1]
             static let sha384: ASN1.ASN1ObjectIdentifier = [2, 16, 840, 1, 101, 3, 4, 2, 2]
             static let sha512: ASN1.ASN1ObjectIdentifier = [2, 16, 840, 1, 101, 3, 4, 2, 3]
         }
 
-        @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         enum AlgorithmIdentifier {
             static let idEcPublicKey: ASN1.ASN1ObjectIdentifier = [1, 2, 840, 10045, 2, 1]
         }
 
-        @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         enum NameAttributes {
             static let name: ASN1.ASN1ObjectIdentifier = [2, 5, 4, 41]
             static let surname: ASN1.ASN1ObjectIdentifier = [2, 5, 4, 4]

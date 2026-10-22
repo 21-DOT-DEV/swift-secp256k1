@@ -13,6 +13,99 @@ import Foundation
 import Testing
 
 struct MuSigTestSuite {
+    /// Plain point combination with a key's own negation cancels to the point
+    /// at infinity — a reachable `secp256k1_ec_pubkey_combine` failure that must
+    /// throw rather than return a bogus key. (MuSig aggregation can't reach
+    /// this: its per-key coefficients make a cancelling pair require a hash
+    /// relation.)
+    @Test("Public key combination rejects a key plus its negation")
+    func combineRejectsInfinitySum() throws {
+        let publicKey = try P256K.Signing.PrivateKey().publicKey
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try publicKey.combine([publicKey.negation])
+        }
+    }
+
+    /// BIP-327 binds the signer's public key into the secret nonce; upstream
+    /// detects a nonce/signing-key mismatch only in `secp256k1_musig_partial_sign`
+    /// via an aborting `ARG_CHECK`. P256K checks the binding itself and throws —
+    /// once at `generate` when `secretKey` disagrees with `publicKey`, and again
+    /// at `partialSignature` when the consumed nonce was bound to another key.
+    @Test("MuSig nonce/key mismatch throws instead of aborting")
+    func nonceKeyMismatchThrows() throws {
+        let privateKeyA = try P256K.Schnorr.PrivateKey()
+        let privateKeyB = try P256K.Schnorr.PrivateKey()
+        let aggregate = try P256K.MuSig.aggregate([privateKeyA.publicKey, privateKeyB.publicKey])
+        let messageHash = SHA256.hash(data: Data("mismatch".utf8))
+
+        // Generate-time check: a provided secretKey must equal publicKey.
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.MuSig.Nonce.generate(
+                secretKey: privateKeyA,
+                publicKey: privateKeyB.publicKey,
+                msg32: Array(messageHash)
+            )
+        }
+
+        // Signing-time check: a nonce generated for A's key (here with
+        // `secretKey: nil`, which skips the generate-time check) cannot sign
+        // under B's key.
+        let nonce = try P256K.MuSig.Nonce.generate(
+            secretKey: nil,
+            publicKey: privateKeyA.publicKey,
+            msg32: Array(messageHash)
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+        do {
+            // `secureNonce` is `~Copyable` — it cannot be consumed inside a
+            // `#expect` closure, so this checks the thrown error explicitly.
+            _ = try privateKeyB.partialSignature(
+                for: messageHash,
+                pubnonce: nonce.pubnonce,
+                secureNonce: nonce.secnonce,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
+            Issue.record("partialSignature with a mismatched nonce/key should throw")
+        } catch {
+            #expect(error as? secp256k1Error == .underlyingCryptoError)
+        }
+    }
+
+    /// The bound-key comparison must ignore the key's serialization `Format`:
+    /// the same point parsed from uncompressed bytes is the same key — upstream
+    /// binds the parsed point, not the wire form — so `generate` must accept it,
+    /// and `partialSignature` must accept a nonce bound to the same point in the
+    /// other format.
+    @Test("MuSig nonce key binding ignores the key's serialization format")
+    func nonceKeyMatchIsFormatAgnostic() throws {
+        let secretKey = try P256K.Schnorr.PrivateKey()
+        let uncompressedPub = try P256K.Schnorr.PublicKey(
+            dataRepresentation: secretKey.publicKey.baseKey.uncompressedRepresentation,
+            format: .uncompressed
+        )
+
+        // Same point, different stored format — `generate` must not throw.
+        let nonce = try P256K.MuSig.Nonce.generate(
+            secretKey: secretKey,
+            publicKey: uncompressedPub,
+            msg32: nil
+        )
+
+        // ...and the consumed nonce (bound to the uncompressed-form key) must
+        // sign under the compressed-form key.
+        let aggregate = try P256K.MuSig.aggregate([secretKey.publicKey])
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+        let messageHash = SHA256.hash(data: Data("format".utf8))
+        _ = try secretKey.partialSignature(
+            for: messageHash,
+            pubnonce: nonce.pubnonce,
+            secureNonce: nonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+    }
+
     @Test("MuSig Signing and Verification")
     func musig() throws {
         // Test MuSig aggregate
@@ -26,7 +119,7 @@ struct MuSigTestSuite {
         let aggregate = try P256K.MuSig.aggregate(publicKeys)
 
         // Create a message to sign
-        let message = "Hello, MuSig!".data(using: .utf8)!
+        let message = try #require("Hello, MuSig!".data(using: .utf8))
         let messageHash = SHA256.hash(data: message)
 
         // Generate nonces for each signer
@@ -110,7 +203,7 @@ struct MuSigTestSuite {
         let publicKeys = privateKeys.map(\.publicKey)
         let aggregate = try P256K.MuSig.aggregate(publicKeys)
 
-        let message = "Hello, keyless MuSig nonce!".data(using: .utf8)!
+        let message = try #require("Hello, keyless MuSig nonce!".data(using: .utf8))
         let messageHash = SHA256.hash(data: message)
 
         // secp256k1_musig_nonce_gen accepts a NULL secret key — passing nil
@@ -183,7 +276,7 @@ struct MuSigTestSuite {
         let publicKeys = privateKeys.map(\.publicKey)
         let aggregate = try P256K.MuSig.aggregate(publicKeys)
 
-        let message = "Hello, messageless MuSig nonce!".data(using: .utf8)!
+        let message = try #require("Hello, messageless MuSig nonce!".data(using: .utf8))
         let messageHash = SHA256.hash(data: message)
 
         // secp256k1_musig_nonce_gen accepts NULL msg32 — the message binds

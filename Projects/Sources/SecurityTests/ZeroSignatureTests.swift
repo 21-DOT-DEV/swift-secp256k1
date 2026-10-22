@@ -33,7 +33,7 @@ struct ZeroSignatureTests {
     func rejectZeroRSignature() throws {
         let (_, publicKey) = try createTestKeypair()
         let zeroRSignature = SecurityTestVectors.ZeroSignature.zeroR
-        let message = "test message".data(using: .utf8)!
+        let message = try #require("test message".data(using: .utf8))
         let digest = SHA256.hash(data: message)
 
         do {
@@ -51,7 +51,7 @@ struct ZeroSignatureTests {
     func rejectZeroSSignature() throws {
         let (_, publicKey) = try createTestKeypair()
         let zeroSSignature = SecurityTestVectors.ZeroSignature.zeroS
-        let message = "test message".data(using: .utf8)!
+        let message = try #require("test message".data(using: .utf8))
         let digest = SHA256.hash(data: message)
 
         do {
@@ -69,7 +69,7 @@ struct ZeroSignatureTests {
     func rejectPsychicSignature() throws {
         let (_, publicKey) = try createTestKeypair()
         let psychicSignature = SecurityTestVectors.ZeroSignature.psychicSignature
-        let message = "any message at all".data(using: .utf8)!
+        let message = try #require("any message at all".data(using: .utf8))
         let digest = SHA256.hash(data: message)
 
         do {
@@ -115,7 +115,7 @@ struct ZeroSignatureTests {
         let privateKey = try P256K.Schnorr.PrivateKey()
         let publicKey = privateKey.xonly
         let schnorrZeroR = SecurityTestVectors.ZeroSignature.schnorrZeroR
-        let message = "test message".data(using: .utf8)!
+        let message = try #require("test message".data(using: .utf8))
         let digest = SHA256.hash(data: message)
 
         do {
@@ -133,7 +133,7 @@ struct ZeroSignatureTests {
     func validECDSASignatureVerifies() throws {
         let privateKey = try P256K.Signing.PrivateKey()
         let publicKey = privateKey.publicKey
-        let message = "valid test message".data(using: .utf8)!
+        let message = try #require("valid test message".data(using: .utf8))
         let digest = SHA256.hash(data: message)
 
         let signature = try privateKey.signature(for: digest)
@@ -146,7 +146,7 @@ struct ZeroSignatureTests {
     func validSchnorrSignatureVerifies() throws {
         let privateKey = try P256K.Schnorr.PrivateKey()
         let publicKey = privateKey.xonly
-        let message = "valid test message".data(using: .utf8)!
+        let message = try #require("valid test message".data(using: .utf8))
 
         let signature = try privateKey.signature(for: SHA256.hash(data: message))
         let isValid = publicKey.isValidSignature(signature, for: SHA256.hash(data: message))

@@ -53,11 +53,17 @@ import libsecp256k1
 
             keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
 
-            guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, pubKeyLen).boolValue,
-                  secp256k1_musig_pubkey_ec_tweak_add(context, &pubKey, &cache, tweak).boolValue,
-                  secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue
-            else {
+            // `bytes` was validated at construction; the parse cannot fail on it.
+            guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, pubKeyLen).boolValue else {
+                P256K.invariantFailure("secp256k1_ec_pubkey_parse failed on validated key — library bug")
+            }
+            // Only the tweak can legitimately fail (invalid scalar or
+            // point-at-infinity result).
+            guard secp256k1_musig_pubkey_ec_tweak_add(context, &pubKey, &cache, tweak).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
+            }
+            guard secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+                P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on tweaked key — library bug")
             }
 
             return Self(
@@ -110,11 +116,16 @@ import libsecp256k1
 
             self.cache.copyToUnsafeMutableBytes(of: &cache.data)
 
-            guard secp256k1_musig_pubkey_xonly_tweak_add(context, &pubKey, &cache, tweak).boolValue,
-                  secp256k1_xonly_pubkey_from_pubkey(context, &outXonlyPubKey, &keyParity, &pubKey).boolValue,
-                  secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &outXonlyPubKey).boolValue
-            else {
+            // Only the tweak can legitimately fail (invalid scalar or
+            // point-at-infinity result).
+            guard secp256k1_musig_pubkey_xonly_tweak_add(context, &pubKey, &cache, tweak).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
+            }
+            guard secp256k1_xonly_pubkey_from_pubkey(context, &outXonlyPubKey, &keyParity, &pubKey).boolValue else {
+                P256K.invariantFailure("secp256k1_xonly_pubkey_from_pubkey failed on tweaked key — library bug")
+            }
+            guard secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &outXonlyPubKey).boolValue else {
+                P256K.invariantFailure("secp256k1_xonly_pubkey_serialize failed on tweaked key — library bug")
             }
 
             return Self(

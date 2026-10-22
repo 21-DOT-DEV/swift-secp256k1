@@ -114,7 +114,7 @@ struct DEREncodingTests {
     @Test("DER encoding round-trip should preserve signature")
     func derRoundTrip() throws {
         let privateKey = try P256K.Signing.PrivateKey()
-        let message = "test message for DER round-trip".data(using: .utf8)!
+        let message = try #require("test message for DER round-trip".data(using: .utf8))
 
         // Create a signature
         let signature = try privateKey.signature(for: message)

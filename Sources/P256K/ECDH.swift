@@ -384,7 +384,7 @@ import libsecp256k1
             var data = [UInt8](repeating: format == .compressed ? 1 : 0, count: 1)
 
             guard secp256k1_ecdh(context, &sharedSecret, &publicKey, baseKey.key.bytes, hashClosure(), &data).boolValue else {
-                fatalError("secp256k1_ecdh failed with valid keys — library bug")
+                P256K.invariantFailure("secp256k1_ecdh failed with valid keys — library bug")
             }
 
             return SharedSecret(ss: SecureBytes(bytes: sharedSecret), format: format)
