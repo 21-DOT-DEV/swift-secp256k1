@@ -46,8 +46,8 @@ struct NonceSecurityTests {
     func differentMessagesDifferentSignatures() throws {
         let privateKey = try P256K.Signing.PrivateKey()
 
-        let message1 = "first message".data(using: .utf8)!
-        let message2 = "second message".data(using: .utf8)!
+        let message1 = try #require("first message".data(using: .utf8))
+        let message2 = try #require("second message".data(using: .utf8))
 
         let digest1 = SHA256.hash(data: message1)
         let digest2 = SHA256.hash(data: message2)
@@ -66,7 +66,7 @@ struct NonceSecurityTests {
         let privateKey1 = try P256K.Signing.PrivateKey()
         let privateKey2 = try P256K.Signing.PrivateKey()
 
-        let message = "same message".data(using: .utf8)!
+        let message = try #require("same message".data(using: .utf8))
         let digest = SHA256.hash(data: message)
 
         let signature1 = try privateKey1.signature(for: digest)

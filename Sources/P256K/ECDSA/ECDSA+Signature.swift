@@ -114,7 +114,7 @@ public extension P256K.Signing {
                 &compactSignature,
                 &signature
             ).boolValue else {
-                fatalError("secp256k1_ecdsa_signature_serialize_compact failed on parsed signature — library bug")
+                P256K.invariantFailure("secp256k1_ecdsa_signature_serialize_compact failed on parsed signature — library bug")
             }
 
             self.dataRepresentation = Data(compactSignature)
@@ -170,14 +170,16 @@ public extension P256K.Signing {
                 context,
                 &signature,
                 Array(dataRepresentation)
-            ).boolValue,
-                secp256k1_ecdsa_signature_serialize_der(
-                    context,
-                    &derSignature,
-                    &derSignatureLength,
-                    &signature
-                ).boolValue else {
-                fatalError("secp256k1 signature re-parse/serialize failed on init-validated bytes — library bug")
+            ).boolValue else {
+                P256K.invariantFailure("secp256k1_ecdsa_signature_parse_compact failed on init-validated bytes — library bug")
+            }
+            guard secp256k1_ecdsa_signature_serialize_der(
+                context,
+                &derSignature,
+                &derSignatureLength,
+                &signature
+            ).boolValue else {
+                P256K.invariantFailure("secp256k1_ecdsa_signature_serialize_der failed on init-validated bytes — library bug")
             }
 
             return Data(bytes: &derSignature, count: derSignatureLength)
@@ -211,7 +213,7 @@ extension P256K.Signing.PrivateKey: DigestSigner {
             nil,
             nil
         ).boolValue else {
-            fatalError("secp256k1_ecdsa_sign failed with valid key — library bug")
+            P256K.invariantFailure("secp256k1_ecdsa_sign failed with valid key — library bug")
         }
 
         guard secp256k1_ecdsa_signature_serialize_compact(
@@ -219,7 +221,7 @@ extension P256K.Signing.PrivateKey: DigestSigner {
             &compactSignature,
             &signature
         ).boolValue else {
-            fatalError("secp256k1_ecdsa_signature_serialize_compact failed — library bug")
+            P256K.invariantFailure("secp256k1_ecdsa_signature_serialize_compact failed — library bug")
         }
 
         return P256K.Signing.ECDSASignature(Data(compactSignature))

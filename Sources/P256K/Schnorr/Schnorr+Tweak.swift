@@ -34,7 +34,7 @@ import libsecp256k1
         ///   Taproot-tweaked form of the original.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
         ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or
-        ///   any upstream step fails.
+        ///   produces the point at infinity.
         func add(_ tweak: [UInt8]) throws -> Self {
             let context = P256K.Context.rawRepresentation
             var keypair = secp256k1_keypair()
@@ -46,11 +46,21 @@ import libsecp256k1
                 throw secp256k1Error.incorrectParameterSize
             }
 
-            guard secp256k1_keypair_create(context, &keypair, key.bytes).boolValue,
-                  secp256k1_keypair_xonly_tweak_add(context, &keypair, tweak).boolValue,
-                  secp256k1_keypair_sec(context, &privateBytes, &keypair).boolValue,
-                  secp256k1_keypair_xonly_pub(context, &xonly, &keyParity, &keypair).boolValue else {
+            // `key` was validated at construction, so keypair creation and the
+            // pure accessors around the tweak are contract-unreachable failures;
+            // only the tweak itself can legitimately fail (invalid scalar or
+            // point-at-infinity result).
+            guard secp256k1_keypair_create(context, &keypair, key.bytes).boolValue else {
+                P256K.invariantFailure("secp256k1_keypair_create failed in Taproot tweak with validated key — library bug")
+            }
+            guard secp256k1_keypair_xonly_tweak_add(context, &keypair, tweak).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
+            }
+            guard secp256k1_keypair_sec(context, &privateBytes, &keypair).boolValue else {
+                P256K.invariantFailure("secp256k1_keypair_sec failed on upstream-created keypair — library bug")
+            }
+            guard secp256k1_keypair_xonly_pub(context, &xonly, &keyParity, &keypair).boolValue else {
+                P256K.invariantFailure("secp256k1_keypair_xonly_pub failed on upstream-created keypair — library bug")
             }
 
             return Self(baseKey: PrivateKeyImplementation(validatedBytes: privateBytes, format: .compressed))
@@ -75,8 +85,8 @@ import libsecp256k1
         /// - Returns: A new ``P256K/Schnorr/XonlyKey`` equal to the Taproot-tweaked
         ///   x-only public key.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
-        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid, the
-        ///   result is the point at infinity, or the consistency check fails.
+        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
+        ///   result is the point at infinity.
         func add(_ tweak: [UInt8]) throws -> Self {
             let context = P256K.Context.rawRepresentation
             var pubKey = secp256k1_pubkey()
@@ -90,12 +100,24 @@ import libsecp256k1
             }
 
             // `bytes` is guaranteed a validated 32-byte coordinate by construction.
-            guard secp256k1_xonly_pubkey_parse(context, &inXonlyPubKey, bytes).boolValue,
-                  secp256k1_xonly_pubkey_tweak_add(context, &pubKey, &inXonlyPubKey, tweak).boolValue,
-                  secp256k1_xonly_pubkey_from_pubkey(context, &outXonlyPubKey, &keyParity, &pubKey).boolValue,
-                  secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &outXonlyPubKey).boolValue,
-                  secp256k1_xonly_pubkey_tweak_add_check(context, &xonlyBytes, keyParity, &inXonlyPubKey, tweak).boolValue else {
+            guard secp256k1_xonly_pubkey_parse(context, &inXonlyPubKey, bytes).boolValue else {
+                P256K.invariantFailure("secp256k1_xonly_pubkey_parse failed on validated key — library bug")
+            }
+            // Only the tweak can legitimately fail: an invalid tweak scalar or a
+            // point-at-infinity result is caller-reachable.
+            guard secp256k1_xonly_pubkey_tweak_add(context, &pubKey, &inXonlyPubKey, tweak).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
+            }
+            guard secp256k1_xonly_pubkey_from_pubkey(context, &outXonlyPubKey, &keyParity, &pubKey).boolValue else {
+                P256K.invariantFailure("secp256k1_xonly_pubkey_from_pubkey failed on tweaked key — library bug")
+            }
+            guard secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &outXonlyPubKey).boolValue else {
+                P256K.invariantFailure("secp256k1_xonly_pubkey_serialize failed on tweaked key — library bug")
+            }
+            // The consistency check re-verifies the tweak just applied — failure
+            // means upstream produced an inconsistent result, not bad input.
+            guard secp256k1_xonly_pubkey_tweak_add_check(context, &xonlyBytes, keyParity, &inXonlyPubKey, tweak).boolValue else {
+                P256K.invariantFailure("secp256k1_xonly_pubkey_tweak_add_check failed on self-consistent tweak — library bug")
             }
 
             return Self(

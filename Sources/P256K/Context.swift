@@ -8,6 +8,7 @@
 //  See the accompanying file LICENSE for information
 //
 
+import Foundation
 import libsecp256k1
 
 /// Context management for the secp256k1 elliptic curve used in ECDSA signing, Schnorr signatures,
@@ -119,21 +120,45 @@ public extension P256K {
         /// point, protecting ECDSA signing, Schnorr signing, and public key generation against
         /// timing and power analysis attacks.
         ///
-        /// - Precondition: Context creation and randomization must both succeed. A precondition
-        ///   failure occurs if `secp256k1_context_create` returns `nil` or if
-        ///   `secp256k1_context_randomize` fails.
+        /// - Note: Context creation and randomization are treated as unreachable-by-contract
+        ///   invariants — if `secp256k1_context_create` returns `nil` or
+        ///   `secp256k1_context_randomize` fails, the handler installed via
+        ///   ``setInvariantViolationHandler(_:)`` is notified and
+        ///   the process terminates via `fatalError`.
         /// - Returns: An opaque pointer to the newly created and randomized secp256k1 context.
         public static func create() -> OpaquePointer {
             var randomBytes = SecureBytes(count: P256K.ByteLength.privateKey).bytes
-
-            guard let context = secp256k1_context_create(Self.rawValue) else {
-                preconditionFailure("Failed to create secp256k1 context")
+            // `.bytes` copies the seed out of the self-zeroing `SecureBytes`
+            // storage into a plain array — `memset_s`-scrub it once randomization
+            // is done (a plain write could be elided, the array being dead).
+            defer {
+                randomBytes.withUnsafeMutableBytes { ptr in
+                    _ = memset_s(ptr.baseAddress, ptr.count, 0, ptr.count)
+                }
             }
 
-            precondition(
-                secp256k1_context_randomize(context, &randomBytes).boolValue,
-                "Failed to randomize secp256k1 context"
-            )
+            guard let context = secp256k1_context_create(Self.rawValue) else {
+                P256K.invariantFailure("secp256k1_context_create returned nil — library bug")
+            }
+
+            // Route upstream's own unreachable-state reports through the same
+            // channel: an `ARG_CHECK` or internal-error callback firing can only
+            // mean a P256K validation gap or library corruption, so both
+            // callbacks end in `invariantFailure` rather than returning into
+            // undefined output.
+            // Installed before randomization so every later call on this context
+            // is covered; `secp256k1_context_static` cannot carry custom
+            // callbacks, so do not migrate this context to it.
+            secp256k1_context_set_illegal_callback(context, { message, _ in
+                P256K.invariantFailure("libsecp256k1 argument check failed: \(message.map { String(cString: $0) } ?? "<null>")")
+            }, nil)
+            secp256k1_context_set_error_callback(context, { message, _ in
+                P256K.invariantFailure("libsecp256k1 internal consistency check failed: \(message.map { String(cString: $0) } ?? "<null>")")
+            }, nil)
+
+            guard secp256k1_context_randomize(context, &randomBytes).boolValue else {
+                P256K.invariantFailure("secp256k1_context_randomize failed — library bug")
+            }
 
             return context
         }

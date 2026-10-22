@@ -30,8 +30,9 @@ public extension P256K.Signing.PublicKey {
     /// > point addition, and using `combine` in its place produces a key that no participant
     /// > can sign against.
     ///
-    /// - Parameter pubkeys: Additional ``PublicKey`` values to combine with this key; must
-    ///   contain at least one key. (Upstream requires `n ≥ 1`.)
+    /// - Parameter pubkeys: Additional ``PublicKey`` values to combine with this key;
+    ///   may be empty — this key itself always participates, so upstream's `n ≥ 1`
+    ///   requirement is already met and an empty array simply returns this key.
     /// - Parameter format: The serialization format of the returned ``PublicKey``; defaults
     ///   to `.compressed`.
     /// - Returns: A new ``PublicKey`` equal to the elliptic-curve sum of all input keys.
@@ -47,8 +48,12 @@ public extension P256K.Signing.PublicKey {
         guard PointerArrayUtility
             .withUnsafePointerArray(allPubKeys.map { $0.baseKey.rawRepresentation }, { pointers in
                 secp256k1_ec_pubkey_combine(context, &combinedKey, pointers, pointers.count).boolValue
-            }), secp256k1_ec_pubkey_serialize(context, &combinedBytes, &pubKeyLen, &combinedKey, format.rawValue).boolValue else {
+            }) else {
             throw secp256k1Error.underlyingCryptoError
+        }
+
+        guard secp256k1_ec_pubkey_serialize(context, &combinedBytes, &pubKeyLen, &combinedKey, format.rawValue).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on combined key — library bug")
         }
 
         return Self(baseKey: PublicKeyImplementation(validatedBytes: combinedBytes, format: format))

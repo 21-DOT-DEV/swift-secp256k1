@@ -89,7 +89,7 @@ import libsecp256k1
     @usableFromInline var negation: Self {
         var privateBytes = privateBytes.bytes
         guard secp256k1_ec_seckey_negate(P256K.Context.rawRepresentation, &privateBytes).boolValue else {
-            fatalError("secp256k1_ec_seckey_negate failed with valid key — library bug")
+            P256K.invariantFailure("secp256k1_ec_seckey_negate failed with valid key — library bug")
         }
 
         return Self(validatedBytes: privateBytes, format: format)
@@ -145,19 +145,25 @@ import libsecp256k1
         var xonlyPubKey = secp256k1_xonly_pubkey()
         var xonlyBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
 
-        precondition(
-            secp256k1_ec_seckey_verify(context, privateKey.bytes).boolValue &&
-                secp256k1_ec_pubkey_create(context, &pubKey, privateKey.bytes).boolValue &&
-                secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue,
-            "Public key generation failed for validated private key"
-        )
+        guard secp256k1_ec_seckey_verify(context, privateKey.bytes).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_seckey_verify failed for validated private key — library bug")
+        }
+        guard secp256k1_ec_pubkey_create(context, &pubKey, privateKey.bytes).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_create failed for validated private key — library bug")
+        }
+        guard secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed for validated private key — library bug")
+        }
 
-        precondition(
-            secp256k1_ec_pubkey_parse(context, &pubKey, pubBytes, format.length).boolValue &&
-                secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue &&
-                secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &xonlyPubKey).boolValue,
-            "X-only key generation failed for validated private key"
-        )
+        guard secp256k1_ec_pubkey_parse(context, &pubKey, pubBytes, format.length).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_parse failed for validated private key — library bug")
+        }
+        guard secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue else {
+            P256K.invariantFailure("secp256k1_xonly_pubkey_from_pubkey failed for validated private key — library bug")
+        }
+        guard secp256k1_xonly_pubkey_serialize(context, &xonlyBytes, &xonlyPubKey).boolValue else {
+            P256K.invariantFailure("secp256k1_xonly_pubkey_serialize failed for validated private key — library bug")
+        }
 
         self.keyParity = keyParity
         self.format = format

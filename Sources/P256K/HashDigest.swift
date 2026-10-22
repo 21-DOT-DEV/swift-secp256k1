@@ -44,8 +44,19 @@ public struct HashDigest: Digest {
 
     /// Creates a ``HashDigest`` from a 32-byte array, storing the bytes as four packed `UInt64` limbs.
     ///
-    /// - Parameter output: Exactly 32 bytes; behaviour is undefined if `output.count < 32`.
-    public init(_ output: [UInt8]) {
+    /// - Parameter output: Exactly 32 bytes.
+    /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `output.count` is not exactly 32.
+    public init(_ output: [UInt8]) throws {
+        guard output.count == Self.byteCount else {
+            throw secp256k1Error.incorrectParameterSize
+        }
+        self.init(validatedBytes: output)
+    }
+
+    /// Creates a ``HashDigest`` from bytes already proven to be exactly 32 bytes long.
+    /// - Precondition: `output.count` must equal `Self.byteCount` (32).
+    init(validatedBytes output: [UInt8]) {
+        precondition(output.count == Self.byteCount, "Invalid digest size")
         let first = output[0..<8].withUnsafeBytes { $0.load(as: UInt64.self) }
         let second = output[8..<16].withUnsafeBytes { $0.load(as: UInt64.self) }
         let third = output[16..<24].withUnsafeBytes { $0.load(as: UInt64.self) }
@@ -56,8 +67,7 @@ public struct HashDigest: Digest {
 
     /// The number of bytes in a SHA-256 digest: always 32.
     public static var byteCount: Int {
-        get { SHA256.digestByteCount }
-        set { fatalError("Cannot set SHA256.byteCount") }
+        SHA256.digestByteCount
     }
 
     /// Calls `body` with an unsafe pointer to the digest's 32 raw bytes.

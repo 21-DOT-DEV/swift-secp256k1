@@ -26,13 +26,13 @@ Taproot key-path signatures — both single-key ([BIP-340][bip-340] Schnorr) and
 
 ``P256K/Signing/PrivateKey`` produces ECDSA signatures via two `signature(for:)` overloads — one taking a precomputed digest, one taking raw data. Neither can fail. The digest overload reduces a `Digest` of any length to the 32-byte `msg32` value per SEC1 §4.1.3 — the leftmost 32 bytes for longer digests, the integer value (left-padded with zeros) for shorter ones — before the fixed-width upstream read; the data overload always produces a 32-byte SHA-256 digest internally. Both return a ``P256K/Signing/ECDSASignature`` in lower-S normalized form. The lower-S guarantee comes from libsecp256k1's [`secp256k1_ecdsa_sign`][libsecp256k1-h], which normalizes internally before returning; `P256K` does not add or alter the normalization.
 
-For Bitcoin, you almost always have a precomputed digest — the BIP-143 (or pre-segwit) sighash. Wrap the 32-byte sighash as a ``SHA256Digest`` and pass it to the `Digest` overload, which feeds the bytes directly to `secp256k1_ecdsa_sign` without re-hashing:
+For Bitcoin, you almost always have a precomputed digest — the BIP-143 (or pre-segwit) sighash. Wrap the 32-byte sighash as a ``SHA256Digest`` and pass it to the `Digest` overload, which feeds the bytes directly to `secp256k1_ecdsa_sign` without re-hashing. Construction is `throws` — it rejects anything other than exactly 32 bytes:
 
 ```swift
 import P256K
 
 // `sighashBytes` is the 32-byte SHA-256(SHA-256(preimage)) value from BIP-143.
-let sighashDigest = SHA256Digest(Array(sighashBytes))
+let sighashDigest = try SHA256Digest(Array(sighashBytes))
 let signature = privateKey.signature(for: sighashDigest)
 ```
 
@@ -111,7 +111,8 @@ import Foundation
 import P256K
 
 // 1. Wrap the precomputed 32-byte sighash as a SHA256Digest.
-let sighashDigest = SHA256Digest(Array(sighashBytes))
+//    Construction throws on anything other than exactly 32 bytes.
+let sighashDigest = try SHA256Digest(Array(sighashBytes))
 
 // 2. Sign with the ECDSA private key controlling the input.
 let signature = privateKey.signature(for: sighashDigest)

@@ -58,7 +58,7 @@ public enum SHA256 {
 
         secp256k1_swift_sha256(&output, stringData, stringData.count)
 
-        return .init(output)
+        return .init(validatedBytes: output)
     }
 
     /// Computes a BIP-340 tagged hash `SHA256(SHA256(tag) || SHA256(tag) || data)` via
@@ -98,9 +98,9 @@ public enum SHA256 {
             messageBytes,
             messageBytes.count
         ).boolValue else {
-            fatalError("secp256k1_tagged_sha256 failed — library bug")
+            P256K.invariantFailure("secp256k1_tagged_sha256 failed — library bug")
         }
 
-        return .init(output)
+        return .init(validatedBytes: output)
     }
 }

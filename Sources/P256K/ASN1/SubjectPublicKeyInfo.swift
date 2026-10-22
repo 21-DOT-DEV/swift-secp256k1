@@ -44,7 +44,6 @@
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension ASN1 {
-        @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         struct SubjectPublicKeyInfo: ASN1ImplicitlyTaggable {
             static var defaultIdentifier: ASN1.ASN1Identifier {
                 .sequence
@@ -87,7 +86,6 @@
             }
         }
 
-        @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
         struct RFC5480AlgorithmIdentifier: ASN1ImplicitlyTaggable, Hashable {
             static var defaultIdentifier: ASN1.ASN1Identifier {
                 .sequence

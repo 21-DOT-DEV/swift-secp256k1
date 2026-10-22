@@ -31,7 +31,7 @@ struct SignatureMalleabilityTests {
         // Create a valid keypair for verification
         let privateKey = try P256K.Signing.PrivateKey()
         let publicKey = privateKey.publicKey
-        let message = "test message".data(using: .utf8)!
+        let message = try #require("test message".data(using: .utf8))
         let digest = SHA256.hash(data: message)
 
         // Attempt to create signature from high-s bytes
@@ -55,7 +55,7 @@ struct SignatureMalleabilityTests {
     func libraryGeneratesLowSSignatures() throws {
         let privateKey = try P256K.Signing.PrivateKey()
         let publicKey = privateKey.publicKey
-        let message = "test message for low-s verification".data(using: .utf8)!
+        let message = try #require("test message for low-s verification".data(using: .utf8))
         let digest = SHA256.hash(data: message)
 
         // Sign the message
@@ -95,7 +95,7 @@ struct SignatureMalleabilityTests {
 
         // Sign multiple different messages
         for i in 0..<10 {
-            let message = "test message \(i)".data(using: .utf8)!
+            let message = try #require("test message \(i)".data(using: .utf8))
             let digest = SHA256.hash(data: message)
             let signature = try privateKey.signature(for: digest)
             let compactSig = try signature.compactRepresentation

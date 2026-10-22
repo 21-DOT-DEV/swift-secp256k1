@@ -42,7 +42,7 @@ struct ECDSATestSuite {
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try expectedPrivateKey.bytes
         let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
-        let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
+        let messageData = try #require("We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8))
 
         let signature = privateKey.signature(for: messageData)
 
@@ -56,7 +56,7 @@ struct ECDSATestSuite {
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try expectedPrivateKey.bytes
         let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
-        let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
+        let messageData = try #require("We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8))
 
         let signature = privateKey.signature(for: messageData)
 
@@ -73,7 +73,7 @@ struct ECDSATestSuite {
         let expectedPrivateKey = "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd"
         let privateKeyBytes = try expectedPrivateKey.bytes
         let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
-        let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
+        let messageData = try #require("We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8))
 
         let signature = try P256K.Signing.ECDSASignature(derRepresentation: expectedDerSignature)
 
@@ -116,7 +116,7 @@ struct ECDSATestSuite {
 
         let expectedDerSignature = "MEQCIC8k5whKPsPg7XtWTInvhGL4iEU6lP6yPdpEXXZ2mOhFAiAZ3Po9tEDV8mQ8LDzwF0nhPmAn9VLYG8bkuY6PKruZNQ=="
         let privateKey = try P256K.Signing.PrivateKey(pemRepresentation: privateKeyString)
-        let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
+        let messageData = try #require("We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8))
 
         let signature = privateKey.signature(for: messageData)
 
@@ -204,7 +204,7 @@ struct ECDSATestSuite {
         let expectedSignature = "MEQCIEwVxXLE/mwaRzxLvz9VIcMtHaa/Wf1WRxiBJ6NEuWHeAiAQWf2oqqBqEtBABbmwsXqjCJFvsaPt8o+VaOthto1kWQ=="
         let expectedDerSignature = try #require(Data(base64Encoded: expectedSignature, options: .ignoreUnknownCharacters))
 
-        let messageData = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!
+        let messageData = try #require("We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8))
         let signature = try P256K.Signing.ECDSASignature(derRepresentation: expectedDerSignature)
         let publicKey = try P256K.Signing.PublicKey(pemRepresentation: publicKeyString)
 

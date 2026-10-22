@@ -43,14 +43,27 @@ import libsecp256k1
             /// zeroes them after use.
             let data: SecureBytes
 
+            /// The public key this nonce is bound to — the `publicKey` argument of
+            /// ``P256K/MuSig/Nonce/generate(sessionSecretRand:secretKey:publicKey:msg32:extraInput32:)``.
+            ///
+            /// BIP-327 embeds the signer's public key inside the secret nonce and
+            /// `secp256k1_musig_partial_sign` rejects a mismatched keypair via
+            /// `ARG_CHECK`, which aborts. Storing it here lets
+            /// ``P256K/Schnorr/PrivateKey/partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)``
+            /// surface the mismatch as a thrown error instead of a process abort.
+            /// Public key material — no zeroization needed.
+            let publicKey: P256K.Schnorr.PublicKey
+
             /// Wraps raw secret-nonce bytes produced by upstream nonce-generation helpers.
             ///
             /// Internal-visibility constructor; consumers obtain a `SecureNonce` only via
             /// the MuSig nonce-generation entry points.
             ///
             /// - Parameter data: The 132-byte opaque `secp256k1_musig_secnonce` buffer.
-            init(_ data: SecureBytes) {
+            /// - Parameter publicKey: The public key the nonce was generated for.
+            init(_ data: SecureBytes, publicKey: P256K.Schnorr.PublicKey) {
                 self.data = data
+                self.publicKey = publicKey
             }
         }
 
@@ -136,10 +149,9 @@ import libsecp256k1
 
                 // `pubnonce` was produced upstream (nonce_gen or a successful
                 // parse), so the load inside serialize cannot fail.
-                precondition(
-                    secp256k1_musig_pubnonce_serialize(context, &output, &nonce).boolValue,
-                    "secp256k1_musig_pubnonce_serialize failed on upstream-produced nonce — library bug"
-                )
+                guard secp256k1_musig_pubnonce_serialize(context, &output, &nonce).boolValue else {
+                    P256K.invariantFailure("secp256k1_musig_pubnonce_serialize failed on upstream-produced nonce — library bug")
+                }
 
                 return Data(output)
             }
