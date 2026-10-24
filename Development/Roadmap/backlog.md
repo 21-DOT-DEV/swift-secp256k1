@@ -1,9 +1,27 @@
 # Backlog: Future Consideration
 
 **Purpose**: Items deferred for future consideration, not currently scheduled as phases  
-**Last Updated**: 2026-10-18
+**Last Updated**: 2026-10-22
 
 > Items with strong downstream demand were **promoted to first-class phases** (see [roadmap](README.md)): adaptor signatures & MuSig2-L2 (Phase 6), HD-wallet / BIP-32 serialization (Phase 7), Cashu BDHKE + DLEQ (Phase 8), Silent Payments & ellswift (Phase 10), FROST & half-aggregation (Phase 11). General-purpose crypto (ChaCha20, AES, scrypt, SHA-3) is **sourced from swift-openssl** per the Package Separation section — not a backlog item.
+
+---
+
+## Tooling: Mermaid diagram validation in CI
+
+**Status**: Deferred — specced separately, not part of spec 004's wave
+**Priority**: Low — the absence costs a broken diagram surviving review, not a broken build
+**Notes**: The diagram rule landed by convention only (`Development/README.md` → "Design diagrams") on 2026-10-22, with CI deferred here. Two gates were researched: **structural** — a Tengo-script Vale rule (Vale runs arbitrary per-document logic on fenced blocks; it cannot invoke external programs, so it enforces the *presence* policy only: a `plan.md` Design section covering ≥3 interacting parties with no mermaid fence warns, scoped to `Development/Specs/**`); **syntax** — render-validation with the official `ghcr.io/mermaid-js/mermaid-cli/mermaid-cli` image pulled by sha256 digest (the Vale/vendir pinned-binary pattern, and the repo already runs Docker in `docker-builds.yml`). Decision (2026-10-22): **Docker image only** — the npm-based lighter alternative (@mermaid-lint/cli) was evaluated and proofed against the spec-004 exemplar, then rejected as a new toolchain/supply surface; no Node packages in this repo's CI. Do **not** use pandoc (no Mermaid evaluation) or SwiftLint (Swift-source-only) — both ruled out by research on 2026-10-22. Vale's limitation is documented by its own project: external program invocation was requested and closed not-planned (`vale-cli/vale#939`); its scriptable check point (Tengo, per-block) does string logic only. Image size verified against the Docker Hub tag listing (~1.0 GB compressed, `minlag/mermaid-cli:12.0.1`) — and proven to be the same artifact as the chosen GHCR image: the official index's per-platform digests (`30a3ca1a…`, `3343ce06…`) are letter-identical to the hub tag's, and digests are content addresses; `minlag` is the tool maintainer's hub account. New jobs follow `.github/AGENTS.md` conventions (`permissions: {}`, no new third-party actions).
+**Acceptance**: A `Development/Specs/` entry adds both checks to `development-docs.yml` (or a sibling workflow); a deliberately broken diagram fails the job; the Vale structural rule fires on purpose.
+
+---
+
+## Tooling: generated namespace-inventory diagrams
+
+**Status**: Deferred — evaluate when a real consumer asks what a namespace exposes
+**Priority**: Low — sketch-grain diagrams in plans cover the communication need today
+**Notes**: Complete member maps of a namespace (e.g. everything under `P256K.Schnorr`) are never hand-drawn (they rot by design — Fowler's blueprint-mode failure); generate them from source with SwiftPlantUML (SourceKitten-based, and SourceKitten is already a dev dependency) on demand or periodically. Output is PlantUML text; convert to committed SVG if it must appear where GitHub is not the renderer.
+**Acceptance**: A documented command produces the inventory diagram for a named namespace; the artifact carries a generation date.
 
 ---
 
@@ -23,6 +41,15 @@
 The fork's remaining experimental modules (`generator`, `bppp`, `whitelist`) were vendored but never wrapped and carry no demand signal.
 
 **Acceptance**: A `Development/Specs/` entry scopes the package in its own repo; `vendir sync` reproduces both sources; the result builds with zero plugins.
+
+---
+
+## Tooling: upstream v0.7.1 → v0.8.0 pin bump + extended upstream test vendoring
+
+**Status**: Deferred — deliberately excluded from spec 004's wave (decision 2026-10-22); specced separately  
+**Priority**: Medium — the pin is one released version behind; upstream ran at 16 iterations exit-0 here on 2026-10-22, so there is no urgency signal  
+**Notes**: v0.8.0 (upstream tag from 2026-08-03) is backward-compatible with what this package uses: the only removed symbols are `secp256k1_context_no_precomp` and the deprecated `secp256k1_schnorrsig_sign`, neither of which has a call site in the package's own wrapper or test code — hits exist only inside the vendored trees (`Sources/libsecp256k1/` declarations, plus `Projects/Sources/libsecp256k1Tests/`'s `tests.c:192` and `tests_impl.h:824`, which check those very aliases and whose deletion the lockstep bump carries) plus a doc mention. Adds a Silent Payments module (BIP-352; shaped API already has a `SilentPaymentsAPIShapeSuite`), an `secp256k1_context_set_sha256_compression` hook (hardware SHA-256), and field-arithmetic speedups that matter mostly on GCC/MSVC. Behavioral change to note: `secp256k1_ellswift_xdh` now rejects secret keys at or above the curve order — pair the bump with the outstanding wrap-or-drop decision on the `ellswift` trait. Precedent per `vendir.yml`'s documented flow: edit the shared `&secp256k1-ref` anchor → `vendir sync` → review the lock delta → run `libsecp256k1Tests` → PR on a `vendor/libsecp256k1-*` branch. In the *same* spec, extend `Projects/Sources/libsecp256k1Tests` vendoring to upstream's exhaustive and constant-time suites (`tests_exhaustive.c`; the MSan/Valgrind-driven `ctime_tests` machinery, which needs the upstream configure-time defines and is exactly the part plain `swift test` cannot pick up).
+**Acceptance**: `vendir sync` lands the v0.8.0 SHA on all three secp256k1 entries in lockstep (the fourth `vendir.yml` source is apple/swift-crypto, unchanged); full test battery + `libsecp256k1Tests` pass on the bumped tree; the new suites execute in CI.
 
 ---
 
