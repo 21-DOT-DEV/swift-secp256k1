@@ -47,4 +47,5 @@ disagree. Do not hand-edit it.
 | 001 | Planning artifacts consolidated under Development/ with a checked, self-contained workflow | — | Implemented | [plan.md](001-development-docs/plan.md) |
 | 002 | Replace git-subtree vendoring with vendir, deleting Vendor/ and the subtree tooling | — | Implemented | [plan.md](002-vendir-migration/plan.md) |
 | 003 | Remove the ZKP products and fold shared sources into P256K, retiring the build plugin | — | Implemented | [plan.md](003-zkp-removal/plan.md) |
+| 004 | Audit-hardening wave — Schnorr signing redesign, verify-after-sign, and CI assurance legs | — | Planned | [plan.md](004-audit-hardening/plan.md) |
 <!-- END GENERATED INDEX -->

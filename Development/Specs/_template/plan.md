@@ -42,6 +42,13 @@ phase or tooling/demo-app work. Link the ADRs it produced.>
 
 ## 3. Design
 
+<!--
+Features with three or more interacting types, parties, or layers need a
+Mermaid diagram here — best-fit type at sketch grain (Fowler's selectivity
+rule), before/after pocket sketches for breaking changes. The full rule is
+in ../../README.md "Design diagrams".
+-->
+
 ## 4. Implementation steps
 
 ## 5. Verification
