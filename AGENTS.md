@@ -57,6 +57,16 @@ from the count. A coherent document set that can't be split — a spec and its
 companions landing together, say — is a legitimate justification; name it in the
 PR description.
 
+**Design diagrams are the shared model.** Plans whose change spans three or more
+interacting types, parties, or layers carry a Mermaid diagram; security-triggered
+changes (trust boundaries, secret-material paths, cryptographic changes) always
+carry one, no exception. Full rules in
+`Development/README.md` → "Design diagrams" (sketch grain only, never member-inventory
+transcripts). Before implementing a planned task, read the plan's diagram and implement
+toward it. If implementation exposes a gap between diagram and reality, stop: correct
+the plan — text and diagram in the same edit — then continue. Never silently code around
+an abstraction the diagram promises.
+
 ## Scoped guidance
 
 Directory-specific `AGENTS.md` files provide additional context:
