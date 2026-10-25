@@ -13,23 +13,31 @@ PR, commit order follows group order. No task touches the vendored trees
 
 ## Group A — Versioning artifacts (PR 1)
 
-- [ ] T001 [P] Consumer pin advice in both documents the wave names —
+- [x] T001 [P] Consumer pin advice in the documents the wave names —
       README: replace the `exact: "0.24.0"` dependency example
       (`README.md:39`) with `.upToNextMinor(from: "0.24.0")` plus one
       sentence explaining that SwiftPM's `from:` spans every 0.x below 1.0.0
       and why the minor is the stability boundary pre-1.0, and one sentence
       stating the example moves to `0.25.0` when that tag is cut (the
       tag-time bump lives in the release task T017 — never name an
-      untagged version in a published example); constitution: in the
+      untagged version in a published example); the published
+      `GettingStarted` guide carries the same `exact:`-because-pre-1.0
+      advice (examples plus rationale paragraph) and takes the same
+      treatment — landing without it would leave docs.21.dev
+      contradicting the README (`MigratingToP256K`'s `exact:` pin
+      stays: a deliberate deterministic one-time-bump choice that
+      already names `.upToNextMinor` as the alternative);
+      constitution: in the
       Versioning & Stability section of `Development/constitution.md`,
       replace "Users advised to pin exact versions" with the same
       `.upToNextMinor(from:)` advice and a one-line rationale pointing at
       the Apple swift-configuration pre-1.0 wording; bump the document's
-      version/changelog block — the plan names these two files the wave's
+      version/changelog block — the plan names these files the wave's
       first change-set, so the advice cannot land half-updated ·
-      `README.md`, `Development/constitution.md`
-- [ ] T002 _Folded into T001 — the plan calls the README and constitution
-      edits "the wave's first change-set": one advice change across two
+      `README.md`, `Development/constitution.md`,
+      `Sources/P256K/P256K.docc/GettingStarted.md`
+- [x] T002 _Folded into T001 — the plan calls the pin-advice edits
+      "the wave's first change-set": one advice change across the
       consumer-facing documents, not two commits that briefly disagree.
       Tick this box in T001's commit._ · `Development/constitution.md`
 - [ ] T003 [P] Migration-note skeleton: CHANGELOG `[Unreleased]` gains the
@@ -454,10 +462,21 @@ type; `swift test` green.
       every breaking task merges (T004–T006, T012, T015–T016, T026–T028)
       and the deprecation pairs land (T025's redaction rides along; T029's
       managed type plus `create()` deprecation ships inside the same
-      tag); in the same change bump the README example from
-      `.upToNextMinor(from: "0.24.0")` to `.upToNextMinor(from: "0.25.0")`;
-      publish the migration note as the release body ·
-      `CHANGELOG.md`, `README.md`, git tag
+      tag); in the same change move every current-version reference from
+      0.24 to 0.25: the `.package` examples in README and `GettingStarted`
+      (both), `GettingStarted`'s Podfile pin, `MigratingToP256K`'s
+      current-release prose and `exact:` examples (the `exact:` spelling
+      stays — only the version moves), and `SECURITY.md`'s
+      supported-versions rows (`0.25.x` supported, `< 0.25` not); drop the
+      "moves to `0.25.0` when that tag is cut" sentence from README and
+      `GettingStarted` — it goes stale the moment the tag exists; then
+      run `git grep -n '0\.24'` over `README.md`, `SECURITY.md`, and
+      `Sources/P256K/P256K.docc/` and sort every hit: current references
+      get bumped, historical ones ("≤ 0.24.0", "after 0.24.0") stay as
+      they are; publish the migration note as the release body ·
+      `CHANGELOG.md`, `README.md`, `SECURITY.md`,
+      `Sources/P256K/P256K.docc/GettingStarted.md`,
+      `Sources/P256K/P256K.docc/MigratingToP256K.md`, git tag
 
 **Checkpoint:** exactly one tag exists between the wave's pre-state and
 post-state; every breaking symbol in the changelog names its replacement.
