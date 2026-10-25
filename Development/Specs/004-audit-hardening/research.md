@@ -43,6 +43,40 @@ through each, boundary probes, and task-based usability probes.
   go stale locally and fail cryptically (`P256K has no member
   'invariantFailure'`) until regenerated.
 
+### A.1 Follow-on audit findings (Target B only; IDs B-1 through B-6)
+
+A second, single-target audit pass against this package reported six
+findings; its A-1 belongs to the other codebase and stays out of this wave.
+
+- **B-1 — `SharedSecret.description` prints the complete ECDH shared
+  secret.** `Sources/P256K/DH.swift:126–128` interpolates `ss.hexString` —
+  any `print`, interpolation, or log call discloses the agreed key. Verified:
+  the only `CustomStringConvertible` conformance on a secret-bearing type.
+- **B-2 — `MuSig.aggregate` sorts keys internally, violating ordered
+  BIP-327 aggregation.** `MuSig+Aggregate.swift` calls
+  `secp256k1_ec_pubkey_sort` before `secp256k1_musig_pubkey_agg`, so caller
+  key order has no effect and the official `key_agg_vectors.json` cannot
+  distinguish the wrapper from a conforming implementation.
+- **B-3 — MuSig message parameters silently pad or truncate to 32 bytes.**
+  `Digest.msg32Bytes` (`Utility.swift:203`) performs SEC1 §4.1.3 reduction —
+  left-pad for short inputs, leftmost-32 for long — and every MuSig message
+  path routes through it (`Nonce.generate` `msg32:`,
+  `partialSignature(for digest:)`, `isValidSignature(_:for digest:)`).
+  libsecp256k1's MuSig API takes a fixed `msg32` — BIP-327 itself permits
+  variable-length messages as an optional feature — so a 38-byte message
+  silently signs its first 32 bytes.
+- **B-4 — `MuSig.PublicKey.isValidSignature(_:publicKey:nonce:for digest:)`
+  ignores `digest`.** The doc comment states it verbatim: "not consulted —
+  the signed message is bound inside `PartialSignature/session`".
+- **B-5 — `Signature.Recoverable.normalize` only converts format, no
+  low-S normalization.** It calls
+  `secp256k1_ecdsa_recoverable_signature_convert`; the property's own doc
+  warns the output "may fail `secp256k1_ecdsa_verify`" for low-S.
+- **B-6 — `Context.create()` returns an unmanaged `OpaquePointer`.**
+  `Context.swift:129` performs create + callbacks + randomize correctly,
+  but the returned pointer has no owner; nothing pairs it with
+  `secp256k1_context_destroy`.
+
 ## B. Upstream and specification citations
 
 - **BIP-340, "Default Signing" + footnote 14** (`bips/bip-0340.mediawiki`,
@@ -99,6 +133,82 @@ through each, boundary probes, and task-based usability probes.
   signing session state in memory and restarts signing on reload.
   Resuming a session means re-aggregating the participant pubkeys, which
   `secp256k1_musig_pubkey_agg` makes deterministic.
+- **BIP-327 key aggregation preserves caller order**
+  (`bips/bip-0327.mediawiki`, `key_agg_vectors.json`): the spec's `KeyAgg`
+  aggregates keys in the order supplied; sorting is an application-layer
+  choice (BIP-390 `musig()` descriptors sort at the descriptor layer).
+  Upstream agrees at every level — `examples/musig.c` sorts only when the
+  application wants canonical order, `doc/musig.md` describes sorting as
+  optional and caller-controlled, `secp256k1_ec_pubkey_sort` exists as a
+  separate helper, and `secp256k1_ec_pubkey_cmp` orders the compressed
+  33-byte serialization. Bindings mirror it: rust-secp256k1's
+  `KeyAggCache::new` keeps supplied order with `sort_pubkeys` as a
+  separate free function; rust `musig2` preserves iterator order and
+  recommends deterministic pre-sorting; Bitcoin Core's MuSig code
+  aggregates keys "in their current order".
+- **Context lifecycle contract** (`include/secp256k1.h` and
+  `include/secp256k1_preallocated.h`): contexts are deliberately
+  long-lived — "Do not create a new context object for each operation,
+  as construction and randomization can take non-negligible time"
+  (`include/secp256k1.h:292-293`, verbatim from the vendored tree); the
+  context itself is a few hundred bytes (`src/secp256k1.c:61-66`: an
+  ecmult-generator blinding state, two callbacks, a flag — the
+  precomputed tables are static data); randomize "either once at creation time (then you need
+  no locking for the other calls), or use a read-write lock";
+  `secp256k1_context_destroy` and `secp256k1_context_randomize` require
+  exclusive access while const-pointer calls are thread-safe;
+  `secp256k1_context_static` cannot perform secret-key operations.
+  rust-secp256k1 implements the managed shape: `Secp256k1` owns the
+  pointer, `Drop` calls destroy, `Send`/`Sync` are hand-justified on the
+  native API's const-thread-safety and exclusive-mutation model,
+  `randomize` requires `&mut self`, and `ctx()` is the explicitly-named
+  raw escape hatch. In the Swift ecosystem, swift-nio-ssl wraps its
+  expensive `SSL_CTX *` in the thread-safe `final class NIOSSLContext`,
+  and swift-crypto owns BoringSSL resources with `final class`
+  `BackingStorage` + `deinit` behind value-type facades
+  (`ArbitraryPrecisionInteger`).
+- **Secret redaction convention**: Rust's `secrecy` crate redacts `Debug`
+  and exposes bytes only through explicit `expose_secret` accessors;
+  rust-secp256k1's issue #226 records the same discussion for secret
+  debug output. CryptoKit's `SharedSecret` exposes no raw bytes through
+  `description`; the vendored `Digest.description` prints full hex
+  because digests are public outputs, not secrets.
+- **BIP-327 message length**: the spec defines the message as "a byte
+  array" and lists "messages that are not exactly 32 bytes" as an
+  optional feature; its 0.6.0 changelog reads "Allow variable length
+  messages … and add test vectors", and `sign_verify_vectors.json`
+  carries 32-byte, empty, and 38-byte messages. The fixed `msg32` is
+  libsecp256k1's implementation limit (`include/secp256k1_musig.h` —
+  `nonce_gen`, `nonce_gen_counter`, `nonce_process`; `partial_sign`
+  takes no message — the session binds `msg32` at `nonce_process`),
+  which remains conforming to the spec's optional feature. The repo's
+  copy under `Projects/Resources/MuSig2VectorTests/` keeps the full
+  `msgs` table but only the `msg_index`-0 `valid_test_cases`, with all
+  error sections emptied — T030 restores the full file and drives every
+  expressible case on the stated-skip pattern `NonceGenVectorTests`
+  already runs (`skipReason(for:index:)` + verified/skipped counts,
+  `NonceGenVectorTests.swift:39-73`; upstream's own C suite skips the
+  same variable-length cases).
+- **The aggregate signature is a plain BIP-340 signature**: BIP-327
+  states the final signature "passes BIP340 verification for the
+  aggregate public key and a message"; `secp256k1_schnorrsig_verify`
+  takes `(msg, msglen)` at any length. A variable-length-capable
+  implementation (e.g. BIP-327's reference Python) can legitimately
+  produce an aggregate signature over a 38-byte message.
+- **Verifier error-shape conventions**: every upstream verify function
+  returns 0/1 (`schnorrsig_verify` among them); every CryptoKit
+  `isValidSignature` returns `Bool` and never throws; btcd's public
+  `schnorr.Verify` collapses its internal `ErrInvalidHashLen` to
+  `false`. The in-package precedent already exists:
+  `Schnorr.XonlyKey.isValidSignature(_:for:)` documents that the digest
+  is "verified … at their natural length … there is no msg32 reduction
+  here" (`Schnorr+Signature.swift:205-207`). Signing differs: the
+  message binds at `nonce_process`'s fixed `msg32` (`partial_sign`
+  takes no message), so upstream cannot produce a signature over a
+  non-32-byte input at all — signing throws while verification
+  checks at natural length — an asymmetry that is principled, not a
+  half-gate (a >32-byte digest can never match a 32-byte-produced
+  signature, so verify fails closed with nothing shortened).
 
 ## C. Versioning evidence
 
@@ -197,3 +307,49 @@ through each, boundary probes, and task-based usability probes.
   blob with `cache` *required* (no default), making five public sites —
   three initializers plus a `cache` accessor on each x-only type. Closed
   into plan §3.4 and T016.
+- "No correctness defect exists in the shipped paths" — **wrong as a
+  blanket claim**: it was true of the first audit, but the follow-on pass
+  found three BIP-327 conformance defects in MuSig (B-2 unordered
+  aggregation, B-3 silent message reduction, B-4 unconsulted verifier
+  parameter), one secret-disclosure defect (B-1), one misleading name
+  (B-5), and one unmanaged-resource defect (B-6). Closed into plan §3.8,
+  §3.9, §3.10 and T025–T029.
+- "MuSig's `msg32` reduction is standard digest behavior" — **wrong for
+  MuSig, right for ECDSA**: SEC1 §4.1.3 digest-to-integer reduction is
+  spec-correct for ECDSA `signature(for:)` (Go/OpenSSL/CryptoKit), but
+  MuSig binds the message into the signing session — the signing-side
+  rule is require-32-or-throw because upstream takes a fixed `msg32`
+  (BIP-327 itself permits variable length), and the verify-side rule is
+  natural-length checking with no gate at all. Closed into plan §3.9
+  and T027.
+- "BIP-327's `msg32` is a fixed 32-byte message parameter" — **wrong**:
+  BIP-327 defines the message as "a byte array" and permits variable
+  length as an optional feature (vectors include 32-byte, empty, and
+  38-byte cases); the fixed `msg32` is libsecp256k1's implementation
+  limit. The spec's error wording says "unsupported by libsecp256k1",
+  not "invalid".
+- "The digest verifier should throw on non-32-byte input" — **wrong**:
+  the finished aggregate signature is a plain BIP-340 signature
+  verifiable at any message length via `secp256k1_schnorrsig_verify`;
+  throwing or returning `false` on the input would reject a signature
+  a conforming implementation could produce. `isValidSignature(_:for:)`
+  stays `-> Bool` and checks at natural length, matching its Schnorr
+  sibling and every upstream/CryptoKit convention. Closed into plan
+  §3.9 and T027.
+- "Comparable or a `sorted:` flag is the right B-2 API" — **wrong**:
+  canonical key order is a multisig convention better named where it's
+  meaningful than promised type-wide — upstream ships ordering as
+  functions (`ec_pubkey_cmp`, `ec_pubkey_sort`) rather than as a
+  property of the key, rust-secp256k1 documents `sort_pubkeys` rather
+  than its `Ord` impl as the canonical way to sort for MuSig2, and no
+  CryptoKit key type carries `Comparable`. The helper itself imposes no
+  format rule: `ec_pubkey_sort` orders the *parsed point* via its
+  compressed serialization, so `.compressed` and `.uncompressed` inputs
+  sort identically and keep their own stored format on return. A flag
+  would revive the implicit behavior the finding objects to. Closed
+  into plan
+  §3.9 and T026.
+- "`Schnorr.PublicKey` is x-only" — **wrong** (an earlier draft of the
+  B-2 rationale claimed it): it is a full curve point in compressed or
+  uncompressed form; `XonlyKey` is the x-only type. The corrected
+  Comparable rationale above stands on the format-variance argument.
