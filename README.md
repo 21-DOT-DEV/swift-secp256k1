@@ -36,8 +36,10 @@ Swift cryptography library for Bitcoin and Nostr. ECDSA, Schnorr Signatures, Ell
 Add `swift-secp256k1` to your `Package.swift`:
 
 ```swift
-.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.24.0"),
+.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", .upToNextMinor(from: "0.24.0")),
 ```
+
+SwiftPM's `from:` requirement resolves forward through every `0.x` release below `1.0.0`, which would auto-update into breaking changes — while the package is pre-1.0, the minor version is the stability boundary, so `.upToNextMinor` still picks up patch releases within the minor. This example moves to `0.25.0` when that tag is cut.
 
 Then include `P256K` as a target dependency:
 

@@ -3,7 +3,7 @@ feature: 004
 title: Audit-hardening wave — Schnorr signing redesign, verify-after-sign, BIP-327 MuSig conformance, and CI assurance
 phase: null
 status: Planned
-updated: 2026-10-23
+updated: 2026-10-25
 adrs: []
 ---
 
@@ -31,10 +31,10 @@ not perform (B-5); and `Context.create()` returns an unmanaged raw pointer
 with no `secp256k1_context_destroy` pairing (B-6). Consumers are pre-1.0; the wave ships its breaking
 changes as one 0.25.0 tag cut after the final breaking change lands, and the
 wave's first change-set updates the consumer version-pinning advice in
-`README.md` and `Development/constitution.md` — today both tell consumers to
-pin `exact:` versions, yet SwiftPM's default `from:` requirement means "any
-0.x up to 1.0.0", so an unwarned consumer using `from:` would auto-update
-straight into the breakage. Ordered work: [tasks.md](./tasks.md). Evidence:
+`README.md`, `Development/constitution.md`, and the published
+`GettingStarted` guide — today all three advise `exact:` pins, yet SwiftPM's
+default `from:` requirement means "any 0.x up to 1.0.0", so an unwarned
+consumer using `from:` would auto-update straight into the breakage. Ordered work: [tasks.md](./tasks.md). Evidence:
 [research.md](./research.md).
 
 ## 1. Goal & success criteria
@@ -644,8 +644,13 @@ breaking changes. The first change-set of the wave updates consumer advice:
 `README.md:39`'s `exact:` example becomes `.upToNextMinor(from: "0.24.0")`
 with a sentence explaining that SwiftPM's `from:` spans all of 0.x up to
 1.0.0 and a note that the example moves to `0.25.0` when the tag is cut —
-a published example never names an untagged version, so the tag-time bump
-rides in the release task, not here. `Development/constitution.md`'s
+a published example never names an untagged version, so the tag-time bump —
+a sorted sweep over every published current-version string — rides in the
+release task, not here. The DocC `GettingStarted` guide — the
+published install walkthrough — gets the same example and rationale;
+`MigratingToP256K` keeps its `exact:` pin, a deliberate deterministic
+one-time-bump choice that already names `.upToNextMinor` as the
+alternative. `Development/constitution.md`'s
 Versioning & Stability section trades "Users advised to pin exact
 versions" for the same advice (Apple's pre-1.0 wording, used on
 swift-configuration, is the template). The changelog's existing breaking

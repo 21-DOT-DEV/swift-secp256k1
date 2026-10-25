@@ -1,9 +1,9 @@
 <!--
 Sync Impact Report (latest):
-- Version: 1.1.0 → 1.1.1 (PATCH — non-semantic sync to shipped reality; no principle added, removed, or redefined)
-- Change Type: Clarification (dead references to removed products)
-- Scope: The `ZKP` and `libsecp256k1_zkp` products were removed and the shared sources folded into `P256K` per spec 003 / ADR 0008 — that decision happened there; this amendment only records it. Dead references dropped from: the Preamble scope line, the Principle I practice treating `ZKP` as the experimental extension tier, the Projects-folder workflow line assigning that role to `ZKP`, and the Technology Stack product table. No enforcement tier changed.
-- Tooling: No template propagation required — `Development/Specs/_template/` carries no references to the removed products.
+- Version: 1.1.1 → 1.2.0 (MINOR — materially changed guidance: the pre-1.0 consumer pinning advice changes from exact-version pins to `.upToNextMinor(from:)`)
+- Change Type: Guidance change (Versioning & Stability)
+- Scope: "Users advised to pin exact versions" replaced with `.upToNextMinor(from:)` advice plus rationale — SwiftPM's `from:` requirement resolves forward through every `0.x` release below `1.0.0`, so the minor version is the pre-1.0 stability boundary (the same advice Apple's own pre-1.0 packages publish, e.g. swift-configuration; spec 004 / T001). No enforcement tier changed.
+- Tooling: No template propagation required — `Development/Specs/_template/` carries no version-pinning references.
 -->
 
 # Constitution for swift-secp256k1
@@ -299,7 +299,7 @@ Changes affecting cryptographic behavior require additional scrutiny:
 **Pre-1.0** (current):
 - No stability guarantees
 - Immediate breaking changes acceptable
-- Users advised to pin exact versions
+- Users advised to pin `.upToNextMinor(from:)` — SwiftPM's `from:` resolves forward through every `0.x` release below `1.0.0`, so the minor version is the pre-1.0 stability boundary (the same advice Apple's own pre-1.0 packages publish — swift-configuration: "Before we reach 1.0, API-breaking changes may occur between minor `0.x` versions")
 
 **Post-1.0** (future):
 - Semantic versioning strictly enforced
@@ -319,14 +319,15 @@ Changes affecting cryptographic behavior require additional scrutiny:
 
 ## Version History
 
-**Version**: 1.1.1
+**Version**: 1.2.0
 **Ratified**: 2025-12-02
-**Last Amended**: 2026-10-18
+**Last Amended**: 2026-10-25
 
 **Changelog**:
 - **1.0.0** (2025-12-02): Initial constitution with 7 core principles, three-tier enforcement, BDFL governance, security-relevant change protocols.
 - **1.1.0** (2026-10-04): Planning artifacts consolidated under `Development/` (roadmap, feature plans, decision records); Principle V names `plan.md` as the per-feature artifact and adds corrected-in-place and decision-record-graduation practices; document relocated from `.specify/memory/`.
 - **1.1.1** (2026-10-18): Dead references to the removed `ZKP`/`libsecp256k1_zkp` products dropped from the Preamble scope, Principle I practices, Projects-folder workflow, and Technology Stack product table; no principle changed (spec 003 / ADR 0008).
+- **1.2.0** (2026-10-25): Pre-1.0 consumer pinning advice changed from exact-version pins to `.upToNextMinor(from:)` — SwiftPM's `from:` requirement resolves forward through every `0.x` release below `1.0.0`, making the minor version the stability boundary while still picking up patch releases (spec 004 / T001; matches README and the advice Apple's own pre-1.0 packages publish, e.g. swift-configuration).
 
 ---
 

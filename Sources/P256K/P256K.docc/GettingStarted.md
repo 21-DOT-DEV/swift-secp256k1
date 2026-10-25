@@ -19,7 +19,7 @@ Add `swift-secp256k1` as a dependency in your `Package.swift`:
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.24.0"),
+    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", .upToNextMinor(from: "0.24.0")),
 ],
 targets: [
     .target(
@@ -31,7 +31,7 @@ targets: [
 ]
 ```
 
-The pin uses `exact:` because the package is pre-1.0: under [SemVer §4][semver-4], any release below `1.0.0` is allowed to break the public API, so `exact:` ensures upgrades are deliberate rather than silent on `swift package update`.
+The requirement uses `.upToNextMinor` because the package is pre-1.0: under [SemVer §4][semver-4], any release below `1.0.0` may break the public API, and SwiftPM's `from:` requirement resolves forward through every `0.x` release — so the minor version is the stability boundary, and `.upToNextMinor` still picks up patch releases within the minor. This example moves to `0.25.0` when that tag is cut.
 
 In Xcode, the equivalent flow is **File → Add Package Dependencies…**, pasting the repository URL `https://github.com/21-DOT-DEV/swift-secp256k1`, and picking the version. Both routes resolve to the same `Package.resolved` — Xcode and `swift build` share the dependency graph.
 
@@ -75,7 +75,7 @@ To opt into additional modules, pass `traits:` in your dependency declaration:
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    exact: "0.24.0",
+    .upToNextMinor(from: "0.24.0"),
     traits: ["ellswift", "uint256"]
 ),
 ```
