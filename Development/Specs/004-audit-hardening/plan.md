@@ -1,25 +1,34 @@
 ---
 feature: 004
-title: Audit-hardening wave — Schnorr signing redesign, verify-after-sign, and CI assurance legs
+title: Audit-hardening wave — Schnorr signing redesign, verify-after-sign, BIP-327 MuSig conformance, and CI assurance
 phase: null
 status: Planned
 updated: 2026-10-23
 adrs: []
 ---
 
-# Audit-hardening wave — Schnorr signing redesign, verify-after-sign, and CI assurance legs
+# Audit-hardening wave — Schnorr signing redesign, verify-after-sign, BIP-327 MuSig conformance, and CI assurance
 
-A corrective wave against the findings of an independent two-target security
-audit (2026-10-22; evidence ledger: [research.md](./research.md)). The audit
-found no correctness defect in the shipped signing or verification paths, but
-it measured a set of preventable misuse and assurance gaps: the Schnorr
+A corrective wave against the findings of two independent security audits of
+the same package (2026-10-22, plus a follow-on single-target pass; evidence
+ledger: [research.md](./research.md)). The first audit found no correctness
+defect in the shipped signing or verification paths, but measured a set of
+preventable misuse and assurance gaps: the Schnorr
 arbitrary-message entry point signs raw unhashed input with no complaint, no
 signing path proves its own output, one convenience overload routes caller
 randomness through an un-zeroed array copy, three public accessors named
 `bytes` return `[UInt8]` where the library's convention is
 `dataRepresentation` returning `Data`, upstream-internal parameters leak into
 public initializers, and continuous integration never runs a sanitizer across
-the Swift↔C boundary. Consumers are pre-1.0; the wave ships its breaking
+the Swift↔C boundary. The follow-on audit adds six findings against this
+package — `SharedSecret.description` prints the agreed ECDH key in full
+(B-1); `MuSig.aggregate` sorts keys internally, contradicting BIP-327's
+order-preserving aggregation and the official vectors (B-2); MuSig message
+inputs silently pad or truncate to 32 bytes (B-3); the partial-signature
+verifier accepts a `digest` parameter it never consults (B-4); the
+recoverable-signature `normalize` name promises low-S normalization it does
+not perform (B-5); and `Context.create()` returns an unmanaged raw pointer
+with no `secp256k1_context_destroy` pairing (B-6). Consumers are pre-1.0; the wave ships its breaking
 changes as one 0.25.0 tag cut after the final breaking change lands, and the
 wave's first change-set updates the consumer version-pinning advice in
 `README.md` and `Development/constitution.md` — today both tell consumers to
@@ -55,6 +64,25 @@ straight into the breakage. Ordered work: [tasks.md](./tasks.md). Evidence:
   regenerates the project's generated Xcode workspace from scratch and runs
   one vector test scheme so a broken regeneration path cannot hide until
   release time.
+- The MuSig2 surface conforms to BIP-327: `aggregate(_:)` preserves caller
+  key order and passes the official `key_agg_vectors.json`, canonical
+  sorting is an explicit `sortedPublicKeys(_:)` step that works on parsed
+  points of either stored format, every *signing-path* message input
+  (`Nonce.generate` `msg32:`, `partialSignature`) requires exactly 32
+  bytes — libsecp256k1's `msg32` limit, since BIP-327 itself permits
+  variable-length messages — while both verifiers check at the message's
+  natural length (the digest overload drops its silent `msg32Bytes`
+  reduction; `isValid(_:for:)` already passes length through to
+  `secp256k1_schnorrsig_verify`), and no verifier takes a parameter it
+  ignores.
+  Measured by the vectors plus negative probes (38-byte input throws;
+  reordering keys changes the aggregate).
+- No string-rendering path leaks secret material: `SharedSecret.description`
+  is redacted, and a contract test asserts every secret-bearing type prints
+  nothing but type names. Measured by the redaction contract.
+- A created context has a typed owner: a managed type destroys the native
+  context in `deinit`, `Sendable` follows upstream's const-call
+  thread-safety, and the raw `create()` is deprecated toward it.
 - Consumer guidance is truthful before the tag: README and the constitution
   recommend `.upToNextMinor(from:)` — the pre-1.0 constraint Apple's own
   packages advise — and the changelog's existing breaking `[Unreleased]`
@@ -71,9 +99,15 @@ straight into the breakage. Ordered work: [tasks.md](./tasks.md). Evidence:
   verification share one non-mutating byte-input pattern.
 - Verify-after-sign on all four signing paths (§3.2), including the new
   MuSig2 partial-signature self-check.
-- Rename-with-alias sweep for the three `bytes` accessors (§3.3), and the
+- Rename-with-alias sweep for the three `bytes` accessors plus the
+  misleading recoverable-signature `normalize` (§3.3), and the
   initializer/accessor trim across the upstream-cache surfaces — both
   x-only types plus `MuSig.PublicKey` (§3.4).
+- Follow-on audit remedies: `SharedSecret` redaction plus a redaction
+  contract over every secret-bearing type (§3.8), BIP-327 MuSig
+  conformance — ordered aggregation, an explicit canonical sort helper,
+  exact-32-byte messages, and a parameter-honest partial-signature
+  verifier (§3.9), and a managed owner for `secp256k1_context` (§3.10).
 - Four continuous-integration assurance lanes and one contributor note
   (three sanitizers plus generation liveness; §3.5).
 - Documentation recipes for the fixed-32-byte signing flow and the
@@ -269,6 +303,18 @@ swift-crypto's own keep-deprecated-then-remove-at-major practice
 self-consistency with the existing convention wins over cross-package
 matching.)
 
+A fourth rename rides the same alias machinery (follow-on audit B-5):
+`Signature.Recoverable`'s `var normalize` is a format conversion — it calls
+`secp256k1_ecdsa_recoverable_signature_convert`, which decodes the
+recoverable form and never touches the S scalar — so the name promises
+low-S normalization it doesn't perform, and its own doc comment already
+warns the output may fail `secp256k1_ecdsa_verify`'s low-S rule. It becomes
+`signature`, matching upstream's `convert` naming and rust-secp256k1's
+`to_standard`; `normalize` stays public-deprecated with
+`@available(*, deprecated, renamed:)`. A real low-S normalization would be
+`secp256k1_ecdsa_signature_normalize` — deliberately not added here: the
+misleading name is the defect, and a new API deserves its own spec.
+
 ### 3.4 Public-initializer trim for the upstream-cache surfaces
 
 Three public initializers hand callers the opaque
@@ -417,7 +463,181 @@ CryptoKit/swift-crypto already provide — no protocol-specific API ships.
   `nip44-v2`). The article states plainly that the recipe is an example
   composition, not a Nostr implementation.
 
-### 3.7 Versioning and migration artifacts
+### 3.8 Follow-on audit: secret-output redaction
+
+`SharedSecret`'s `CustomStringConvertible` conformance interpolates the
+complete ECDH shared secret as hex (`DH.swift:126–128`) — any `print`,
+interpolation, or log call discloses the agreed key. The convention the
+finding cites is uniform across ecosystems: Rust's `secrecy` crate redacts
+`Debug` output and forces byte exposure through an explicit accessor,
+rust-secp256k1's own discussion (issue #226) settled on redacted secret
+output, and CryptoKit's `SharedSecret` exposes no raw bytes through its
+description (digests may print hex because digests are public — secrets are
+not). The fix prints a type-and-length form (`"SharedSecret: <32 bytes>"`)
+— never the bytes. The rest of the secret-bearing types already pass: each
+`PrivateKey` and `SecureNonce` holds its material inside `SecureBytes`,
+whose class-backed storage renders as a type name under
+`String(describing:)` rather than child bytes. So the task's second half is
+a contract, not a sweep: one test asserting `String(describing:)`,
+`String(reflecting:)`, and `\(…)` on every *copyable* secret-bearing type
+emit none of the value's secret bytes — a guardrail against a future
+raw-byte stored property silently reopening the leak. The `~Copyable`
+types (`SecureNonce`, `SessionSecretRand`) need no coverage: the type
+system rejects them as arguments to every render channel, so the leak is
+impossible at compile time rather than merely absent at runtime.
+
+The secret-material path the rule protects (security-triggered change, so
+it carries its own sketch):
+
+```mermaid
+flowchart LR
+    subgraph channels["Render channels — all reach description"]
+        pr["print / String(describing:)"]
+        interp["\\(sharedSecret)"]
+        log["log interpolation"]
+    end
+    subgraph store["SharedSecret — SecureBytes-backed"]
+        desc["description → SharedSecret: <32 bytes><br/>(was: full hex)"]
+        bytes["explicit byte accessors<br/>(withUnsafeBytes — opt-in, unchanged)"]
+    end
+    pr & interp & log --> desc
+    desc -.->|"never reads"| bytes
+```
+
+### 3.9 Follow-on audit: BIP-327 MuSig conformance
+
+Three findings share one theme — the wrapper's MuSig layer diverges from
+BIP-327 where the spec and upstream are unambiguous:
+
+**Ordered aggregation (B-2).** `MuSig.aggregate(_:)` runs
+`secp256k1_ec_pubkey_sort` before `secp256k1_musig_pubkey_agg`, so key order
+has no effect and the official `key_agg_vectors.json` cannot distinguish the
+wrapper from a conforming implementation. Every reference disagrees with the
+implicit sort: BIP-327's `KeyAgg` preserves caller order (sorting is an
+application-layer choice — BIP-390 sorts at the descriptor layer, not the
+primitive), upstream's `examples/musig.c` sorts only when the application
+wants canonical order, `doc/musig.md` calls sorting optional and
+caller-controlled, rust-secp256k1's `KeyAggCache::new` keeps supplied order
+with `sort_pubkeys` as a separate helper, and Bitcoin Core aggregates keys
+in their current order. The primitive preserves order; the helper
+`sortedPublicKeys(_:)` wraps `secp256k1_ec_pubkey_sort` as an explicit,
+documented BIP-327 canonical sort — lexicographic on the compressed
+serialization of each parsed point: `secp256k1_ec_pubkey_sort` compares
+canonicalized 33-byte serializations internally, so keys sort identically
+whether they arrived `.compressed` or `.uncompressed`, and each returned
+key keeps its own stored format (the migration note's "exact pre-wave
+behavior" promise then holds for every caller). No `Comparable` lands on
+`Schnorr.PublicKey`: canonical order is a multisig convention better
+named where it's meaningful than promised type-wide — no CryptoKit key
+type carries `Comparable`, upstream ships ordering as functions
+(`ec_pubkey_cmp`, `ec_pubkey_sort`) rather than as a property of the key,
+and rust-secp256k1 documents `sort_pubkeys` — not its `Ord` impl — as
+the canonical way to sort for MuSig2. This is also the contract BOLT-3's
+funding output, BIP-383's `sortedmulti()`, and BIP-390's `musig()` all
+demand: lexicographic on the compressed serialization.
+
+**Exact-32-byte signing inputs, natural-length verification (B-3).**
+BIP-327 defines the message as "a byte array" and permits variable-length
+messages as an optional feature — its official `sign_verify_vectors.json`
+carries 32-byte, empty, and 38-byte messages — while libsecp256k1's MuSig
+API takes a fixed `msg32` at `nonce_gen`, `nonce_gen_counter`, and
+`nonce_process` (`partial_sign` takes no message; the session binds it at
+`nonce_process`, which is where `partialSignature`'s digest lands).
+Every wrapper path routes the input through `Digest.msg32Bytes` — the
+SEC1 §4.1.3 reduction that left-pads short inputs and truncates long
+ones — so a 38-byte message silently signs its first 32 bytes and a
+16-byte input silently pads. The split fix matches each side's actual
+contract: the *signing* inputs (both `Nonce.generate` overloads'
+`msg32:` and `partialSignature(for digest:…)`) gate at exactly 32 bytes
+or `incorrectParameterSize`, documented "unsupported by libsecp256k1"
+rather than "invalid" — upstream cannot produce that signature, and
+reducing would silently commit to the wrong message. The *verify* side
+does the opposite: `MuSig.XonlyKey.isValidSignature(_:for digest:)`
+stays `-> Bool`, drops the reduction, and verifies at natural length
+through `secp256k1_schnorrsig_verify`'s arbitrary-length `(msg, msglen)`
+— the aggregate signature is a plain BIP-340 signature a
+variable-length-capable implementation could legitimately produce, and
+rejecting the input (throw or `false`) would reject a valid signature.
+This matches the in-package sibling `Schnorr.XonlyKey.isValidSignature`
+("verified… at natural length… no msg32 reduction",
+`Schnorr+Signature.swift:205-207`), upstream's 0/1 verifiers,
+CryptoKit's Bool-only `isValidSignature`, and btcd's collapse of an
+internal length error to `false`. `msg32Bytes` stays: ECDSA's
+`signature(for:)` reduction is spec-correct SEC1 digest-to-integer
+behavior (Go `hashToInt`, OpenSSL `bits2int`, CryptoKit).
+
+**Honest verifier (B-4).** `MuSig.PublicKey.isValidSignature(_:publicKey:
+nonce:for digest:)` documents `digest` as "not consulted" — the signed
+message is bound inside the session at `secp256k1_musig_nonce_process`
+time. The parameter and the `D: Digest` generic leave the signature; call
+sites break at compile time with an obvious fix. (The alternative —
+threading the message into `PartialSignature` so the parameter could be
+checked — was rejected: BIP-327 binds the message in the session, and
+upstream provides no accessor to compare against.)
+
+```mermaid
+flowchart LR
+    subgraph before["Before — divergence hidden"]
+        keys["pubkeys in caller order"] --> sort["internal secp256k1_ec_pubkey_sort"] --> agg["musig_pubkey_agg"]
+        msg["message — any length"] --> red["msg32Bytes reduce/pad"] --> proc["nonce_process"]
+        dig["verify digest — any length"] --> red
+    end
+    subgraph after["After — BIP-327 conformant"]
+        keys2["pubkeys in caller order"] --> agg2["musig_pubkey_agg<br/>order preserved"]
+        keys2 -.->|"opt-in"| helper["sortedPublicKeys(_:)<br/>canonical BIP-327 order"] --> agg2
+        msg2["message — exactly 32 bytes<br/>else throw (upstream limit)"] --> proc2["nonce_process"]
+        dig2["verify digest — natural length<br/>no gate, no reduction"] --> ver["schnorrsig_verify (msg, msglen)"]
+    end
+```
+
+### 3.10 Follow-on audit: managed context ownership
+
+`Context.create()` returns a raw `OpaquePointer` and documents the destroy
+contract in prose — nothing enforces it. What actually leaks per abandoned
+context is a few hundred bytes — the vendored `secp256k1_context_struct`
+(`src/secp256k1.c:61-66`) holds an ecmult-generator blinding state, two
+callbacks, and a flag; the precomputed tables are static data in this
+version — so the finding is a lifecycle-and-hygiene defect: small per leak,
+unbounded in count, and an unmanaged contract nothing enforces. The precedent for the fix is uniform: rust-secp256k1's
+`Secp256k1` owns the pointer and destroys it in `Drop` (raw access only via
+an explicit `ctx()`); swift-nio-ssl wraps its expensive `SSL_CTX *` in a
+thread-safe `final class NIOSSLContext`; and swift-crypto itself uses the
+`final class BackingStorage` + `deinit` idiom behind value-type facades.
+Upstream's contract supplies the lifecycle verbatim — randomize once at
+creation and "you need no locking for the other calls" (the alternative is
+a read-write lock), `destroy`/`randomize` need exclusive access, and
+const-pointer calls are thread-safe throughout — so the managed type
+randomizes once in `init` and takes `Sendable` from the const-only
+post-init surface. `~Copyable` was rejected: noncopyable types suit
+one-shot resources like `SecureNonce`; a context is deliberately long-lived
+and shareable — forcing `borrowing` across the API would punish the common
+case for a resource upstream designed for shared const access.
+
+```mermaid
+classDiagram
+    class `P256K.Context — facade` {
+        +static rawRepresentation: OpaquePointer (shared, process-lifetime)
+        +create() OpaquePointer — deprecated
+        +ManagedContext
+    }
+    class `ManagedContext — value facade` {
+        +init() — create + callbacks + randomize (32B)
+        +withContext / raw accessor — explicit interop only
+    }
+    class `Storage — final class` {
+        +deinit → secp256k1_context_destroy
+        +Sendable via const-only post-init calls
+    }
+    class `secp256k1_context — upstream` {
+        +randomize once at init — exclusive
+        +destroy at deinit — exclusive
+        +all other calls — const, thread-safe
+    }
+    `ManagedContext — value facade` --> `Storage — final class` : owns
+    `Storage — final class` --> `secp256k1_context — upstream` : OpaquePointer
+```
+
+### 3.11 Versioning and migration artifacts
 
 One tag — 0.25.0 — cut after the last breaking change lands; no tag between
 breaking changes. The first change-set of the wave updates consumer advice:
@@ -438,9 +658,11 @@ breaking work batches into 0.25.0 rather than waiting for a major.
 
 Ordered reviewable slices with checkpoints are in
 [tasks.md](./tasks.md). Headline order: versioning artifacts first; the
-Schnorr redesign; verify-after-sign on its four paths; rename sweep;
-initializer trim; tag 0.25.0; then documentation recipes and CI legs,
-which interleave freely.
+standalone `SharedSecret` redaction; the Schnorr redesign; BIP-327 MuSig
+conformance (ordered aggregation, exact-32-byte messages, honest
+partial-signature verifier); verify-after-sign on its four paths; rename
+sweep; initializer trim; managed context; tag 0.25.0; then documentation
+recipes and CI legs, which interleave freely.
 
 ## 5. Verification
 
@@ -450,7 +672,30 @@ which interleave freely.
       the all-zero case; the remaining rows are verify-only.
 - [ ] New tests: 100-byte unhashed input throws via the 32-byte method;
       `customMessage:` signs and round-trips; fault-injection tests fire
-      `invariantFailure` on corrupted outputs for all four signing paths.
+      `invariantFailure` on corrupted outputs for all four signing paths —
+      plus the produced aggregate MuSig signature.
+- [ ] Official BIP-327 `key_agg_vectors.json` passes through the ordered
+      `aggregate(_:)`; reordering the input keys changes the aggregate key;
+      `aggregate(sortedPublicKeys(_:))` reproduces the pre-wave canonical
+      output.
+- [ ] A 38-byte message throws `incorrectParameterSize` on every MuSig
+      signing-path input (`Nonce.generate` `msg32:`, `partialSignature`)
+      instead of silently truncating; a short input throws rather than
+      padding; a digest longer than 32 bytes verifies at natural length
+      through `isValidSignature(_:for:)`; T030 restores the full upstream
+      `sign_verify_vectors.json` (the repo's copy was trimmed to
+      `msg_index`-0 cases with emptied error sections) and drives every
+      expressible case on the `NonceGenVectorTests` stated-skip pattern —
+      `msg_index`-0 valid cases end to end, empty/38-byte stated-skipped,
+      error/fail sections asserted or skipped; a `customMessage:`-signed
+      Schnorr signature over >32 bytes verifies true at natural length.
+- [ ] `String(describing:)`, `String(reflecting:)`, and interpolation on
+      every copyable secret-bearing type (`SharedSecret`, the private-key
+      types) emit no secret bytes; the `~Copyable` types are
+      compile-time-excluded from render channels.
+- [ ] A consumer-held managed context deallocates via `deinit` →
+      `secp256k1_context_destroy`; `Sendable` concurrent use; deprecated
+      `create()` warns toward the managed type.
 - [ ] Deprecated aliases compile existing call sites with warnings.
 - [ ] `benchmark-pr.yml` comparisons attached to the verify-after-sign PRs.
 - [ ] Sanitizer jobs green on the wave's final state; TSan job summary
@@ -470,6 +715,18 @@ which interleave freely.
   pin-advice change lives in the wave's first change-set, the tag lands only
   after every breaking change, and the changelog names each removed symbol
   with its replacement.
+- **Ordered aggregation changes consumers' existing aggregate keys.** A
+  multisig that passed unsorted keys gets a different aggregate — the
+  intended BIP-327 semantics. Mitigation: the migration note names
+  `aggregate(sortedPublicKeys(_:))` as the exact pre-wave behavior, so
+  consumers preserving a deployed aggregate key have a one-line fix.
+- **The exact-32 gate rejects callers the silent reduction once served.**
+  Those callers were signing truncated or padded messages — arguably a
+  latent bug the gate now surfaces; the migration note states the fix is to
+  hash to 32 bytes first.
+- **Deprecated `create()` remains reachable.** Accepted as a deliberate
+  breaking-soft choice: the deprecation warning and migration note point at
+  the managed type; removal waits for a major.
 - **Verify-after-sign regresses signing latency.** Mitigation: benchmark CI
   runs on the hardening PRs; no published baseline exists, so the wave
   establishes it rather than guessing.
