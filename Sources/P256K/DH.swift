@@ -123,8 +123,14 @@ extension SharedSecret: Equatable {
 #if !hasFeature(Embedded)
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension SharedSecret: CustomStringConvertible {
+        /// A redacted form reporting only the stored byte count (33 for
+        /// ``P256K/Format/compressed``, 65 for ``P256K/Format/uncompressed``).
+        ///
+        /// The shared secret's bytes are never rendered — printing, interpolating,
+        /// or logging this value cannot disclose the agreed key. Reach the bytes
+        /// explicitly through ``withUnsafeBytes(_:)``.
         public var description: String {
-            "\(Self.self): \(ss.hexString)"
+            "\(Self.self) representation contains \(ss.count) bytes."
         }
     }
 #endif

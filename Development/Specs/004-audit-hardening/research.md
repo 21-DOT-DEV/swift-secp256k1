@@ -49,9 +49,10 @@ A second, single-target audit pass against this package reported six
 findings; its A-1 belongs to the other codebase and stays out of this wave.
 
 - **B-1 — `SharedSecret.description` prints the complete ECDH shared
-  secret.** `Sources/P256K/DH.swift:126–128` interpolates `ss.hexString` —
-  any `print`, interpolation, or log call discloses the agreed key. Verified:
-  the only `CustomStringConvertible` conformance on a secret-bearing type.
+  secret.** `Sources/P256K/DH.swift`'s `CustomStringConvertible`
+  conformance interpolated `ss.hexString` — any `print`, interpolation,
+  or log call disclosed the agreed key. Verified: the only
+  `CustomStringConvertible` conformance on a secret-bearing type.
 - **B-2 — `MuSig.aggregate` sorts keys internally, violating ordered
   BIP-327 aggregation.** `MuSig+Aggregate.swift` calls
   `secp256k1_ec_pubkey_sort` before `secp256k1_musig_pubkey_agg`, so caller
@@ -170,9 +171,17 @@ findings; its A-1 belongs to the other codebase and stays out of this wave.
 - **Secret redaction convention**: Rust's `secrecy` crate redacts `Debug`
   and exposes bytes only through explicit `expose_secret` accessors;
   rust-secp256k1's issue #226 records the same discussion for secret
-  debug output. CryptoKit's `SharedSecret` exposes no raw bytes through
-  `description`; the vendored `Digest.description` prints full hex
-  because digests are public outputs, not secrets.
+  debug output (resolved by PR #311/#312 — `SecretKey`'s `Debug` prints a
+  hash fingerprint — and PR #396, which obfuscated `SharedSecret`'s
+  print for this same type). On the Apple side the convention is
+  inverted from the early assumption: CryptoKit's `SharedSecret` *does*
+  print the full hex today (verified live), and upstream swift-crypto
+  `main` still ships the identical `"\(Self.self): \(ss.hexString)"`
+  line this file inherited — the in-family redaction precedent is
+  `CryptoKit.SymmetricKey` ("Key representation contains 32 bytes."),
+  whose byte-count phrasing the fix adopts. The vendored
+  `Digest.description` prints full hex because digests are public
+  outputs, not secrets.
 - **BIP-327 message length**: the spec defines the message as "a byte
   array" and lists "messages that are not exactly 32 bytes" as an
   optional feature; its 0.6.0 changelog reads "Allow variable length
@@ -353,3 +362,12 @@ findings; its A-1 belongs to the other codebase and stays out of this wave.
   B-2 rationale claimed it): it is a full curve point in compressed or
   uncompressed form; `XonlyKey` is the x-only type. The corrected
   Comparable rationale above stands on the format-variance argument.
+- "CryptoKit's `SharedSecret` redacts its `description`" — **wrong**:
+  verified live that CryptoKit prints the secret's full hex, and
+  upstream swift-crypto `main` still ships the identical
+  `"\(Self.self): \(ss.hexString)"` line — the leak is inherited from
+  Apple, not introduced by this wrapper. The actual in-family precedent
+  is `CryptoKit.SymmetricKey` — "Key representation contains 32 bytes."
+  — the byte-count phrasing the new `description` adopts (the earlier
+  `<32 bytes>` example was also wrong on the count: the stored value is
+  a 33- or 65-byte serialized point). Closed into plan §3.8 and T025.
