@@ -5,9 +5,11 @@ Ordered work for [the plan](./plan.md); measured evidence in
 
 Format: `- [ ] TNNN [P?] what lands · files`. Each entry is one
 reviewable change — one commit/PR-sized unit an independent agent can
-implement from its description alone. Breaking change-sets extend the
-`CHANGELOG.md` migration section and state the replacement symbol in the
-same diff. The wave ships as multiple PRs; boundaries named below; inside a
+implement from its description alone. Breaking change-sets extend
+`CHANGELOG.md`'s `### Migrating from 0.24.x` section and state the
+replacement symbol in the same diff; breaking-soft deprecations land in
+the same section marked `**Deprecated:**`, appended after the hard
+breaks. The wave ships as multiple PRs; boundaries named below; inside a
 PR, commit order follows group order. No task touches the vendored trees
 (`Sources/libsecp256k1/`, `Sources/P256K/swift-crypto/`) or `vendir*.yml`.
 
@@ -40,10 +42,14 @@ PR, commit order follows group order. No task touches the vendored trees
       "the wave's first change-set": one advice change across the
       consumer-facing documents, not two commits that briefly disagree.
       Tick this box in T001's commit._ · `Development/constitution.md`
-- [ ] T003 [P] Migration-note skeleton: CHANGELOG `[Unreleased]` gains the
-      wave's section header and the standing instruction reproduced verbatim
+- [x] T003 [P] Migration-note skeleton: `CHANGELOG.md`'s `[Unreleased]`
+      gains a `### Migrating from 0.24.x` section at its top — the file's
+      one liftable block for the 0.25.0 release body — with the standing
+      instruction kept verbatim as an HTML comment
       ("each breaking change lands with its replacement named here; tag cut
-      after the last breaking change, never between") · `CHANGELOG.md`
+      after the last breaking change, never between") and the eight
+      `**Breaking**:` entries already landed relocated into it verbatim,
+      opening the section ahead of this wave's entries · `CHANGELOG.md`
 
 **Checkpoint:** a consumer reading README today learns the correct
 pre-1.0 constraint; the constitution's advice no longer contradicts the
@@ -473,7 +479,8 @@ type; `swift test` green.
       run `git grep -n '0\.24'` over `README.md`, `SECURITY.md`, and
       `Sources/P256K/P256K.docc/` and sort every hit: current references
       get bumped, historical ones ("≤ 0.24.0", "after 0.24.0") stay as
-      they are; publish the migration note as the release body ·
+      they are; publish the migration note (the `### Migrating from
+      0.24.x` section) as the release body ·
       `CHANGELOG.md`, `README.md`, `SECURITY.md`,
       `Sources/P256K/P256K.docc/GettingStarted.md`,
       `Sources/P256K/P256K.docc/MigratingToP256K.md`, git tag
