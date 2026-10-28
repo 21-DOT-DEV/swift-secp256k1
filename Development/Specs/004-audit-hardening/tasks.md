@@ -86,26 +86,32 @@ wave; `swift run --package-path Development/Tools plans --check` and
       exists so a future raw-byte stored property can't silently
       reopen the leak · `Sources/P256K/DH.swift`,
       `Tests/P256KTests/SecretRedactionTests.swift`
-- [ ] T031 [P] `SecureBytes` gains an explicit redacted `description` —
-      split out of T025's review: every copyable secret-bearing type
-      stores its material in `SecureBytes`, whose render is safe only
-      incidentally — `String(describing:)` prints
+- [x] T031 [P] `SecureBytes` gains explicit redacted render
+      conformances — split out of T025's review: every copyable
+      secret-bearing type stores its material in `SecureBytes`, whose
+      render was safe only incidentally — `String(describing:)` printed
       `SecureBytes(backing: <class>)` because the secret bytes are
       tail-allocated `ManagedBuffer` elements no dump can reach, not
-      because anything pins the shape. An `extension SecureBytes:
-      CustomStringConvertible` in a project-owned file (the vendored
-      `swift-crypto` file is untouchable) prints the same byte-count
-      sentence `SharedSecret` now uses (`"SecureBytes representation
-      contains \(count) bytes."`), so the storage layer is redacted by
-      construction under every render channel — and stays redacted if a
-      future upstream sync ever restructures `Backing` into inline
-      storage that *would* leak. Internal type, internal conformance —
-      no public API change; the T025 contract test already asserts the
-      byte-absence property and gains an exact-string pin in the same
-      edit. If upstream ever ships its own conformance the extension
-      collides at sync time — resolve by deleting ours ·
-      `Sources/P256K/Utility.swift`,
-      `Tests/P256KTests/SecretRedactionTests.swift` · non-breaking
+      because anything pinned the shape. A new project-owned
+      `Sources/P256K/SecureBytes+Representation.swift` — the vendored
+      `swift-crypto` file is untouchable; the name mirrors
+      `UInt256+Representation.swift`, which carries the same conformance
+      triple — declares `extension SecureBytes: CustomStringConvertible,
+      CustomDebugStringConvertible, CustomReflectable`: the string and
+      debug channels print the same byte-count sentence `SharedSecret`
+      now uses (`"SecureBytes representation contains \(count)
+      bytes."`), and an empty-children `customMirror` seals the
+      `Mirror`/`dump(_:)` channel a redacted `description` cannot cover
+      (the exact route a `Backing`-to-inline-storage restructure would
+      expose). Internal type, internal conformances — no public API
+      change; the T025 contract test already asserts the byte-absence
+      property and gains the exact-string pin plus a `dump(_:)` channel
+      in the same edit; `CHANGELOG.md` records the pin under `### Fixed`.
+      If upstream ever ships its own conformance the extension collides
+      at sync time — resolve by deleting ours ·
+      `Sources/P256K/SecureBytes+Representation.swift` (new),
+      `Tests/P256KTests/SecretRedactionTests.swift`, `CHANGELOG.md` ·
+      non-breaking
 
 **Checkpoint:** no `print`/interpolation/logging path emits secret bytes
 for any secret-bearing type; `swift test` green.

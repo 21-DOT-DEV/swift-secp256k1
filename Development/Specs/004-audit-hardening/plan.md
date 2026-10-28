@@ -499,12 +499,16 @@ safe only incidentally: `String(describing:)` prints
 unreachable tail storage on a `ManagedBuffer` — nothing pins the shape,
 and a future upstream sync that restructures `Backing` into inline
 storage would start leaking every type at once. A follow-up task (T031)
-makes the guarantee structural rather than incidental: an explicit
-`CustomStringConvertible` conformance on `SecureBytes` in a
-project-owned file (the vendored `swift-crypto` source is untouchable)
-printing the same byte-count sentence. Internal type, internal
-conformance — no public surface changes; if upstream ever ships its own
-conformance the extension collides at sync time and resolves by
+makes the guarantee structural rather than incidental: a dedicated
+`SecureBytes+Representation.swift` extension (the vendored
+`swift-crypto` source is untouchable; named after
+`UInt256+Representation.swift`'s precedent) declares the full render
+triple — `CustomStringConvertible` and `CustomDebugStringConvertible`
+printing the same byte-count sentence, `CustomReflectable` returning an
+empty-children mirror that seals the `Mirror`/`dump(_:)` channel a
+redacted `description` cannot reach. Internal type, internal
+conformances — no public surface changes; if upstream ever ships its
+own conformance the extension collides at sync time and resolves by
 deleting ours.
 
 The secret-material path the rule protects (security-triggered change, so
@@ -519,7 +523,7 @@ flowchart LR
     end
     subgraph store["SharedSecret — SecureBytes-backed"]
         desc["description → SharedSecret representation contains N bytes.<br/>(was: full hex)"]
-        sb["SecureBytes render — T031 pins it<br/>→ SecureBytes representation contains N bytes.<br/>(was: incidental class-ref dump)"]
+        sb["SecureBytes render — T031 pins it<br/>→ SecureBytes representation contains N bytes.<br/>Mirror/dump: no children<br/>(was: incidental class-ref dump)"]
         bytes["explicit byte accessors<br/>(withUnsafeBytes — opt-in, unchanged)"]
     end
     pr & interp & log --> desc
@@ -718,10 +722,10 @@ recipes and CI legs, which interleave freely.
       `msg_index`-0 valid cases end to end, empty/38-byte stated-skipped,
       error/fail sections asserted or skipped; a `customMessage:`-signed
       Schnorr signature over >32 bytes verifies true at natural length.
-- [ ] `String(describing:)`, `String(reflecting:)`, and interpolation on
-      every copyable secret-bearing type (`SharedSecret`, the private-key
-      types) emit no secret bytes; the `~Copyable` types are
-      compile-time-excluded from render channels.
+- [ ] `String(describing:)`, `String(reflecting:)`, interpolation, and
+      `dump(_:)` on every copyable secret-bearing type (`SharedSecret`,
+      the private-key types) emit no secret bytes; the `~Copyable` types
+      are compile-time-excluded from render channels.
 - [ ] A consumer-held managed context deallocates via `deinit` →
       `secp256k1_context_destroy`; `Sendable` concurrent use; deprecated
       `create()` warns toward the managed type.

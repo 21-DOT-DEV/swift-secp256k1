@@ -19,9 +19,11 @@ import Testing
 /// uncovered — the type system rejects them as arguments to
 /// `String(describing:)`, `String(reflecting:)`, and string interpolation, so
 /// the leak is impossible at compile time rather than merely absent at runtime.
-/// `SecureBytes` joins the public types because every secret lives in it: its
-/// bytes are tail-allocated `ManagedBuffer` elements, which no render channel
-/// can reach, and this suite keeps that invariant from drifting silently.
+/// `SecureBytes` joins the public types because every secret lives in it —
+/// its render channels are pinned by the explicit conformance cluster in
+/// `SecureBytes+Representation.swift`, and this suite keeps that pin from
+/// drifting. The coverage list is hand-enumerated: a new copyable
+/// secret-bearing type is uncovered until a test registers it here.
 struct SecretRedactionTestSuite {
     /// A valid 32-byte secp256k1 secret scalar, fixed so the absence checks are exact.
     private static let secretScalar = [UInt8](repeating: 0x11, count: 32)
@@ -41,13 +43,16 @@ struct SecretRedactionTestSuite {
     }
 
     /// Asserts that every render channel — `String(describing:)`,
-    /// `String(reflecting:)`, and `\(…)` interpolation — omits every byte
-    /// encoding of `secretBytes` for `value`.
+    /// `String(reflecting:)`, `\(…)` interpolation, and `dump(_:)` — omits
+    /// every byte encoding of `secretBytes` for `value`.
     private func assertRedacted(_ value: some Any, secretBytes: [UInt8]) {
+        var dumpOutput = ""
+        dump(value, to: &dumpOutput)
         let renderings: [(channel: String, output: String)] = [
             ("String(describing:)", String(describing: value)),
             ("String(reflecting:)", String(reflecting: value)),
-            ("interpolation", "\(value)")
+            ("interpolation", "\(value)"),
+            ("dump", dumpOutput)
         ]
         for (channel, output) in renderings {
             for encoding in Self.byteEncodings(of: secretBytes) {
@@ -83,10 +88,19 @@ struct SecretRedactionTestSuite {
 
     /// `SecureBytes` is internal, but it is the storage every secret-bearing
     /// type delegates to — a render regression here reopens the leak in all of
-    /// them at once.
+    /// them at once. The `CustomStringConvertible` /
+    /// `CustomDebugStringConvertible` / `CustomReflectable` cluster in
+    /// `SecureBytes+Representation.swift` is what the byte-absence contract
+    /// pins.
     @Test("SecureBytes renderings omit the stored bytes")
     func secureBytesRendersRedacted() {
         let secureBytes = SecureBytes(bytes: Self.secretScalar)
+
+        #expect(String(describing: secureBytes) == "SecureBytes representation contains 32 bytes.")
+        #expect(String(reflecting: secureBytes) == secureBytes.description)
+        #expect(secureBytes.debugDescription == secureBytes.description)
+        #expect(Mirror(reflecting: secureBytes).children.isEmpty)
+
         assertRedacted(secureBytes, secretBytes: Array(secureBytes))
     }
 
