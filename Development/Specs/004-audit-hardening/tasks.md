@@ -58,20 +58,25 @@ wave; `swift run --package-path Development/Tools plans --check` and
 
 ## Group B — Secret-output redaction (PR 2)
 
-- [ ] T025 [P] `SharedSecret.description` never prints secret bytes —
-      `Sources/P256K/DH.swift:126–128` interpolates the complete ECDH
-      shared secret as hex (`"\(Self.self): \(ss.hexString)"`), so any
-      `print`, `String(describing:)`, interpolation, or log call on a
-      `SharedSecret` discloses the agreed key (audit finding B-1; the
+- [x] T025 [P] `SharedSecret.description` never prints secret bytes —
+      `Sources/P256K/DH.swift`'s `CustomStringConvertible` conformance
+      interpolated the complete ECDH shared secret as hex
+      (`"\(Self.self): \(ss.hexString)"`), so any `print`,
+      `String(describing:)`, interpolation, or log call on a
+      `SharedSecret` disclosed the agreed key (audit finding B-1; the
       `secrecy`/rust-secp256k1 convention: secret-bearing types redact,
       byte exposure stays explicit through an opt-in accessor). The
-      conformance prints a type-and-length form (`"SharedSecret: <32
-      bytes>"`) — never the bytes — and a new redaction-contract test
-      asserts `String(describing:)`, `String(reflecting:)`, and `\(…)`
-      interpolation on every *copyable* secret-bearing type
+      conformance prints a byte-count sentence in CryptoKit
+      `SymmetricKey`'s phrasing (`"SharedSecret representation contains
+      33 bytes."`; 65 uncompressed — the spec's literal `<32 bytes>`
+      example was wrong: the stored value is a 33- or 65-byte serialized
+      point, not 32) — never the bytes — and a new redaction-contract
+      test asserts `String(describing:)`, `String(reflecting:)`, and
+      `\(…)` interpolation on every *copyable* secret-bearing type
       (`SharedSecret`, the `Signing`/`KeyAgreement`/`Schnorr`/`Recovery`
-      private keys) contains none of the value's secret bytes — the
-      other types pass today (their material sits behind `SecureBytes`'
+      private keys) — plus the internal `SecureBytes` storage every one
+      of them delegates to — contains none of the value's secret bytes —
+      the other types pass today (their material sits behind `SecureBytes`'
       class-backed storage, which `String(describing:)` renders as a
       type name), and the `~Copyable` types (`SecureNonce`,
       `SessionSecretRand`) are deliberately uncovered: the type system
@@ -80,7 +85,27 @@ wave; `swift run --package-path Development/Tools plans --check` and
       at compile time rather than merely absent at runtime. The contract
       exists so a future raw-byte stored property can't silently
       reopen the leak · `Sources/P256K/DH.swift`,
-      `Tests/P256KTests/` (new redaction-contract file)
+      `Tests/P256KTests/SecretRedactionTests.swift`
+- [ ] T031 [P] `SecureBytes` gains an explicit redacted `description` —
+      split out of T025's review: every copyable secret-bearing type
+      stores its material in `SecureBytes`, whose render is safe only
+      incidentally — `String(describing:)` prints
+      `SecureBytes(backing: <class>)` because the secret bytes are
+      tail-allocated `ManagedBuffer` elements no dump can reach, not
+      because anything pins the shape. An `extension SecureBytes:
+      CustomStringConvertible` in a project-owned file (the vendored
+      `swift-crypto` file is untouchable) prints the same byte-count
+      sentence `SharedSecret` now uses (`"SecureBytes representation
+      contains \(count) bytes."`), so the storage layer is redacted by
+      construction under every render channel — and stays redacted if a
+      future upstream sync ever restructures `Backing` into inline
+      storage that *would* leak. Internal type, internal conformance —
+      no public API change; the T025 contract test already asserts the
+      byte-absence property and gains an exact-string pin in the same
+      edit. If upstream ever ships its own conformance the extension
+      collides at sync time — resolve by deleting ours ·
+      `Sources/P256K/Utility.swift`,
+      `Tests/P256KTests/SecretRedactionTests.swift` · non-breaking
 
 **Checkpoint:** no `print`/interpolation/logging path emits secret bytes
 for any secret-bearing type; `swift test` green.
@@ -546,8 +571,8 @@ visible in the job summary; all new jobs carry `permissions: {}`,
 
 ## Dependency map
 
-T001–T003 (A) before everything. T025 (B) is independent — its own early
-PR. T004–T008 (C) before Group D (conformance reshapes the MuSig surface
+T001–T003 (A) before everything. T025 and T031 (B) are independent —
+their own early PRs (T031 may ride T025's PR as a small follow-up commit). T004–T008 (C) before Group D (conformance reshapes the MuSig surface
 the verify tasks exercise) and before T018–T020 (articles show the final
 API). Group D (T026–T028, T030) before Group E for the same reason — T012's
 self-verify rides the post-conformance API. T024 lands first in Group E —

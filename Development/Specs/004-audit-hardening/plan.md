@@ -466,25 +466,46 @@ CryptoKit/swift-crypto already provide — no protocol-specific API ships.
 ### 3.8 Follow-on audit: secret-output redaction
 
 `SharedSecret`'s `CustomStringConvertible` conformance interpolates the
-complete ECDH shared secret as hex (`DH.swift:126–128`) — any `print`,
+complete ECDH shared secret as hex (`DH.swift`) — any `print`,
 interpolation, or log call discloses the agreed key. The convention the
 finding cites is uniform across ecosystems: Rust's `secrecy` crate redacts
-`Debug` output and forces byte exposure through an explicit accessor,
-rust-secp256k1's own discussion (issue #226) settled on redacted secret
-output, and CryptoKit's `SharedSecret` exposes no raw bytes through its
-description (digests may print hex because digests are public — secrets are
-not). The fix prints a type-and-length form (`"SharedSecret: <32 bytes>"`)
-— never the bytes. The rest of the secret-bearing types already pass: each
-`PrivateKey` and `SecureNonce` holds its material inside `SecureBytes`,
-whose class-backed storage renders as a type name under
-`String(describing:)` rather than child bytes. So the task's second half is
-a contract, not a sweep: one test asserting `String(describing:)`,
+`Debug` output and forces byte exposure through an explicit accessor, and
+rust-secp256k1's own discussion (issue #226, resolved by PR #396's
+obfuscated shared-secret print) settled on redacted secret output. The
+leak itself is inherited from Apple — CryptoKit's `SharedSecret` prints
+the same full hex today, and upstream swift-crypto `main` carries the
+identical `"\(Self.self): \(ss.hexString)"` line — so the fix's precedent
+is Apple's *other* secret container, `CryptoKit.SymmetricKey`, which
+prints a byte-count sentence: the conformance reports
+`"SharedSecret representation contains 33 bytes."` (65 for the
+uncompressed form) — never the bytes. The rest of the secret-bearing
+types already pass: each `PrivateKey` and `SecureNonce` holds its
+material inside `SecureBytes`, whose secret bytes are tail-allocated
+`ManagedBuffer` elements no dump can reach — the class-backed storage
+renders as a type name under `String(describing:)`. So the task's second
+half is a contract, not a sweep: one test asserting `String(describing:)`,
 `String(reflecting:)`, and `\(…)` on every *copyable* secret-bearing type
-emit none of the value's secret bytes — a guardrail against a future
-raw-byte stored property silently reopening the leak. The `~Copyable`
-types (`SecureNonce`, `SessionSecretRand`) need no coverage: the type
-system rejects them as arguments to every render channel, so the leak is
+— plus the internal `SecureBytes` storage each delegates to — emits none
+of the value's secret bytes, a guardrail against a future raw-byte stored
+property silently reopening the leak. The `~Copyable` types
+(`SecureNonce`, `SessionSecretRand`) need no coverage: the type system
+rejects them as arguments to every render channel, so the leak is
 impossible at compile time rather than merely absent at runtime.
+
+The container story also exposed where that fix stops short. Every
+secret-bearing type delegates storage to `SecureBytes`, whose render is
+safe only incidentally: `String(describing:)` prints
+`SecureBytes(backing: <class>)` because the secret elements are
+unreachable tail storage on a `ManagedBuffer` — nothing pins the shape,
+and a future upstream sync that restructures `Backing` into inline
+storage would start leaking every type at once. A follow-up task (T031)
+makes the guarantee structural rather than incidental: an explicit
+`CustomStringConvertible` conformance on `SecureBytes` in a
+project-owned file (the vendored `swift-crypto` source is untouchable)
+printing the same byte-count sentence. Internal type, internal
+conformance — no public surface changes; if upstream ever ships its own
+conformance the extension collides at sync time and resolves by
+deleting ours.
 
 The secret-material path the rule protects (security-triggered change, so
 it carries its own sketch):
@@ -497,11 +518,14 @@ flowchart LR
         log["log interpolation"]
     end
     subgraph store["SharedSecret — SecureBytes-backed"]
-        desc["description → SharedSecret: <32 bytes><br/>(was: full hex)"]
+        desc["description → SharedSecret representation contains N bytes.<br/>(was: full hex)"]
+        sb["SecureBytes render — T031 pins it<br/>→ SecureBytes representation contains N bytes.<br/>(was: incidental class-ref dump)"]
         bytes["explicit byte accessors<br/>(withUnsafeBytes — opt-in, unchanged)"]
     end
     pr & interp & log --> desc
+    desc -.->|"reads count only"| sb
     desc -.->|"never reads"| bytes
+    sb -.->|"never renders"| bytes
 ```
 
 ### 3.9 Follow-on audit: BIP-327 MuSig conformance
