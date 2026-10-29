@@ -80,7 +80,8 @@ import libsecp256k1
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension P256K.Schnorr.PrivateKey: DigestSigner {
-        /// Generates a BIP-340 Schnorr signature from a pre-computed digest using `secp256k1_schnorrsig_sign_custom` with fresh 32-byte auxiliary randomness.
+        /// Generates a BIP-340 Schnorr signature from a pre-computed digest using
+        /// `secp256k1_schnorrsig_sign_custom` with fresh 32-byte auxiliary randomness.
         ///
         /// The auxiliary randomness is mixed into the BIP-340 nonce derivation (`secp256k1_nonce_function_bip340`)
         /// to protect against fault attacks. When the digest was produced using BIP-340 Tagged Hashes,
@@ -98,17 +99,15 @@ import libsecp256k1
         ///   An upstream signing failure is unreachable on a validated key and would
         ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
         public func signature<D: Digest>(for digest: D) throws -> P256K.Schnorr.SchnorrSignature {
-            var hashDataBytes = Array(digest)
-            let auxiliaryRand = SecureBytes(count: P256K.ByteLength.dimension)
-
             // The generated randomness stays in `SecureBytes` storage — the
             // pointer borrows it for the call rather than copying into a
             // plain array that would be freed unzeroed.
-            return try auxiliaryRand.withUnsafeBytePointer { randPtr in
-                try signature(
-                    message: &hashDataBytes,
-                    auxiliaryRand: UnsafeMutableRawPointer(mutating: randPtr)
-                )
+            let auxiliaryRand = SecureBytes(count: P256K.ByteLength.dimension)
+
+            return digest.withUnsafeBytes { message in
+                auxiliaryRand.withUnsafeBytes { auxRand in
+                    sign(message: message, auxiliaryRand: auxRand)
+                }
             }
         }
 
@@ -117,44 +116,142 @@ import libsecp256k1
         /// - Parameters:
         ///   - digest: The pre-computed message digest to sign; signed at its natural byte length
         ///     (no `msg32` reduction — the upstream API accepts arbitrary-length messages).
-        ///   - auxiliaryRand: Exactly 32 bytes of auxiliary randomness for BIP-340 nonce derivation; pass zeroed bytes to disable.
+        ///   - auxiliaryRand: Exactly 32 bytes of auxiliary randomness for BIP-340 nonce derivation,
+        ///     borrowed read-only for the call. Pass a zeroed 32-byte container to reproduce the
+        ///     all-zero-aux behavior (upstream treats a NULL `ndata` as all-zero).
         /// - Returns: A 64-byte ``SchnorrSignature``.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `auxiliaryRand` is not exactly 32 bytes.
         ///   An upstream signing failure is unreachable on a validated key and would
         ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
-        public func signature<D: Digest>(for digest: D, auxiliaryRand: [UInt8]) throws -> P256K.Schnorr.SchnorrSignature {
-            guard auxiliaryRand.count == P256K.ByteLength.dimension else {
-                throw secp256k1Error.incorrectParameterSize
+        public func signature<D: Digest>(for digest: D, auxiliaryRand: some ContiguousBytes) throws -> P256K.Schnorr.SchnorrSignature {
+            try auxiliaryRand.withUnsafeBytes { auxRand in
+                guard auxRand.count == P256K.ByteLength.dimension else {
+                    throw secp256k1Error.incorrectParameterSize
+                }
+                return digest.withUnsafeBytes { message in
+                    sign(message: message, auxiliaryRand: auxRand)
+                }
             }
-
-            var hashDataBytes = Array(digest)
-            var randomBytes = auxiliaryRand
-
-            return try signature(message: &hashDataBytes, auxiliaryRand: &randomBytes)
         }
 
-        /// Generates a Schnorr signature over an arbitrary-length message using `secp256k1_schnorrsig_sign_custom`.
+        /// Generates a BIP-340 Schnorr signature over a 32-byte message with fresh auxiliary randomness.
         ///
-        /// Unlike the `Digest`-based overloads, this method accepts any message length and passes it
-        /// directly to `secp256k1_schnorrsig_sign_custom`. If `auxiliaryRand` is `nil`,
-        /// `secp256k1_nonce_function_bip340` sets the auxiliary random data to zero. Pass a pointer
-        /// to 32 bytes for full BIP-340 compliant nonce derivation.
+        /// The fixed 32-byte input is BIP-340's core signing case — Taproot sighashes, Nostr event
+        /// ids, and any protocol that signs a message hash. For an arbitrary-length message use
+        /// ``signature(customMessage:)`` or ``signature(customMessage:auxiliaryRand:)``
+        /// instead, and prefer hashing to 32 bytes — with a BIP-340 tagged hash for domain
+        /// separation — unless the signed protocol defines its own separation.
+        ///
+        /// - Parameter message: The message to sign — exactly 32 bytes.
+        /// - Returns: A 64-byte ``SchnorrSignature``.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `message` is not exactly 32 bytes.
+        ///   An upstream signing failure is unreachable on a validated key and would
+        ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
+        public func signature(message: some ContiguousBytes) throws -> P256K.Schnorr.SchnorrSignature {
+            try message.withUnsafeBytes { message in
+                guard message.count == P256K.ByteLength.dimension else {
+                    throw secp256k1Error.incorrectParameterSize
+                }
+                let auxiliaryRand = SecureBytes(count: P256K.ByteLength.dimension)
+                return auxiliaryRand.withUnsafeBytes { auxRand in
+                    sign(message: message, auxiliaryRand: auxRand)
+                }
+            }
+        }
+
+        /// Generates a BIP-340 Schnorr signature over a 32-byte message using caller-supplied auxiliary randomness.
         ///
         /// - Parameters:
-        ///   - message: The message bytes to sign (any length unless `strict` is `true`).
-        ///   - auxiliaryRand: Pointer to 32 bytes of auxiliary randomness, or `nil` to use zero auxiliary data.
-        ///   - strict: If `true`, throws ``secp256k1Error/incorrectParameterSize`` when `message.count` is not 32.
+        ///   - message: The message to sign — exactly 32 bytes.
+        ///   - auxiliaryRand: Exactly 32 bytes of auxiliary randomness for BIP-340 nonce derivation,
+        ///     borrowed read-only for the call. Pass a zeroed 32-byte container to reproduce the
+        ///     all-zero-aux behavior (upstream treats a NULL `ndata` as all-zero).
         /// - Returns: A 64-byte ``SchnorrSignature``.
-        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `strict` is `true` and the message is not 32 bytes.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `message` or `auxiliaryRand` is not exactly 32 bytes.
+        ///   An upstream signing failure is unreachable on a validated key and would
+        ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
+        public func signature(message: some ContiguousBytes, auxiliaryRand: some ContiguousBytes) throws -> P256K.Schnorr.SchnorrSignature {
+            try message.withUnsafeBytes { message in
+                guard message.count == P256K.ByteLength.dimension else {
+                    throw secp256k1Error.incorrectParameterSize
+                }
+                return try auxiliaryRand.withUnsafeBytes { auxRand in
+                    guard auxRand.count == P256K.ByteLength.dimension else {
+                        throw secp256k1Error.incorrectParameterSize
+                    }
+                    return sign(message: message, auxiliaryRand: auxRand)
+                }
+            }
+        }
+
+        /// Generates a Schnorr signature over an arbitrary-length message with fresh auxiliary randomness.
+        ///
+        /// Wraps `secp256k1_schnorrsig_sign_custom`, which accepts any message length (an empty
+        /// message is legal and reaches upstream as `msg = NULL, msglen = 0`). BIP-340 requires
+        /// domain separation for non-32-byte messages — prefer hashing to 32 bytes with a tagged
+        /// hash and calling ``signature(message:)`` unless the signed protocol defines its own.
+        ///
+        /// - Parameter customMessage: The message bytes to sign — any length, including zero.
+        /// - Returns: A 64-byte ``SchnorrSignature``.
+        /// - Throws: Never throws in practice; `throws` is retained for API stability.
+        ///   An upstream signing failure is unreachable on a validated key and would
+        ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
+        public func signature(customMessage: some ContiguousBytes) throws -> P256K.Schnorr.SchnorrSignature {
+            let auxiliaryRand = SecureBytes(count: P256K.ByteLength.dimension)
+
+            return customMessage.withUnsafeBytes { message in
+                auxiliaryRand.withUnsafeBytes { auxRand in
+                    sign(message: message, auxiliaryRand: auxRand)
+                }
+            }
+        }
+
+        /// Generates a Schnorr signature over an arbitrary-length message using caller-supplied auxiliary randomness.
+        ///
+        /// Wraps `secp256k1_schnorrsig_sign_custom`, which accepts any message length (an empty
+        /// message is legal and reaches upstream as `msg = NULL, msglen = 0`). BIP-340 requires
+        /// domain separation for non-32-byte messages — prefer hashing to 32 bytes with a tagged
+        /// hash and calling ``signature(message:auxiliaryRand:)`` unless the signed protocol
+        /// defines its own.
+        ///
+        /// - Parameters:
+        ///   - customMessage: The message bytes to sign — any length, including zero.
+        ///   - auxiliaryRand: Exactly 32 bytes of auxiliary randomness for BIP-340 nonce derivation,
+        ///     borrowed read-only for the call. Pass a zeroed 32-byte container to reproduce the
+        ///     all-zero-aux behavior (upstream treats a NULL `ndata` as all-zero).
+        /// - Returns: A 64-byte ``SchnorrSignature``.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `auxiliaryRand` is not exactly 32 bytes.
         ///   An upstream signing failure is unreachable on a validated key and would
         ///   report through ``P256K/setInvariantViolationHandler(_:)`` instead.
         public func signature(
-            message: inout [UInt8],
-            auxiliaryRand: UnsafeMutableRawPointer?,
-            strict: Bool = false
+            customMessage: some ContiguousBytes,
+            auxiliaryRand: some ContiguousBytes
         ) throws -> P256K.Schnorr.SchnorrSignature {
-            guard strict == false || message.count == P256K.ByteLength.dimension else {
-                throw secp256k1Error.incorrectParameterSize
+            try auxiliaryRand.withUnsafeBytes { auxRand in
+                guard auxRand.count == P256K.ByteLength.dimension else {
+                    throw secp256k1Error.incorrectParameterSize
+                }
+                return customMessage.withUnsafeBytes { message in
+                    sign(message: message, auxiliaryRand: auxRand)
+                }
+            }
+        }
+
+        /// The `secp256k1_schnorrsig_sign_custom` call every public signing method funnels into.
+        ///
+        /// `message` borrows the caller's contiguous storage — an empty buffer's nil
+        /// `baseAddress` reaches upstream as `msg = NULL, msglen = 0`, the documented
+        /// empty-message call. `auxiliaryRand` becomes `extraparams.ndata`; every call
+        /// site supplies a real 32-byte buffer (fresh `SecureBytes` or a caller's
+        /// length-checked storage), so the pointer is never NULL.
+        private func sign(
+            message: UnsafeRawBufferPointer,
+            auxiliaryRand: UnsafeRawBufferPointer
+        ) -> P256K.Schnorr.SchnorrSignature {
+            guard auxiliaryRand.count == P256K.ByteLength.dimension else {
+                P256K.invariantFailure(
+                    "auxiliaryRand reached the Schnorr signing boundary at \(auxiliaryRand.count) bytes, not 32 — internal routing bug"
+                )
             }
 
             let context = P256K.Context.rawRepresentation
@@ -169,7 +266,11 @@ import libsecp256k1
                 }
             }
             var signature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
-            var extraParams = secp256k1_schnorrsig_extraparams(magic: magic, noncefp: nil, ndata: auxiliaryRand)
+            var extraParams = secp256k1_schnorrsig_extraparams(
+                magic: magic,
+                noncefp: nil,
+                ndata: UnsafeMutableRawPointer(mutating: auxiliaryRand.baseAddress)
+            )
 
             let created = key.withUnsafeBytePointer { keyPtr in
                 secp256k1_keypair_create(context, &keypair, keyPtr).boolValue
@@ -184,7 +285,7 @@ import libsecp256k1
             guard secp256k1_schnorrsig_sign_custom(
                 context,
                 &signature,
-                &message,
+                message.baseAddress?.assumingMemoryBound(to: UInt8.self),
                 message.count,
                 &keypair,
                 &extraParams
