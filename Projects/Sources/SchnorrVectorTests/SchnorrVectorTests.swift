@@ -65,12 +65,15 @@ struct SchnorrVectorTests {
             let privateKeyBytes = try secretKeyHex.bytes
             let privateKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
 
-            var messageArray: [UInt8] = vector.message.isEmpty ? [] : try vector.message.bytes
-            var auxRandArray = try auxRandHex.bytes
+            let messageArray: [UInt8] = vector.message.isEmpty ? [] : try vector.message.bytes
+            let auxRandArray = try auxRandHex.bytes
 
+            // Signing rows carry 0-, 1-, 17-, 32-, and 100-byte messages — the
+            // arbitrary-length entry point covers every row; index 0's all-zero
+            // auxRand supplies the deterministic-nonce case.
             let signature = try privateKey.signature(
-                message: &messageArray,
-                auxiliaryRand: &auxRandArray
+                customMessage: messageArray,
+                auxiliaryRand: auxRandArray
             )
 
             #expect(

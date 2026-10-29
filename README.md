@@ -97,15 +97,17 @@ print(signature.derRepresentation.base64EncodedString())
 
 ### Schnorr
 ```swift
-// Strict BIP340 mode is disabled by default for Schnorr signatures with variable length messages
+// Schnorr signing takes a 32-byte message — hash longer inputs first
 let privateKey = try! P256K.Schnorr.PrivateKey()
 
-// Extra params for custom signing
-var auxRand = try! "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906".bytes
-var messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9D0A508B75C".bytes
+// Caller-supplied 32-byte auxiliary randomness for BIP-340 nonce
+// derivation — omit the parameter to draw fresh randomness internally
+let auxRand = try! "C87AA53824B4D7AE2EB035A2B5BBBCCC080E76CDC6D1692C4B0B62D798E6D906".bytes
+let messageDigest = try! "7E2D58D8B3BCDF1ABADEC7829054F90DDA9805AAB56C77333024B9D0A508B75C".bytes
 
-// API allows for signing variable length messages
-let signature = try! privateKey.signature(message: &messageDigest, auxiliaryRand: &auxRand)
+let signature = try! privateKey.signature(message: messageDigest, auxiliaryRand: auxRand)
+
+// Arbitrary-length messages sign through signature(customMessage:…) instead
 ```
 
 *→ Full API: [docs.21.dev/documentation/p256k/p256k/schnorr](https://docs.21.dev/documentation/p256k/p256k/schnorr)*

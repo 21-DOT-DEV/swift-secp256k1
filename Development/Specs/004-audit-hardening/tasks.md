@@ -118,8 +118,8 @@ for any secret-bearing type; `swift test` green.
 
 ## Group C — Schnorr signing/verification redesign (PR 3, the wave's largest)
 
-- [ ] T004 Replace `signature(message:auxiliaryRand:strict:)` with the
-      five-method surface of plan §3.1: `signature(for:)` unchanged;
+- [x] T004 Replace `signature(message:auxiliaryRand:strict:)` with the
+      six-method surface of plan §3.1: `signature(for:)` unchanged;
       `signature(for:auxiliaryRand:)` **kept but retyped** — `auxiliaryRand:
       some ContiguousBytes`, caller's storage borrowed instead of the
       un-zeroed `var randomBytes` copy at `Schnorr+Signature.swift:131`
@@ -127,6 +127,8 @@ for any secret-bearing type; `swift test` green.
       `signature(message: some ContiguousBytes)` (exactly 32 bytes else
       throw); `signature(message: some ContiguousBytes, auxiliaryRand:
       some ContiguousBytes)` (aux exactly 32 bytes);
+      `signature(customMessage: some ContiguousBytes)` (any length, fresh
+      randomness — completes the aux-source matrix); and
       `signature(customMessage:auxiliaryRand:…)` for
       upstream's arbitrary-length entry point. The Boolean flag, the raw
       pointer, and the un-zeroed copy all vanish; `nil` is unexpressible.

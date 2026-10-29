@@ -162,9 +162,10 @@ under the pre-1.0 policy:
 | `signature(for: digest, auxiliaryRand: some ContiguousBytes)` | Retyped from `[UInt8]` — same name, same length check, caller's storage borrowed for the C call instead of copied, so the un-zeroed array copy of the audit finding dies. Existing `[UInt8]` call sites compile unchanged (array conforms); binary consumers relink, which the breaking tag permits |
 | `signature(message: some ContiguousBytes)` | Exactly 32 bytes or throws `incorrectParameterSize`; fresh randomness |
 | `signature(message: some ContiguousBytes, auxiliaryRand: some ContiguousBytes)` | Auxiliary randomness must be exactly 32 bytes; passing a 32-byte zero array reproduces the all-zero-aux BIP-340 vector (index 0) |
+| `signature(customMessage: some ContiguousBytes)` | Any message length, fresh randomness — completes the {digest, 32-byte, arbitrary} × {fresh, caller-supplied} matrix so no signing intent requires caller-generated randomness (rust-secp256k1 ships fresh-randomness `schnorr::sign` as its default over the same arbitrary-length domain) |
 | `signature(customMessage:auxiliaryRand:…)` | Any message length (backs upstream's `secp256k1_schnorrsig_sign_custom`) |
 
-This is a **five-method** surface: every pre-redesign public signing method
+This is a **six-method** surface: every pre-redesign public signing method
 has a stated fate in this table (the outgoing `strict:`-flagged method's
 intents split across the 32-byte and custom rows), and every removal is a
 named, migration-noted break.
@@ -200,6 +201,7 @@ classDiagram
         signature(for digest: any Digest, auxiliaryRand: some ContiguousBytes) throws
         signature(message: some ContiguousBytes) throws
         signature(message: some ContiguousBytes, auxiliaryRand: some ContiguousBytes) throws
+        signature(customMessage: some ContiguousBytes) throws
         signature(customMessage: some ContiguousBytes, auxiliaryRand: some ContiguousBytes) throws
     }
     class `Schnorr.XonlyKey — before` {
