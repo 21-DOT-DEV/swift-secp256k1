@@ -272,12 +272,12 @@ import libsecp256k1
             // `r` near the field-order boundary can legitimately fail the
             // x-coordinate lift inside `ecdsa_recover`.
             guard secp256k1_ecdsa_recoverable_signature_parse_compact(
-                context,
-                &recoverySignature,
-                Array(signatureBytes.prefix(P256K.ByteLength.signature)),
-                Int32(signatureBytes[P256K.ByteLength.signature])
-            ).boolValue,
-                secp256k1_ecdsa_recover(context, &pubKey, &recoverySignature, digestBytes).boolValue else {
+                      context,
+                      &recoverySignature,
+                      Array(signatureBytes.prefix(P256K.ByteLength.signature)),
+                      Int32(signatureBytes[P256K.ByteLength.signature])
+                  ).boolValue,
+                  secp256k1_ecdsa_recover(context, &pubKey, &recoverySignature, digestBytes).boolValue else {
                 throw secp256k1Error.underlyingCryptoError
             }
             guard secp256k1_ec_pubkey_serialize(context, &pubBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {

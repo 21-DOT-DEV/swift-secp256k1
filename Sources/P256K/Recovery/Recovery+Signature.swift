@@ -122,21 +122,21 @@ import libsecp256k1
                 // infallible in practice; a failure indicates memory corruption
                 // or an upstream defect, not bad input.
                 guard secp256k1_ecdsa_recoverable_signature_parse_compact(
-                    context,
-                    &recoverableSignature,
-                    Array(dataRepresentation.prefix(P256K.ByteLength.signature)),
-                    Int32(dataRepresentation[P256K.ByteLength.signature])
-                ).boolValue,
-                    secp256k1_ecdsa_recoverable_signature_convert(
-                        context,
-                        &normalizedSignature,
-                        &recoverableSignature
-                    ).boolValue,
-                    secp256k1_ecdsa_signature_serialize_compact(
-                        context,
-                        &compactSignature,
-                        &normalizedSignature
-                    ).boolValue else {
+                          context,
+                          &recoverableSignature,
+                          Array(dataRepresentation.prefix(P256K.ByteLength.signature)),
+                          Int32(dataRepresentation[P256K.ByteLength.signature])
+                      ).boolValue,
+                      secp256k1_ecdsa_recoverable_signature_convert(
+                          context,
+                          &normalizedSignature,
+                          &recoverableSignature
+                      ).boolValue,
+                      secp256k1_ecdsa_signature_serialize_compact(
+                          context,
+                          &compactSignature,
+                          &normalizedSignature
+                      ).boolValue else {
                     P256K.invariantFailure("secp256k1_ecdsa_recoverable_signature_parse_compact failed on init-validated bytes — library bug")
                 }
 
