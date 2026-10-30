@@ -559,6 +559,56 @@ struct MuSigTestSuite {
         #expect(Array(nonce.pubnonce).count == P256K.Schnorr.publicNonceByteCount)
         #expect(nonce.pubnonce.withUnsafeBytes { Data($0) } == nonce.pubnonce.dataRepresentation)
     }
+
+    /// The multi-party verifier borrows the caller's contiguous storage — any
+    /// `ContiguousBytes` conformer must reach `secp256k1_schnorrsig_verify`
+    /// correctly: `Data` and `Digest` storage, an `ArraySlice`'s rebased
+    /// region, and an empty input failing closed rather than crashing.
+    @Test("MuSig aggregate signature verifies across byte-container shapes")
+    func musigVerifyAcceptsContiguousByteShapes() throws {
+        let privateKeys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
+        ]
+        let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
+        let messageHash = SHA256.hash(data: Data("container shapes".utf8))
+
+        let firstNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[0], publicKey: privateKeys[0].publicKey, msg32: Array(messageHash)
+        )
+        let secondNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[1], publicKey: privateKeys[1].publicKey, msg32: Array(messageHash)
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+
+        let firstPartial = try privateKeys[0].partialSignature(
+            for: messageHash,
+            pubnonce: firstNonce.pubnonce,
+            secureNonce: firstNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+        let secondPartial = try privateKeys[1].partialSignature(
+            for: messageHash,
+            pubnonce: secondNonce.pubnonce,
+            secureNonce: secondNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+        let signature = try P256K.MuSig.aggregateSignatures([firstPartial, secondPartial])
+        let messageBytes = Array(messageHash)
+
+        // `Data`, `Digest`, a whole array, and an `ArraySlice`'s rebased
+        // region all borrow the same 32 message bytes — every shape verifies.
+        #expect(aggregate.xonly.isValid(signature, for: messageBytes))
+        #expect(aggregate.xonly.isValid(signature, for: Data(messageBytes)))
+        #expect(aggregate.xonly.isValid(signature, for: messageHash))
+        #expect(aggregate.xonly.isValid(signature, for: ([0xFF] + messageBytes)[1...]))
+
+        // An empty input reaches upstream as `msglen = 0` with a possibly-NULL
+        // `msg` — it must fail closed, not crash.
+        #expect(aggregate.xonly.isValid(signature, for: [UInt8]()) == false)
+    }
 }
 
 /// A 16-byte digest stub used to verify `partialSignature` normalizes non-32-byte

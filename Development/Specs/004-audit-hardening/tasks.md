@@ -151,7 +151,7 @@ for any secret-bearing type; `swift test` green.
       (carries T007's Schnorr-verify share) ·
       `Sources/P256K/Schnorr/Schnorr+Signature.swift`,
       `Tests/P256KTests/` (Schnorr verification) · **breaking**
-- [ ] T006 Extend the wave's verification retype to MuSig:
+- [x] T006 Extend the wave's verification retype to MuSig:
       the public multi-party verifier
       `P256K.MuSig.XonlyKey.isValid(_ signature:for message: inout [UInt8])`
       takes `some ContiguousBytes`, mirroring the Schnorr retype — without
@@ -162,7 +162,7 @@ for any secret-bearing type; `swift test` green.
       MuSig share) · `Sources/P256K/MuSig/MuSig+Signing.swift:268`,
       `Tests/P256KTests/` (MuSig), `Projects/Sources/` vector loaders as
       needed · **breaking**
-- [ ] T007 _Folded into T004–T006 — a commit that deletes a method without
+- [x] T007 _Folded into T004–T006 — a commit that deletes a method without
       updating its callers fails to compile, so each breaking task lands
       its own call-site and test updates (the BIP-340 signing rows ride
       T004, the verification rows T005, the BIP-327 drivers T006). Tick

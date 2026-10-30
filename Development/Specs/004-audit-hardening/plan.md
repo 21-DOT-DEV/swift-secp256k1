@@ -212,6 +212,14 @@ classDiagram
         isValidSignature(_ sig: SchnorrSignature, for digest: any Digest) Bool
         isValid(_ sig: SchnorrSignature, for message: some ContiguousBytes) Bool
     }
+    class `MuSig.XonlyKey — before` {
+        isValidSignature(_ sig: AggregateSignature, for digest: any Digest) Bool
+        isValid(_ sig: AggregateSignature, for message: inout [UInt8]) Bool
+    }
+    class `MuSig.XonlyKey — after` {
+        isValidSignature(_ sig: AggregateSignature, for digest: any Digest) Bool
+        isValid(_ sig: AggregateSignature, for message: some ContiguousBytes) Bool
+    }
 ```
 
 Because this change rewires how secret material (the auxiliary randomness)
