@@ -187,7 +187,7 @@ import libsecp256k1
         /// Generates a Schnorr signature over an arbitrary-length message with fresh auxiliary randomness.
         ///
         /// Wraps `secp256k1_schnorrsig_sign_custom`, which accepts any message length (an empty
-        /// message is legal and reaches upstream as `msg = NULL, msglen = 0`). BIP-340 requires
+        /// message is legal and reaches upstream with `msglen = 0` — `msg` may be NULL). BIP-340 requires
         /// domain separation for non-32-byte messages — prefer hashing to 32 bytes with a tagged
         /// hash and calling ``signature(message:)`` unless the signed protocol defines its own.
         ///
@@ -209,7 +209,7 @@ import libsecp256k1
         /// Generates a Schnorr signature over an arbitrary-length message using caller-supplied auxiliary randomness.
         ///
         /// Wraps `secp256k1_schnorrsig_sign_custom`, which accepts any message length (an empty
-        /// message is legal and reaches upstream as `msg = NULL, msglen = 0`). BIP-340 requires
+        /// message is legal and reaches upstream with `msglen = 0` — `msg` may be NULL). BIP-340 requires
         /// domain separation for non-32-byte messages — prefer hashing to 32 bytes with a tagged
         /// hash and calling ``signature(message:auxiliaryRand:)`` unless the signed protocol
         /// defines its own.
@@ -239,9 +239,9 @@ import libsecp256k1
 
         /// The `secp256k1_schnorrsig_sign_custom` call every public signing method funnels into.
         ///
-        /// `message` borrows the caller's contiguous storage — an empty buffer's nil
-        /// `baseAddress` reaches upstream as `msg = NULL, msglen = 0`, the documented
-        /// empty-message call. `auxiliaryRand` becomes `extraparams.ndata`; every call
+        /// `message` borrows the caller's contiguous storage — an empty buffer
+        /// reaches upstream with `msglen = 0` and a possibly-NULL `baseAddress`,
+        /// the documented empty-message call. `auxiliaryRand` becomes `extraparams.ndata`; every call
         /// site supplies a real 32-byte buffer (fresh `SecureBytes` or a caller's
         /// length-checked storage), so the pointer is never NULL.
         private func sign(
@@ -285,7 +285,7 @@ import libsecp256k1
             guard secp256k1_schnorrsig_sign_custom(
                 context,
                 &signature,
-                message.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                message.bindMemory(to: UInt8.self).baseAddress,
                 message.count,
                 &keypair,
                 &extraParams
@@ -312,30 +312,33 @@ import libsecp256k1
         ///   - digest: The pre-computed digest that was signed. Must be the same digest type and data used when signing.
         /// - Returns: `true` if the signature is valid for `digest` under this x-only public key, `false` otherwise.
         public func isValidSignature<D: Digest>(_ signature: P256K.Schnorr.SchnorrSignature, for digest: D) -> Bool {
-            var hashDataBytes = Array(digest)
-
-            return isValid(signature, for: &hashDataBytes)
+            isValid(signature, for: digest)
         }
 
         /// Verifies a Schnorr signature over an arbitrary-length message using `secp256k1_schnorrsig_verify`.
         ///
+        /// The message bytes are borrowed read-only for the call — an empty collection
+        /// reaches upstream with `msglen = 0` — `msg` may be NULL — the documented empty-message case.
+        ///
         /// - Parameters:
         ///   - signature: The 64-byte ``SchnorrSignature`` to verify.
-        ///   - message: The message bytes that were signed (any length; must match the bytes used when signing).
+        ///   - message: The message bytes that were signed (any length, including zero; must match the bytes used when signing).
         /// - Returns: `true` if the signature is valid, `false` otherwise.
-        public func isValid(_ signature: P256K.Schnorr.SchnorrSignature, for message: inout [UInt8]) -> Bool {
+        public func isValid(_ signature: P256K.Schnorr.SchnorrSignature, for message: some ContiguousBytes) -> Bool {
             let context = P256K.Context.rawRepresentation
             var pubKey = secp256k1_xonly_pubkey()
 
             // `bytes` is guaranteed a validated 32-byte coordinate by construction.
-            return secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
-                secp256k1_schnorrsig_verify(
-                    context,
-                    signature.dataRepresentation.byteArray,
-                    message,
-                    message.count,
-                    &pubKey
-                ).boolValue
+            return message.withUnsafeBytes { messageBuffer in
+                secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
+                    secp256k1_schnorrsig_verify(
+                        context,
+                        signature.dataRepresentation.byteArray,
+                        messageBuffer.bindMemory(to: UInt8.self).baseAddress,
+                        messageBuffer.count,
+                        &pubKey
+                    ).boolValue
+            }
         }
     }
 

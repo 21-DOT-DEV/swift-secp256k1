@@ -38,7 +38,7 @@ struct SchnorrTestSuite {
         let privateKeyBytes = try expectedPrivateKey.bytes
         let throwKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
         let privateKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
-        var messageDigest: [UInt8] = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.byteArray
+        let messageDigest: [UInt8] = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.byteArray
         let auxRand = try "f50c8c99e39a82f125fa83186b5f2483f39fb0fb56269c755689313a177be6ea".bytes
 
         let signature = try privateKey.signature(customMessage: messageDigest, auxiliaryRand: auxRand)
@@ -47,7 +47,7 @@ struct SchnorrTestSuite {
         #expect(String(bytes: signature.dataRepresentation.byteArray) == expectedSignature)
 
         // Verify the signature is valid
-        #expect(privateKey.xonly.isValid(signature, for: &messageDigest))
+        #expect(privateKey.xonly.isValid(signature, for: messageDigest))
 
         // Verify that an error is thrown for the 32-byte-checked method
         #expect(throws: secp256k1Error.incorrectParameterSize) {
@@ -65,21 +65,25 @@ struct SchnorrTestSuite {
     @Test("Schnorr fresh-auxiliary signing verifies")
     func schnorrFreshAuxRandSigns() throws {
         let privateKey = try P256K.Schnorr.PrivateKey()
-        var message = try "0000000000000000000000000000000000000000000000000000000000000000".bytes
-        var custom = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.byteArray
+        let message = try "0000000000000000000000000000000000000000000000000000000000000000".bytes
+        let custom = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.byteArray
 
         // Fresh-aux paths draw nonce randomness internally, so the signatures
         // are nondeterministic — the check is round-trip verification, and
         // two successive signatures over the same input differing confirms
         // the fresh randomness actually varies the nonce.
         let signature = try privateKey.signature(message: message)
-        #expect(privateKey.xonly.isValid(signature, for: &message))
+        #expect(privateKey.xonly.isValid(signature, for: message))
 
         let customSignature = try privateKey.signature(customMessage: custom)
-        #expect(privateKey.xonly.isValid(customSignature, for: &custom))
+        #expect(privateKey.xonly.isValid(customSignature, for: custom))
 
         let second = try privateKey.signature(message: message)
         #expect(signature.dataRepresentation != second.dataRepresentation)
+
+        // The same borrow on the signing side — a rebased slice signs only its window.
+        let sliceSignature = try privateKey.signature(customMessage: ([0xFF] + custom)[1...])
+        #expect(privateKey.xonly.isValid(sliceSignature, for: custom))
     }
 
     @Test("Schnorr Verifying Test")
@@ -87,13 +91,18 @@ struct SchnorrTestSuite {
         let expectedPrivateKey = "0000000000000000000000000000000000000000000000000000000000000003"
         let privateKeyBytes = try expectedPrivateKey.bytes
         let privateKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
-        var messageDigest = try "0000000000000000000000000000000000000000000000000000000000000000".bytes
+        let messageDigest = try "0000000000000000000000000000000000000000000000000000000000000000".bytes
         let auxRand = try "0000000000000000000000000000000000000000000000000000000000000000".bytes
 
         let signature = try privateKey.signature(message: messageDigest, auxiliaryRand: auxRand)
 
         // Test the verification of the signature output
-        #expect(privateKey.xonly.isValid(signature, for: &messageDigest))
+        #expect(privateKey.xonly.isValid(signature, for: messageDigest))
+
+        // The retyped verifier borrows any `ContiguousBytes` — a `Data` value and
+        // a rebased `ArraySlice` (non-zero start index) must verify the same bytes.
+        #expect(privateKey.xonly.isValid(signature, for: Data(messageDigest)))
+        #expect(privateKey.xonly.isValid(signature, for: ([0xFF] + messageDigest)[1...]))
     }
 
     @Test("Schnorr signing rejects a non-32-byte auxiliaryRand")
@@ -130,11 +139,11 @@ struct SchnorrTestSuite {
         let auxSignature = try privateKey.signature(for: digest, auxiliaryRand: auxRand)
         #expect(privateKey.xonly.isValidSignature(auxSignature, for: digest))
 
-        // An empty message is legal upstream — it reaches C as
-        // `msg = NULL, msglen = 0` and must round-trip through verify.
-        var emptyMessage: [UInt8] = []
+        // An empty message is legal upstream — it reaches C with
+        // `msglen = 0` (`msg` may be NULL) and must round-trip through verify.
+        let emptyMessage: [UInt8] = []
         let emptySignature = try privateKey.signature(customMessage: emptyMessage)
-        #expect(privateKey.xonly.isValid(emptySignature, for: &emptyMessage))
+        #expect(privateKey.xonly.isValid(emptySignature, for: emptyMessage))
     }
 
     @Test("x-only key rejects malformed coordinates at construction")

@@ -93,9 +93,9 @@ struct SchnorrVectorTests {
             let signatureBytes = try vector.signature.bytes
             let signature = try P256K.Schnorr.SchnorrSignature(dataRepresentation: signatureBytes)
 
-            var messageArray: [UInt8] = vector.message.isEmpty ? [] : try vector.message.bytes
+            let messageArray: [UInt8] = vector.message.isEmpty ? [] : try vector.message.bytes
 
-            return xonlyKey.isValid(signature, for: &messageArray)
+            return xonlyKey.isValid(signature, for: messageArray)
         } catch {
             return false
         }
