@@ -8,7 +8,7 @@
 //  See the accompanying file LICENSE for information
 //
 
-import Foundation
+public import Foundation
 import libsecp256k1
 
 #if Xcode || ENABLE_MODULE_MUSIG
@@ -254,30 +254,33 @@ import libsecp256k1
         ///   - digest: The pre-computed digest that was signed.
         /// - Returns: `true` if the aggregate signature is valid for `digest` under this x-only aggregate key, `false` otherwise.
         func isValidSignature<D: Digest>(_ signature: P256K.MuSig.AggregateSignature, for digest: D) -> Bool {
-            var hashDataBytes = digest.msg32Bytes
-
-            return isValid(signature, for: &hashDataBytes)
+            isValid(signature, for: digest.msg32Bytes)
         }
 
         /// Verifies a MuSig2 aggregate signature over an arbitrary-length message using `secp256k1_schnorrsig_verify`.
         ///
+        /// The message bytes are borrowed read-only for the call — an empty collection
+        /// reaches upstream with `msglen = 0` — `msg` may be NULL — the documented empty-message case.
+        ///
         /// - Parameters:
         ///   - signature: The 64-byte ``P256K/MuSig/AggregateSignature`` to verify.
-        ///   - message: The message bytes that were signed (must match those used in the signing session).
+        ///   - message: The message bytes that were signed (any length, including zero; must match those used in the signing session).
         /// - Returns: `true` if the aggregate signature is valid, `false` otherwise.
-        func isValid(_ signature: P256K.MuSig.AggregateSignature, for message: inout [UInt8]) -> Bool {
+        func isValid(_ signature: P256K.MuSig.AggregateSignature, for message: some ContiguousBytes) -> Bool {
             let context = P256K.Context.rawRepresentation
             var pubKey = secp256k1_xonly_pubkey()
 
             // `bytes` is guaranteed a validated 32-byte coordinate by construction.
-            return secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
-                secp256k1_schnorrsig_verify(
-                    context,
-                    signature.dataRepresentation.byteArray,
-                    message,
-                    message.count,
-                    &pubKey
-                ).boolValue
+            return message.withUnsafeBytes { messageBuffer in
+                secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
+                    secp256k1_schnorrsig_verify(
+                        context,
+                        signature.dataRepresentation.byteArray,
+                        messageBuffer.bindMemory(to: UInt8.self).baseAddress,
+                        messageBuffer.count,
+                        &pubKey
+                    ).boolValue
+            }
         }
     }
 
