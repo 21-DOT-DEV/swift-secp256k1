@@ -140,7 +140,7 @@ for any secret-bearing type; `swift test` green.
       compile (carries T007's Schnorr-signing share) ·
       `Sources/P256K/Schnorr/Schnorr+Signature.swift`,
       `Tests/P256KTests/` (Schnorr signing) · **breaking**
-- [ ] T005 Verification mirrors the shape: the raw-bytes
+- [x] T005 Verification mirrors the shape: the raw-bytes
       `isValid(_:for:)` takes non-mutating `ContiguousBytes` (the
       `inout [UInt8]` requirement is gone); the digest overload
       `isValidSignature(_:for:)` **keeps its `Digest` signature** — it is
