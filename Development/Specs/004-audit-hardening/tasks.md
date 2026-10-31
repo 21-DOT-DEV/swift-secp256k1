@@ -168,10 +168,16 @@ for any secret-bearing type; `swift test` green.
       T004, the verification rows T005, the BIP-327 drivers T006). Tick
       this box across T004–T006's commits._ · `Tests/P256KTests/`,
       `Projects/Sources/`
-- [ ] T008 New probes as permanent tests: 100-byte unhashed input throws
-      through `signature(message:)`; `customMessage:` signs and verifies;
-      zero-aux reproduces the all-zero-auxiliary vector (index 0) exactly ·
-      `Tests/P256KTests/`
+- [x] T008 New probes as permanent tests: 100-byte unhashed input throws
+      through `signature(message:)` — consolidated with the under-32 side
+      and the `auxiliaryRand:` method's own message gate into one size-gate
+      test, so `count == 32` is pinned two-sided on both gated methods;
+      `customMessage:` signs and verifies, including the same 100 bytes
+      through the deliberate escape hatch plus a wrong-message `false`
+      control; zero-aux reproduces the all-zero-auxiliary vector (index 0)
+      exactly — `schnorrSigningTest` now names the vector in a comment and
+      asserts its public-key column too, matching rust-secp256k1's
+      full-row BIP-340 driver · `Tests/P256KTests/SchnorrTests.swift`
 
 **Checkpoint:** no public Schnorr entry point accepts a raw pointer or a
 Boolean mode flag; the entire pre-wave corpus of vectors still passes;

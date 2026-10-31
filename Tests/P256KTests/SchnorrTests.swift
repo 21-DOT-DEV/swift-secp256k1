@@ -16,8 +16,12 @@ import XCTest
 struct SchnorrTestSuite {
     @Test("Schnorr Signing Test")
     func schnorrSigningTest() throws {
+        // Official BIP-340 test vector, index 0: secret key 3, zero message,
+        // all-zero auxiliary randomness — the deterministic-nonce case.
         let expectedDerSignature = "6QeDH4CEjRBppTcbQCQQNkvfHF+DB7AITFXxzi3KghUl9mpKheqLceSCp084LSzl6+7o/bIXL0d99JANMQU2wA=="
         let expectedSignature = "e907831f80848d1069a5371b402410364bdf1c5f8307b0084c55f1ce2dca821525f66a4a85ea8b71e482a74f382d2ce5ebeee8fdb2172f477df4900d310536c0"
+        let expectedPublicKey = "f9308a019258c31049344f85f89d5229b531c845836f99b08601f113bce036f9"
+        let expectedPublicKeyBytes = try expectedPublicKey.bytes
         let expectedPrivateKey = "0000000000000000000000000000000000000000000000000000000000000003"
         let privateKeyBytes = try expectedPrivateKey.bytes
         let privateKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
@@ -25,6 +29,11 @@ struct SchnorrTestSuite {
         let auxRand = try "0000000000000000000000000000000000000000000000000000000000000000".bytes
 
         let signature = try privateKey.signature(message: messageDigest, auxiliaryRand: auxRand)
+
+        // The vector row's public-key column pins secret-key → x-only
+        // derivation alongside the signature bytes (the same full-row check
+        // rust-secp256k1's BIP-340 driver performs).
+        #expect(expectedPublicKeyBytes == privateKey.xonly.bytes)
 
         // Verify the signature matches the expected output
         #expect(expectedSignature == String(bytes: Array(signature.dataRepresentation)))
@@ -36,7 +45,6 @@ struct SchnorrTestSuite {
         let expectedPrivateKey = "4894b8087f428971b55ff96e16f7127340138bc84e7973821a224cad02055975"
         let expectedSignature = "ad57c21d383ef8ac799adfd469a221c40ef9f09563a16682b9ab1edc46c33d6d6a1d719761d269e87ab971e0ffafc1618a4666a4f9aef4abddc3ea9fc0cd5b12"
         let privateKeyBytes = try expectedPrivateKey.bytes
-        let throwKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
         let privateKey = try P256K.Schnorr.PrivateKey(dataRepresentation: privateKeyBytes)
         let messageDigest: [UInt8] = "We're all Satoshi Nakamoto and a bit of Harold Thomas Finney II.".data(using: .utf8)!.byteArray
         let auxRand = try "f50c8c99e39a82f125fa83186b5f2483f39fb0fb56269c755689313a177be6ea".bytes
@@ -48,18 +56,6 @@ struct SchnorrTestSuite {
 
         // Verify the signature is valid
         #expect(privateKey.xonly.isValid(signature, for: messageDigest))
-
-        // Verify that an error is thrown for the 32-byte-checked method
-        #expect(throws: secp256k1Error.incorrectParameterSize) {
-            _ = try throwKey.signature(message: messageDigest)
-        }
-
-        // A 100-byte message is a legitimate BIP-340 signing input (vector
-        // row 18) — the fixed-size method must still refuse it.
-        let hundredBytes = [UInt8](repeating: 0xAB, count: 100)
-        #expect(throws: secp256k1Error.incorrectParameterSize) {
-            _ = try throwKey.signature(message: hundredBytes)
-        }
     }
 
     @Test("Schnorr fresh-auxiliary signing verifies")
@@ -123,6 +119,38 @@ struct SchnorrTestSuite {
         #expect(throws: secp256k1Error.incorrectParameterSize) {
             _ = try privateKey.signature(customMessage: message, auxiliaryRand: shortAux)
         }
+    }
+
+    @Test("Schnorr 32-byte methods reject off-size messages")
+    func schnorrMessageLengthGate() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let validAuxRand = [UInt8](repeating: 0x5A, count: 32)
+
+        // Both fixed-size methods gate on `message.count == 32` — shorter
+        // inputs must throw exactly as longer ones do. A 100-byte message is
+        // a legitimate BIP-340 signing input (vector row 18): the fixed-size
+        // methods must still refuse it.
+        for length in [0, 1, 31, 33, 64, 100] {
+            let message = [UInt8](repeating: 0xAB, count: length)
+            #expect(throws: secp256k1Error.incorrectParameterSize) {
+                _ = try privateKey.signature(message: message)
+            }
+            #expect(throws: secp256k1Error.incorrectParameterSize) {
+                _ = try privateKey.signature(message: message, auxiliaryRand: validAuxRand)
+            }
+        }
+
+        // The deliberately-named escape hatch stays open: the same 100 bytes
+        // sign through `customMessage:` and verify at natural length —
+        // arbitrary-length messages are spec-legal, just never implicit.
+        let hundredBytes = [UInt8](repeating: 0xAB, count: 100)
+        let signature = try privateKey.signature(customMessage: hundredBytes)
+        #expect(privateKey.xonly.isValid(signature, for: hundredBytes))
+
+        // A signature over one custom message must not verify against a
+        // different message — the negative control proving the round-trip
+        // above actually checks the bytes.
+        #expect(!privateKey.xonly.isValid(signature, for: [UInt8](repeating: 0xCD, count: 100)))
     }
 
     @Test("Schnorr digest and empty-message signing verify")
