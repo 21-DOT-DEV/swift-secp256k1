@@ -38,6 +38,13 @@ Code is formatted and linted automatically via pre-commit hooks:
 - **Ask first**: add new third-party dependencies; broaden CI permissions.
 - See the [21-DOT-DEV contributing guidelines](https://github.com/21-DOT-DEV/.github/blob/main/CONTRIBUTING.md) for branching and commit guidelines. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
+## Commit messages
+
+Conventional-Commits subjects with flowing bodies. Squash-merge makes the PR title the commit subject and the PR description the body — write both in this format.
+
+- **Subject**: `type(scope): Summary` — imperative, capitalized, no trailing period, ~50 chars. Types: `feat`/`fix`/`refactor`/`docs`/`test`/`ci`/`chore`; the scope names the area (`feat(NodeApp):`, `fix(kernel):`).
+- **Body**: unwrapped flowing prose, one paragraph per logical point — no mid-sentence hard wraps. What and why over how (~100-150 words for a task-scale commit); reasoning that outlives the feature graduates to an ADR instead (`Development/README.md`).
+
 ## Planning artifacts
 
 Everything about how this project is developed lives under
