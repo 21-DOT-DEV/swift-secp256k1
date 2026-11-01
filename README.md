@@ -266,12 +266,13 @@ let secondPartialSignature = try! secondPrivateKey.partialSignature(
 // Aggregate partial signatures into a full signature
 let aggregateSignature = try! P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
 
-// Verify the aggregate signature
-let isValid = aggregateKey.isValidSignature(
+// Verify an individual partial signature against the declared session
+let isValid = try! aggregateKey.isValidSignature(
     firstPartialSignature,
     publicKey: firstPrivateKey.publicKey,
     nonce: firstNonce.pubnonce,
-    for: messageHash
+    for: messageHash,
+    publicNonceAggregate: aggregateNonce
 )
 
 print("Is valid MuSig signature: \(isValid)")

@@ -278,16 +278,42 @@ if the total nears ~400 authored lines.
       signing inputs that silently reduced now throw; the digest
       verifier's semantics change for non-32-byte input (it checks the
       actual digest, not its truncation — the changelog names both)
-- [ ] T028 The partial-signature verifier drops its unconsulted
-      `for digest:` — `MuSig.PublicKey.isValidSignature(_:publicKey:
-      nonce:for digest:)` documents the parameter as "not consulted"
-      because the signed message is bound inside the session at
-      `secp256k1_musig_nonce_process` time (audit finding B-4). The
-      parameter — and the method's `D: Digest` generic — leaves the
-      signature; call sites passing `for:` fail to compile with the
-      fix-it obvious (delete the argument), and the changelog names the
-      removal · `Sources/P256K/MuSig/MuSig+Signing.swift`,
-      `Tests/P256KTests/` · **breaking**
+- [x] T028 The partial-signature verifier gains a consulted message —
+      `MuSig.PublicKey.isValidSignature(_:publicKey:nonce:for digest:)`
+      documented `digest` as "not consulted" and loaded whatever session
+      blob the `PartialSignature` carried, so a signature produced over a
+      different message reported valid for any declared digest — the
+      "signature from a different or non-existing signing session" misuse
+      upstream's `partial_sig_verify` contract warns against (audit
+      finding B-4). Deleting the parameter was rejected on review: it
+      made the API truthful about a weak check, while upstream's own
+      verifier flow — `doc/musig.md`'s verifier steps, its test suite
+      and `examples/musig.c`, BIP-327's `PartialSigVerify(m, …)`, and
+      rust-secp256k1's `Session::new(cache, aggnonce, msg)` — derives
+      the session locally and treats the message as a first-class input.
+      The signature becomes `isValidSignature(_:publicKey:nonce:for
+      message: some ContiguousBytes, publicNonceAggregate: P256K.MuSig.
+      Nonce) throws -> Bool`: it rebuilds the session via
+      `secp256k1_musig_nonce_process` — deterministic over (aggregate
+      nonce, `msg32`, cache), so honestly produced signatures always
+      match — requires the `PartialSignature`'s carried session blob to
+      equal it (a signature valid for the session but paired with a
+      foreign blob fails at the point the bad contribution can be
+      attributed, before `aggregateSignatures` can consume it), and only
+      then calls `secp256k1_musig_partial_sig_verify`. A non-32-byte
+      message throws `incorrectParameterSize` like every other `msg32`
+      gate — `throws` names the malformed-input failure `false` would
+      misdiagnose as an invalid signature, and `(try? …) ?? false`
+      recovers Bool semantics for callers who want them. The
+      `D: Digest` generic leaves (`Digest` conforms to
+      `ContiguousBytes`, so it only narrowed callers). Regression coverage: wrong message, wrong
+      aggregate nonce, and a signature paired with a foreign session all
+      return `false`; a non-32-byte message throws; T030's vector driver
+      uses the same reconstructed-session call shape upstream's test
+      harness uses · `Sources/P256K/MuSig/MuSig+Signing.swift`,
+      `Tests/P256KTests/MusigTests.swift`, `README.md`,
+      `Sources/P256K/P256K.docc/MuSig2MultiSignatures.md`,
+      `CHANGELOG.md` · **breaking**
 
 - [ ] T030 Restore the full upstream `sign_verify_vectors.json` and drive
       every expressible case — the repo's copy under
@@ -331,8 +357,8 @@ no MuSig verifier takes an unconsulted parameter; the restored
 valid cases end to end, empty/38-byte stated-skipped, error/fail
 sections asserted or skipped; `swift test` green. T026–T028 land
 breaking — the migration note names `sortedPublicKeys(_:)`, the
-exact-32 signing gate as an upstream limit, and the dropped label;
-T030 is test-side only.
+exact-32 signing gate as an upstream limit, and the partial verifier's
+new `publicNonceAggregate:`/`throws` shape; T030 is test-side only.
 
 ## Group E — Verify-after-sign (PRs 8–12 — the T024 seam PR, then one path per PR)
 
