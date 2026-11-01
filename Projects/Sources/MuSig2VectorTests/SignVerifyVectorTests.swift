@@ -87,6 +87,74 @@ struct SignVerifyVectorTests {
         #expect(vectors.valid_test_cases.count == 3, "Should have 3 valid test cases")
     }
 
+    /// BIP-327 permits variable-length messages, but libsecp256k1's MuSig API
+    /// reads a fixed 32-byte `msg32` at nonce generation and session binding —
+    /// the vector file's empty (`msgs[1]`) and 38-byte (`msgs[2]`) payloads must
+    /// throw on the signing inputs rather than silently commit to the first 32
+    /// bytes. `msgs[0]` (32 bytes) passes through the same inputs.
+    @Test("Non-32-byte vector messages throw on the signing inputs")
+    func nonMsg32VectorMessagesThrow() throws {
+        let signer = try P256K.Schnorr.PrivateKey()
+        let aggregate = try P256K.MuSig.aggregate([signer.publicKey])
+        // `msgs[1]` is the BIP-327 empty message — `String.bytes` (the strict
+        // hex decoder) rejects an empty string, so decode it as `[]` directly.
+        let messages = try vectors.msgs.map { $0.isEmpty ? [] : try $0.bytes }
+
+        // The probes below are only meaningful if the fixture actually carries
+        // both shapes — pin that expectation so a future vector edit can't
+        // silently vacate either loop.
+        #expect(messages.contains { $0.count == P256K.ByteLength.dimension }, "fixture must carry a 32-byte message")
+        #expect(messages.contains { $0.count != P256K.ByteLength.dimension }, "fixture must carry a non-32-byte message")
+
+        for message in messages where message.count == P256K.ByteLength.dimension {
+            // Expressible — both signing inputs accept the 32-byte message.
+            let nonce = try P256K.MuSig.Nonce.generate(
+                secretKey: signer,
+                publicKey: signer.publicKey,
+                msg32: message
+            )
+            let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+            _ = try signer.partialSignature(
+                for: message,
+                pubnonce: nonce.pubnonce,
+                secureNonce: nonce.secnonce,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
+        }
+
+        for message in messages where message.count != P256K.ByteLength.dimension {
+            #expect(throws: secp256k1Error.incorrectParameterSize) {
+                _ = try P256K.MuSig.Nonce.generate(
+                    secretKey: signer,
+                    publicKey: signer.publicKey,
+                    msg32: message
+                )
+            }
+
+            // `partialSignature` consumes the nonce it receives — a fresh one
+            // per probe, so this checks the thrown error explicitly.
+            do {
+                let nonce = try P256K.MuSig.Nonce.generate(
+                    secretKey: signer,
+                    publicKey: signer.publicKey,
+                    msg32: nil
+                )
+                let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+                _ = try signer.partialSignature(
+                    for: message,
+                    pubnonce: nonce.pubnonce,
+                    secureNonce: nonce.secnonce,
+                    publicNonceAggregate: aggregateNonce,
+                    publicKeyAggregate: aggregate
+                )
+                Issue.record("partialSignature must reject a \(message.count)-byte message")
+            } catch {
+                #expect(error as? secp256k1Error == .incorrectParameterSize)
+            }
+        }
+    }
+
     @Test("Public nonces from vectors can be parsed")
     func publicNoncesValid() throws {
         for (i, pnonceHex) in vectors.pnonces.prefix(3).enumerated() {

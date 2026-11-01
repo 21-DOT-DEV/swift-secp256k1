@@ -144,14 +144,16 @@ import libsecp256k1
             ///
             /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance by binding the nonce to the key. Must match `publicKey` when provided.
             /// - Parameter publicKey: The signer's public key; the generated secret nonce is bound to this key and cannot sign for any other.
-            /// - Parameter msg32: The message to be signed; `nil` if not yet known. Any length is
-            ///   accepted — the bytes are reduced to the 32-byte `msg32` value per SEC1 §4.1.3
-            ///   (leftmost 32 bytes for longer inputs, integer value for shorter).
-            ///   Providing it binds the nonce to the message, increasing misuse-resistance.
+            /// - Parameter msg32: The message to be signed, or `nil` if not yet known;
+            ///   must be exactly 32 bytes when provided — `secp256k1_musig_nonce_gen`
+            ///   reads a fixed `msg32`, so hash arbitrary-length application messages
+            ///   to 32 bytes first (variable-length BIP-327 messages are unsupported
+            ///   by libsecp256k1). Providing it binds the nonce to the message,
+            ///   increasing misuse-resistance.
             /// - Parameter extraInput32: Optional 32 bytes of additional entropy (e.g., current timestamp) passed to `secp256k1_musig_nonce_gen`.
             /// - Returns: A `~Copyable` ``NonceResult`` containing the public nonce (to share) and secret nonce (to consume when signing).
-            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `extraInput32` is
-            ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError``
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `msg32` or
+            ///   `extraInput32` is present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError``
             ///   if `secretKey` is provided but does not match `publicKey`. An upstream
             ///   `secp256k1_musig_nonce_gen` failure is unreachable on the
             ///   validated inputs and reports through
@@ -159,7 +161,7 @@ import libsecp256k1
             public static func generate(
                 secretKey: P256K.Schnorr.PrivateKey?,
                 publicKey: P256K.Schnorr.PublicKey,
-                msg32: [UInt8]?,
+                msg32: (any ContiguousBytes)?,
                 extraInput32: [UInt8]? = nil
             ) throws -> NonceResult {
                 try generate(
@@ -183,23 +185,28 @@ import libsecp256k1
             /// - Parameter sessionSecretRand: Secret, uniformly random session input consumed by this call — see ``SessionSecretRand``.
             /// - Parameter secretKey: The signer's private key; providing it increases misuse-resistance. Must match `publicKey` when provided.
             /// - Parameter publicKey: The signer's public key; the secret nonce is bound to this key.
-            /// - Parameter msg32: The message to sign; `nil` if not yet known. Any length is
-            ///   accepted — the bytes are reduced to the 32-byte `msg32` value per SEC1 §4.1.3
-            ///   (leftmost 32 bytes for longer inputs, integer value for shorter).
-            ///   Providing it binds the nonce to the message, increasing misuse-resistance.
+            /// - Parameter msg32: The message to sign, or `nil` if not yet known; must be
+            ///   exactly 32 bytes when provided — `secp256k1_musig_nonce_gen` reads a
+            ///   fixed `msg32`, so hash arbitrary-length application messages to 32
+            ///   bytes first (variable-length BIP-327 messages are unsupported by
+            ///   libsecp256k1). Providing it binds the nonce to the message,
+            ///   increasing misuse-resistance.
             /// - Parameter extraInput32: Optional 32 bytes of additional entropy passed to `secp256k1_musig_nonce_gen`.
             /// - Returns: A `~Copyable` ``NonceResult`` with the public nonce (to share) and secret nonce (to consume).
-            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `extraInput32` is
-            ///   present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError``
+            /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `msg32` or
+            ///   `extraInput32` is present but not exactly 32 bytes; ``secp256k1Error/underlyingCryptoError``
             ///   if `secretKey` is provided but does not match `publicKey`. An upstream
             ///   `secp256k1_musig_nonce_gen` failure is unreachable on the
             ///   validated inputs and reports through
             ///   ``P256K/setInvariantViolationHandler(_:)`` instead.
+            ///   `sessionSecretRand` is consumed and zeroed on every exit including a
+            ///   throw — a rejected `msg32`/`extraInput32` requires fresh session
+            ///   randomness.
             public static func generate(
                 sessionSecretRand: consuming SessionSecretRand,
                 secretKey: P256K.Schnorr.PrivateKey?,
                 publicKey: P256K.Schnorr.PublicKey,
-                msg32: [UInt8]?,
+                msg32: (any ContiguousBytes)?,
                 extraInput32: [UInt8]?
             ) throws -> NonceResult {
                 let context = P256K.Context.rawRepresentation
@@ -210,7 +217,10 @@ import libsecp256k1
                 var secnonce = SecureBytes(bytes: [UInt8](repeating: 0, count: MemoryLayout<secp256k1_musig_secnonce>.size))
                 var pubnonce = secp256k1_musig_pubnonce()
                 var pubkey = publicKey.baseKey.rawRepresentation
-                let msg32Bytes = msg32?.msg32Bytes
+                // `secp256k1_musig_nonce_gen` reads a fixed `msg32` — reject any
+                // other length rather than silently binding the nonce to the
+                // wrong message.
+                let msg32Bytes: [UInt8]? = try msg32.map { try $0.exactMsg32Bytes }
 
                 if let extraInput32, extraInput32.count != P256K.ByteLength.dimension {
                     throw secp256k1Error.incorrectParameterSize

@@ -30,12 +30,12 @@ P256K uses Swift's `~Copyable` (non-copyable) type for ``P256K/Schnorr/SecureNon
 let nonce = try P256K.MuSig.Nonce.generate(
     secretKey: privateKey,
     publicKey: privateKey.publicKey,
-    msg32: messageBytes
+    msg32: messageBytes  // exactly 32 bytes — hash longer messages first
 )
 
 // The secnonce is consumed here -- it cannot be reused
 let partial = try privateKey.partialSignature(
-    for: digest,
+    for: messageBytes,  // the same 32-byte message bound into the session
     pubnonce: nonce.pubnonce,
     secureNonce: nonce.secnonce,  // consumed, cannot use again
     publicNonceAggregate: aggregateNonce,

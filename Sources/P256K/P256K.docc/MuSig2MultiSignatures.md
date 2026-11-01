@@ -48,6 +48,8 @@ let aliceNonce = try P256K.MuSig.Nonce.generate(
 )
 ```
 
+The message input must be exactly 32 bytes — a hash digest here — or `nil` when the message isn't known yet: libsecp256k1 binds a fixed `msg32` at both nonce generation and signing, so callers hash longer application messages to 32 bytes first (variable-length BIP-327 messages are unsupported by libsecp256k1). The same 32-byte value is passed to `partialSignature(for:)`.
+
 > Warning: A `SecureNonce` is `~Copyable` by design. Reusing one across two signing sessions **leaks the long-term private key**. The type system surfaces accidental reuse as a compile-time error.
 
 ### Round 1 (continued): Aggregating Pubnonces

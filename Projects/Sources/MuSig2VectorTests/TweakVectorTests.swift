@@ -33,7 +33,7 @@ struct TweakVectorTests {
     func tweakChainingProducesExpectedSignatures() throws {
         let specSecnonce = try vectors.secnonce.bytes
         let secretKey = try P256K.Schnorr.PrivateKey(dataRepresentation: vectors.sk.bytes)
-        let digest = try SHA256Digest(vectors.msg.bytes)
+        let message = try vectors.msg.bytes
         let aggregateNonce = try P256K.MuSig.Nonce(dataRepresentation: vectors.aggnonce.bytes)
 
         for testCase in vectors.valid_test_cases {
@@ -84,7 +84,7 @@ struct TweakVectorTests {
             secnonceBytes[68..<132] = parsedPublicKey[...]
 
             let partialSignature = try secretKey.partialSignature(
-                for: digest,
+                for: message,
                 pubnonce: pubnonce,
                 secureNonce: P256K.Schnorr.SecureNonce(SecureBytes(bytes: secnonceBytes), publicKey: signerPublicKey),
                 publicNonceAggregate: aggregateNonce,

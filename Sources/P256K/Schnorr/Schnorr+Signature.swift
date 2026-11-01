@@ -89,9 +89,10 @@ import libsecp256k1
         ///
         /// > Note: The digest's raw bytes are passed to `secp256k1_schnorrsig_sign_custom` **at their
         /// > natural length** as the message — BIP-340 (as amended) and the upstream custom signing
-        /// > API both accept arbitrary-length messages. This differs from the ECDSA, Recovery, and
-        /// > MuSig `Digest` overloads, which reduce the digest to a 32-byte `msg32` per SEC1 §4.1.3
-        /// > because their upstream entry points consume exactly 32 bytes.
+        /// > API both accept arbitrary-length messages. This differs from the ECDSA and Recovery
+        /// > `Digest` overloads, which reduce the digest to a 32-byte `msg32` per SEC1 §4.1.3, and
+        /// > from MuSig's `partialSignature`, which requires exactly 32 bytes — those upstream
+        /// > entry points consume exactly 32 bytes.
         ///
         /// - Parameter digest: The pre-computed message digest to sign; signed at its natural byte length.
         /// - Returns: A 64-byte ``SchnorrSignature``.
