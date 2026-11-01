@@ -42,7 +42,9 @@ import libsecp256k1
         /// The upstream `secp256k1_musig.h` mandates a strict protocol order. Deviating from
         /// this order may produce invalid or insecure signatures:
         ///
-        /// 1. **Key aggregation**: Call ``aggregate(_:)`` once with all signers' public keys.
+        /// 1. **Key aggregation**: Call ``aggregate(_:)`` once with all signers' public keys
+        ///    in the protocol's agreed order — the aggregate depends on that order, so use
+        ///    ``sortedPublicKeys(_:)`` when no protocol-defined ordering applies.
         /// 2. **Nonce generation**: Each signer calls ``Nonce/generate(secretKey:publicKey:msg32:extraInput32:)``,
         ///    which supplies a fresh ``SessionSecretRand`` internally. The
         ///    ``Nonce/generate(sessionSecretRand:secretKey:publicKey:msg32:extraInput32:)`` overload
@@ -72,6 +74,7 @@ import libsecp256k1
         /// - ``PublicKey``
         /// - ``XonlyKey``
         /// - ``aggregate(_:)``
+        /// - ``sortedPublicKeys(_:)``
         /// - ``aggregateSignatures(_:)``
         ///
         /// ### Session Types

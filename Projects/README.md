@@ -108,6 +108,7 @@ Exit code 0 means the upstream suite passed.
 
 | Suite | Vectors | Description |
 |-------|---------|-------------|
+| Key Sort | 1 fixture (6 keys) | Canonical pubkey ordering |
 | Key Aggregation | 4 valid + 2 error | Multi-party key aggregation |
 | Tweaking | 5 | Plain and x-only tweaks |
 | Nonce Generation | 4 | Deterministic nonce derivation |
@@ -124,8 +125,6 @@ Exit code 0 means the upstream suite passed.
 | **Wycheproof ECDH** | `WrongCurve` flag skipped | Tests non-secp256k1 curves (P-256, P-384) — out of scope |
 | **MuSig2 Secnonce** | BIP-0327 vectors are 97 bytes; library uses 132 bytes | Verified field-wise via upstream's own mapping (`k1‖k2` at struct offset 4, pubkey at offset 68); raw byte equality is not applicable |
 | **MuSig2 Nonce Gen** | Exact `expected_pubnonce`/`expected_secnonce` verification covers 1 of 4 cases | `aggpk`→`keyagg_cache` input not exposed (1 case — vendored C suite covers it); 0- and 38-byte messages not expressible in 32-byte `msg32` (2 cases — upstream skips them too) |
-| **MuSig2 Tweaking** | Cannot verify `expected` partial signatures | Library sorts keys internally; exact order differs from vectors |
-| **MuSig2 Key Agg** | Cannot verify `expected` aggregated key | Library sorts keys internally; result differs from vector order |
 | **NS-002** | Compile-time guarantee only | `SecureNonce` uses `~Copyable` to prevent reuse; no runtime test possible |
 | **SM-003** | Skipped | Signature normalization API not exposed in Swift wrapper |
 

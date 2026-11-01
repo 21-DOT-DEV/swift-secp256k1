@@ -611,6 +611,97 @@ struct MuSigTestSuite {
     }
 }
 
+/// Key-order semantics of `P256K.MuSig.aggregate(_:)` and the canonical
+/// `P256K.MuSig.sortedPublicKeys(_:)` helper.
+struct MuSigKeyOrderTestSuite {
+    /// BIP-327 assigns each key's aggregation coefficient by position — the
+    /// second *distinct* key takes coefficient `1` — so `aggregate(_:)`
+    /// preserves caller order: `[alice, bob]` and `[bob, alice]` produce
+    /// different aggregates. Order-independence is opt-in via
+    /// ``P256K/MuSig/sortedPublicKeys(_:)``.
+    @Test("MuSig key aggregation preserves the caller's key order")
+    func musigAggregatePreservesKeyOrder() throws {
+        let alicePrivateKey = try P256K.Schnorr.PrivateKey()
+        let bobPrivateKey = try P256K.Schnorr.PrivateKey()
+
+        let forward = try P256K.MuSig.aggregate([alicePrivateKey.publicKey, bobPrivateKey.publicKey])
+        let reversed = try P256K.MuSig.aggregate([bobPrivateKey.publicKey, alicePrivateKey.publicKey])
+
+        #expect(
+            forward.xonly.bytes != reversed.xonly.bytes,
+            "Reversing the key order must produce a different aggregate"
+        )
+    }
+
+    /// Sorting first restores the canonical ordering: every assembly order of
+    /// the same key multiset aggregates identically, and an empty input sorts
+    /// to an empty output.
+    @Test("Aggregating sortedPublicKeys output is order-invariant")
+    func musigSortedPublicKeysRestoreOrderIndependence() throws {
+        let keys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
+        ].map(\.publicKey)
+
+        let canonical = try P256K.MuSig.aggregate(P256K.MuSig.sortedPublicKeys(keys))
+        let permuted = try P256K.MuSig.aggregate(P256K.MuSig.sortedPublicKeys(Array(keys.reversed())))
+
+        #expect(
+            canonical.xonly.bytes == permuted.xonly.bytes,
+            "Sorting first must give every input ordering the same aggregate"
+        )
+        #expect(P256K.MuSig.sortedPublicKeys([]).isEmpty, "Empty input must sort to empty output")
+    }
+
+    /// Sorting compares each key's parsed *point* — not its stored wire form —
+    /// against lexicographic compressed serialization order, so a point carried
+    /// in both `.compressed` and `.uncompressed` form sorts as an
+    /// interchangeable duplicate pair and each returned object keeps the format
+    /// it arrived with.
+    @Test("sortedPublicKeys orders by point and preserves each key's format")
+    func musigSortedPublicKeysMixedFormats() throws {
+        // `Schnorr.PrivateKey.publicKey` derives its stored form as
+        // uncompressed; `PublicKey(xonlyKey:)` rebuilds the same point in
+        // compressed form — giving a point-equal pair in different formats.
+        let secretKey = try P256K.Schnorr.PrivateKey()
+        let uncompressed = secretKey.publicKey
+        let compressed = P256K.Schnorr.PublicKey(xonlyKey: secretKey.xonly)
+        let other = try P256K.Schnorr.PublicKey(xonlyKey: (P256K.Schnorr.PrivateKey()).xonly)
+
+        let sorted = P256K.MuSig.sortedPublicKeys([uncompressed, other, compressed])
+
+        // The same point twice plus one other key — nothing dropped.
+        #expect(sorted.count == 3)
+
+        // Canonical comparison bytes independent of stored format: the
+        // 0x02/0x03 prefix byte followed by the 32-byte X coordinate reproduces
+        // each key's compressed serialization, which is exactly what
+        // `secp256k1_ec_pubkey_sort` memcmps.
+        func canonicalBytes(_ publicKey: P256K.Schnorr.PublicKey) -> [UInt8] {
+            [publicKey.xonly.parity ? 0x03 : 0x02] + publicKey.xonly.bytes
+        }
+        let expected = [uncompressed, other, compressed]
+            .sorted { canonicalBytes($0).lexicographicallyPrecedes(canonicalBytes($1)) }
+
+        // Comparing canonical bytes rather than object identity keeps the
+        // assertion correct even though the equal-point pair's relative order
+        // is unspecified.
+        #expect(sorted.map(canonicalBytes) == expected.map(canonicalBytes))
+
+        // Each returned object kept the format it arrived with — sorting did
+        // not normalize the uncompressed key into compressed form.
+        #expect(
+            sorted.contains { $0.format == .uncompressed },
+            "The uncompressed-form key must keep its stored format"
+        )
+        #expect(
+            sorted.filter { $0.format == .compressed }.count == 2,
+            "The compressed-form keys must keep their stored format"
+        )
+    }
+}
+
 /// A 16-byte digest stub used to verify `partialSignature` normalizes non-32-byte
 /// digests before the bytes reach `secp256k1_musig_nonce_process`.
 private struct ShortDigest: Digest {

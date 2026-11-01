@@ -23,7 +23,7 @@ struct KeyAggVectorTests {
         self.vectors = try loader.load(from: "key_agg_vectors")
     }
 
-    @Test("Valid key aggregation succeeds and is deterministic")
+    @Test("Valid key aggregation matches BIP-0327 expected aggregates")
     func validKeyAggregation() throws {
         for testCase in vectors.valid_test_cases {
             // Extract public keys for this test case
@@ -31,9 +31,17 @@ struct KeyAggVectorTests {
                 let pubkeyBytes = try vectors.pubkeys[index].bytes
                 return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
             }
+            let expected = try testCase.expected.bytes
 
             // Aggregate keys
             let aggregatedKey = try P256K.MuSig.aggregate(pubkeys)
+
+            // The aggregate's x-only form must equal the vector's expected key —
+            // only an order-preserving BIP-327 KeyAgg reproduces these values.
+            #expect(
+                aggregatedKey.xonly.bytes == expected,
+                "Aggregate x-only key must equal expected for indices \(testCase.key_indices)"
+            )
 
             // Run aggregation again to verify determinism
             let aggregatedKey2 = try P256K.MuSig.aggregate(pubkeys)
@@ -43,36 +51,26 @@ struct KeyAggVectorTests {
                 aggregatedKey.xonly.bytes == aggregatedKey2.xonly.bytes,
                 "Key aggregation should be deterministic for indices \(testCase.key_indices)"
             )
-
-            // Verify the aggregated key is 32 bytes (x-only)
-            #expect(
-                aggregatedKey.xonly.bytes.count == 32,
-                "Aggregated key should be 32-byte x-only"
-            )
         }
     }
 
-    @Test("Key aggregation produces consistent results regardless of input order")
-    func keyAggregationOrderIndependent() throws {
-        // Keys [0, 1, 2] and [2, 1, 0] should produce same result (library sorts internally)
-        let indices1 = [0, 1, 2]
-        let indices2 = [2, 1, 0]
-
-        let pubkeys1 = try indices1.map { index -> P256K.Schnorr.PublicKey in
-            let pubkeyBytes = try vectors.pubkeys[index].bytes
-            return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
-        }
-        let pubkeys2 = try indices2.map { index -> P256K.Schnorr.PublicKey in
+    @Test("Key aggregation preserves the caller's key order")
+    func keyAggregationPreservesOrder() throws {
+        // BIP-327 assigns coefficient 1 to the second *distinct* key, so
+        // [0, 1, 2] and [2, 1, 0] are different aggregates — the two valid cases
+        // carrying those index lists assert their distinct `expected` values in
+        // `validKeyAggregation` above.
+        let pubkeys = try [0, 1, 2].map { index -> P256K.Schnorr.PublicKey in
             let pubkeyBytes = try vectors.pubkeys[index].bytes
             return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
         }
 
-        let agg1 = try P256K.MuSig.aggregate(pubkeys1)
-        let agg2 = try P256K.MuSig.aggregate(pubkeys2)
+        let forward = try P256K.MuSig.aggregate(pubkeys)
+        let reversed = try P256K.MuSig.aggregate(Array(pubkeys.reversed()))
 
         #expect(
-            agg1.xonly.bytes == agg2.xonly.bytes,
-            "Key aggregation should be order-independent"
+            forward.xonly.bytes != reversed.xonly.bytes,
+            "Reversing the key order must produce a different aggregate"
         )
     }
 
