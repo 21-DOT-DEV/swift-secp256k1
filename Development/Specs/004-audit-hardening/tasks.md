@@ -230,7 +230,7 @@ if the total nears ~400 authored lines.
       the inverted assertion) · **breaking** — unordered call sites
       see their aggregate key change; the changelog names
       `sortedPublicKeys(_:)` as the migration
-- [ ] T027 MuSig signing-path message inputs require exactly 32 bytes —
+- [x] T027 MuSig signing-path message inputs require exactly 32 bytes —
       libsecp256k1's MuSig API takes a fixed `msg32` at `nonce_gen`,
       `nonce_gen_counter`, and `nonce_process` (`partial_sign` takes no
       message — the session binds it at `nonce_process`, which is where
@@ -241,8 +241,10 @@ if the total nears ~400 authored lines.
       `Digest.msg32Bytes` (`Utility.swift:203`), the SEC1 §4.1.3
       reduction that left-pads short inputs and truncates long ones — a
       38-byte message silently signs its first 32 bytes (audit finding
-      B-3). Both `Nonce.generate` overloads (`msg32:`) and
-      `partialSignature(for digest:…)` gate at exactly 32 bytes or
+      B-3). Both `Nonce.generate` overloads (`msg32:`, retyped to
+      `(any ContiguousBytes)?` — `(some ContiguousBytes)?` cannot
+      accept `nil`) and `partialSignature(for message:…)` — retyped
+      from `D: Digest` to `some ContiguousBytes` — gate at exactly 32 bytes or
       `secp256k1Error.incorrectParameterSize` — upstream cannot sign
       any other length, and reducing would silently commit to the wrong
       message; the error and the DocC comments say "unsupported by
@@ -253,7 +255,7 @@ if the total nears ~400 authored lines.
       arbitrary-length `(msg, msglen)` — matching its sibling
       `Schnorr.XonlyKey.isValidSignature(_:for:)` (which already verifies
       "at natural length… no msg32 reduction",
-      `Schnorr+Signature.swift:205-207`), its own arbitrary-length
+      `Schnorr+Signature.swift:307-309`), its own arbitrary-length
       `isValid(_:for:)`, and every upstream/CryptoKit/btcd convention
       (verify returns 0/1 or `Bool`, never throws — a wrong-length
       input fails closed rather than reducing). `msg32Bytes` itself is

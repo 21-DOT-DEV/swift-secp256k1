@@ -257,6 +257,31 @@ struct MuSigTestSuite {
             )
         }
 
+        // A present-but-non-32-byte msg32 must throw too — `secp256k1_musig_nonce_gen`
+        // reads a fixed 32 bytes; reducing would silently bind the nonce to the
+        // wrong message. `nil` remains legal (message not yet known).
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try P256K.MuSig.Nonce.generate(
+                secretKey: privateKey,
+                publicKey: privateKey.publicKey,
+                msg32: [UInt8](repeating: 0xBB, count: 16)
+            )
+        }
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try P256K.MuSig.Nonce.generate(
+                secretKey: privateKey,
+                publicKey: privateKey.publicKey,
+                msg32: [UInt8](repeating: 0xBB, count: 38)
+            )
+        }
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try P256K.MuSig.Nonce.generate(
+                secretKey: privateKey,
+                publicKey: privateKey.publicKey,
+                msg32: [UInt8]()
+            )
+        }
+
         // SessionSecretRand enforces the exact 32-byte session_secrand32 contract at construction.
         #expect(throws: secp256k1Error.incorrectParameterSize) {
             _ = try P256K.MuSig.SessionSecretRand(bytes: [UInt8](repeating: 0x01, count: 16))
@@ -371,40 +396,81 @@ struct MuSigTestSuite {
         }
     }
 
-    @Test("MuSig partial signing normalizes non-32-byte digests")
-    func musigPartialSignatureNormalizesShortDigest() throws {
-        let privateKeys = try [
-            P256K.Schnorr.PrivateKey(),
-            P256K.Schnorr.PrivateKey()
-        ]
-        let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
-        let shortDigest: ShortDigest = .init([UInt8](repeating: 0x01, count: 16))
+    /// `secp256k1_musig_nonce_process` binds a fixed 32-byte `msg32` into the
+    /// session — the SEC1 digest reduction `partialSignature` applied previously
+    /// signed the first 32 bytes of a longer message (or the left-padded value
+    /// of a shorter one) without telling the caller. The input is now
+    /// `some ContiguousBytes` and requires exactly 32 bytes.
+    @Test("MuSig partial signing requires a 32-byte message")
+    func musigPartialSignatureRejectsNon32ByteMessages() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
 
-        // secp256k1_musig_nonce_process reads exactly 32 bytes of msg32 — the
-        // digest is reduced to its SEC1 integer value instead of throwing.
-        // The ~Copyable NonceResult is created inside the flow so nothing
-        // noncopyable is captured.
-        let nonce = try P256K.MuSig.Nonce.generate(
-            secretKey: privateKeys[0],
-            publicKey: privateKeys[0].publicKey,
-            msg32: nil
-        )
-        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
-        let partialSignature = try privateKeys[0].partialSignature(
-            for: shortDigest,
-            pubnonce: nonce.pubnonce,
-            secureNonce: nonce.secnonce,
-            publicNonceAggregate: aggregateNonce,
-            publicKeyAggregate: aggregate
-        )
+        // Each `partialSignature` call consumes its `secureNonce`, so every
+        // probe signs under a fresh nonce bound to the signer's key.
+        func partialSignature(for message: some ContiguousBytes) throws -> (P256K.Schnorr.PartialSignature, P256K.Schnorr.Nonce) {
+            let nonce = try P256K.MuSig.Nonce.generate(
+                secretKey: privateKey,
+                publicKey: privateKey.publicKey,
+                msg32: nil
+            )
+            let pubnonce = nonce.pubnonce
+            let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [pubnonce])
+            return try (privateKey.partialSignature(
+                for: message,
+                pubnonce: pubnonce,
+                secureNonce: nonce.secnonce,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            ), pubnonce)
+        }
 
-        // The same normalized digest verifies against the partial signature.
-        #expect(aggregate.isValidSignature(
-            partialSignature,
-            publicKey: privateKeys[0].publicKey,
-            nonce: nonce.pubnonce,
-            for: shortDigest
-        ))
+        // 16 bytes, empty, and 38 bytes all throw — a `Digest` conformer cannot
+        // bypass the gate either.
+        for message in [[UInt8](repeating: 0x01, count: 16), [], [UInt8](repeating: 0xAB, count: 38)] {
+            do {
+                _ = try partialSignature(for: message)
+                Issue.record("partialSignature must reject a \(message.count)-byte message")
+            } catch {
+                #expect(error as? secp256k1Error == .incorrectParameterSize)
+            }
+        }
+
+        do {
+            _ = try partialSignature(for: TestDigest([UInt8](repeating: 0x01, count: 16)))
+            Issue.record("partialSignature must reject a non-32-byte digest")
+        } catch {
+            #expect(error as? secp256k1Error == .incorrectParameterSize)
+        }
+
+        // Exactly 32 bytes — raw bytes, not a `Digest` — signs; aggregating
+        // and verifying at natural length proves the session bound them (the
+        // partial verifier's `for:` input is not consulted — see T028).
+        let messageBytes = Array(SHA256.hash(data: Data("musig msg32".utf8)))
+        let (partial, _) = try partialSignature(for: messageBytes)
+        let signature = try P256K.MuSig.aggregateSignatures([partial])
+        #expect(aggregate.xonly.isValid(signature, for: messageBytes))
+    }
+
+    /// The aggregate digest verifier hands the digest's bytes to
+    /// `secp256k1_schnorrsig_verify` at their natural length — a >32-byte input
+    /// verifies instead of truncating to its leftmost 32 bytes.
+    @Test("MuSig aggregate signature verifies the digest at natural length")
+    func musigVerifyNaturalLengthDigest() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let message = [UInt8](repeating: 0xCD, count: 38)
+
+        // The package's Schnorr path signs arbitrary-length messages — a
+        // reducing verifier would check only the leftmost 32 bytes and fail.
+        let signature = try privateKey.signature(customMessage: message)
+        let xonly = try P256K.MuSig.XonlyKey(dataRepresentation: privateKey.xonly.bytes)
+        let aggregateSignature = try P256K.MuSig.AggregateSignature(dataRepresentation: signature.dataRepresentation)
+
+        #expect(xonly.isValidSignature(aggregateSignature, for: TestDigest(message)))
+
+        // The message's first 32 bytes — what a reducing verifier would have
+        // checked — must NOT verify: all 38 bytes are committed.
+        #expect(!xonly.isValidSignature(aggregateSignature, for: TestDigest(Array(message.prefix(32)))))
     }
 
     @Test("MuSig partial signature rejects malformed wire input")
@@ -702,11 +768,13 @@ struct MuSigKeyOrderTestSuite {
     }
 }
 
-/// A 16-byte digest stub used to verify `partialSignature` normalizes non-32-byte
-/// digests before the bytes reach `secp256k1_musig_nonce_process`.
-private struct ShortDigest: Digest {
+/// A `Digest` conformer of caller-supplied byte content — feeds non-32-byte
+/// digest-shaped inputs through `Digest`-typed parameters. `byteCount` is a
+/// protocol requirement these paths never consult; `withUnsafeBytes` supplies
+/// the real count.
+private struct TestDigest: Digest {
     static var byteCount: Int {
-        16
+        0
     }
 
     let bytes: [UInt8]
@@ -716,7 +784,7 @@ private struct ShortDigest: Digest {
     }
 
     var description: String {
-        "ShortDigest: \(bytes.map { String(format: "%02x", $0) }.joined())"
+        "TestDigest: \(bytes.map { String(format: "%02x", $0) }.joined())"
     }
 
     func makeIterator() -> IndexingIterator<[UInt8]> {

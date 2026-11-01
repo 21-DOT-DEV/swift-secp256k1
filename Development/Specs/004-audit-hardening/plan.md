@@ -580,13 +580,15 @@ messages as an optional feature — its official `sign_verify_vectors.json`
 carries 32-byte, empty, and 38-byte messages — while libsecp256k1's MuSig
 API takes a fixed `msg32` at `nonce_gen`, `nonce_gen_counter`, and
 `nonce_process` (`partial_sign` takes no message; the session binds it at
-`nonce_process`, which is where `partialSignature`'s digest lands).
+`nonce_process`, which is where `partialSignature`'s message lands).
 Every wrapper path routes the input through `Digest.msg32Bytes` — the
 SEC1 §4.1.3 reduction that left-pads short inputs and truncates long
 ones — so a 38-byte message silently signs its first 32 bytes and a
 16-byte input silently pads. The split fix matches each side's actual
 contract: the *signing* inputs (both `Nonce.generate` overloads'
-`msg32:` and `partialSignature(for digest:…)`) gate at exactly 32 bytes
+`msg32:` — retyped to `(any ContiguousBytes)?`, the existential being the
+only protocol-typed spelling that keeps `nil` expressible — and
+`partialSignature(for message:…)`) gate at exactly 32 bytes
 or `incorrectParameterSize`, documented "unsupported by libsecp256k1"
 rather than "invalid" — upstream cannot produce that signature, and
 reducing would silently commit to the wrong message. The *verify* side
@@ -598,7 +600,7 @@ variable-length-capable implementation could legitimately produce, and
 rejecting the input (throw or `false`) would reject a valid signature.
 This matches the in-package sibling `Schnorr.XonlyKey.isValidSignature`
 ("verified… at natural length… no msg32 reduction",
-`Schnorr+Signature.swift:205-207`), upstream's 0/1 verifiers,
+`Schnorr+Signature.swift:307-309`), upstream's 0/1 verifiers,
 CryptoKit's Bool-only `isValidSignature`, and btcd's collapse of an
 internal length error to `false`. `msg32Bytes` stays: ECDSA's
 `signature(for:)` reduction is spec-correct SEC1 digest-to-integer

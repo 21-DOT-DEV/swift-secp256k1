@@ -215,6 +215,27 @@ extension Sequence where Element == UInt8 {
     }
 }
 
+@available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+extension ContiguousBytes {
+    /// The exact 32 bytes libsecp256k1's fixed `msg32` parameters read —
+    /// `secp256k1_musig_nonce_gen` and `secp256k1_musig_nonce_process` take a
+    /// fixed-width message input, so any other length throws rather than
+    /// silently committing the nonce or session to the wrong message —
+    /// unlike `msg32Bytes`, which SEC1-normalizes instead.
+    ///
+    /// - Throws: ``secp256k1Error/incorrectParameterSize`` if the byte count is not exactly 32.
+    var exactMsg32Bytes: [UInt8] {
+        get throws {
+            try withUnsafeBytes { buffer in
+                guard buffer.count == P256K.ByteLength.dimension else {
+                    throw secp256k1Error.incorrectParameterSize
+                }
+                return [UInt8](buffer)
+            }
+        }
+    }
+}
+
 public extension Data {
     /// Copies up to `MemoryLayout<T>.size` bytes from this `Data` into the raw memory of
     /// `value`, used to populate opaque C structs such as `secp256k1_pubkey` and
