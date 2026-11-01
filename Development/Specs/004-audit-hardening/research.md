@@ -67,8 +67,41 @@ findings; its A-1 belongs to the other codebase and stays out of this wave.
   variable-length messages as an optional feature — so a 38-byte message
   silently signs its first 32 bytes.
 - **B-4 — `MuSig.PublicKey.isValidSignature(_:publicKey:nonce:for digest:)`
-  ignores `digest`.** The doc comment states it verbatim: "not consulted —
-  the signed message is bound inside `PartialSignature/session`".
+  ignores `digest` and trusts a signer-supplied session.** The doc comment
+  states it verbatim: "not consulted — the signed message is bound inside
+  `PartialSignature/session`". The deeper defect sits under the
+  unconsulted parameter: the method verifies against whatever session blob
+  the `PartialSignature` carries, and `init(dataRepresentation:session:)`
+  admits any well-formed blob — so a signature produced over a *different*
+  message reported valid for any declared digest. Upstream's
+  `partial_sig_verify` contract prescribes the opposite: the caller must
+  ensure the cache/pubkey/pubnonce are identical to what fed
+  `nonce_process`, "to avoid accidentally verifying a signature from a
+  different or non-existing signing session" — a contract only a locally
+  derived session can satisfy. Upstream's own verifier flow derives it
+  locally: `doc/musig.md` has a non-signing verifier "use the above
+  instructions except that the verifier skips steps 1, 4 and 7" — key
+  generation, nonce generation, and partial signing; session processing
+  stays — every one of the ~10 `partial_sig_verify` calls in upstream's
+  test suite runs against a session the test built itself via
+  `nonce_process`, `examples/musig.c` does the same, and the vendored
+  vector harness drives `nonce_process(aggnonce, vector->msgs[i],
+  keyagg_cache)` before `partial_sig_verify`. BIP-327's `PartialSigVerify`
+  takes `m` as a first-class input and derives `session_ctx` from the
+  verifier's own pubnonces/pubkeys/tweaks; rust-secp256k1 encodes the same
+  shape as `Session::new(key_agg_cache, agg_nonce, msg)` with
+  `partial_verify` as a method on it. `secp256k1_musig_nonce_process` is
+  deterministic over (aggregate nonce, `msg32`, key-aggregation cache) —
+  no randomness, no state — so the verifier reconstructs the session from
+  declared inputs, requires the carried blob to byte-match it (honest
+  signatures always match; a mismatched pair is the earliest attributable
+  failure), then verifies. The embedded-blob concept exists only in this
+  wrapper (rust's `PartialSignature` is 32 bytes; upstream's is wire-only),
+  which is why no reference implementation answers the compare-vs-ignore
+  question — it is a wrapper-level policy, resolved for byte-match because
+  the compound type's other consumer (`aggregateSignatures`) already
+  enforces all-equal sessions and a valid-signature-plus-foreign-blob
+  pair otherwise fails later, unattributed.
 - **B-5 — `Signature.Recoverable.normalize` only converts format, no
   low-S normalization.** It calls
   `secp256k1_ecdsa_recoverable_signature_convert`; the property's own doc
@@ -218,6 +251,24 @@ findings; its A-1 belongs to the other codebase and stays out of this wave.
   checks at natural length — an asymmetry that is principled, not a
   half-gate (a >32-byte digest can never match a 32-byte-produced
   signature, so verify fails closed with nothing shortened).
+- **The partial verifier is the one place the two error-shape conventions
+  meet.** Its `for:` input is not a verification subject (where
+  `Bool`/`false` is the convention — every CryptoKit `isValidSignature`,
+  upstream's 0/1 returns, btcd's `ErrInvalidHashLen` collapse); it feeds
+  `secp256k1_musig_nonce_process`, a session-construction input whose
+  fixed `msg32` shape upstream enforces by `ARG_CHECK` abort where
+  checkable, whose shape rust-secp256k1 makes unrepresentable
+  (`msg: &[u8; 32]`), and whose identical constraint the wrapper already
+  throws `incorrectParameterSize` on everywhere else (`Nonce.generate`,
+  `partialSignature` — `exactMsg32Bytes`). A wrong-length message is
+  caller misuse, not a signature-validity question: `false` would
+  misreport "your input is the wrong shape" as "the signature is
+  invalid" — the same silent-misdiagnosis class as B-3 — while `throws`
+  reports it truthfully and `(try? …) ?? false` recovers `Bool`
+  semantics for callers who want them (the reverse collapse is
+  impossible). The result is the
+  package's only `throws -> Bool` verifier — it is also the only one
+  that constructs session state internally.
 
 ## C. Versioning evidence
 
@@ -337,6 +388,15 @@ findings; its A-1 belongs to the other codebase and stays out of this wave.
   38-byte cases); the fixed `msg32` is libsecp256k1's implementation
   limit. The spec's error wording says "unsupported by libsecp256k1",
   not "invalid".
+- "The B-4 remedy is deleting the unconsulted `for digest:`" — **wrong**:
+  removal makes the API honest about a weak check (verification against
+  whatever session the signature carries) while upstream's own verifier
+  flow, BIP-327's `PartialSigVerify`, and rust-secp256k1's `Session` all
+  derive the session locally from the message. The message becomes a
+  consulted `some ContiguousBytes` input alongside a new
+  `publicNonceAggregate:` requirement; the carried session blob must
+  byte-match the reconstruction; a non-32-byte message throws
+  `incorrectParameterSize`. Closed into plan §3.9 and T028.
 - "The digest verifier should throw on non-32-byte input" — **wrong**:
   the finished aggregate signature is a plain BIP-340 signature
   verifiable at any message length via `secp256k1_schnorrsig_verify`;

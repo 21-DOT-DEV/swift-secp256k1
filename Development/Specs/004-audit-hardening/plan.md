@@ -609,11 +609,31 @@ behavior (Go `hashToInt`, OpenSSL `bits2int`, CryptoKit).
 **Honest verifier (B-4).** `MuSig.PublicKey.isValidSignature(_:publicKey:
 nonce:for digest:)` documents `digest` as "not consulted" — the signed
 message is bound inside the session at `secp256k1_musig_nonce_process`
-time. The parameter and the `D: Digest` generic leave the signature; call
-sites break at compile time with an obvious fix. (The alternative —
-threading the message into `PartialSignature` so the parameter could be
-checked — was rejected: BIP-327 binds the message in the session, and
-upstream provides no accessor to compare against.)
+time, and the verifier loads whatever session blob the `PartialSignature`
+carries. A signature therefore verifies for the session the *signer*
+attached — any well-formed blob is admissible through
+`PartialSignature.init(dataRepresentation:session:)` — not the message
+the caller declared: the "signature from a different or non-existing
+signing session" misuse upstream's `partial_sig_verify` contract warns
+about. Deleting the parameter (the first-cut fix) makes the API truthful
+about a weak check; the reference implementations all do more — upstream's
+`doc/musig.md` has the verifier run `nonce_process` itself, its test
+suite and `examples/musig.c` verify against locally derived sessions,
+BIP-327's `PartialSigVerify` takes `m` as a first-class input, and
+rust-secp256k1 builds `Session::new(cache, aggnonce, msg)` — and
+`secp256k1_musig_nonce_process` is deterministic over (aggregate nonce,
+`msg32`, key-aggregation cache), so the wrapper does the same. The
+signature becomes `isValidSignature(_:publicKey:nonce:for message: some
+ContiguousBytes, publicNonceAggregate:) throws -> Bool`: the caller's
+declared message and aggregate nonce rebuild the session, the carried
+session blob must equal it byte-for-byte — a valid signature paired with
+a foreign session fails where the bad contribution can still be
+attributed — and only then does `partial_sig_verify` run. A non-32-byte
+message throws `incorrectParameterSize` like the signing side's other
+`msg32` gates rather than reporting caller misuse as an invalid
+signature (`(try? …) ?? false` recovers Bool semantics for callers who
+want them); the `D: Digest` generic leaves — `Digest` conforms to
+`ContiguousBytes`, so it only narrowed what raw-byte callers could pass.
 
 ```mermaid
 flowchart LR
@@ -621,12 +641,14 @@ flowchart LR
         keys["pubkeys in caller order"] --> sort["internal secp256k1_ec_pubkey_sort"] --> agg["musig_pubkey_agg"]
         msg["message — any length"] --> red["msg32Bytes reduce/pad"] --> proc["nonce_process"]
         dig["verify digest — any length"] --> red
+        pdig["partial verify digest — declared, never consulted"] --> blob["carried session blob<br/>signer-chosen"] --> pver["partial_sig_verify"]
     end
     subgraph after["After — BIP-327 conformant"]
         keys2["pubkeys in caller order"] --> agg2["musig_pubkey_agg<br/>order preserved"]
         keys2 -.->|"opt-in"| helper["sortedPublicKeys(_:)<br/>canonical BIP-327 order"] --> agg2
         msg2["message — exactly 32 bytes<br/>else throw (upstream limit)"] --> proc2["nonce_process"]
         dig2["verify digest — natural length<br/>no gate, no reduction"] --> ver["schnorrsig_verify (msg, msglen)"]
+        pdig2["message + aggnonce + cache<br/>exactly-32 msg32 else throw"] --> proc3["nonce_process<br/>locally rebuilt session"] --> match["carried session blob<br/>must byte-match"] --> pver2["partial_sig_verify"]
     end
 ```
 

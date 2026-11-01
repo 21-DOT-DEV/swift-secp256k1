@@ -102,16 +102,17 @@ import P256K
 let isValid = aggregate.xonly.isValidSignature(finalSignature, for: messageHash)
 ```
 
-You can also verify individual partial signatures before aggregation:
+You can also verify individual partial signatures before aggregation — useful when a failing aggregate needs a culprit. The verifier rebuilds the signing session from the message and aggregate nonce you declare, then checks the signature against it, so a partial produced over a different message or nonce set fails rather than verifying against the session it happened to carry:
 
 ```swift
 import P256K
 
-let isPartialValid = aggregate.isValidSignature(
+let isPartialValid = try aggregate.isValidSignature(
     alicePartial,
     publicKey: alice.publicKey,
     nonce: aliceNonce.pubnonce,
-    for: messageHash
+    for: messageHash,
+    publicNonceAggregate: aggregateNonce
 )
 ```
 
