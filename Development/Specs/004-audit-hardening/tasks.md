@@ -187,7 +187,7 @@ if the total nears ~400 authored lines.
 
 ## Group D — MuSig BIP-327 conformance (PRs 4–7)
 
-- [ ] T026 `MuSig.aggregate(_:)` preserves caller key order, and key
+- [x] T026 `MuSig.aggregate(_:)` preserves caller key order, and key
       sorting becomes an explicit opt-in helper — today the method runs
       `secp256k1_ec_pubkey_sort` inside aggregation
       (`MuSig+Aggregate.swift`), so two different signer orders silently

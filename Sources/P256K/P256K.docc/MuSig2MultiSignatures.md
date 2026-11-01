@@ -28,7 +28,7 @@ let aggregate = try P256K.MuSig.aggregate([
 ])
 ```
 
-Key aggregation is order-independent — the same aggregate is produced regardless of the order in which the inputs are provided.
+Key aggregation preserves the order in which keys are provided — different orderings of the same keys generally produce different aggregates, so all participants must agree on a single ordering convention. When a protocol doesn't define one, ``P256K/MuSig/sortedPublicKeys(_:)`` puts the keys into the canonical lexicographic order (the same ordering descriptor-style schemes such as BIP-390 `musig()` expressions use), so every party reaches the same aggregate however their key list was assembled. Protocols where key position carries meaning — a signer index mapping to a role, say — should pass keys in their protocol-defined order instead.
 
 ### Round 1: Generating Nonces
 

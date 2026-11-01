@@ -19,18 +19,22 @@ import libsecp256k1
     public extension P256K.MuSig {
         /// Aggregates N secp256k1 public keys into a single
         /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki) MuSig2
-        /// aggregate public key via `secp256k1_musig_pubkey_agg`, sorting keys first with
-        /// `secp256k1_ec_pubkey_sort` so the result is order-independent. Upstream
-        /// reference:
+        /// aggregate public key via `secp256k1_musig_pubkey_agg`, preserving the
+        /// order of `pubkeys`. Upstream reference:
         /// [`secp256k1/include/secp256k1_musig.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1_musig.h).
         ///
         /// The returned ``PublicKey`` includes the 197-byte `secp256k1_musig_keyagg_cache`
-        /// needed for signing sessions and Taproot tweaking. Different orderings of the
-        /// same multiset of public keys produce the same aggregate because keys are sorted
-        /// before aggregation.
+        /// needed for signing sessions and Taproot tweaking. **Key order is
+        /// significant**: BIP-327 assigns coefficient `1` to the second *distinct*
+        /// key, so different orderings of the same multiset generally produce
+        /// different aggregate keys. All participants must therefore agree on one
+        /// ordering convention — a protocol may define its own (e.g. a signer
+        /// index), and when it doesn't, ``sortedPublicKeys(_:)`` gives the
+        /// canonical order that makes the aggregate independent of how the key
+        /// list was assembled.
         ///
-        /// - Parameter pubkeys: All signers' ``P256K/Schnorr/PublicKey`` values; must
-        ///   contain at least one key.
+        /// - Parameter pubkeys: All signers' ``P256K/Schnorr/PublicKey`` values,
+        ///   in the protocol's agreed order; must contain at least one key.
         /// - Returns: An aggregate ``PublicKey`` with an embedded key aggregation cache.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `pubkeys` is empty.
         ///   A point-at-infinity aggregate — which upstream declares unreachable and
@@ -49,18 +53,15 @@ import libsecp256k1
             var cache = secp256k1_musig_keyagg_cache()
             var pubBytes = [UInt8](repeating: 0, count: pubKeyLen)
 
-            // Every pubkey was parse-validated at construction, so sorting and
-            // aggregating them cannot legitimately fail. Upstream calls a
-            // point-at-infinity aggregate unreachable ("negligible probability" —
-            // the per-key coefficients are hash-derived) and guards it only with
+            // Every pubkey was parse-validated at construction, so aggregating
+            // them cannot legitimately fail. Upstream calls a point-at-infinity
+            // aggregate unreachable ("negligible probability" — the per-key
+            // coefficients are hash-derived) and guards it only with
             // `VERIFY_CHECK`, which is compiled out in release builds — in that
             // case `pubkey_load`'s `ARG_CHECK` inside `ec_pubkey_serialize` reports
             // through the installed invariant handler before the process ends.
             PointerArrayUtility
                 .withUnsafePointerArray(pubkeys.map { $0.baseKey.rawRepresentation }) { pointers in
-                    guard secp256k1_ec_pubkey_sort(context, &pointers, pointers.count).boolValue else {
-                        P256K.invariantFailure("secp256k1_ec_pubkey_sort failed on validated keys — library bug")
-                    }
                     guard secp256k1_musig_pubkey_agg(context, nil, &cache, pointers, pointers.count).boolValue else {
                         P256K.invariantFailure("secp256k1_musig_pubkey_agg failed on validated keys — library bug")
                     }
@@ -86,6 +87,64 @@ import libsecp256k1
                     cache: Swift.withUnsafeBytes(of: cache.data) { [UInt8]($0) }
                 )
             )
+        }
+
+        /// Returns `pubkeys` in the canonical order
+        /// `secp256k1_ec_pubkey_sort` produces — lexicographic over each key's
+        /// compressed serialization.
+        ///
+        /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)
+        /// makes ``aggregate(_:)`` order-sensitive, so every signer must agree on
+        /// one ordering before aggregating. When the protocol does not define one,
+        /// sorting gives all parties the same aggregate from the same multiset of
+        /// keys regardless of the order their key lists were assembled in —
+        /// the same role `secp256k1_ec_pubkey_sort` documents for
+        /// `secp256k1_musig_pubkey_agg` ("the same `agg_pk` result for the same
+        /// multiset of pubkeys").
+        ///
+        /// Sorting compares the parsed *point*, not the stored wire form: each
+        /// returned ``P256K/Schnorr/PublicKey`` is one of the inputs unchanged,
+        /// ``P256K/Schnorr/PublicKey/format`` included, and equal points in
+        /// different serializations are interchangeable keys whose relative order
+        /// is unspecified. Aggregating the result is unaffected by that choice —
+        /// `secp256k1_musig_pubkey_agg` consumes the parsed points.
+        ///
+        /// - Parameter pubkeys: The ``P256K/Schnorr/PublicKey`` values to sort;
+        ///   may be empty.
+        /// - Returns: The same key objects in canonical order.
+        static func sortedPublicKeys(_ pubkeys: [P256K.Schnorr.PublicKey]) -> [P256K.Schnorr.PublicKey] {
+            guard pubkeys.isEmpty == false else { return [] }
+
+            let context = P256K.Context.rawRepresentation
+            var permutation = [Int]()
+
+            // Every element gets its own allocation in `PointerArrayUtility`, so
+            // the sorted pointer array maps back to the input indices by pointer
+            // identity — duplicates included — returning the original key objects
+            // with their stored formats intact rather than re-serialized copies.
+            PointerArrayUtility
+                .withUnsafePointerArray(pubkeys.map { $0.baseKey.rawRepresentation }) { pointers in
+                    let original = pointers
+                    guard secp256k1_ec_pubkey_sort(context, &pointers, pointers.count).boolValue else {
+                        P256K.invariantFailure("secp256k1_ec_pubkey_sort failed on validated keys — library bug")
+                    }
+                    permutation = pointers.map { pointer in
+                        guard let index = original.firstIndex(of: pointer) else {
+                            P256K.invariantFailure("secp256k1_ec_pubkey_sort returned an unrecognized pointer — library bug")
+                        }
+                        return index
+                    }
+                }
+
+            // A sort is a bijection: every sorted pointer must map to a distinct
+            // input index. Pointer sharing or reuse in `PointerArrayUtility` —
+            // or upstream returning a pointer twice — would otherwise silently
+            // surface as a duplicated key and a wrong aggregate.
+            guard Set(permutation).count == pubkeys.count else {
+                P256K.invariantFailure("secp256k1_ec_pubkey_sort produced a non-bijective permutation — library bug")
+            }
+
+            return permutation.map { pubkeys[$0] }
         }
     }
 
