@@ -315,7 +315,7 @@ if the total nears ~400 authored lines.
       `Sources/P256K/P256K.docc/MuSig2MultiSignatures.md`,
       `CHANGELOG.md` · **breaking**
 
-- [ ] T030 Restore the full upstream `sign_verify_vectors.json` and drive
+- [x] T030 Restore the full upstream `sign_verify_vectors.json` and drive
       every expressible case — the repo's copy under
       `Projects/Resources/MuSig2VectorTests/` was trimmed to three
       `msg_index`-0 `valid_test_cases` with all three error/fail sections

@@ -185,7 +185,7 @@ let project = Project(
             deploymentTargets: deploymentTargets,
             sources: ["Sources/TestShared/**", "Sources/MuSig2VectorTests/**"],
             resources: ["Resources/MuSig2VectorTests/**"],
-            dependencies: [.target(name: "P256K")],
+            dependencies: [.target(name: "P256K"), .package(product: "libsecp256k1")],
             settings: .settings(
                 configurations: [
                     .debug(name: "Debug", xcconfig: "Resources/MuSig2VectorTests/Debug.xcconfig"),
