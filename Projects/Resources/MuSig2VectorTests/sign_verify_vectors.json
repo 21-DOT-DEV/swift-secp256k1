@@ -53,9 +53,160 @@
             "msg_index": 0,
             "signer_index": 2,
             "expected": "FA23C359F6FAC4E7796BB93BC9F0532A95468C539BA20FF86D7C76ED92227900"
+        },
+        {
+            "key_indices": [0, 1],
+            "nonce_indices": [0, 3],
+            "aggnonce_index": 1,
+            "msg_index": 0,
+            "signer_index": 0,
+            "expected": "AE386064B26105404798F75DE2EB9AF5EDA5387B064B83D049CB7C5E08879531",
+            "comment": "Both halves of aggregate nonce correspond to point at infinity"
+        },
+        {
+            "key_indices": [0, 1, 2],
+            "nonce_indices": [0, 1, 2],
+            "aggnonce_index": 0,
+            "msg_index": 1,
+            "signer_index": 0,
+            "expected": "D7D63FFD644CCDA4E62BC2BC0B1D02DD32A1DC3030E155195810231D1037D82D",
+            "comment": "Empty message"
+        },
+        {
+            "key_indices": [0, 1, 2],
+            "nonce_indices": [0, 1, 2],
+            "aggnonce_index": 0,
+            "msg_index": 2,
+            "signer_index": 0,
+            "expected": "E184351828DA5094A97C79CABDAAA0BFB87608C32E8829A4DF5340A6F243B78C",
+            "comment": "38-byte message"
         }
     ],
-    "sign_error_test_cases": [],
-    "verify_fail_test_cases": [],
-    "verify_error_test_cases": []
+    "sign_error_test_cases": [
+        {
+            "key_indices": [1, 2],
+            "aggnonce_index": 0,
+            "msg_index": 0,
+            "secnonce_index": 0,
+            "error": {
+                "type": "value",
+                "message": "The signer's pubkey must be included in the list of pubkeys."
+            },
+            "comment": "The signers pubkey is not in the list of pubkeys. This test case is optional: it can be skipped by implementations that do not check that the signer's pubkey is included in the list of pubkeys."
+        },
+        {
+            "key_indices": [1, 0, 3],
+            "aggnonce_index": 0,
+            "msg_index": 0,
+            "secnonce_index": 0,
+            "error": {
+                "type": "invalid_contribution",
+                "signer": 2,
+                "contrib": "pubkey"
+            },
+            "comment": "Signer 2 provided an invalid public key"
+        },
+        {
+            "key_indices": [1, 2, 0],
+            "aggnonce_index": 2,
+            "msg_index": 0,
+            "secnonce_index": 0,
+            "error": {
+                "type": "invalid_contribution",
+                "signer": null,
+                "contrib": "aggnonce"
+            },
+            "comment": "Aggregate nonce is invalid due wrong tag, 0x04, in the first half"
+        },
+        {
+            "key_indices": [1, 2, 0],
+            "aggnonce_index": 3,
+            "msg_index": 0,
+            "secnonce_index": 0,
+            "error": {
+                "type": "invalid_contribution",
+                "signer": null,
+                "contrib": "aggnonce"
+            },
+            "comment": "Aggregate nonce is invalid because the second half does not correspond to an X coordinate"
+        },
+        {
+            "key_indices": [1, 2, 0],
+            "aggnonce_index": 4,
+            "msg_index": 0,
+            "secnonce_index": 0,
+            "error": {
+                "type": "invalid_contribution",
+                "signer": null,
+                "contrib": "aggnonce"
+            },
+            "comment": "Aggregate nonce is invalid because second half exceeds field size"
+        },
+        {
+            "key_indices": [0, 1, 2],
+            "aggnonce_index": 0,
+            "msg_index": 0,
+            "signer_index": 0,
+            "secnonce_index": 1,
+            "error": {
+                "type": "value",
+                "message": "first secnonce value is out of range."
+            },
+            "comment": "Secnonce is invalid which may indicate nonce reuse"
+        }
+    ],
+    "verify_fail_test_cases": [
+        {
+            "sig": "FED54434AD4CFE953FC527DC6A5E5BE8F6234907B7C187559557CE87A0541C46",
+            "key_indices": [0, 1, 2],
+            "nonce_indices": [0, 1, 2],
+            "msg_index": 0,
+            "signer_index": 0,
+            "comment": "Wrong signature (which is equal to the negation of valid signature)"
+        },
+        {
+            "sig": "012ABBCB52B3016AC03AD82395A1A415C48B93DEF78718E62A7A90052FE224FB",
+            "key_indices": [0, 1, 2],
+            "nonce_indices": [0, 1, 2],
+            "msg_index": 0,
+            "signer_index": 1,
+            "comment": "Wrong signer"
+        },
+        {
+            "sig": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141",
+            "key_indices": [0, 1, 2],
+            "nonce_indices": [0, 1, 2],
+            "msg_index": 0,
+            "signer_index": 0,
+            "comment": "Signature exceeds group size"
+        }
+    ],
+    "verify_error_test_cases": [
+        {
+            "sig": "012ABBCB52B3016AC03AD82395A1A415C48B93DEF78718E62A7A90052FE224FB",
+            "key_indices": [0, 1, 2],
+            "nonce_indices": [4, 1, 2],
+            "msg_index": 0,
+            "signer_index": 0,
+            "error": {
+                "type": "invalid_contribution",
+                "signer": 0,
+                "contrib": "pubnonce"
+            },
+            "comment": "Invalid pubnonce"
+        },
+        {
+            "sig": "012ABBCB52B3016AC03AD82395A1A415C48B93DEF78718E62A7A90052FE224FB",
+            "key_indices": [3, 1, 2],
+            "nonce_indices": [0, 1, 2],
+            "msg_index": 0,
+            "signer_index": 0,
+            "error": {
+                "type": "invalid_contribution",
+                "signer": 0,
+                "contrib": "pubkey"
+            },
+            "comment": "Invalid pubkey"
+        }
+    ]
 }
