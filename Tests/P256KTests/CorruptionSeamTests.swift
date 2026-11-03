@@ -18,6 +18,11 @@ import Testing
 /// uses for `P256K.invariantFailure`.
 private let kCorruptionMarker: String = "CORRUPTION OBSERVED"
 
+/// Marker the inert-arm corruptor writes to stderr to prove the signing
+/// path actually consulted the seam — without it, a deleted consult would
+/// leave the control arm passing vacuously.
+private let kSeamConsultedMarker: String = "SEAM CONSULTED"
+
 /// A corruptor recipe: XORs the produced byte at `index` with `mask`. The
 /// fault model is a byte glitch — mutation in place with no layout knowledge
 /// beyond an offset — mirroring what a real fault-injection attack does to
@@ -38,6 +43,21 @@ private func flipByte(
         /// signing path: corrupt produced bytes, detect the mutation, fire
         /// `invariantFailure`.
         case canned
+
+        /// A real `P256K.Schnorr.PrivateKey.signature(message:)` call under a
+        /// bound corruptor that flips the last byte of the signature's `s`
+        /// half (bytes 32–63). An `s`-half mutation is mathematically
+        /// guaranteed to fail `secp256k1_schnorrsig_verify` — the only curve
+        /// point sharing `R`'s x coordinate is `-R`, which fails BIP-340's
+        /// even-y requirement — so the child can only exit through the
+        /// invariant channel.
+        case schnorr
+
+        /// Control arm: a bound corruptor that proves it was consulted —
+        /// it writes a stderr marker — but mutates nothing. The child must
+        /// still sign and exit cleanly: a bound seam can never
+        /// false-positive the self-check.
+        case schnorrInert
     }
 
     /// Executes one fault-injection scenario inside an exit-test child
@@ -48,7 +68,7 @@ private func flipByte(
     /// test's `#expect` body — the `TestHelperProcess` env-var discriminator
     /// Go uses for death tests, translated to the only channel Swift Testing
     /// bodies allow.
-    private func runCorruptionCase(_ path: CorruptionCase) {
+    private func runCorruptionCase(_ path: CorruptionCase) throws {
         P256K.setInvariantViolationHandler { text in
             FileHandle.standardError.write(Data("\(kCorruptionMarker): \(text)".utf8))
         }
@@ -63,6 +83,23 @@ private func flipByte(
                 return
             }
             P256K.invariantFailure("corrupted produced signature")
+
+        case .schnorr:
+            let privateKey: P256K.Schnorr.PrivateKey = try P256K.Schnorr.PrivateKey()
+            let message: [UInt8] = .init(repeating: 0xAB, count: 32)
+            try P256K.$signatureCorruptor.withValue(flipByte(at: 63)) {
+                _ = try privateKey.signature(message: message)
+            }
+
+        case .schnorrInert:
+            let privateKey: P256K.Schnorr.PrivateKey = try P256K.Schnorr.PrivateKey()
+            let message: [UInt8] = .init(repeating: 0xAB, count: 32)
+            let consulted: @Sendable (UnsafeMutableRawBufferPointer) -> Void = { _ in
+                FileHandle.standardError.write(Data("\(kSeamConsultedMarker)".utf8))
+            }
+            try P256K.$signatureCorruptor.withValue(consulted) {
+                _ = try privateKey.signature(message: message)
+            }
         }
     }
 
@@ -143,9 +180,43 @@ struct CorruptionSeamTestSuite {
                 processExitsWith: .failure,
                 observing: [\.standardErrorContent]
             ) {
-                runCorruptionCase(.canned)
+                try runCorruptionCase(.canned)
             }
             expectCrashReport(result, contains: "corrupted produced signature")
+        }
+
+        /// The real pipeline on the Schnorr signing path (T009): the bound
+        /// corruptor mutates the produced signature between `sign_custom`
+        /// and the self-check, the mutation is guaranteed-invalid, and the
+        /// only remaining exit is `invariantFailure`. If the consult never
+        /// reached the signing path, the child would sign cleanly and
+        /// `.failure` would go unobserved.
+        @Test("Corrupted Schnorr signature terminates via the invariant channel")
+        func schnorrCorruptionTerminates() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .failure,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.schnorr)
+            }
+            expectCrashReport(result, contains: "produced Schnorr signature failed verification against xonly")
+        }
+
+        /// Control arm: a bound corruptor that mutates nothing must not
+        /// false-positive the self-check — the child signs successfully and
+        /// exits cleanly — and the stderr marker proves the signing path
+        /// actually consulted the seam (a deleted consult fails this arm
+        /// outright rather than passing vacuously).
+        @Test("Bound-but-inert corruptor lets Schnorr signing complete")
+        func schnorrInertCorruptorSigns() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .success,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.schnorrInert)
+            }
+            let stderr = String(bytes: result?.standardErrorContent ?? [], encoding: .utf8) ?? ""
+            #expect(stderr.contains(kSeamConsultedMarker))
         }
     #endif
 }
