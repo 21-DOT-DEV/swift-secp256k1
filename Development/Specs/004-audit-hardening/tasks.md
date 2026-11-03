@@ -362,20 +362,26 @@ new `publicNonceAggregate:`/`throws` shape; T030 is test-side only.
 
 ## Group E — Verify-after-sign (PRs 8–12 — the T024 seam PR, then one path per PR)
 
-- [ ] T024 [P] Corruption-seam infrastructure — lands inert as its own
+- [x] T024 [P] Corruption-seam infrastructure — lands inert as its own
       small PR, nothing consulting it until T009 (spec 002's T019
       inert-skeleton precedent): the package-internal (never `public`)
       hook that signing methods consult between producing signature
-      bytes and self-verifying them — a `nonisolated(unsafe)` static
-      closure stored `nil` in production and set only from `@testable`
-      test code, guarded by the same `NSRecursiveLock` pattern
-      `Invariant.swift` already uses for its handler state (Swift 6
-      strict concurrency rejects an unadorned mutable static) — plus the
-      exit-test helper reusing the existing child-process pattern,
-      `#expect(processExitsWith:)` observing a stderr marker, as
+      bytes and self-verifying them — a `@TaskLocal`-scoped
+      `(@Sendable (UnsafeMutableRawBufferPointer) -> Void)?` bound only
+      from `@testable` test code via `withValue` (task-local state needs
+      no lock, cannot leak into parallel tests, and restores itself at
+      scope exit — the upstream set/run/restore counting-callback
+      discipline; a hook left installed once masked real test failures,
+      bitcoin-core/secp256k1#1167) — with the consult helper
+      `corruptProducedSignature(_:)` taking a raw mutable view so one
+      shape covers serialized arrays (`withUnsafeMutableBytes`) and
+      opaque libsecp256k1 structs (`withUnsafeMutableBytes(of:)`) —
+      plus the exit-test helper: a `runCorruptionCase(_:)` dispatcher
+      invoked by literal enum argument from each capture-free
+      `#expect(processExitsWith:)` body, observing a stderr marker as
       `Tests/P256KTests/InvariantTests.swift` already does for the crash
-      channel · `Sources/P256K/` (the seam definition), new file under
-      `Tests/P256KTests/`
+      channel · `Sources/P256K/Corruption.swift` (the seam definition),
+      `Tests/P256KTests/CorruptionSeamTests.swift`
 - [ ] T009 Schnorr: after `secp256k1_schnorrsig_sign_custom` succeeds,
       re-verify against the derived x-only key via
       `secp256k1_schnorrsig_verify`; failure → `P256K.invariantFailure`.
