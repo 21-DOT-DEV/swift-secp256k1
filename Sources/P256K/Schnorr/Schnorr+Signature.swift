@@ -94,6 +94,11 @@ import libsecp256k1
         /// > from MuSig's `partialSignature`, which requires exactly 32 bytes — those upstream
         /// > entry points consume exactly 32 bytes.
         ///
+        /// > Note: The produced signature is verified against this key's ``xonly`` identity via
+        /// > `secp256k1_schnorrsig_verify` before it is returned — a failure is unreachable after
+        /// > input validation, reports through ``P256K/setInvariantViolationHandler(_:)``, and
+        /// > terminates the process.
+        ///
         /// - Parameter digest: The pre-computed message digest to sign; signed at its natural byte length.
         /// - Returns: A 64-byte ``SchnorrSignature``.
         /// - Throws: Never throws in practice; `throws` is retained for API stability.
@@ -113,6 +118,11 @@ import libsecp256k1
         }
 
         /// Generates a BIP-340 Schnorr signature from a pre-computed digest using caller-supplied auxiliary randomness.
+        ///
+        /// > Note: The produced signature is verified against this key's ``xonly`` identity via
+        /// > `secp256k1_schnorrsig_verify` before it is returned — a failure is unreachable after
+        /// > input validation, reports through ``P256K/setInvariantViolationHandler(_:)``, and
+        /// > terminates the process.
         ///
         /// - Parameters:
         ///   - digest: The pre-computed message digest to sign; signed at its natural byte length
@@ -143,6 +153,11 @@ import libsecp256k1
         /// instead, and prefer hashing to 32 bytes — with a BIP-340 tagged hash for domain
         /// separation — unless the signed protocol defines its own separation.
         ///
+        /// > Note: The produced signature is verified against this key's ``xonly`` identity via
+        /// > `secp256k1_schnorrsig_verify` before it is returned — a failure is unreachable after
+        /// > input validation, reports through ``P256K/setInvariantViolationHandler(_:)``, and
+        /// > terminates the process.
+        ///
         /// - Parameter message: The message to sign — exactly 32 bytes.
         /// - Returns: A 64-byte ``SchnorrSignature``.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `message` is not exactly 32 bytes.
@@ -161,6 +176,11 @@ import libsecp256k1
         }
 
         /// Generates a BIP-340 Schnorr signature over a 32-byte message using caller-supplied auxiliary randomness.
+        ///
+        /// > Note: The produced signature is verified against this key's ``xonly`` identity via
+        /// > `secp256k1_schnorrsig_verify` before it is returned — a failure is unreachable after
+        /// > input validation, reports through ``P256K/setInvariantViolationHandler(_:)``, and
+        /// > terminates the process.
         ///
         /// - Parameters:
         ///   - message: The message to sign — exactly 32 bytes.
@@ -192,6 +212,11 @@ import libsecp256k1
         /// domain separation for non-32-byte messages — prefer hashing to 32 bytes with a tagged
         /// hash and calling ``signature(message:)`` unless the signed protocol defines its own.
         ///
+        /// > Note: The produced signature is verified against this key's ``xonly`` identity via
+        /// > `secp256k1_schnorrsig_verify` before it is returned — a failure is unreachable after
+        /// > input validation, reports through ``P256K/setInvariantViolationHandler(_:)``, and
+        /// > terminates the process.
+        ///
         /// - Parameter customMessage: The message bytes to sign — any length, including zero.
         /// - Returns: A 64-byte ``SchnorrSignature``.
         /// - Throws: Never throws in practice; `throws` is retained for API stability.
@@ -214,6 +239,11 @@ import libsecp256k1
         /// domain separation for non-32-byte messages — prefer hashing to 32 bytes with a tagged
         /// hash and calling ``signature(message:auxiliaryRand:)`` unless the signed protocol
         /// defines its own.
+        ///
+        /// > Note: The produced signature is verified against this key's ``xonly`` identity via
+        /// > `secp256k1_schnorrsig_verify` before it is returned — a failure is unreachable after
+        /// > input validation, reports through ``P256K/setInvariantViolationHandler(_:)``, and
+        /// > terminates the process.
         ///
         /// - Parameters:
         ///   - customMessage: The message bytes to sign — any length, including zero.
@@ -245,6 +275,19 @@ import libsecp256k1
         /// the documented empty-message call. `auxiliaryRand` becomes `extraparams.ndata`; every call
         /// site supplies a real 32-byte buffer (fresh `SecureBytes` or a caller's
         /// length-checked storage), so the pointer is never NULL.
+        ///
+        /// Upstream's signing API does not strictly follow BIP-340 — it does
+        /// not verify the resulting signature and delegates that check to
+        /// callers (`secp256k1_schnorrsig.h`), as BIP-340 footnote 14
+        /// recommends for catching computation errors. This funnel performs
+        /// the check once for all six public methods: consult the task-local
+        /// test seam, then `secp256k1_schnorrsig_verify` the produced
+        /// signature against the key's own ``xonly`` identity — the public
+        /// key callers verify with — so corruption in the signature bytes or
+        /// in the key material used to sign both fail-stop instead of
+        /// escaping. The same verify-after-sign discipline the BIP-340
+        /// reference implementation applies at the end of `schnorr_sign` and
+        /// Bitcoin Core applies in `KeyPair::SignSchnorr`.
         private func sign(
             message: UnsafeRawBufferPointer,
             auxiliaryRand: UnsafeRawBufferPointer
@@ -294,7 +337,25 @@ import libsecp256k1
                 P256K.invariantFailure("secp256k1_schnorrsig_sign_custom failed on validated keypair — library bug")
             }
 
-            return P256K.Schnorr.SchnorrSignature(Data(bytes: signature, count: P256K.ByteLength.signature))
+            // Test seam (spec 004 Group E): a bound task-local corruptor
+            // mutates the produced bytes so fault-injection exit tests can
+            // prove the self-check below catches them; a no-op when unbound.
+            // Deliberately unconditional rather than `#if`-gated — shipped
+            // and tested signing paths stay byte-identical.
+            signature.withUnsafeMutableBytes(P256K.corruptProducedSignature)
+
+            let produced: P256K.Schnorr.SchnorrSignature = .init(Data(bytes: signature, count: P256K.ByteLength.signature))
+
+            // Verify-after-sign, once for every public method: the exact
+            // signature object about to escape must verify against this
+            // key's advertised public identity. Failure is unreachable
+            // after input validation — output corruption or a library bug —
+            // so it reports through the invariant channel, not a throw.
+            guard xonly.isValid(produced, for: message) else {
+                P256K.invariantFailure("produced Schnorr signature failed verification against xonly — output corruption or library bug")
+            }
+
+            return produced
         }
     }
 
