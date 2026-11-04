@@ -86,7 +86,7 @@ struct TweakVectorTests {
             let partialSignature = try secretKey.partialSignature(
                 for: message,
                 pubnonce: pubnonce,
-                secureNonce: P256K.Schnorr.SecureNonce(SecureBytes(bytes: secnonceBytes), publicKey: signerPublicKey),
+                secureNonce: P256K.Schnorr.SecureNonce(SecureBytes(bytes: secnonceBytes), publicKey: signerPublicKey, publicNonce: pubnonce),
                 publicNonceAggregate: aggregateNonce,
                 publicKeyAggregate: currentKey
             )

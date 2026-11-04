@@ -263,8 +263,13 @@ let secondPartialSignature = try! secondPrivateKey.partialSignature(
     publicKeyAggregate: aggregateKey
 )
 
-// Aggregate partial signatures into a full signature
-let aggregateSignature = try! P256K.MuSig.aggregateSignatures([firstPartialSignature, secondPartialSignature])
+// Aggregate partial signatures into a verified full signature
+let aggregateSignature = try! P256K.MuSig.aggregateSignatures(
+    [firstPartialSignature, secondPartialSignature],
+    for: messageHash,
+    publicNonceAggregate: aggregateNonce,
+    publicKeyAggregate: aggregateKey
+)
 
 // Verify an individual partial signature against the declared session
 let isValid = try! aggregateKey.isValidSignature(

@@ -132,19 +132,35 @@ import libsecp256k1
         /// > is `~Copyable`, the Swift layer additionally prevents static misuse. Nonce
         /// > reuse leaks the secret signing key.
         ///
-        /// This method does **not** verify the output partial signature, deviating from the
+        /// The method self-verifies the produced signature before returning.
+        /// Upstream's `secp256k1_musig_partial_sign` "does not verify the output
+        /// partial signature, deviating from the
         /// [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)
-        /// specification. Call
-        /// ``P256K/MuSig/PublicKey/isValidSignature(_:publicKey:nonce:for:publicNonceAggregate:)`` afterwards to
-        /// detect computation errors.
+        /// specification" — BIP-327's reference `Sign` ends with
+        /// `assert partial_sig_verify_internal(...)`, and this method performs
+        /// that check: the produced partial signature is serialized, re-parsed
+        /// from its escaping 32-byte wire form, and verified via
+        /// `secp256k1_musig_partial_sig_verify` under the session this call
+        /// rebuilds, the companion public nonce bound inside `secureNonce`, and
+        /// this key's public half. A failure is unreachable on the validated
+        /// inputs, so it reports through ``P256K/setInvariantViolationHandler(_:)``
+        /// and terminates rather than letting corrupted output escape.
         ///
         /// - Parameter message: The message to sign — must be exactly 32 bytes;
         ///   `secp256k1_musig_nonce_process` binds a fixed `msg32` into the session,
         ///   so hash arbitrary-length application messages to 32 bytes first
         ///   (variable-length BIP-327 messages are unsupported by libsecp256k1).
-        /// - Parameter pubnonce: This signer's own public nonce from nonce generation; not
-        ///   consulted — upstream binds the signer's public nonce inside `secureNonce`
-        ///   already, so no separate pubnonce reaches `secp256k1_musig_partial_sign`.
+        /// - Parameter pubnonce: This signer's own public nonce from nonce
+        ///   generation — the ``P256K/MuSig/NonceResult/pubnonce`` returned in the
+        ///   same pair as `secureNonce`. `secp256k1_musig_partial_sign` takes no
+        ///   public-nonce argument — the nonce pair is bound inside `secureNonce`
+        ///   — so the value is instead byte-compared against the companion
+        ///   `SecureNonce` retains at generation; a mismatch throws
+        ///   ``secp256k1Error/underlyingCryptoError`` before `secureNonce` reaches
+        ///   upstream, naming the caller's bookkeeping bug at the signer where
+        ///   it is provable rather than surfacing later as an unattributed
+        ///   session failure. The companion also supplies the public nonce the
+        ///   produced signature is verified under.
         /// - Parameter secureNonce: This signer's secret nonce (`~Copyable`); consumed and zeroed on return.
         /// - Parameter publicNonceAggregate: The ``P256K/MuSig/Nonce`` aggregated from all signers' public nonces.
         /// - Parameter xonlyKeyAggregate: The x-only form of the ``P256K/MuSig/aggregate(_:)`` result;
@@ -152,14 +168,16 @@ import libsecp256k1
         /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `message` is not exactly
         ///   32 bytes; ``secp256k1Error/underlyingCryptoError`` if `xonlyKeyAggregate` lacks a
-        ///   usable key aggregation cache, or if `secureNonce` was generated for a different
+        ///   usable key aggregation cache, if `secureNonce` was generated for a different
         ///   public key than this signing key (BIP-327 binds the signer's public key into the
         ///   secret nonce; upstream enforces the match via an aborting `ARG_CHECK`, which is
-        ///   unreachable after this method's own check). Other upstream signing failures are
+        ///   unreachable after this method's own check), or if `pubnonce` differs
+        ///   from the companion public nonce bound inside `secureNonce` at
+        ///   generation. Other upstream signing failures are
         ///   unreachable on the validated inputs and report through
         ///   ``P256K/setInvariantViolationHandler(_:)`` instead of throwing.
         ///   `secureNonce` is consumed and zeroed on every exit including a throw —
-        ///   a rejected message burns the nonce pair, so retrying requires fresh
+        ///   a rejected input burns the nonce pair, so retrying requires fresh
         ///   nonce generation.
         func partialSignature(
             for message: some ContiguousBytes,
@@ -209,6 +227,17 @@ import libsecp256k1
                 throw secp256k1Error.underlyingCryptoError
             }
 
+            // `partial_sign` never sees `pubnonce` — upstream binds the nonce
+            // pair inside the secnonce — so the declared value is byte-compared
+            // against the companion `Nonce.generate` stored inside `secureNonce`
+            // instead. A mismatch means the caller's session bookkeeping is
+            // wrong; thrown before `secureNonce` reaches upstream, the error
+            // names the bug at the signer where it is provable rather than
+            // surfacing later as an unattributed session failure.
+            guard pubnonce.pubnonce == secureNonce.publicNonce.pubnonce else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
             let keypairCreated = key.withUnsafeBytePointer { keyPtr in
                 secp256k1_keypair_create(context, &keypair, keyPtr).boolValue
             }
@@ -252,6 +281,37 @@ import libsecp256k1
                 P256K.invariantFailure("secp256k1_musig_partial_sig_serialize failed on upstream-produced signature — library bug")
             }
 
+            // Test seam (spec 004 Group E): mutates the produced wire bytes
+            // between serialization and the self-check; a no-op when unbound.
+            partialSignature.withUnsafeMutableBytes(P256K.corruptProducedSignature)
+
+            var verifiedSignature = secp256k1_musig_partial_sig()
+            var signerPublicNonce = secp256k1_musig_pubnonce()
+            var signerPublicKey = publicKey.baseKey.rawRepresentation
+            secureNonce.publicNonce.pubnonce.copyToUnsafeMutableBytes(of: &signerPublicNonce.data)
+
+            // Verify-after-sign (spec 004 T012): re-parse the escaping 32-byte
+            // wire form — `partial_sig_parse` cannot legitimately reject bytes
+            // `partial_sig_serialize` just produced — then prove it via
+            // `partial_sig_verify` under the session this call rebuilt, the
+            // companion public nonce, and the signing keypair's public half:
+            // every input's provenance is established, so failure is
+            // unreachable — output corruption or a library bug. BIP-327's
+            // reference `Sign` ends with the same `partial_sig_verify` assert.
+            guard secp256k1_musig_partial_sig_parse(context, &verifiedSignature, partialSignature).boolValue else {
+                P256K.invariantFailure("secp256k1_musig_partial_sig_parse failed on upstream-serialized signature — library bug")
+            }
+            guard secp256k1_musig_partial_sig_verify(
+                context,
+                &verifiedSignature,
+                &signerPublicNonce,
+                &signerPublicKey,
+                &cache,
+                &session
+            ).boolValue else {
+                P256K.invariantFailure("produced MuSig partial signature failed verification — output corruption or library bug")
+            }
+
             return P256K.Schnorr.PartialSignature(
                 Data(partialSignature),
                 session: session.dataValue
@@ -264,15 +324,17 @@ import libsecp256k1
         ///   `secp256k1_musig_nonce_process` binds a fixed `msg32` into the session,
         ///   so hash arbitrary-length application messages to 32 bytes first
         ///   (variable-length BIP-327 messages are unsupported by libsecp256k1).
-        /// - Parameter pubnonce: This signer's public nonce.
+        /// - Parameter pubnonce: This signer's public nonce; byte-compared against
+        ///   the companion bound inside `secureNonce` (see the canonical overload).
         /// - Parameter secureNonce: This signer's secret nonce; consumed and zeroed on return.
         /// - Parameter publicNonceAggregate: The ``P256K/MuSig/Nonce`` from all signers' public nonces.
         /// - Parameter publicKeyAggregate: The ``P256K/MuSig/PublicKey`` returned by ``P256K/MuSig/aggregate(_:)``.
         /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `message` is not exactly
         ///   32 bytes; ``secp256k1Error/underlyingCryptoError`` if `publicKeyAggregate` lacks a
-        ///   usable key aggregation cache, or if `secureNonce` was generated for a different
-        ///   public key than this signing key. Other upstream signing failures are
+        ///   usable key aggregation cache, if `secureNonce` was generated for a different
+        ///   public key than this signing key, or if `pubnonce` differs from the
+        ///   companion public nonce bound inside `secureNonce`. Other upstream signing failures are
         ///   unreachable on the validated inputs and report through
         ///   ``P256K/setInvariantViolationHandler(_:)`` instead of throwing.
         ///   `secureNonce` is consumed and zeroed on every exit including a throw —

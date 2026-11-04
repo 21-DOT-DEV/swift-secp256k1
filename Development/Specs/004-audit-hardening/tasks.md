@@ -410,7 +410,7 @@ new `publicNonceAggregate:`/`throws` shape; T030 is test-side only.
       carries T013's Recovery share); run `benchmark-pr.yml` on the PR and
       attach the comparison to its description (T014) ·
       `Sources/P256K/Recovery/Recovery+Signature.swift`, `Tests/P256KTests/`
-- [ ] T012 MuSig2 partial signatures: self-verify via the already-wrapped
+- [x] T012 MuSig2 partial signatures: self-verify via the already-wrapped
       `secp256k1_musig_partial_sig_verify` against the signer's own public
       nonce and the session in use, with nonce provenance closed first:
       `SecureNonce` retains the companion public nonce from its
@@ -438,7 +438,7 @@ new `publicNonceAggregate:`/`throws` shape; T030 is test-side only.
       definition itself — its new companion-pubnonce stored property
       lands here), `Tests/P256KTests/` · **breaking** — the previously
       ignored `pubnonce` becomes validated and can throw
-- [ ] T013 _Split into T024 + folds into T009–T012 on review — the
+- [x] T013 _Split into T024 + folds into T009–T012 on review — the
       corruption tests can't exist before the self-checks they exercise
       (the `[P]` marker was wrong for them), and a trailing hook commit
       would re-edit all four signing files: the shared seam lands inert
