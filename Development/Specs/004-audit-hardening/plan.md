@@ -292,7 +292,14 @@ caller-input that could otherwise reach the crash channel (BIP-327's
 reference `Sign()` recomputes the public nonce from the secret-nonce
 scalars inside the function; carrying the companion is the equivalent the
 opaque-struct rule permits here). ECDSA verifies the parsed signature
-struct directly (no compact round-trip). The benchmark CI workflow runs on
+struct directly (no compact round-trip). The recoverable path is the
+exception: it serializes first, then re-parses the produced 65-byte wire
+form before recovering and comparing — the recovery-ID byte is
+range-checked only at `secp256k1_ecdsa_recoverable_signature_parse_compact`
+(inside the opaque struct the ID is masked `recid & 3` in non-VERIFY
+builds — "should have been caught in parse_compact",
+`modules/recovery/main_impl.h` — so a corrupt ID ≥ 4 could alias a valid
+one and recover the same key). The benchmark CI workflow runs on
 these PRs to quantify the cost of one extra verification per signature.
 
 ### 3.3 Renames with deprecation aliases

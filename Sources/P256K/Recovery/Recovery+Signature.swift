@@ -241,6 +241,17 @@ import libsecp256k1
         /// `msg32` value per SEC1 §4.1.3 — the leftmost 32 bytes for longer digests,
         /// the integer value (left-padded with zeros) for shorter ones.
         ///
+        /// > Note: The produced 65-byte signature is re-parsed and its signer key
+        /// > recovered via `secp256k1_ecdsa_recover`, then compared against this key's
+        /// > ``publicKey`` via `secp256k1_ec_pubkey_cmp` before it is returned — the
+        /// > verify-after-sign check Bitcoin Core applies in `CKey::SignCompact`
+        /// > (PR #22934). Re-parsing the serialized form re-validates the recovery ID
+        /// > at the boundary upstream reserves for it — inside the opaque signature
+        /// > struct the ID is only masked to `recid & 3` in release builds — so
+        /// > corruption in `r`, `s`, *or* the recovery ID fails here. A failure is
+        /// > unreachable after input validation, reports through
+        /// > ``P256K/setInvariantViolationHandler(_:)``, and terminates the process.
+        ///
         /// - Parameter digest: The pre-computed message digest to sign.
         /// - Returns: A 65-byte ``ECDSASignature`` from which the signer's ``PublicKey`` can be recovered.
         public func signature<D: Digest>(for digest: D) -> Signature {
@@ -249,6 +260,9 @@ import libsecp256k1
             var signature = secp256k1_ecdsa_recoverable_signature()
             var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
             var recoveryId = Int32()
+            var parsedSignature = secp256k1_ecdsa_recoverable_signature()
+            var recoveredPublicKey = secp256k1_pubkey()
+            var rawPublicKey = publicKey.baseKey.rawRepresentation
 
             let signed = key.withUnsafeBytePointer { keyPtr in
                 secp256k1_ecdsa_sign_recoverable(
@@ -264,6 +278,14 @@ import libsecp256k1
                 P256K.invariantFailure("secp256k1_ecdsa_sign_recoverable failed with valid key — library bug")
             }
 
+            // Test seam (spec 004 Group E): a bound task-local corruptor
+            // mutates the produced signature object — all 65 opaque bytes,
+            // recovery ID included — so fault-injection exit tests can
+            // prove the self-check below catches them; a no-op when
+            // unbound. Deliberately unconditional rather than `#if`-gated —
+            // shipped and tested signing paths stay byte-identical.
+            Swift.withUnsafeMutableBytes(of: &signature, P256K.corruptProducedSignature)
+
             guard secp256k1_ecdsa_recoverable_signature_serialize_compact(
                 context,
                 &compactSignature,
@@ -273,13 +295,45 @@ import libsecp256k1
                 P256K.invariantFailure("secp256k1_ecdsa_recoverable_signature_serialize_compact failed — library bug")
             }
 
-            return P256K.Recovery.ECDSASignature(Data(compactSignature) + [UInt8(recoveryId)])
+            let produced = P256K.Recovery.ECDSASignature(Data(compactSignature) + [UInt8(recoveryId)])
+
+            // Verify-after-sign on the exact escaping wire form — the check
+            // Bitcoin Core applies in `CKey::SignCompact` (PR #22934):
+            // re-parse the produced bytes, recover the signer key, and
+            // require it to equal this key's advertised public identity.
+            // The re-parse is load-bearing for the recovery ID: inside the
+            // opaque struct upstream only masks it to `recid & 3` in
+            // non-VERIFY builds ("should have been caught in parse_compact",
+            // modules/recovery/main_impl.h), so a corrupt ID ≥ 4 could
+            // alias a valid one and recover the same key; the wire re-parse
+            // runs the `ARG_CHECK` upstream reserves for that boundary. A
+            // successful `secp256k1_ecdsa_recover` itself guarantees the
+            // (r, s) pair verifies for the recovered key — a failure is
+            // unreachable after input validation, so it reports through the
+            // invariant channel, not a throw.
+            guard secp256k1_ecdsa_recoverable_signature_parse_compact(
+                      context,
+                      &parsedSignature,
+                      compactSignature,
+                      recoveryId
+                  ).boolValue,
+                  secp256k1_ecdsa_recover(context, &recoveredPublicKey, &parsedSignature, digestBytes).boolValue,
+                  secp256k1_ec_pubkey_cmp(context, &recoveredPublicKey, &rawPublicKey) == 0 else {
+                P256K.invariantFailure("produced recoverable signature failed key recovery against public key — output corruption or library bug")
+            }
+
+            return produced
         }
     }
 
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension P256K.Recovery.PrivateKey: Signer {
         /// Generates a recoverable ECDSA signature by SHA-256 hashing `data` then calling `secp256k1_ecdsa_sign_recoverable`.
+        ///
+        /// > Note: The produced signature is re-parsed and key-recovered against this
+        /// > key's ``publicKey`` before it is returned — a failure is unreachable
+        /// > after input validation, reports through ``P256K/setInvariantViolationHandler(_:)``,
+        /// > and terminates the process.
         ///
         /// - Parameter data: The message to sign; hashed with SHA-256 before signing.
         /// - Returns: A 65-byte ``ECDSASignature`` from which the signer's ``PublicKey`` can be recovered.

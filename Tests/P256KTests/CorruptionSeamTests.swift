@@ -36,8 +36,10 @@ private func flipByte(
 
 #if compiler(>=6.2) && (os(macOS) || os(Linux) || os(Windows) || os(FreeBSD) || os(OpenBSD))
     /// The fault-injection scenarios ``runCorruptionCase(_:)`` executes in an
-    /// exit-test child process — gains one arm per signing path as T009–T012
-    /// wire each path's seam consult.
+    /// exit-test child process — gains one or more corruption arms plus an
+    /// inert control per signing path as T009–T012 wire each path's seam
+    /// consult (the recoverable path's artifact carries a recovery-ID byte
+    /// with its own failure surface, hence three corruption arms).
     private enum CorruptionCase {
         /// Simulates the corrupt → self-verify → crash pipeline without a real
         /// signing path: corrupt produced bytes, detect the mutation, fire
@@ -79,6 +81,44 @@ private func flipByte(
         /// still sign and exit cleanly: a bound seam can never
         /// false-positive the self-check.
         case ecdsaInert
+
+        /// A real `P256K.Recovery.PrivateKey.signature(for:)` call under a
+        /// bound corruptor that flips the last byte of the produced
+        /// `secp256k1_ecdsa_recoverable_signature`'s `s` half — the 65-byte
+        /// struct is r ‖ s ‖ recovery ID. For a fixed `r` and recovery ID
+        /// the recovered point is `r⁻¹(s·R − e·G)`, injective in `s`: a
+        /// mutated `s′` either fails `secp256k1_ecdsa_recover` outright or
+        /// recovers a different point that `secp256k1_ec_pubkey_cmp`
+        /// rejects — so the child can only exit through the invariant
+        /// channel. The guarantee assumes no `-DVERIFY` upstream build
+        /// define (none exists in the package today): under one, a
+        /// corrupted `s` ≥ the curve order could abort inside scalar
+        /// `VERIFY` checks instead, with a different stderr message.
+        case recovery
+
+        /// A real `signature(for:)` call under a bound corruptor that flips
+        /// the produced struct's recovery-ID byte (`data[64]`) with mask
+        /// 0x01 — always a different *in-range* ID (0↔1, 2↔3), which selects
+        /// a different nonce point and recovers a different public key, so
+        /// the compare fails and the child exits through the invariant
+        /// channel.
+        case recoveryRecid
+
+        /// A real `signature(for:)` call under a bound corruptor that flips
+        /// the recovery-ID byte (`data[64]`) with mask 0x04 — always out of
+        /// range (a produced 0–3 becomes 4–7). Inside the opaque struct the
+        /// ID is masked `recid & 3` in non-VERIFY builds, so a struct-level
+        /// self-check could alias it to a valid ID and recover the same
+        /// key; the serialized wire form is verified instead, and its
+        /// re-parse runs `parse_compact`'s `ARG_CHECK` — the child dies on
+        /// upstream's argument check, not the compare path.
+        case recoveryRecidOverflow
+
+        /// Control arm: a bound corruptor that proves it was consulted —
+        /// it writes a stderr marker — but mutates nothing. The child must
+        /// still sign and exit cleanly: a bound seam can never
+        /// false-positive the self-check.
+        case recoveryInert
     }
 
     /// Executes one fault-injection scenario inside an exit-test child
@@ -131,6 +171,37 @@ private func flipByte(
 
         case .ecdsaInert:
             let privateKey = try P256K.Signing.PrivateKey()
+            let digest = SHA256.hash(data: [UInt8](repeating: 0xAB, count: 32))
+            let consulted: @Sendable (UnsafeMutableRawBufferPointer) -> Void = { _ in
+                FileHandle.standardError.write(Data("\(kSeamConsultedMarker)".utf8))
+            }
+            P256K.$signatureCorruptor.withValue(consulted) {
+                _ = privateKey.signature(for: digest)
+            }
+
+        case .recovery:
+            let privateKey = try P256K.Recovery.PrivateKey()
+            let digest = SHA256.hash(data: [UInt8](repeating: 0xAB, count: 32))
+            P256K.$signatureCorruptor.withValue(flipByte(at: 63)) {
+                _ = privateKey.signature(for: digest)
+            }
+
+        case .recoveryRecid:
+            let privateKey = try P256K.Recovery.PrivateKey()
+            let digest = SHA256.hash(data: [UInt8](repeating: 0xAB, count: 32))
+            P256K.$signatureCorruptor.withValue(flipByte(at: 64, mask: 0x01)) {
+                _ = privateKey.signature(for: digest)
+            }
+
+        case .recoveryRecidOverflow:
+            let privateKey = try P256K.Recovery.PrivateKey()
+            let digest = SHA256.hash(data: [UInt8](repeating: 0xAB, count: 32))
+            P256K.$signatureCorruptor.withValue(flipByte(at: 64, mask: 0x04)) {
+                _ = privateKey.signature(for: digest)
+            }
+
+        case .recoveryInert:
+            let privateKey = try P256K.Recovery.PrivateKey()
             let digest = SHA256.hash(data: [UInt8](repeating: 0xAB, count: 32))
             let consulted: @Sendable (UnsafeMutableRawBufferPointer) -> Void = { _ in
                 FileHandle.standardError.write(Data("\(kSeamConsultedMarker)".utf8))
@@ -288,6 +359,78 @@ struct CorruptionSeamTestSuite {
                 observing: [\.standardErrorContent]
             ) {
                 try runCorruptionCase(.ecdsaInert)
+            }
+            let stderr = String(bytes: result?.standardErrorContent ?? [], encoding: .utf8) ?? ""
+            #expect(stderr.contains(kSeamConsultedMarker))
+        }
+
+        /// The real pipeline on the recoverable-ECDSA signing path (T011):
+        /// the bound corruptor mutates the `s` half of the produced
+        /// `secp256k1_ecdsa_recoverable_signature` between
+        /// `secp256k1_ecdsa_sign_recoverable` and the self-check — for a
+        /// fixed `r` and recovery ID the recovered point is injective in
+        /// `s`, so the wire-form re-parse + recover + `ec_pubkey_cmp`
+        /// self-check cannot pass — and the only remaining exit is
+        /// `invariantFailure`. If the consult never reached the signing
+        /// path, the child would sign cleanly and `.failure` would go
+        /// unobserved.
+        @Test("Corrupted recoverable signature terminates via the invariant channel")
+        func recoveryCorruptionTerminates() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .failure,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.recovery)
+            }
+            expectCrashReport(result, contains: "produced recoverable signature failed key recovery")
+        }
+
+        /// A different *in-range* recovery ID selects a different nonce
+        /// point, so `secp256k1_ecdsa_recover` still succeeds but recovers
+        /// the wrong public key — the compare is what catches it.
+        @Test("Corrupted recovery ID terminates via the invariant channel")
+        func recoveryRecidCorruptionTerminates() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .failure,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.recoveryRecid)
+            }
+            expectCrashReport(result, contains: "produced recoverable signature failed key recovery")
+        }
+
+        /// The discriminating arm for the wire-form self-check: an
+        /// out-of-range recovery ID (≥4) would alias a valid ID inside the
+        /// opaque struct — `ecdsa_recover` masks `recid & 3` in non-VERIFY
+        /// builds — so a struct-level check could pass the corrupted byte.
+        /// Verifying the serialized form instead makes the re-parse hit
+        /// `parse_compact`'s `ARG_CHECK`, and the child dies on upstream's
+        /// argument check routed through the same invariant channel.
+        @Test("Out-of-range recovery ID terminates via the argument check")
+        func recoveryRecidOverflowTerminates() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .failure,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.recoveryRecidOverflow)
+            }
+            expectCrashReport(result, contains: "libsecp256k1 argument check failed")
+            let stderr = String(bytes: result?.standardErrorContent ?? [], encoding: .utf8) ?? ""
+            #expect(stderr.contains("recid >= 0 && recid <= 3"))
+        }
+
+        /// Control arm: a bound corruptor that mutates nothing must not
+        /// false-positive the self-check — the child signs successfully and
+        /// exits cleanly — and the stderr marker proves the signing path
+        /// actually consulted the seam (a deleted consult fails this arm
+        /// outright rather than passing vacuously).
+        @Test("Bound-but-inert corruptor lets recoverable signing complete")
+        func recoveryInertCorruptorSigns() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .success,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.recoveryInert)
             }
             let stderr = String(bytes: result?.standardErrorContent ?? [], encoding: .utf8) ?? ""
             #expect(stderr.contains(kSeamConsultedMarker))
