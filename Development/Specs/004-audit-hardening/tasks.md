@@ -382,7 +382,7 @@ new `publicNonceAggregate:`/`throws` shape; T030 is test-side only.
       `Tests/P256KTests/InvariantTests.swift` already does for the crash
       channel · `Sources/P256K/Corruption.swift` (the seam definition),
       `Tests/P256KTests/CorruptionSeamTests.swift`
-- [ ] T009 Schnorr: after `secp256k1_schnorrsig_sign_custom` succeeds,
+- [x] T009 Schnorr: after `secp256k1_schnorrsig_sign_custom` succeeds,
       re-verify against the derived x-only key via
       `secp256k1_schnorrsig_verify`; failure → `P256K.invariantFailure`.
       DocC cites BIP-340 footnote 14 and upstream's "does not strictly
@@ -393,7 +393,7 @@ new `publicNonceAggregate:`/`throws` shape; T030 is test-side only.
       (carries T013's Schnorr share); run `benchmark-pr.yml` on the PR and
       attach the comparison to its description (carries T014's share) ·
       `Sources/P256K/Schnorr/Schnorr+Signature.swift`, `Tests/P256KTests/`
-- [ ] T010 ECDSA: verify the parsed `secp256k1_ecdsa_signature` struct
+- [x] T010 ECDSA: verify the parsed `secp256k1_ecdsa_signature` struct
       against the stored public key — no compact round-trip; the method
       gains the one-line T024 seam consult and this path's fault-injection
       exit test (carries T013's ECDSA share); run `benchmark-pr.yml` on

@@ -58,6 +58,27 @@ private func flipByte(
         /// still sign and exit cleanly: a bound seam can never
         /// false-positive the self-check.
         case schnorrInert
+
+        /// A real `P256K.Signing.PrivateKey.signature(for:)` call under a
+        /// bound corruptor that flips the last byte of the produced
+        /// `secp256k1_ecdsa_signature` — inside the `s` scalar's half of
+        /// the 64-byte opaque struct (`r` occupies data[0..32), `s`
+        /// data[32..64)). For a fixed `r` the ECDSA equation admits only
+        /// `s` and `n − s` as solutions; `n − s` fails
+        /// `secp256k1_ecdsa_verify`'s lower-S requirement, an out-of-range
+        /// result fails it the same way, and any other mutated `s` fails
+        /// the curve equation — so the child can only exit through the
+        /// invariant channel. The guarantee assumes no `-DVERIFY` upstream
+        /// build define (none exists in the package today): under one, a
+        /// corrupted `s` ≥ the curve order could abort inside scalar
+        /// `VERIFY` checks instead, with a different stderr message.
+        case ecdsa
+
+        /// Control arm: a bound corruptor that proves it was consulted —
+        /// it writes a stderr marker — but mutates nothing. The child must
+        /// still sign and exit cleanly: a bound seam can never
+        /// false-positive the self-check.
+        case ecdsaInert
     }
 
     /// Executes one fault-injection scenario inside an exit-test child
@@ -99,6 +120,23 @@ private func flipByte(
             }
             try P256K.$signatureCorruptor.withValue(consulted) {
                 _ = try privateKey.signature(message: message)
+            }
+
+        case .ecdsa:
+            let privateKey = try P256K.Signing.PrivateKey()
+            let digest = SHA256.hash(data: [UInt8](repeating: 0xAB, count: 32))
+            P256K.$signatureCorruptor.withValue(flipByte(at: 63)) {
+                _ = privateKey.signature(for: digest)
+            }
+
+        case .ecdsaInert:
+            let privateKey = try P256K.Signing.PrivateKey()
+            let digest = SHA256.hash(data: [UInt8](repeating: 0xAB, count: 32))
+            let consulted: @Sendable (UnsafeMutableRawBufferPointer) -> Void = { _ in
+                FileHandle.standardError.write(Data("\(kSeamConsultedMarker)".utf8))
+            }
+            P256K.$signatureCorruptor.withValue(consulted) {
+                _ = privateKey.signature(for: digest)
             }
         }
     }
@@ -214,6 +252,42 @@ struct CorruptionSeamTestSuite {
                 observing: [\.standardErrorContent]
             ) {
                 try runCorruptionCase(.schnorrInert)
+            }
+            let stderr = String(bytes: result?.standardErrorContent ?? [], encoding: .utf8) ?? ""
+            #expect(stderr.contains(kSeamConsultedMarker))
+        }
+
+        /// The real pipeline on the ECDSA signing path (T010): the bound
+        /// corruptor mutates the produced `secp256k1_ecdsa_signature`
+        /// struct between `secp256k1_ecdsa_sign` and the self-check — a
+        /// mutation guaranteed-invalid by the lower-S/curve-equation
+        /// argument on `.ecdsa` — and the only remaining exit is
+        /// `invariantFailure`. If the consult never reached the signing
+        /// path, the child would sign cleanly and `.failure` would go
+        /// unobserved.
+        @Test("Corrupted ECDSA signature terminates via the invariant channel")
+        func ecdsaCorruptionTerminates() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .failure,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.ecdsa)
+            }
+            expectCrashReport(result, contains: "produced ECDSA signature failed verification against public key")
+        }
+
+        /// Control arm: a bound corruptor that mutates nothing must not
+        /// false-positive the self-check — the child signs successfully and
+        /// exits cleanly — and the stderr marker proves the signing path
+        /// actually consulted the seam (a deleted consult fails this arm
+        /// outright rather than passing vacuously).
+        @Test("Bound-but-inert corruptor lets ECDSA signing complete")
+        func ecdsaInertCorruptorSigns() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .success,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.ecdsaInert)
             }
             let stderr = String(bytes: result?.standardErrorContent ?? [], encoding: .utf8) ?? ""
             #expect(stderr.contains(kSeamConsultedMarker))
