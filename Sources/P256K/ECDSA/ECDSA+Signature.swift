@@ -197,6 +197,12 @@ extension P256K.Signing.PrivateKey: DigestSigner {
     /// `msg32` value per SEC1 §4.1.3 — the leftmost 32 bytes for longer digests,
     /// the integer value (left-padded with zeros) for shorter ones.
     ///
+    /// > Note: The produced signature is verified against this key's ``publicKey`` via
+    /// > `secp256k1_ecdsa_verify` before it is returned — the verify-after-sign
+    /// > check Bitcoin Core applies in `CKey::Sign`. A failure is unreachable
+    /// > after input validation, reports through ``P256K/setInvariantViolationHandler(_:)``,
+    /// > and terminates the process.
+    ///
     /// - Parameter digest: The pre-computed message digest to sign.
     /// - Returns: An ``ECDSASignature`` in lower-S normalized form, ready for verification via the `isValidSignature(_:for:)` overloads on ``P256K/Signing/PublicKey``.
     public func signature<D: Digest>(for digest: D) -> P256K.Signing.ECDSASignature {
@@ -204,6 +210,7 @@ extension P256K.Signing.PrivateKey: DigestSigner {
         let digestBytes = digest.msg32Bytes
         var signature = secp256k1_ecdsa_signature()
         var compactSignature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
+        var rawPublicKey = publicKey.baseKey.rawRepresentation
 
         let signed = key.withUnsafeBytePointer { keyPtr in
             secp256k1_ecdsa_sign(
@@ -217,6 +224,23 @@ extension P256K.Signing.PrivateKey: DigestSigner {
         }
         guard signed else {
             P256K.invariantFailure("secp256k1_ecdsa_sign failed with valid key — library bug")
+        }
+
+        // Test seam (spec 004 Group E): a bound task-local corruptor
+        // mutates the produced signature object so fault-injection exit
+        // tests can prove the self-check below catches them; a no-op when
+        // unbound. Deliberately unconditional rather than `#if`-gated —
+        // shipped and tested signing paths stay byte-identical.
+        Swift.withUnsafeMutableBytes(of: &signature, P256K.corruptProducedSignature)
+
+        // Verify-after-sign on the produced signature object itself,
+        // before its escaping wire form is serialized — the check
+        // Bitcoin Core applies in `CKey::Sign` (PR #22934) — no compact
+        // round-trip. Verification runs against this key's advertised
+        // public identity, so corruption in the signature object or in
+        // the key material used to sign both fail-stop.
+        guard secp256k1_ecdsa_verify(context, &signature, digestBytes, &rawPublicKey).boolValue else {
+            P256K.invariantFailure("produced ECDSA signature failed verification against public key — output corruption or library bug")
         }
 
         guard secp256k1_ecdsa_signature_serialize_compact(
@@ -234,6 +258,11 @@ extension P256K.Signing.PrivateKey: DigestSigner {
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension P256K.Signing.PrivateKey: Signer {
     /// Generates a lower-S normalized ECDSA signature by first hashing `data` with SHA-256, then signing with `secp256k1_ecdsa_sign`.
+    ///
+    /// > Note: The produced signature is verified against this key's ``publicKey`` via
+    /// > `secp256k1_ecdsa_verify` before it is returned — a failure is unreachable
+    /// > after input validation, reports through ``P256K/setInvariantViolationHandler(_:)``,
+    /// > and terminates the process.
     ///
     /// - Parameter data: The message bytes to hash and sign.
     /// - Returns: An ``ECDSASignature`` in lower-S normalized form.
