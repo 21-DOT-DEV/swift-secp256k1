@@ -399,12 +399,16 @@ new `publicNonceAggregate:`/`throws` shape; T030 is test-side only.
       exit test (carries T013's ECDSA share); run `benchmark-pr.yml` on
       the PR and attach the comparison to its description (T014) ·
       `Sources/P256K/ECDSA/ECDSA+Signature.swift`, `Tests/P256KTests/`
-- [ ] T011 Recovery: verify via `secp256k1_ecdsa_recover` +
+- [x] T011 Recovery: verify via `secp256k1_ecdsa_recover` +
       `secp256k1_ec_pubkey_cmp` against the derived public key (Bitcoin
-      Core `SignCompact` technique); the method gains the one-line T024
-      seam consult and this path's fault-injection exit test (carries
-      T013's Recovery share); run `benchmark-pr.yml` on the PR and attach
-      the comparison to its description (T014) ·
+      Core `SignCompact` technique), run on the serialized 65-byte wire
+      form — the re-parse re-validates the recovery ID at the boundary
+      upstream reserves for it, where the opaque struct only masks
+      `recid & 3` in non-VERIFY builds; the method gains the one-line T024
+      seam consult and this path's fault-injection exit tests (s-half,
+      in-range recovery ID, out-of-range recovery ID → `ARG_CHECK`, inert;
+      carries T013's Recovery share); run `benchmark-pr.yml` on the PR and
+      attach the comparison to its description (T014) ·
       `Sources/P256K/Recovery/Recovery+Signature.swift`, `Tests/P256KTests/`
 - [ ] T012 MuSig2 partial signatures: self-verify via the already-wrapped
       `secp256k1_musig_partial_sig_verify` against the signer's own public
