@@ -82,14 +82,17 @@ let alicePartial = try alice.partialSignature(
 
 ### Aggregating Signatures
 
-Once all partial signatures are collected, aggregate them into the final Schnorr signature:
+Once all partial signatures are collected, aggregate them into the final Schnorr signature. The aggregator re-declares the session — the message, the aggregate nonce, and the aggregate key — so the signature is assembled only when every partial's carried session matches, and the produced signature is verified before it is returned:
 
 ```swift
 import P256K
 
-let finalSignature = try P256K.MuSig.aggregateSignatures([
-    alicePartial, bobPartial, carolPartial
-])
+let finalSignature = try P256K.MuSig.aggregateSignatures(
+    [alicePartial, bobPartial, carolPartial],
+    for: messageHash,
+    publicNonceAggregate: aggregateNonce,
+    publicKeyAggregate: aggregate
+)
 ```
 
 ### Verification

@@ -51,7 +51,8 @@ import libsecp256k1
         ///    exists for deterministic inputs such as test vectors — never reuse a value across sessions.
         /// 3. **Nonce aggregation**: Collect all ``P256K/Schnorr/Nonce`` values; any party calls ``Nonce/init(aggregating:)``.
         /// 4. **Partial signing**: Each signer calls ``P256K/Schnorr/PrivateKey/partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)``.
-        /// 5. **Signature aggregation**: Any party calls ``aggregateSignatures(_:)``.
+        /// 5. **Signature aggregation**: Any party calls
+        ///    ``aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``.
         ///
         /// ### Nonce Reuse
         ///
@@ -75,7 +76,7 @@ import libsecp256k1
         /// - ``XonlyKey``
         /// - ``aggregate(_:)``
         /// - ``sortedPublicKeys(_:)``
-        /// - ``aggregateSignatures(_:)``
+        /// - ``aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``
         ///
         /// ### Session Types
         /// - ``AggregateSignature``

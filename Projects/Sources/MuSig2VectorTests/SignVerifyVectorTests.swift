@@ -259,7 +259,7 @@ struct SignVerifyVectorTests {
         let partial = try secretKey.partialSignature(
             for: message,
             pubnonce: signerPubnonce,
-            secureNonce: secureNonce(secnonceIndex: 0, publicKey: signerPublicKey),
+            secureNonce: secureNonce(secnonceIndex: 0, publicKey: signerPublicKey, publicNonce: signerPubnonce),
             publicNonceAggregate: aggregateNonce,
             publicKeyAggregate: aggregate
         )
@@ -509,10 +509,11 @@ struct SignVerifyVectorTests {
     }
 
     /// Materializes a spec secret nonce as a consumable ``SecureNonce``.
-    private func secureNonce(secnonceIndex: Int, publicKey: P256K.Schnorr.PublicKey) throws -> P256K.Schnorr.SecureNonce {
+    private func secureNonce(secnonceIndex: Int, publicKey: P256K.Schnorr.PublicKey, publicNonce: P256K.Schnorr.Nonce) throws -> P256K.Schnorr.SecureNonce {
         try P256K.Schnorr.SecureNonce(
             SecureBytes(bytes: secureNonceBlob(secnonceIndex: secnonceIndex, publicKey: publicKey)),
-            publicKey: publicKey
+            publicKey: publicKey,
+            publicNonce: publicNonce
         )
     }
 

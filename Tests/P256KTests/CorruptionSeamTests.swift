@@ -119,6 +119,35 @@ private func flipByte(
         /// still sign and exit cleanly: a bound seam can never
         /// false-positive the self-check.
         case recoveryInert
+
+        /// A real `partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)`
+        /// call under a bound corruptor that flips the last byte of the
+        /// produced 32-byte wire form with mask 0x01 — the `s` scalar's
+        /// final byte, so `s′` stays in range and re-parses but differs
+        /// from `s`, which `secp256k1_musig_partial_sig_verify` cannot
+        /// pass — the child can only exit through the invariant channel.
+        case musigPartial
+
+        /// Control arm: a bound corruptor that proves it was consulted —
+        /// it writes a stderr marker — but mutates nothing. The child must
+        /// still sign and exit cleanly: a bound seam can never
+        /// false-positive the self-check.
+        case musigPartialInert
+
+        /// A real `P256K.MuSig.aggregateSignatures` call under a bound
+        /// corruptor that flips the last byte of the produced 64-byte
+        /// aggregate signature — the `s` half's final byte. An honest
+        /// partial is produced first with the seam unbound so only the
+        /// aggregation path's consult is under test; the mutated aggregate
+        /// cannot pass `secp256k1_schnorrsig_verify` — the child can only
+        /// exit through the invariant channel.
+        case musigAggregate
+
+        /// Control arm: a bound corruptor that proves it was consulted —
+        /// it writes a stderr marker — but mutates nothing. The child must
+        /// still aggregate and exit cleanly: a bound seam can never
+        /// false-positive the self-check.
+        case musigAggregateInert
     }
 
     /// Executes one fault-injection scenario inside an exit-test child
@@ -208,6 +237,104 @@ private func flipByte(
             }
             P256K.$signatureCorruptor.withValue(consulted) {
                 _ = privateKey.signature(for: digest)
+            }
+
+        case .musigPartial:
+            try P256K.$signatureCorruptor.withValue(flipByte(at: 31, mask: 0x01)) {
+                let privateKey = try P256K.Schnorr.PrivateKey()
+                let message: [UInt8] = .init(repeating: 0xAB, count: 32)
+                let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
+                let nonce = try P256K.MuSig.Nonce.generate(
+                    secretKey: privateKey,
+                    publicKey: privateKey.publicKey,
+                    msg32: message
+                )
+                let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+                _ = try privateKey.partialSignature(
+                    for: message,
+                    pubnonce: nonce.pubnonce,
+                    secureNonce: nonce.secnonce,
+                    publicNonceAggregate: aggregateNonce,
+                    xonlyKeyAggregate: aggregate.xonly
+                )
+            }
+
+        case .musigPartialInert:
+            let consulted: @Sendable (UnsafeMutableRawBufferPointer) -> Void = { _ in
+                FileHandle.standardError.write(Data("\(kSeamConsultedMarker)".utf8))
+            }
+            try P256K.$signatureCorruptor.withValue(consulted) {
+                let privateKey = try P256K.Schnorr.PrivateKey()
+                let message: [UInt8] = .init(repeating: 0xAB, count: 32)
+                let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
+                let nonce = try P256K.MuSig.Nonce.generate(
+                    secretKey: privateKey,
+                    publicKey: privateKey.publicKey,
+                    msg32: message
+                )
+                let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+                _ = try privateKey.partialSignature(
+                    for: message,
+                    pubnonce: nonce.pubnonce,
+                    secureNonce: nonce.secnonce,
+                    publicNonceAggregate: aggregateNonce,
+                    xonlyKeyAggregate: aggregate.xonly
+                )
+            }
+
+        case .musigAggregate:
+            let privateKey = try P256K.Schnorr.PrivateKey()
+            let message: [UInt8] = .init(repeating: 0xAB, count: 32)
+            let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
+            let nonce = try P256K.MuSig.Nonce.generate(
+                secretKey: privateKey,
+                publicKey: privateKey.publicKey,
+                msg32: message
+            )
+            let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+            let partial = try privateKey.partialSignature(
+                for: message,
+                pubnonce: nonce.pubnonce,
+                secureNonce: nonce.secnonce,
+                publicNonceAggregate: aggregateNonce,
+                xonlyKeyAggregate: aggregate.xonly
+            )
+            try P256K.$signatureCorruptor.withValue(flipByte(at: 63)) {
+                _ = try P256K.MuSig.aggregateSignatures(
+                    [partial],
+                    for: message,
+                    publicNonceAggregate: aggregateNonce,
+                    xonlyKeyAggregate: aggregate.xonly
+                )
+            }
+
+        case .musigAggregateInert:
+            let privateKey = try P256K.Schnorr.PrivateKey()
+            let message: [UInt8] = .init(repeating: 0xAB, count: 32)
+            let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
+            let nonce = try P256K.MuSig.Nonce.generate(
+                secretKey: privateKey,
+                publicKey: privateKey.publicKey,
+                msg32: message
+            )
+            let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+            let partial = try privateKey.partialSignature(
+                for: message,
+                pubnonce: nonce.pubnonce,
+                secureNonce: nonce.secnonce,
+                publicNonceAggregate: aggregateNonce,
+                xonlyKeyAggregate: aggregate.xonly
+            )
+            let consulted: @Sendable (UnsafeMutableRawBufferPointer) -> Void = { _ in
+                FileHandle.standardError.write(Data("\(kSeamConsultedMarker)".utf8))
+            }
+            try P256K.$signatureCorruptor.withValue(consulted) {
+                _ = try P256K.MuSig.aggregateSignatures(
+                    [partial],
+                    for: message,
+                    publicNonceAggregate: aggregateNonce,
+                    xonlyKeyAggregate: aggregate.xonly
+                )
             }
         }
     }
@@ -431,6 +558,77 @@ struct CorruptionSeamTestSuite {
                 observing: [\.standardErrorContent]
             ) {
                 try runCorruptionCase(.recoveryInert)
+            }
+            let stderr = String(bytes: result?.standardErrorContent ?? [], encoding: .utf8) ?? ""
+            #expect(stderr.contains(kSeamConsultedMarker))
+        }
+
+        /// The real pipeline on the MuSig partial-signing path (T012): the
+        /// bound corruptor mutates the produced 32-byte partial signature
+        /// between `partial_sig_serialize` and the `partial_sig_verify`
+        /// self-check — the mutation is guaranteed-invalid — and the only
+        /// remaining exit is `invariantFailure`. If the consult never
+        /// reached the signing path, the child would sign cleanly and
+        /// `.failure` would go unobserved.
+        @Test("Corrupted MuSig partial signature terminates via the invariant channel")
+        func musigPartialCorruptionTerminates() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .failure,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.musigPartial)
+            }
+            expectCrashReport(result, contains: "produced MuSig partial signature failed verification")
+        }
+
+        /// Control arm: a bound corruptor that mutates nothing must not
+        /// false-positive the self-check — the child signs successfully and
+        /// exits cleanly — and the stderr marker proves the signing path
+        /// actually consulted the seam (a deleted consult fails this arm
+        /// outright rather than passing vacuously).
+        @Test("Bound-but-inert corruptor lets MuSig partial signing complete")
+        func musigPartialInertCorruptorSigns() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .success,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.musigPartialInert)
+            }
+            let stderr = String(bytes: result?.standardErrorContent ?? [], encoding: .utf8) ?? ""
+            #expect(stderr.contains(kSeamConsultedMarker))
+        }
+
+        /// The real pipeline on the MuSig signature-aggregation path (T012):
+        /// the bound corruptor mutates the produced 64-byte aggregate
+        /// signature between `partial_sig_agg` and the `schnorrsig_verify`
+        /// self-check — the mutation is guaranteed-invalid — and the only
+        /// remaining exit is `invariantFailure`. The partial signature is
+        /// produced with the seam unbound, so only the aggregation path's
+        /// consult is under test: if it never ran, the child would
+        /// aggregate cleanly and `.failure` would go unobserved.
+        @Test("Corrupted MuSig aggregate signature terminates via the invariant channel")
+        func musigAggregateCorruptionTerminates() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .failure,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.musigAggregate)
+            }
+            expectCrashReport(result, contains: "produced MuSig aggregate signature failed verification")
+        }
+
+        /// Control arm: a bound corruptor that mutates nothing must not
+        /// false-positive the self-check — the child aggregates
+        /// successfully and exits cleanly — and the stderr marker proves
+        /// the aggregation path actually consulted the seam (a deleted
+        /// consult fails this arm outright rather than passing vacuously).
+        @Test("Bound-but-inert corruptor lets MuSig aggregation complete")
+        func musigAggregateInertCorruptorAggregates() async {
+            let result: ExitTest.Result? = await #expect(
+                processExitsWith: .success,
+                observing: [\.standardErrorContent]
+            ) {
+                try runCorruptionCase(.musigAggregateInert)
             }
             let stderr = String(bytes: result?.standardErrorContent ?? [], encoding: .utf8) ?? ""
             #expect(stderr.contains(kSeamConsultedMarker))

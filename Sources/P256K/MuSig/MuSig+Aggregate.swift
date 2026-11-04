@@ -152,7 +152,9 @@ import libsecp256k1
     public extension P256K.MuSig {
         /// 64-byte
         /// [BIP-340](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki) Schnorr
-        /// signature produced by ``aggregateSignatures(_:)`` from all signers'
+        /// signature produced by
+        /// ``aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``
+        /// from all signers'
         /// ``P256K/Schnorr/PartialSignature`` values; verifiable against the MuSig2
         /// aggregate public key.
         ///
@@ -164,8 +166,12 @@ import libsecp256k1
         /// cannot distinguish an aggregate from a single-signer BIP-340 signature.
         ///
         /// > Important: `secp256k1_musig_partial_sig_agg` returning `1` does **not**
-        /// > guarantee the resulting signature is valid — always verify with
-        /// > ``XonlyKey/isValidSignature(_:for:)``.
+        /// > guarantee the resulting signature is valid —
+        /// > ``P256K/MuSig/aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``
+        /// > verifies the produced signature before returning, but an
+        /// > ``AggregateSignature`` reconstructed from wire bytes via
+        /// > ``init(dataRepresentation:)`` has not been checked — verify those
+        /// > with ``XonlyKey/isValidSignature(_:for:)``.
         ///
         /// ## Topics
         ///
@@ -214,22 +220,51 @@ import libsecp256k1
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     public extension P256K.MuSig {
         /// Combines all signers' partial signatures into a final 64-byte
-        /// ``AggregateSignature`` via `secp256k1_musig_partial_sig_agg`.
+        /// ``AggregateSignature`` via `secp256k1_musig_partial_sig_agg`, then
+        /// verifies it via `secp256k1_schnorrsig_verify` before returning.
         ///
-        /// > Important: A return value of `1` from the underlying C function does **not**
-        /// > guarantee the result verifies — always call
-        /// > ``XonlyKey/isValidSignature(_:for:)`` on the output to confirm the aggregate
-        /// > signature is valid against the aggregate public key.
+        /// Upstream's `doc/musig.md` documents that `partial_sig_agg` returning
+        /// `1` does **not** guarantee a valid aggregate — the caller is expected
+        /// to verify the produced signature, and [BIP-327](https://github.com/bitcoin/bips/blob/master/bip-0327.mediawiki)
+        /// prescribes the same final check. This method performs it: the signing
+        /// session is rebuilt locally from the declared (aggregate nonce,
+        /// message, key aggregation cache) triple — the same reconstruction
+        /// `partialSignature` and the partial verifier perform — every partial
+        /// signature's carried ``P256K/Schnorr/PartialSignature/session`` must
+        /// match it byte-for-byte, and the produced signature is verified
+        /// against the aggregate public key derived from that same cache. A
+        /// verify failure is unreachable on validated inputs — output corruption
+        /// or a library bug — so it reports through
+        /// ``P256K/setInvariantViolationHandler(_:)`` and terminates rather than
+        /// letting corrupted output escape.
         ///
         /// - Parameter partialSignatures: All signers' ``P256K/Schnorr/PartialSignature``
         ///   values; must include every participant's partial signature.
-        /// - Returns: A 64-byte ``AggregateSignature`` that may be verified with
-        ///   `secp256k1_schnorrsig_verify`.
-        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `partialSignatures` is
-        ///   empty; ``secp256k1Error/underlyingCryptoError`` if the signatures were made
-        ///   against different sessions or `secp256k1_musig_partial_sig_agg` fails.
+        /// - Parameter message: The message that was signed — must be exactly 32
+        ///   bytes; `secp256k1_musig_nonce_process` binds a fixed `msg32` into
+        ///   the session, so hash arbitrary-length application messages to 32
+        ///   bytes first (variable-length BIP-327 messages are unsupported by
+        ///   libsecp256k1).
+        /// - Parameter publicNonceAggregate: The ``P256K/MuSig/Nonce`` aggregated
+        ///   from all signers' public nonces for this session.
+        /// - Parameter xonlyKeyAggregate: The x-only form of the
+        ///   ``P256K/MuSig/aggregate(_:)`` result — including any applied tweaks
+        ///   — carrying the key aggregation ``P256K/MuSig/XonlyKey/cache`` the
+        ///   session was bound to and the aggregate signature verifies against.
+        /// - Returns: A verified 64-byte ``AggregateSignature``.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if
+        ///   `partialSignatures` is empty or `message` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if `xonlyKeyAggregate`
+        ///   lacks a usable key aggregation cache, or if any carried session
+        ///   differs from the session rebuilt from the declared inputs — a
+        ///   signature produced over a different message, nonce set, or key
+        ///   aggregate is rejected rather than silently aggregated under a
+        ///   session it was never bound to.
         static func aggregateSignatures(
-            _ partialSignatures: [P256K.Schnorr.PartialSignature]
+            _ partialSignatures: [P256K.Schnorr.PartialSignature],
+            for message: some ContiguousBytes,
+            publicNonceAggregate: P256K.MuSig.Nonce,
+            xonlyKeyAggregate: P256K.MuSig.XonlyKey
         ) throws -> P256K.MuSig.AggregateSignature {
             guard partialSignatures.isEmpty == false else {
                 throw secp256k1Error.incorrectParameterSize
@@ -237,25 +272,48 @@ import libsecp256k1
 
             let context = P256K.Context.rawRepresentation
             var signature = [UInt8](repeating: 0, count: P256K.ByteLength.signature)
+            var aggPubkey = secp256k1_pubkey()
+            var xonlyPubkey = secp256k1_xonly_pubkey()
+            var pkParity: Int32 = 0
+            var cache = secp256k1_musig_keyagg_cache()
             var session = secp256k1_musig_session()
+            var aggnonce = secp256k1_musig_aggnonce()
 
-            // `secp256k1_musig_session_load` checks the blob's magic prefix inside
-            // `ARG_CHECK`, which aborts on mismatch — validate before the copy so
-            // malformed state throws instead of terminating the process. Upstream's
-            // model is a single shared session, so every signature must carry the
-            // same session blob — mixing sessions would silently aggregate under
-            // the first signature's session.
-            guard let sessionBytes = partialSignatures.first?.session,
-                  MuSigOpaqueState.isValidSession(sessionBytes),
-                  partialSignatures.allSatisfy({ $0.session == sessionBytes }) else {
+            // `secp256k1_musig_nonce_process` reads a fixed `msg32` — reject any
+            // other length rather than silently rebuilding a session over the
+            // wrong message.
+            let messageBytes = try message.exactMsg32Bytes
+
+            // `keyagg_cache_load` checks the blob's magic prefix inside `ARG_CHECK`,
+            // which aborts on a zeroed or malformed struct — a missing or corrupt
+            // cache must throw before the copy, not reach upstream.
+            guard MuSigOpaqueState.isValidKeyAggregationCache(xonlyKeyAggregate.cache) else {
                 throw secp256k1Error.underlyingCryptoError
             }
 
-            sessionBytes.copyToUnsafeMutableBytes(of: &session.data)
+            xonlyKeyAggregate.cache.copyToUnsafeMutableBytes(of: &cache.data)
+            publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
-            // Every wire blob must parse into a live `secp256k1_musig_partial_sig`;
-            // `partial_sig_load` aborts on a zeroed or malformed struct, and a
-            // parse failure previously went unchecked here.
+            // `nonce_process` is deterministic over (aggregate nonce, msg32,
+            // cache), so an honestly produced `PartialSignature` carries exactly
+            // the session this rebuilds — the same reconstruction
+            // `partialSignature` and the partial verifier perform. A carried
+            // blob that differs pairs the signature with a different session
+            // (different message, nonce set, or key aggregate) and throws before
+            // aggregation: the declared inputs can't silently substitute for
+            // what the signers actually bound. Cache and aggregate nonce are
+            // construction-validated, so `nonce_process` cannot legitimately
+            // fail.
+            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, messageBytes, &cache).boolValue else {
+                P256K.invariantFailure("secp256k1_musig_nonce_process failed on validated session inputs — library bug")
+            }
+            guard partialSignatures.allSatisfy({ $0.session == session.dataValue }) else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
+            // Every wire blob was parse-validated at `PartialSignature`
+            // construction and `dataRepresentation` is `private(set)`, so a
+            // parse failure here can only indicate corruption or a library bug.
             var partialSigs = [secp256k1_musig_partial_sig]()
             partialSigs.reserveCapacity(partialSignatures.count)
 
@@ -266,21 +324,73 @@ import libsecp256k1
                     &partialSig,
                     Array(partialSignature.dataRepresentation)
                 ).boolValue else {
-                    throw secp256k1Error.underlyingCryptoError
+                    P256K.invariantFailure("secp256k1_musig_partial_sig_parse failed on construction-validated bytes — output corruption or library bug")
                 }
                 partialSigs.append(partialSig)
             }
 
+            // The session was rebuilt in this call and every partial signature
+            // parsed into a live `secp256k1_musig_partial_sig` — aggregation
+            // cannot legitimately fail on these inputs.
             guard PointerArrayUtility.withUnsafePointerArray(
                 partialSigs,
                 { pointers in
                     secp256k1_musig_partial_sig_agg(context, &signature, &session, pointers, pointers.count).boolValue
                 }
             ) else {
-                throw secp256k1Error.underlyingCryptoError
+                P256K.invariantFailure("secp256k1_musig_partial_sig_agg failed on rebuilt session and validated signatures — output corruption or library bug")
+            }
+
+            // Test seam (spec 004 Group E): mutates the produced bytes between
+            // aggregation and the self-check; a no-op when unbound.
+            signature.withUnsafeMutableBytes(P256K.corruptProducedSignature)
+
+            // The verifying key derives from the same provenance-established
+            // cache — `pubkey_get` yields the tweaked aggregate automatically
+            // for Taproot sessions — so every input to the final check is the
+            // declared one. `xonly_pubkey_from_pubkey` and `pubkey_get` fail
+            // only on unloadable inputs; a `schnorrsig_verify` failure is
+            // unreachable after the checks above — output corruption or a
+            // library bug.
+            guard secp256k1_musig_pubkey_get(context, &aggPubkey, &cache).boolValue else {
+                P256K.invariantFailure("secp256k1_musig_pubkey_get failed on rebuilt cache — library bug")
+            }
+            guard secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubkey, &pkParity, &aggPubkey).boolValue else {
+                P256K.invariantFailure("secp256k1_xonly_pubkey_from_pubkey failed on aggregate key — library bug")
+            }
+            guard secp256k1_schnorrsig_verify(context, signature, messageBytes, P256K.ByteLength.dimension, &xonlyPubkey).boolValue else {
+                P256K.invariantFailure("produced MuSig aggregate signature failed verification against the aggregate x-only key — output corruption or library bug")
             }
 
             return Self.AggregateSignature(Data(signature))
+        }
+
+        /// Convenience overload of ``aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``
+        /// taking the full ``P256K/MuSig/PublicKey`` returned by ``aggregate(_:)``.
+        ///
+        /// - Parameter partialSignatures: All signers' ``P256K/Schnorr/PartialSignature``
+        ///   values; must include every participant's partial signature.
+        /// - Parameter message: The message that was signed — must be exactly 32
+        ///   bytes; `secp256k1_musig_nonce_process` binds a fixed `msg32` into
+        ///   the session.
+        /// - Parameter publicNonceAggregate: The ``P256K/MuSig/Nonce`` aggregated
+        ///   from all signers' public nonces for this session.
+        /// - Parameter publicKeyAggregate: The ``P256K/MuSig/PublicKey`` returned
+        ///   by ``aggregate(_:)`` — including any applied tweaks.
+        /// - Returns: A verified 64-byte ``AggregateSignature``.
+        /// - Throws: The same errors as the canonical overload.
+        static func aggregateSignatures(
+            _ partialSignatures: [P256K.Schnorr.PartialSignature],
+            for message: some ContiguousBytes,
+            publicNonceAggregate: P256K.MuSig.Nonce,
+            publicKeyAggregate: P256K.MuSig.PublicKey
+        ) throws -> P256K.MuSig.AggregateSignature {
+            try aggregateSignatures(
+                partialSignatures,
+                for: message,
+                publicNonceAggregate: publicNonceAggregate,
+                xonlyKeyAggregate: publicKeyAggregate.xonly
+            )
         }
     }
 
@@ -290,7 +400,8 @@ import libsecp256k1
     public extension P256K.Schnorr {
         /// MuSig2 partial signature produced by one signer via
         /// ``P256K/Schnorr/PrivateKey/partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)``;
-        /// combined with all others by ``P256K/MuSig/aggregateSignatures(_:)``.
+        /// combined with all others by
+        /// ``P256K/MuSig/aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``.
         ///
         /// ## Overview
         ///

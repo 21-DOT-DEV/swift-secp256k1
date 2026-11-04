@@ -129,7 +129,12 @@ struct SigAggVectorTests {
         )
 
         // Aggregate signatures
-        let aggregatedSig = try P256K.MuSig.aggregateSignatures([partialSig1, partialSig2])
+        let aggregatedSig = try P256K.MuSig.aggregateSignatures(
+            [partialSig1, partialSig2],
+            for: SHA256.hash(data: message),
+            publicNonceAggregate: aggregatedNonce,
+            publicKeyAggregate: aggregatedKey
+        )
         #expect(aggregatedSig.dataRepresentation.count == 64, "Aggregated signature should be 64 bytes")
 
         // Verify the aggregate signature against the aggregated public key

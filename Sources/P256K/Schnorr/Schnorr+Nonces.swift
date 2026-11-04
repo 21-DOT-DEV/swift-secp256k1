@@ -56,6 +56,22 @@ import libsecp256k1
             /// Public key material — no zeroization needed.
             let publicKey: P256K.Schnorr.PublicKey
 
+            /// The public nonce emitted alongside this secret nonce by the same
+            /// ``P256K/MuSig/Nonce/generate(sessionSecretRand:secretKey:publicKey:msg32:extraInput32:)``
+            /// call — BIP-327's "pubnonce".
+            ///
+            /// `secp256k1_musig_partial_sign` takes no public-nonce argument — the
+            /// nonce pair is bound inside the secret nonce's scalars — so the
+            /// companion retained from generation is the only public nonce whose
+            /// provenance is established. BIP-327's reference `Sign` recomputes it
+            /// from those scalars inside the function; carrying the companion is
+            /// the equivalent upstream's opaque-struct rule permits here.
+            /// ``P256K/Schnorr/PrivateKey/partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)``
+            /// byte-compares the caller's `pubnonce:` against it and verifies the
+            /// produced partial signature under it. Public material — no
+            /// zeroization needed.
+            let publicNonce: P256K.Schnorr.Nonce
+
             /// Wraps raw secret-nonce bytes produced by upstream nonce-generation helpers.
             ///
             /// Internal-visibility constructor; consumers obtain a `SecureNonce` only via
@@ -63,9 +79,12 @@ import libsecp256k1
             ///
             /// - Parameter data: The 132-byte opaque `secp256k1_musig_secnonce` buffer.
             /// - Parameter publicKey: The public key the nonce was generated for.
-            init(_ data: SecureBytes, publicKey: P256K.Schnorr.PublicKey) {
+            /// - Parameter publicNonce: The companion public nonce emitted by the
+            ///   same nonce-generation call.
+            init(_ data: SecureBytes, publicKey: P256K.Schnorr.PublicKey, publicNonce: P256K.Schnorr.Nonce) {
                 self.data = data
                 self.publicKey = publicKey
+                self.publicNonce = publicNonce
             }
         }
 

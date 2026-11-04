@@ -288,9 +288,10 @@ import libsecp256k1
                     P256K.invariantFailure("secp256k1_musig_nonce_gen failed on validated inputs — library bug")
                 }
 
+                let publicNonce = P256K.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) })
                 return NonceResult(
-                    pubnonce: P256K.Schnorr.Nonce(pubnonce: Swift.withUnsafeBytes(of: pubnonce) { Data($0) }),
-                    secnonce: P256K.Schnorr.SecureNonce(secnonce, publicKey: publicKey)
+                    pubnonce: publicNonce,
+                    secnonce: P256K.Schnorr.SecureNonce(secnonce, publicKey: publicKey, publicNonce: publicNonce)
                 )
             }
         }
