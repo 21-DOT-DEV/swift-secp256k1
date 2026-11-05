@@ -126,7 +126,7 @@ public extension P256K.Signing {
         /// - Parameter xonlyKey: The x-only public key to convert.
         public init(xonlyKey: XonlyKey) {
             let key = XonlyKeyImplementation(
-                validatedBytes: xonlyKey.bytes,
+                validatedBytes: Array(xonlyKey.dataRepresentation),
                 keyParity: xonlyKey.parity ? 1 : 0,
                 cache: []
             )

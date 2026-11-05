@@ -103,7 +103,8 @@ findings; its A-1 belongs to the other codebase and stays out of this wave.
   enforces all-equal sessions and a valid-signature-plus-foreign-blob
   pair otherwise fails later, unattributed.
 - **B-5 — `Signature.Recoverable.normalize` only converts format, no
-  low-S normalization.** It calls
+  low-S normalization.** (Renamed `signature` by T015; `normalize`
+  stays as a deprecated alias until 1.0.) It calls
   `secp256k1_ecdsa_recoverable_signature_convert`; the property's own doc
   warns the output "may fail `secp256k1_ecdsa_verify`" for low-S.
 - **B-6 — `Context.create()` returns an unmanaged `OpaquePointer`.**

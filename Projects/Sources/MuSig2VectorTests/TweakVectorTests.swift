@@ -111,7 +111,7 @@ struct TweakVectorTests {
         let tweakBytes = try vectors.tweaks[testCase.tweak_indices[0]].bytes
         let tweakedXonly = try aggregatedKey.xonly.add(tweakBytes)
 
-        #expect(tweakedXonly.bytes.count == 32, "Tweaked x-only key should be 32 bytes")
+        #expect(tweakedXonly.dataRepresentation.count == 32, "Tweaked x-only key should be 32 bytes")
     }
 
     @Test("Single plain tweak produces valid key")
@@ -156,7 +156,7 @@ struct TweakVectorTests {
         }
 
         #expect(tweakCount == 4, "Should have applied 4 tweaks")
-        #expect(currentKey.xonly.bytes.count == 32, "Final key should be valid")
+        #expect(currentKey.xonly.dataRepresentation.count == 32, "Final key should be valid")
     }
 
     @Test("Invalid tweaks are rejected")

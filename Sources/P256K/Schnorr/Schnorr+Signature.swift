@@ -390,9 +390,9 @@ import libsecp256k1
             let context = P256K.Context.rawRepresentation
             var pubKey = secp256k1_xonly_pubkey()
 
-            // `bytes` is guaranteed a validated 32-byte coordinate by construction.
+            // `dataRepresentation` is guaranteed a validated 32-byte coordinate by construction.
             return message.withUnsafeBytes { messageBuffer in
-                secp256k1_xonly_pubkey_parse(context, &pubKey, bytes).boolValue &&
+                secp256k1_xonly_pubkey_parse(context, &pubKey, Array(dataRepresentation)).boolValue &&
                     secp256k1_schnorrsig_verify(
                         context,
                         signature.dataRepresentation.byteArray,

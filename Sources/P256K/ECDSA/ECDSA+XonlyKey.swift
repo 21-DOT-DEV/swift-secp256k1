@@ -28,7 +28,7 @@ public extension P256K.Signing {
     /// ## Topics
     ///
     /// ### Inspection
-    /// - ``bytes``
+    /// - ``dataRepresentation``
     /// - ``parity``
     ///
     /// ### Construction
@@ -40,11 +40,18 @@ public extension P256K.Signing {
         /// `secp256k1_xonly_pubkey` struct; consumers never see or manipulate it directly.
         private let baseKey: XonlyKeyImplementation
 
-        /// The 32-byte X coordinate of this x-only public key.
+        /// The 32-byte X coordinate of this x-only public key as `Data`.
         ///
         /// Stable across libsecp256k1 versions — safe to persist as a BIP-340-style key
         /// identifier. Pair with ``parity`` if the full `(x, y)` point must be reconstructed
         /// downstream (e.g. for tweak verification).
+        public var dataRepresentation: Data {
+            baseKey.dataRepresentation
+        }
+
+        /// Deprecated alias for ``dataRepresentation`` — renamed to match the
+        /// library-wide `dataRepresentation: Data` convention.
+        @available(*, deprecated, renamed: "dataRepresentation")
         public var bytes: [UInt8] {
             baseKey.bytes
         }

@@ -39,7 +39,7 @@ struct KeyAggVectorTests {
             // The aggregate's x-only form must equal the vector's expected key —
             // only an order-preserving BIP-327 KeyAgg reproduces these values.
             #expect(
-                aggregatedKey.xonly.bytes == expected,
+                Array(aggregatedKey.xonly.dataRepresentation) == expected,
                 "Aggregate x-only key must equal expected for indices \(testCase.key_indices)"
             )
 
@@ -48,7 +48,7 @@ struct KeyAggVectorTests {
 
             // Verify the two aggregations produce the same result
             #expect(
-                aggregatedKey.xonly.bytes == aggregatedKey2.xonly.bytes,
+                aggregatedKey.xonly.dataRepresentation == aggregatedKey2.xonly.dataRepresentation,
                 "Key aggregation should be deterministic for indices \(testCase.key_indices)"
             )
         }
@@ -69,7 +69,7 @@ struct KeyAggVectorTests {
         let reversed = try P256K.MuSig.aggregate(Array(pubkeys.reversed()))
 
         #expect(
-            forward.xonly.bytes != reversed.xonly.bytes,
+            forward.xonly.dataRepresentation != reversed.xonly.dataRepresentation,
             "Reversing the key order must produce a different aggregate"
         )
     }

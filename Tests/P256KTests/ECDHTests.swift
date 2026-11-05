@@ -51,11 +51,11 @@ struct ECDHTestSuite {
         let sharedSecretSign1 = try P256K.Schnorr.PrivateKey(dataRepresentation: symmetricKey1.byteArray)
         let sharedSecretSign2 = try P256K.Signing.PrivateKey(dataRepresentation: symmetricKey2.byteArray)
 
-        let privateTweak1 = try sharedSecretSign1.add(privateSign1.publicKey.xonly.bytes)
-        let publicTweak2 = try sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
+        let privateTweak1 = try sharedSecretSign1.add(Array(privateSign1.publicKey.xonly.dataRepresentation))
+        let publicTweak2 = try sharedSecretSign2.publicKey.add(Array(privateSign1.publicKey.xonly.dataRepresentation))
 
         let schnorrPrivate = try P256K.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)
-        let xonlyTweak2 = try schnorrPrivate.xonly.add(privateSign1.publicKey.xonly.bytes)
+        let xonlyTweak2 = try schnorrPrivate.xonly.add(Array(privateSign1.publicKey.xonly.dataRepresentation))
 
         #expect(
             sharedSecretSign2.publicKey.xonly.parity
@@ -64,6 +64,6 @@ struct ECDHTestSuite {
             "Tweak addition expectation mismatch based on parity"
         )
 
-        #expect(privateTweak1.publicKey.xonly.bytes == xonlyTweak2.bytes, "Xonly tweaks do not match")
+        #expect(privateTweak1.publicKey.xonly.dataRepresentation == xonlyTweak2.dataRepresentation, "Xonly tweaks do not match")
     }
 }

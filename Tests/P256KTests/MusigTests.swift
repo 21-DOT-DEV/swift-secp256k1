@@ -491,7 +491,7 @@ struct MuSigTestSuite {
         // The package's Schnorr path signs arbitrary-length messages — a
         // reducing verifier would check only the leftmost 32 bytes and fail.
         let signature = try privateKey.signature(customMessage: message)
-        let xonly = try P256K.MuSig.XonlyKey(dataRepresentation: privateKey.xonly.bytes)
+        let xonly = try P256K.MuSig.XonlyKey(dataRepresentation: privateKey.xonly.dataRepresentation)
         let aggregateSignature = try P256K.MuSig.AggregateSignature(dataRepresentation: signature.dataRepresentation)
 
         #expect(xonly.isValidSignature(aggregateSignature, for: TestDigest(message)))
@@ -806,7 +806,7 @@ struct MuSigTestSuite {
         let privateKey = try P256K.Schnorr.PrivateKey()
         let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
         let cacheless = try P256K.MuSig.XonlyKey(
-            dataRepresentation: aggregate.xonly.bytes,
+            dataRepresentation: aggregate.xonly.dataRepresentation,
             keyParity: aggregate.xonly.parity ? 1 : 0
         )
         let message: [UInt8] = .init(repeating: 0xAB, count: 32)
@@ -975,7 +975,7 @@ struct MuSigKeyOrderTestSuite {
         let reversed = try P256K.MuSig.aggregate([bobPrivateKey.publicKey, alicePrivateKey.publicKey])
 
         #expect(
-            forward.xonly.bytes != reversed.xonly.bytes,
+            forward.xonly.dataRepresentation != reversed.xonly.dataRepresentation,
             "Reversing the key order must produce a different aggregate"
         )
     }
@@ -995,7 +995,7 @@ struct MuSigKeyOrderTestSuite {
         let permuted = try P256K.MuSig.aggregate(P256K.MuSig.sortedPublicKeys(Array(keys.reversed())))
 
         #expect(
-            canonical.xonly.bytes == permuted.xonly.bytes,
+            canonical.xonly.dataRepresentation == permuted.xonly.dataRepresentation,
             "Sorting first must give every input ordering the same aggregate"
         )
         #expect(P256K.MuSig.sortedPublicKeys([]).isEmpty, "Empty input must sort to empty output")
@@ -1026,7 +1026,7 @@ struct MuSigKeyOrderTestSuite {
         // each key's compressed serialization, which is exactly what
         // `secp256k1_ec_pubkey_sort` memcmps.
         func canonicalBytes(_ publicKey: P256K.Schnorr.PublicKey) -> [UInt8] {
-            [publicKey.xonly.parity ? 0x03 : 0x02] + publicKey.xonly.bytes
+            [publicKey.xonly.parity ? 0x03 : 0x02] + publicKey.xonly.dataRepresentation
         }
         let expected = [uncompressed, other, compressed]
             .sorted { canonicalBytes($0).lexicographicallyPrecedes(canonicalBytes($1)) }

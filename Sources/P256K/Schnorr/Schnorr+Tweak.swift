@@ -116,8 +116,8 @@ import libsecp256k1
                 throw secp256k1Error.incorrectParameterSize
             }
 
-            // `bytes` is guaranteed a validated 32-byte coordinate by construction.
-            guard secp256k1_xonly_pubkey_parse(context, &inXonlyPubKey, bytes).boolValue else {
+            // `dataRepresentation` is guaranteed a validated 32-byte coordinate by construction.
+            guard secp256k1_xonly_pubkey_parse(context, &inXonlyPubKey, Array(dataRepresentation)).boolValue else {
                 P256K.invariantFailure("secp256k1_xonly_pubkey_parse failed on validated key — library bug")
             }
             // Only the tweak can legitimately fail: an invalid tweak scalar or a

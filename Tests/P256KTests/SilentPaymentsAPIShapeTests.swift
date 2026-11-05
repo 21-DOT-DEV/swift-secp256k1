@@ -79,7 +79,7 @@ struct SilentPaymentsAPIShapeSuite {
 
         // Step 4: P_0 = B_spend + sharedSecret·G — derive the BIP-341 x-only output key.
         let destination = try bobSpendKey.add(Array(aliceSharedSecret))
-        let destinationXonly = destination.xonly.bytes
+        let destinationXonly = destination.xonly.dataRepresentation
 
         #expect(destinationXonly.count == 32, "BIP-341 taproot x-only output key is 32 bytes")
 
@@ -128,7 +128,7 @@ struct SilentPaymentsAPIShapeSuite {
 
         // Step 4: candidate_0 = B_spend + bobSharedSecret·G
         let candidate = try bobSpendKey.add(Array(bobSharedSecret))
-        let candidateXonly = candidate.xonly.bytes
+        let candidateXonly = candidate.xonly.dataRepresentation
 
         #expect(
             candidateXonly == destinationXonly,

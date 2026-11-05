@@ -33,7 +33,7 @@ struct SchnorrTestSuite {
         // The vector row's public-key column pins secret-key → x-only
         // derivation alongside the signature bytes (the same full-row check
         // rust-secp256k1's BIP-340 driver performs).
-        #expect(expectedPublicKeyBytes == privateKey.xonly.bytes)
+        #expect(expectedPublicKeyBytes == Array(privateKey.xonly.dataRepresentation))
 
         // Verify the signature matches the expected output
         #expect(expectedSignature == String(bytes: Array(signature.dataRepresentation)))
@@ -200,6 +200,6 @@ struct SchnorrTestSuite {
         #expect(privateKey == negatedKey, "Private key should equal negated key")
         #expect(privateKey.dataRepresentation == negatedKey.dataRepresentation, "Data representation of private key should equal negated key")
         #expect(privateKey.xonly == negatedKey.xonly, "Xonly of private key should equal negated key")
-        #expect(privateKey.xonly.bytes == negatedKey.xonly.bytes, "Xonly bytes of private key should equal negated key")
+        #expect(privateKey.xonly.dataRepresentation == negatedKey.xonly.dataRepresentation, "Xonly bytes of private key should equal negated key")
     }
 }
