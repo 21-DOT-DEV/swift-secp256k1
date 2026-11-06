@@ -45,7 +45,7 @@ import libsecp256k1
         /// > is **not guaranteed to pass** `secp256k1_ecdsa_verify` after conversion, because the
         /// > converted signature may not be in lower-S normalized form. Call
         /// > `secp256k1_ecdsa_signature_normalize` after
-        /// > ``ECDSASignature/normalize`` if you need a signature that passes standard ECDSA verification.
+        /// > ``ECDSASignature/signature`` if you need a signature that passes standard ECDSA verification.
         ///
         /// > Warning: **Recovery is not verification.** A successfully-recovered key is merely
         /// > a candidate public key whose signature of the given message would be this exact

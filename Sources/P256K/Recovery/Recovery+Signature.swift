@@ -58,9 +58,9 @@ import libsecp256k1
         /// A recoverable signature allows ``PublicKey`` to be reconstructed from the
         /// message hash alone via `secp256k1_ecdsa_recover`. Successful recovery guarantees
         /// the signature would pass `secp256k1_ecdsa_verify` **after normalization**;
-        /// however, converting the signature to a non-recoverable form via ``normalize``
+        /// however, converting the signature to a non-recoverable form via ``signature``
         /// does **not** automatically normalize it. Call
-        /// `secp256k1_ecdsa_signature_normalize` on the result of ``normalize`` if lower-S
+        /// `secp256k1_ecdsa_signature_normalize` on the result of ``signature`` if lower-S
         /// normalized form is required for standard ECDSA verification per
         /// [BIP-146](https://github.com/bitcoin/bips/blob/master/bip-0146.mediawiki).
         ///
@@ -75,7 +75,7 @@ import libsecp256k1
         /// - ``compactRepresentation``
         ///
         /// ### Conversion
-        /// - ``normalize``
+        /// - ``signature``
         struct ECDSASignature: ContiguousBytes, DataSignature {
             /// The 65-byte canonical wire representation: `r || s` in big-endian
             /// (64 bytes) followed by the 1-byte recovery ID.
@@ -112,7 +112,7 @@ import libsecp256k1
             ///
             /// - Returns: A ``P256K/Signing/ECDSASignature`` holding the converted
             ///   (non-recoverable) signature. Lower-S normalization is **not** applied.
-            public var normalize: P256K.Signing.ECDSASignature {
+            public var signature: P256K.Signing.ECDSASignature {
                 let context = P256K.Context.rawRepresentation
                 var normalizedSignature = secp256k1_ecdsa_signature()
                 var recoverableSignature = secp256k1_ecdsa_recoverable_signature()
@@ -141,6 +141,13 @@ import libsecp256k1
                 }
 
                 return P256K.Signing.ECDSASignature(Data(compactSignature))
+            }
+
+            /// Deprecated alias for ``signature`` — the former name implied the
+            /// low-S normalization this conversion never performs.
+            @available(*, deprecated, renamed: "signature")
+            public var normalize: P256K.Signing.ECDSASignature {
+                signature
             }
 
             /// Creates an ``ECDSASignature`` from the canonical 65-byte wire form

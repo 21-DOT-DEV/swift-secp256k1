@@ -129,7 +129,7 @@ Schnorr keys expose their 32-byte x-only form through the `xonly` accessor, whic
 import P256K
 
 let schnorrKey = try P256K.Schnorr.PrivateKey()
-let xonlyBytes = schnorrKey.xonly.bytes  // [UInt8], 32 bytes
+let xonlyBytes = schnorrKey.xonly.dataRepresentation  // Data, 32 bytes
 ```
 
 An ECDSA public key can be projected to x-only and lifted back, preserving the original parity through the round-trip:
@@ -217,7 +217,7 @@ let internalKey = try P256K.Schnorr.PrivateKey(
 
 let tweakHash = SHA256.taggedHash(
     tag: "TapTweak".data(using: .utf8)!,
-    data: Data(internalKey.bytes)
+    data: internalKey.dataRepresentation
 )
 
 let outputKey = try internalKey.add(Array(tweakHash))
@@ -231,7 +231,7 @@ import P256K
 
 let tweakHash = SHA256.taggedHash(
     tag: "TapTweak".data(using: .utf8)!,
-    data: Data(internalKey.bytes) + merkleRoot
+    data: internalKey.dataRepresentation + merkleRoot
 )
 let outputKey = try internalKey.add(Array(tweakHash))
 ```

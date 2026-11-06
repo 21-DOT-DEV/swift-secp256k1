@@ -20,17 +20,17 @@ struct TaprootTestSuite {
         let internalKeyBytes = try "cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115".bytes
         let internalKey = privateKey.xonly
 
-        #expect(internalKey.bytes == internalKeyBytes, "Internal key bytes should match expected")
+        #expect(Array(internalKey.dataRepresentation) == internalKeyBytes, "Internal key bytes should match expected")
 
         let tweakHash = try SHA256.taggedHash(
             tag: #require("TapTweak".data(using: .utf8)),
-            data: Data(internalKey.bytes)
+            data: internalKey.dataRepresentation
         )
 
         let outputKeyBytes = try "a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c".bytes
         let outputKey = try internalKey.add(tweakHash.byteArray)
 
-        #expect(outputKey.bytes == outputKeyBytes, "Output key bytes should match expected")
+        #expect(Array(outputKey.dataRepresentation) == outputKeyBytes, "Output key bytes should match expected")
     }
 
     @Test("Test Tapscript execution and hash verification")
@@ -50,7 +50,7 @@ struct TaprootTestSuite {
         var aliceScript = Data([UInt8(array.count)] + array)
         aliceScript += OP_CHECKSEQUENCEVERIFY
         aliceScript += OP_DROP
-        aliceScript += Data([UInt8(alice.publicKey.xonly.bytes.count)] + alice.publicKey.xonly.bytes)
+        aliceScript += Data([UInt8(alice.publicKey.xonly.dataRepresentation.count)] + alice.publicKey.xonly.dataRepresentation)
         aliceScript += OP_CHECKSIG
         let aliceLeafHash = try SHA256.taggedHash(
             tag: #require("TapLeaf".data(using: .utf8)),
@@ -67,7 +67,7 @@ struct TaprootTestSuite {
         var bobScript = OP_SHA256
         bobScript += Data([UInt8(preimageBytes.count)] + preimageBytes.byteArray)
         bobScript += OP_EQUALVERIFY
-        bobScript += Data([UInt8(bob.publicKey.xonly.bytes.count)] + bob.publicKey.xonly.bytes)
+        bobScript += Data([UInt8(bob.publicKey.xonly.dataRepresentation.count)] + bob.publicKey.xonly.dataRepresentation)
         bobScript += OP_CHECKSIG
         let bobLeafHash = try SHA256.taggedHash(
             tag: #require("TapLeaf".data(using: .utf8)),

@@ -101,7 +101,7 @@ import libsecp256k1
             /// - Parameter xonlyKey: The 32-byte x-only public key to convert.
             public init(xonlyKey: XonlyKey) {
                 let key = XonlyKeyImplementation(
-                    validatedBytes: xonlyKey.bytes,
+                    validatedBytes: Array(xonlyKey.dataRepresentation),
                     keyParity: xonlyKey.parity ? 1 : 0,
                     cache: xonlyKey.cache.byteArray
                 )

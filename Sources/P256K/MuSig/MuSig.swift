@@ -186,7 +186,7 @@ import libsecp256k1
                 /// - Parameter xonlyKey: An ``XonlyKey`` whose ``XonlyKey/cache`` was preserved from the original ``aggregate(_:)`` call.
                 public init(xonlyKey: XonlyKey) {
                     let key = XonlyKeyImplementation(
-                        validatedBytes: xonlyKey.bytes,
+                        validatedBytes: Array(xonlyKey.dataRepresentation),
                         keyParity: xonlyKey.parity ? 1 : 0,
                         cache: xonlyKey.cache.byteArray
                     )
@@ -225,7 +225,7 @@ import libsecp256k1
             /// ## Topics
             ///
             /// ### Inspection
-            /// - ``bytes``
+            /// - ``dataRepresentation``
             /// - ``parity``
             /// - ``cache``
             ///
@@ -239,11 +239,18 @@ import libsecp256k1
                 /// it directly through the public API.
                 private let baseKey: XonlyKeyImplementation
 
-                /// The 32-byte X coordinate of the aggregate public key.
+                /// The 32-byte X coordinate of the aggregate public key as `Data`.
                 ///
                 /// Stable across libsecp256k1 versions — safe to persist as a Bitcoin-
                 /// address-style identifier. Pair with ``parity`` and ``cache`` when the
                 /// aggregate needs to be reconstructed for a future signing session.
+                public var dataRepresentation: Data {
+                    baseKey.dataRepresentation
+                }
+
+                /// Deprecated alias for ``dataRepresentation`` — renamed to match the
+                /// library-wide `dataRepresentation: Data` convention.
+                @available(*, deprecated, renamed: "dataRepresentation")
                 public var bytes: [UInt8] {
                     baseKey.bytes
                 }

@@ -87,12 +87,12 @@ let restored = try P256K.Recovery.ECDSASignature(
 
 ### Converting to Standard ECDSA
 
-Use the ``P256K/Recovery/ECDSASignature/normalize`` property to drop the ID and obtain a standard ECDSA signature:
+Use the ``P256K/Recovery/ECDSASignature/signature`` property to drop the ID and obtain a standard ECDSA signature:
 
 ```swift
 import P256K
 
-let standardSignature = recoverySignature.normalize
+let standardSignature = recoverySignature.signature
 
 // Access standard formats
 standardSignature.compactRepresentation // 64-byte compact `r || s`

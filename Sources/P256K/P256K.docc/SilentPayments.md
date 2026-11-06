@@ -99,7 +99,7 @@ let sharedSecret = SHA256.taggedHash(
 
 // Step 4: P_k = B + sharedSecret·G — produce the BIP-341 x-only output key.
 let destination = try bobSigningKey.add(Array(sharedSecret))
-let destinationXonly = destination.xonly.bytes  // [UInt8] of length 32
+let destinationXonly = destination.xonly.dataRepresentation  // Data of length 32
 // The taproot scriptPubKey is: OP_1 OP_PUSHBYTES_32 <destinationXonly>
 ```
 
@@ -152,9 +152,9 @@ while true {
         data: Data(sharedPoint.byteArray) + kBytes
     )
     let candidate = try bobSpendKey.add(Array(sharedSecret))
-    let candidateXonly = candidate.xonly.bytes  // [UInt8] of length 32
+    let candidateXonly = candidate.xonly.dataRepresentation  // Data of length 32
 
-    if !txOutputs.contains(Data(candidateXonly)) {
+    if !txOutputs.contains(candidateXonly) {
         break  // No more matches — stop incrementing
     }
     // Found a match: candidate is one of Bob's outputs.

@@ -39,7 +39,7 @@ struct RecoveryTestSuite {
         // Verify the recovery signature matches the expected output
         #expect(recoverySignature.dataRepresentation.base64EncodedString() == expectedRecoverySignature)
 
-        let signature = recoverySignature.normalize
+        let signature = recoverySignature.signature
 
         // Verify the signature matches the expected output
         #expect(signature.dataRepresentation.base64EncodedString() == expectedSignature)

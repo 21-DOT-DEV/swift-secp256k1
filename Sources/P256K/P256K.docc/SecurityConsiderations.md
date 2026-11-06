@@ -73,7 +73,7 @@ Secret material reaches libsecp256k1 through borrowed `withUnsafeBytes` / `withU
 
 An ECDSA signature `(r, s)` has a counterpart `(r, n - s)` that is also valid for the same message and public key. This **malleability** can cause problems in systems that use the signature as a unique transaction identifier (e.g., Bitcoin before SegWit).
 
-P256K enforces **lower-S normalization** ([BIP-146][bip-146]): `secp256k1_ecdsa_verify` only accepts signatures where `s` is in the lower half of the curve order. The `signature(for:)` overloads on ``P256K/Signing/PrivateKey`` always produce normalized signatures, and the `normalize` property on a recoverable signature (``P256K/Recovery/ECDSASignature``) converts it to the canonical form.
+P256K enforces **lower-S normalization** ([BIP-146][bip-146]): `secp256k1_ecdsa_verify` only accepts signatures where `s` is in the lower half of the curve order. The `signature(for:)` overloads on ``P256K/Signing/PrivateKey`` always produce normalized signatures, and the `signature` property on a recoverable signature (``P256K/Recovery/ECDSASignature``) converts it to the standard non-recoverable form **without** applying lower-S normalization — a converted signature is not guaranteed to pass `secp256k1_ecdsa_verify`.
 
 ## See Also
 

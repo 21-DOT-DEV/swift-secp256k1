@@ -56,7 +56,7 @@ struct KeySortVectorTests {
         let permuted = try P256K.MuSig.aggregate(P256K.MuSig.sortedPublicKeys(Array(pubkeys.reversed())))
 
         #expect(
-            canonical.xonly.bytes == permuted.xonly.bytes,
+            canonical.xonly.dataRepresentation == permuted.xonly.dataRepresentation,
             "Sorting first must give every input ordering the same aggregate"
         )
     }

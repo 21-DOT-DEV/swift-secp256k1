@@ -101,7 +101,7 @@ let key = try P256K.Schnorr.PrivateKey()
 let serializedEvent: Data = /* NIP-01 deterministic JSON serialization */
 let eventId = SHA256.hash(data: serializedEvent)
 let signature = try key.signature(for: eventId)
-let nostrPubkey = key.xonly.bytes   // 32 bytes — the npub
+let nostrPubkey = key.xonly.dataRepresentation   // 32 bytes — the npub
 ```
 
 Schnorr signing in P256K takes a pre-computed digest. BIP-340 accepts arbitrary-length messages but recommends domain separation via tagged hashing. Bitcoin's BIP-341 follows that recommendation with a `TapSighash` tagged hash; Nostr NIP-01 takes a simpler route — `SHA256(serialized event)`, no domain separator. Either way the message arrives at the signer as a fixed 32-byte digest, which is why P256K's Schnorr API takes a `Digest`.

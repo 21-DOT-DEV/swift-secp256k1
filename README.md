@@ -159,12 +159,12 @@ let sharedSecretSign1 = try! P256K.Signing.PrivateKey(dataRepresentation: symmet
 let sharedSecretSign2 = try! P256K.Signing.PrivateKey(dataRepresentation: symmetricKey2.bytes)
 
 // Spendable Silent Payment private key
-let privateTweak1 = try! sharedSecretSign1.add(privateSign1.publicKey.xonly.bytes)
-let publicTweak2 = try! sharedSecretSign2.publicKey.add(privateSign1.publicKey.xonly.bytes)
+let privateTweak1 = try! sharedSecretSign1.add(Array(privateSign1.publicKey.xonly.dataRepresentation))
+let publicTweak2 = try! sharedSecretSign2.publicKey.add(Array(privateSign1.publicKey.xonly.dataRepresentation))
 
 let schnorrPrivate = try! P256K.Schnorr.PrivateKey(dataRepresentation: sharedSecretSign2.dataRepresentation)
 // Payable Silent Payment public key
-let xonlyTweak2 = try! schnorrPrivate.xonly.add(privateSign1.publicKey.xonly.bytes)
+let xonlyTweak2 = try! schnorrPrivate.xonly.add(Array(privateSign1.publicKey.xonly.dataRepresentation))
 ```
 
 *→ Full guide: [docs.21.dev/documentation/p256k/silentpayments](https://docs.21.dev/documentation/p256k/silentpayments)* — BIP-352 walkthrough with sender derivation, receiver scanning, scan/spend key separation, and tagged-hash specifics.
@@ -182,7 +182,7 @@ let recoverySignature = privateKey.signature(for: messageData)
 let publicKey = try! P256K.Recovery.PublicKey(messageData, signature: recoverySignature)
 
 // Convert a recoverable signature into a normal signature
-let signature = recoverySignature.normalize
+let signature = recoverySignature.signature
 ```
 
 *→ Full API: [docs.21.dev/documentation/p256k/p256k/recovery](https://docs.21.dev/documentation/p256k/p256k/recovery)*

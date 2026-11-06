@@ -446,7 +446,7 @@ new `publicNonceAggregate:`/`throws` shape; T030 is test-side only.
       fault-injection exit test rides its own verify task, so every PR
       self-proves. Tick this box in the last of T009–T012._ ·
       `Sources/P256K/`, `Tests/P256KTests/`
-- [ ] T014 _Folded into T009–T012 — the run produces no diff, so it is a
+- [x] T014 _Folded into T009–T012 — the run produces no diff, so it is a
       per-PR requirement rather than a reviewable change: each path task
       now carries "run `benchmark-pr.yml`, attach the comparison to the
       PR description", and the checkpoint below asserts the outcome. Tick
@@ -458,7 +458,7 @@ measured and published on each PR (the "measure-first" promise kept).
 
 ## Group F — Rename sweep and initializer trim (PRs 13–14)
 
-- [ ] T015 [P] Rename the three public `bytes` accessors to
+- [x] T015 [P] Rename the three public `bytes` accessors to
       `dataRepresentation`, returning `Data`, plus
       `Signature.Recoverable`'s `var normalize` to `signature` — it
       converts recoverable-to-standard format via
