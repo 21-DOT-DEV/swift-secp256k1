@@ -103,7 +103,7 @@ General-purpose structures supporting specific BIPs (in-repo vs recommend-extern
 
 ### Full opacity for MuSig session and key-aggregation-cache state
 
-**Status**: Deferred from the MuSig opaque-state hardening (2026-10-24)  
+**Status**: Scheduled — spec 004 (audit hardening): the key-aggregation-cache half landed via T016 for 0.25.0; the session-blob half is T032  
 **Priority**: Medium — defense-in-depth; current size+magic checks are best-effort, not real parsing  
 **Notes**: Upstream v0.7.1 exposes no serialize/parse API for `secp256k1_musig_session` (133 bytes) or `secp256k1_musig_keyagg_cache` (197 bytes), so `PartialSignature.init(dataRepresentation:session:)` and the cache-accepting `XonlyKey`/`PublicKey` inits can only check exact size plus the 4-byte magic prefix (`{0x9d,0xed,0xe9,0x17}` / `{0xf4,0xad,0xbb,0xdf}`) before copying into C structs — a crafted blob with a valid prefix but corrupt body still reaches `session_load`/`keyagg_cache_load` (whose `ARG_CHECK` then aborts the process). The durable fix is architectural: stop exposing these structs as persistable `Data` at all — keep them as in-process-only tokens inside the producing/consuming types (session never leaves the `partialSignature`→`aggregateSignatures` flow), or expose them behind a validated, versioned container type with its own integrity tag — pending either upstream serialize/parse APIs or a documented decision to define our own wire format. Cross-check `secp256k1-zkp`'s fork before designing: it may already expose serialization the vanilla pin lacks.  
 **Acceptance**: A `Development/Specs/` entry records the decision; either session/cache are no longer externally constructible from raw bytes, or a real parse/serialize boundary exists; `swift test` green.

@@ -456,7 +456,7 @@ new `publicNonceAggregate:`/`throws` shape; T030 is test-side only.
 before returning; corrupted outputs never escape; benchmark deltas are
 measured and published on each PR (the "measure-first" promise kept).
 
-## Group F — Rename sweep and initializer trim (PRs 13–14)
+## Group F — Rename sweep and initializer trim (PRs 13–15)
 
 - [x] T015 [P] Rename the three public `bytes` accessors to
       `dataRepresentation`, returning `Data`, plus
@@ -472,33 +472,90 @@ measured and published on each PR (the "measure-first" promise kept).
       `Sources/P256K/MuSig/MuSig.swift:243`,
       `Sources/P256K/Recovery/Recovery+Signature.swift:115` ·
       **breaking-soft** (aliases carry consumers until 1.0)
-- [ ] T016 Trim every public site that hands callers the opaque
+- [x] T016 Trim every public site that hands callers the opaque
       `keyagg_cache` blob — `Schnorr.XonlyKey` and `MuSig.XonlyKey`
       `init(dataRepresentation:keyParity:cache:)` plus
       `MuSig.PublicKey.init(dataRepresentation:format:cache:)` (the only
-      site where `cache` is required, not defaulted): public inits take
-      key bytes (parity only via an explicitly labeled parameter where
-      needed); the cache-taking inits and the public `cache` accessors
-      on both x-only types move internal, while
+      site where `cache` is required, not defaulted): the `cache:`
+      parameter leaves the facade initializers entirely — opaque
+      upstream state is assembled at the impl layer
+      (`XonlyKeyImplementation`/`PublicKeyImplementation`), where
+      malformed-blob validation already lives and `init(baseKey:)`
+      bridging keeps it reachable in-module — while the public `cache`
+      accessors on both x-only types move internal and
       `MuSig.PublicKey.init(xonlyKey:)` stays public, reading the
-      now-internal accessor in-module. Upstream ships no `keyagg_cache`
+      now-internal accessor in-module. `keyParity:` retypes
+      `Int32 → Bool = false` on both surviving x-only initializers —
+      `false` is the canonical BIP-340 even-Y lift (parity is
+      unrecoverable from `x` alone, so the default encodes the honest
+      answer for callers who never persisted it) and `Bool` matches the
+      `parity` accessor so `keyParity: key.parity` round-trips; the
+      ECDSA `Signing.XonlyKey` sibling's `keyParity: Int32` retypes to
+      `Bool = false` in the same break so all three x-only initializers
+      share one parity shape. Upstream ships no `keyagg_cache`
       serialization and calls the struct version-unstable, and the
       reference consumers (rust-secp256k1, btclib, Bitcoin Core's MuSig2
       wallet) obtain a cache only by re-aggregating. A reconstructed
       aggregate becomes verification-only; a consumer resuming a signing
-      session re-runs `MuSig.aggregate(_:)` on the participant pubkeys.
-      ECDSA's `Signing.XonlyKey` needs nothing — it has no cache ·
+      session re-runs `MuSig.aggregate(_:)` on the participant pubkeys ·
       `Sources/P256K/Schnorr/Schnorr+XonlyKey.swift`,
       `Sources/P256K/MuSig/MuSig.swift`,
+      `Sources/P256K/MuSig/MuSig+Signing.swift`,
+      `Sources/P256K/MuSig/MuSig+Aggregate.swift`,
+      `Sources/P256K/ECDSA/ECDSA+XonlyKey.swift`,
       `Tests/P256KTests/MusigTests.swift` (the two `cache:` probes
-      retarget the internal init) · **breaking**
+      retarget `XonlyKeyImplementation`),
+      `Tests/P256KTests/AsymmetricTests.swift`,
+      `CHANGELOG.md` · **breaking**
+
+- [ ] T032 `PartialSignature` carries signer identity instead of the
+      opaque session blob — the `secp256k1_musig_session` struct leaks
+      through `init(dataRepresentation:session:)` and the `session`
+      accessor (the audit's `keyagg_cache` defect class on a second
+      struct — the backlog "Full opacity" item's other half), and the
+      byte-match it feeds proves blob equality, not signature validity:
+      a cosigner submitting `init(dataRepresentation: <any in-range
+      scalar>, session: <their own honest session>)` passes the gate,
+      corrupts the aggregate, and fails `aggregateSignatures`' final
+      `schnorrsig_verify` — which reports through
+      `P256K.invariantFailure`, terminating the aggregator's process on
+      input the API accepts (finding B-7, surfaced during T016's
+      review). `PartialSignature` carries `(32-byte dataRepresentation,
+      publicKey, nonce)` — the signer's public identity, already
+      exchanged in rounds 0–1 — matching upstream `examples/musig.c`'s
+      `struct signer { pubkey; pubnonce; partial_sig; }` coordinator
+      model and rust-secp256k1's
+      `Session::partial_verify(cache, sig, pubnonce, pubkey)` triple.
+      `init(dataRepresentation:session:)` and `session` are replaced by
+      `init(dataRepresentation:publicKey:nonce:)`; `isValidSignature`
+      drops its separate `publicKey:`/`nonce:` parameters (the envelope
+      carries them) and its byte-match (`partial_sig_verify` under the
+      rebuilt session is strictly stronger — it validates the
+      signature, not just the session claim); `aggregateSignatures`
+      runs `partial_sig_verify` per partial so a wrong-session or
+      invalid contribution throws `underlyingCryptoError` attributed to
+      its index instead of crashing; the `MuSigOpaqueState` session
+      validators and the `session.dataValue` extension die; the T028
+      `init(dataRepresentation:session:)` CHANGELOG line is amended ·
+      `Sources/P256K/MuSig/MuSig+Aggregate.swift`,
+      `Sources/P256K/MuSig/MuSig+Signing.swift`,
+      `Sources/P256K/MuSig/MuSig.swift`,
+      `Sources/P256K/Util/Utility.swift` (session validators),
+      `Tests/P256KTests/MusigTests.swift`,
+      `Projects/Sources/MuSig2VectorTests/` (`sessionBytes` helper and
+      `verifyFailCase` rewrite),
+      `Sources/P256K/P256K.docc/MuSig2MultiSignatures.md`,
+      `CHANGELOG.md` · **breaking**
 
 **Checkpoint:** build passes with deprecation warnings on the old names;
 a scratch consumer calling the renamed accessors compiles
 (the removed signing, verify, and cache-initializer names intentionally
-fail); the public signature surface names no upstream-internal type.
+fail); the public signature surface names no upstream-internal type —
+neither `keyagg_cache` nor `musig_session` bytes cross a public boundary;
+a cosigner-submitted invalid partial throws `underlyingCryptoError`
+attributed to its index instead of reaching `invariantFailure`.
 
-## Group G — Managed context ownership (PR 15)
+## Group G — Managed context ownership (PR 16)
 
 - [ ] T029 [P] A managed owner for `secp256k1_context` —
       `Context.create()` returns a raw `OpaquePointer` with no typed
@@ -542,7 +599,8 @@ type; `swift test` green.
 ## Group H — Tag (release step, no code)
 
 - [ ] T017 Roll `[Unreleased]` into `[0.25.0]`, cut the tag only after
-      every breaking task merges (T004–T006, T012, T015–T016, T026–T028)
+      every breaking task merges (T004–T006, T012, T015–T016, T026–T028,
+      T032)
       and the deprecation pairs land (T025's redaction rides along; T029's
       managed type plus `create()` deprecation ships inside the same
       tag); in the same change move every current-version reference from
@@ -565,7 +623,7 @@ type; `swift test` green.
 **Checkpoint:** exactly one tag exists between the wave's pre-state and
 post-state; every breaking symbol in the changelog names its replacement.
 
-## Group I — Documentation recipes (PR 16)
+## Group I — Documentation recipes (PR 17)
 
 - [ ] T018 [P] DocC article: fixed-32-byte signing flow (hash → sign via the
       32-byte method → verify), shown only against the post-redesign API;
@@ -587,7 +645,7 @@ post-state; every breaking symbol in the changelog names its replacement.
 **Checkpoint:** articles build in the DocC catalog; their code is exercised
 by tests; no protocol-named public API exists anywhere in the diff.
 
-## Group J — CI assurance (PRs 17–18)
+## Group J — CI assurance (PRs 18–19)
 
 - [ ] T021 [P] Sanitizer lane: new jobs — `--sanitize=address` and
       `--sanitize=undefined`, each its own merge-blocking job on
@@ -630,6 +688,8 @@ API). Group D (T026–T028, T030) before Group E for the same reason — T012's
 self-verify rides the post-conformance API. T024 lands first in Group E —
 inert machinery with no prerequisites; T009–T012 may parallelize among
 themselves after C + D + T024 — T012 is breaking, so it lands before T017
-alongside the other breaking tasks. Group F any time after C but before
+alongside the other breaking tasks. Group F (T015–T016, T032 — the
+partial-signature envelope rewrites the T028-carried session design it
+sits next to) any time after C but before
 T017. Group G (T029) before T017 — the managed type and its deprecation
 ship inside the same tag. Groups I and J parallel after their gates.

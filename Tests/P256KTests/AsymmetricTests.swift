@@ -88,12 +88,47 @@ struct AsymmetricTestSuite {
         // reads a fixed 32 bytes, and an unparseable stored key could otherwise
         // reach `fatalError` in downstream operations like `negation`.
         #expect(throws: secp256k1Error.incorrectKeySize) {
-            _ = try P256K.Signing.XonlyKey(dataRepresentation: [UInt8](repeating: 2, count: 16), keyParity: 0)
+            _ = try P256K.Signing.XonlyKey(dataRepresentation: [UInt8](repeating: 2, count: 16), keyParity: false)
         }
 
         // 0xFF×32 ≥ the field order p — the x coordinate never lifts to a curve point.
         #expect(throws: secp256k1Error.underlyingCryptoError) {
-            _ = try P256K.Signing.XonlyKey(dataRepresentation: [UInt8](repeating: 0xFF, count: 32), keyParity: 0)
+            _ = try P256K.Signing.XonlyKey(dataRepresentation: [UInt8](repeating: 0xFF, count: 32), keyParity: false)
+        }
+    }
+
+    @Test("x-only keyParity selects the lifted point's Y sign")
+    func xonlyKeyParityLiftsSelectedPoint() throws {
+        // `keyParity` decides which of the two curve points sharing the X
+        // coordinate a lift produces — an inverted `Bool → Int32` mapping
+        // would negate the key silently. Collect one key per Y sign, then
+        // require: matching parity reproduces the original compressed bytes,
+        // flipped parity lifts the negated point. Covers all three retyped
+        // `keyParity: Bool` initializers through their `init(xonlyKey:)` lifts.
+        var keys: [Bool: P256K.Signing.PublicKey] = [:]
+        for _ in 0..<32 where keys.count < 2 {
+            let key = try P256K.Signing.PrivateKey().publicKey
+            keys[key.xonly.parity] = key
+        }
+        try #require(keys.count == 2)
+
+        for (parity, publicKey) in keys {
+            let x = publicKey.xonly.dataRepresentation
+
+            let signing = try P256K.Signing.PublicKey(xonlyKey: P256K.Signing.XonlyKey(dataRepresentation: x, keyParity: parity))
+            #expect(signing.dataRepresentation == publicKey.dataRepresentation)
+            let signingFlipped = try P256K.Signing.PublicKey(xonlyKey: P256K.Signing.XonlyKey(dataRepresentation: x, keyParity: !parity))
+            #expect(signingFlipped.dataRepresentation != publicKey.dataRepresentation)
+
+            let schnorr = try P256K.Schnorr.PublicKey(xonlyKey: P256K.Schnorr.XonlyKey(dataRepresentation: x, keyParity: parity))
+            #expect(schnorr.dataRepresentation == publicKey.dataRepresentation)
+            let schnorrFlipped = try P256K.Schnorr.PublicKey(xonlyKey: P256K.Schnorr.XonlyKey(dataRepresentation: x, keyParity: !parity))
+            #expect(schnorrFlipped.dataRepresentation != publicKey.dataRepresentation)
+
+            let musig = try P256K.MuSig.PublicKey(xonlyKey: P256K.MuSig.XonlyKey(dataRepresentation: x, keyParity: parity))
+            #expect(musig.dataRepresentation == publicKey.dataRepresentation)
+            let musigFlipped = try P256K.MuSig.PublicKey(xonlyKey: P256K.MuSig.XonlyKey(dataRepresentation: x, keyParity: !parity))
+            #expect(musigFlipped.dataRepresentation != publicKey.dataRepresentation)
         }
     }
 

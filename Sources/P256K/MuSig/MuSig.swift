@@ -88,9 +88,12 @@ import libsecp256k1
             /// public key by any external observer, which is precisely what gives MuSig2 its
             /// Taproot compatibility. Internally the key carries the 197-byte
             /// `secp256k1_musig_keyagg_cache` produced by `secp256k1_musig_pubkey_agg`; that
-            /// cache is required to reconstruct the key-aggregation coefficients during the
-            /// partial-signing phase and **must** be preserved alongside the public-key bytes
-            /// when serializing the aggregate across a process boundary.
+            /// cache reconstructs the key-aggregation coefficients during the
+            /// partial-signing phase. It is an opaque upstream struct with no blessed
+            /// serialization — same-process session state only, never exposed as bytes —
+            /// so a key rebuilt from ``dataRepresentation`` verifies but cannot sign or
+            /// tweak: re-run ``aggregate(_:)`` on the participant public keys (and re-apply
+            /// any tweaks) to resume a signing session.
             ///
             /// ## Topics
             ///
@@ -101,15 +104,15 @@ import libsecp256k1
             ///
             /// ### Reconstruction
             /// - ``init(xonlyKey:)``
-            /// - ``init(dataRepresentation:format:cache:)``
+            /// - ``init(dataRepresentation:format:)``
             public struct PublicKey {
                 /// The internal `PublicKeyImplementation` backing this aggregate, produced
                 /// by `secp256k1_musig_pubkey_agg` and carrying the 197-byte
                 /// `secp256k1_musig_keyagg_cache` required for signing sessions.
                 ///
                 /// Kept `internal` — consumers never see or manipulate the raw C cache through
-                /// the public API; they must round-trip via ``dataRepresentation`` + ``xonly``
-                /// + the ``cache`` helper on ``XonlyKey`` when serializing the aggregate.
+                /// the public API; the serialization story is ``dataRepresentation`` + ``xonly``
+                /// for verification, and ``aggregate(_:)`` re-derivation for signing.
                 let baseKey: PublicKeyImplementation
 
                 /// The serialized public key bytes in the key's ``format``.
@@ -126,8 +129,8 @@ import libsecp256k1
                 ///
                 /// Internal-visibility: the cache is an opaque upstream struct whose bytes
                 /// are **not** a stable serialization format across libsecp256k1 versions.
-                /// External persistence of the aggregate goes through ``xonly`` which exposes
-                /// the cache alongside a stable 32-byte x-only identifier.
+                /// Read in-module by the signing and tweak paths; external persistence goes
+                /// through ``xonly``'s stable 32-byte identifier plus re-aggregation.
                 var keyAggregationCache: Data {
                     Data(baseKey.cache)
                 }
@@ -145,10 +148,11 @@ import libsecp256k1
 
                 /// The serialized public key bytes as `Data`, in the key's ``format``.
                 ///
-                /// Suitable for transmission and storage. **Note**: for full reconstruction
-                /// on the receiving side, you must also transmit the ``XonlyKey/cache`` from
-                /// ``xonly`` — the raw bytes alone do not carry the MuSig key-aggregation
-                /// coefficients required for the partial-signing phase.
+                /// Suitable for transmission and storage. **Note**: a key rebuilt from
+                /// these bytes is verification-only — the signing-side key-aggregation
+                /// state upstream stores in its opaque cache struct does not survive
+                /// serialization, so resuming a signing session means re-running
+                /// ``aggregate(_:)`` over the participant public keys.
                 public var dataRepresentation: Data {
                     baseKey.dataRepresentation
                 }
@@ -159,8 +163,11 @@ import libsecp256k1
                 /// The x-only form is the **canonical** external representation for a MuSig
                 /// aggregate: it matches what a BIP-340 verifier expects, and its parity bit
                 /// is exactly what a BIP-341 Taproot output-key derivation consumes. The
-                /// returned ``XonlyKey`` also carries the 197-byte keyagg cache required for
-                /// future signing sessions against this aggregate.
+                /// returned ``XonlyKey`` carries the key-aggregation session state
+                /// internally when this key came from ``aggregate(_:)`` or a MuSig
+                /// tweak of one — signing and tweaking stay live. An ``XonlyKey``
+                /// derived from a key rebuilt via ``init(dataRepresentation:format:)``
+                /// is verification-only (no cache was ever loaded).
                 public var xonly: XonlyKey {
                     XonlyKey(baseKey: baseKey.xonly)
                 }
@@ -169,7 +176,7 @@ import libsecp256k1
                 ///
                 /// Internal-visibility constructor used by ``aggregate(_:)`` after
                 /// `secp256k1_musig_pubkey_agg` returns successfully. Consumers reconstruct
-                /// via ``init(xonlyKey:)`` or ``init(dataRepresentation:format:cache:)``
+                /// via ``init(xonlyKey:)`` or ``init(dataRepresentation:format:)``
                 /// instead.
                 ///
                 /// - Parameter baseKey: A `PublicKeyImplementation` produced by the upstream
@@ -178,12 +185,15 @@ import libsecp256k1
                     self.baseKey = baseKey
                 }
 
-                /// Creates a MuSig aggregate public key from its x-only form, restoring the key aggregation cache.
+                /// Creates a MuSig aggregate public key from its x-only form, restoring the key aggregation session state.
                 ///
                 /// `XonlyKey` validates its coordinate at construction, so the lifted point
                 /// is parseable by construction and this initializer cannot fail.
                 ///
-                /// - Parameter xonlyKey: An ``XonlyKey`` whose ``XonlyKey/cache`` was preserved from the original ``aggregate(_:)`` call.
+                /// - Parameter xonlyKey: An ``XonlyKey`` produced by ``aggregate(_:)`` or a
+                ///   MuSig tweak — one carrying the key-aggregation session state
+                ///   internally. An ``XonlyKey`` rebuilt from ``XonlyKey/dataRepresentation``
+                ///   carries none, and the lifted key is verification-only.
                 public init(xonlyKey: XonlyKey) {
                     let key = XonlyKeyImplementation(
                         validatedBytes: Array(xonlyKey.dataRepresentation),
@@ -193,22 +203,26 @@ import libsecp256k1
                     self.baseKey = PublicKeyImplementation(xonlyKey: key)
                 }
 
-                /// Creates a MuSig aggregate public key from serialized bytes and a preserved key aggregation cache.
+                /// Creates a MuSig aggregate public key from serialized bytes.
+                ///
+                /// The reconstructed key verifies signatures but cannot join a signing
+                /// session or take MuSig tweaks — the key-aggregation session state lives
+                /// in an upstream struct with no blessed serialization, so it exists only
+                /// on keys produced by ``aggregate(_:)`` (or a MuSig tweak of one).
+                /// Re-aggregate the participant public keys, then re-apply any tweaks, to
+                /// resume signing.
                 ///
                 /// - Parameter data: Serialized public key bytes matching `format.length`.
                 /// - Parameter format: The serialization format of `data`.
-                /// - Parameter cache: The 197-byte `secp256k1_musig_keyagg_cache` from the original ``aggregate(_:)`` call; required for signing sessions. Pass `[]` for a verification-only key.
-                /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `cache` is non-empty but not exactly 197 bytes;
-                ///   ``secp256k1Error/underlyingCryptoError`` if parsing via `secp256k1_ec_pubkey_parse` fails or `cache` lacks the upstream magic prefix.
+                /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` does not match `format.length`;
+                ///   ``secp256k1Error/underlyingCryptoError`` if parsing via `secp256k1_ec_pubkey_parse` fails.
                 public init<D: ContiguousBytes>(
                     dataRepresentation data: D,
-                    format: P256K.Format,
-                    cache: [UInt8]
+                    format: P256K.Format
                 ) throws {
                     self.baseKey = try PublicKeyImplementation(
                         dataRepresentation: data,
-                        format: format,
-                        cache: cache
+                        format: format
                     )
                 }
             }
@@ -227,10 +241,9 @@ import libsecp256k1
             /// ### Inspection
             /// - ``dataRepresentation``
             /// - ``parity``
-            /// - ``cache``
             ///
             /// ### Reconstruction
-            /// - ``init(dataRepresentation:keyParity:cache:)``
+            /// - ``init(dataRepresentation:keyParity:)``
             public struct XonlyKey: Equatable {
                 /// The internal `XonlyKeyImplementation` backing this aggregate x-only key.
                 ///
@@ -242,8 +255,10 @@ import libsecp256k1
                 /// The 32-byte X coordinate of the aggregate public key as `Data`.
                 ///
                 /// Stable across libsecp256k1 versions — safe to persist as a Bitcoin-
-                /// address-style identifier. Pair with ``parity`` and ``cache`` when the
-                /// aggregate needs to be reconstructed for a future signing session.
+                /// address-style identifier. Pair with ``parity`` when the aggregate's
+                /// full point must be reconstructed; a key rebuilt from bytes verifies
+                /// but carries no signing session state — re-run ``aggregate(_:)`` to
+                /// resume one.
                 public var dataRepresentation: Data {
                     baseKey.dataRepresentation
                 }
@@ -267,14 +282,14 @@ import libsecp256k1
                 }
 
                 /// The 197-byte opaque `secp256k1_musig_keyagg_cache` required for Taproot
-                /// tweaking and signing sessions; must be preserved alongside the key bytes.
+                /// tweaking and signing sessions.
                 ///
-                /// The cache bytes are **not** a stable serialization format across
-                /// libsecp256k1 versions — treat them as a within-process session token.
-                /// For cross-process persistence, store them in an ephemeral location
-                /// (e.g. alongside a one-shot signing session's other state) rather than
-                /// in long-lived configuration.
-                public var cache: Data {
+                /// Internal-visibility: these bytes are the opaque upstream struct, which
+                /// upstream ships with no serialization or parsing functions — not a
+                /// stable format across libsecp256k1 versions. Read in-module by the
+                /// signing, tweak, and ``PublicKey/init(xonlyKey:)`` paths; the public
+                /// surface never hands it out.
+                var cache: Data {
                     Data(baseKey.cache)
                 }
 
@@ -290,17 +305,25 @@ import libsecp256k1
                     self.baseKey = baseKey
                 }
 
-                /// Creates a MuSig x-only public key from 32-byte serialized data and a preserved key aggregation cache.
+                /// Creates a MuSig x-only public key from 32-byte serialized data and its Y-coordinate parity.
+                ///
+                /// The reconstructed key verifies aggregate signatures but carries no
+                /// key-aggregation session state — partial signing and MuSig tweaks throw
+                /// ``secp256k1Error/underlyingCryptoError`` against it. Re-run
+                /// ``aggregate(_:)`` on the participant public keys (and re-apply any
+                /// tweaks) to resume a signing session.
                 ///
                 /// - Parameter data: The 32-byte X coordinate of the aggregate public key.
-                /// - Parameter keyParity: The Y-coordinate parity (`0` = even, `1` = odd) as returned by `secp256k1_xonly_pubkey_from_pubkey`.
-                /// - Parameter cache: The 197-byte `secp256k1_musig_keyagg_cache` from the original ``aggregate(_:)`` call; `[]` (the default) produces a verification-only key.
+                /// - Parameter keyParity: The Y-coordinate parity of the full public key:
+                ///   `false` = even (the canonical BIP-340 representative — the only honest
+                ///   value when parity was never persisted, since it cannot be recovered from
+                ///   the X coordinate alone), `true` = odd. Round-trips directly from
+                ///   ``parity``.
                 /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not exactly 32 bytes;
-                ///   ``secp256k1Error/incorrectParameterSize`` if `cache` is non-empty but not exactly 197 bytes;
                 ///   ``secp256k1Error/underlyingCryptoError`` if the coordinate fails
-                ///   `secp256k1_xonly_pubkey_parse` (out of range or no curve point) or `cache` lacks the upstream magic prefix.
-                public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0, cache: [UInt8] = []) throws {
-                    self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity, cache: cache)
+                ///   `secp256k1_xonly_pubkey_parse` (out of range or no curve point).
+                public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Bool = false) throws {
+                    self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity ? 1 : 0)
                 }
 
                 /// Returns `true` if both x-only keys have identical 32-byte X coordinates.
