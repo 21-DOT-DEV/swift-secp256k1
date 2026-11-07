@@ -354,14 +354,28 @@ keeps all signing session state in memory, re-deriving from the
 participant pubkeys on restart (citations in `research.md` §B). So the
 trim reaches all five sites: the public initializers take the key bytes,
 parity stays an explicitly labeled parameter where the type truly needs
-it, and the cache-taking initializers and public `cache` accessors move
-internal. A reconstructed aggregate is then verification-only — resuming
+it, and the public `cache` accessors on both x-only types move internal.
+The `cache:` parameter leaves the facade initializers entirely — opaque
+upstream state is assembled at the impl layer
+(`XonlyKeyImplementation`/`PublicKeyImplementation`), where malformed-blob
+validation already lives and where `init(baseKey:)` bridging keeps it
+reachable to in-module callers and `@testable` tests, so no facade accepts
+opaque upstream state at any visibility — the same impl-layer-assembly
+idiom swift-crypto's `init(wrapping:)` bridging follows. `keyParity`
+becomes an explicitly labeled `Bool = false` on the surviving x-only
+initializers: `false` is the canonical BIP-340 even-Y lift — the only
+honest answer for callers who never persisted parity, since it is
+unrecoverable from `x` alone — and the `Bool` type matches the `parity`
+accessor so `keyParity: key.parity` round-trips without a `? 1 : 0` hop.
+A reconstructed aggregate is then verification-only — resuming
 a signing session means re-running `MuSig.aggregate(_:)` on the
 participant pubkeys, the deterministic, version-safe path upstream
 designed. `MuSig.PublicKey.init(xonlyKey:)` stays public — it reads the
 now-internal `cache` accessor in-module. The ECDSA `Signing.XonlyKey`
-(`init(dataRepresentation:keyParity:)`) needs nothing: it has no cache
-to leak. Hard break on all three initializers, flagged in the migration
+has no cache to leak, but its `keyParity: Int32` retypes to
+`keyParity: Bool = false` in the same break so all three x-only
+initializers share one parity shape. Hard break on all three
+initializers, flagged in the migration
 note — consumers persisting cache bytes keep the member pubkeys and
 re-aggregate instead.
 
@@ -376,7 +390,7 @@ classDiagram
         var cache: Data
     }
     class `XonlyKey types — after` {
-        init(dataRepresentation: D, keyParity: Int32 = 0) throws
+        init(dataRepresentation: D, keyParity: Bool = false) throws
         internal var cache: Data
     }
     class `MuSig.PublicKey — before` {
@@ -630,17 +644,66 @@ BIP-327's `PartialSigVerify` takes `m` as a first-class input, and
 rust-secp256k1 builds `Session::new(cache, aggnonce, msg)` — and
 `secp256k1_musig_nonce_process` is deterministic over (aggregate nonce,
 `msg32`, key-aggregation cache), so the wrapper does the same. The
-signature becomes `isValidSignature(_:publicKey:nonce:for message: some
+signature becomes `isValidSignature(_:for message: some
 ContiguousBytes, publicNonceAggregate:) throws -> Bool`: the caller's
-declared message and aggregate nonce rebuild the session, the carried
-session blob must equal it byte-for-byte — a valid signature paired with
-a foreign session fails where the bad contribution can still be
-attributed — and only then does `partial_sig_verify` run. A non-32-byte
+declared message and aggregate nonce rebuild the session, and
+`partial_sig_verify` runs against the signer identity the
+`PartialSignature` itself carries — see B-7 below, which replaced the
+first-cut carried-session byte-match with the bundled-identity envelope
+during T016's review. A non-32-byte
 message throws `incorrectParameterSize` like the signing side's other
 `msg32` gates rather than reporting caller misuse as an invalid
 signature (`(try? …) ?? false` recovers Bool semantics for callers who
 want them); the `D: Digest` generic leaves — `Digest` conforms to
 `ContiguousBytes`, so it only narrowed what raw-byte callers could pass.
+
+**Opaque session state and a peer-reachable crash (B-7).** The same
+`secp256k1_musig_session` opacity upstream withholds serialization for
+leaks through `PartialSignature.init(dataRepresentation:session:)` and
+its `session` accessor — the audit's `keyagg_cache` defect class on a
+second struct, and the pair is already queued in the backlog's "Full
+opacity" item. Worse, the carried blob is weaker than it looks: the
+byte-match proves blob equality, not signature validity, so a cosigner
+submitting `init(dataRepresentation: <any in-range scalar>, session:
+<their own honest session>)` passes the gate, corrupts the aggregate,
+and fails the final `schnorrsig_verify` — which reports through
+`P256K.invariantFailure`, terminating the aggregator's process on input
+the API accepts. Both findings share one remedy, the one every
+reference already models — upstream `examples/musig.c` tracks
+`struct signer { pubkey; pubnonce; partial_sig; }` per signer and
+verifies each contribution with `partial_sig_verify`;
+`rust-secp256k1`'s `Session::partial_verify(cache, sig, pubnonce,
+pubkey)` takes the same triple; BIP-327's "Identifying Disruptive
+Signers" makes per-partial verification the accountability mechanism.
+`PartialSignature` therefore carries the signer's `publicKey` and
+`nonce` — public, wire-blessed material exchanged in rounds 0–1 —
+beside its 32-byte `dataRepresentation`; `init(dataRepresentation:
+session:)` and `session` are replaced by `init(dataRepresentation:
+publicKey:nonce:)`. `isValidSignature` drops its separate
+`publicKey:`/`nonce:` parameters (the envelope carries them) and its
+byte-match (the `partial_sig_verify` it gated is strictly stronger),
+and `aggregateSignatures` runs `partial_sig_verify` per partial under
+the rebuilt session — a wrong-session or invalid contribution throws
+`underlyingCryptoError` attributed to its index instead of crashing,
+and `partial_sig_agg`'s unverifiable-input path becomes unreachable by
+construction. The `secp256k1_musig_session` struct then appears nowhere
+in the public API — same-process state only, rebuilt at each use site,
+exactly as upstream intends.
+
+```mermaid
+flowchart LR
+    subgraph wire["Peer-supplied wire material — blessed formats only"]
+        pk["signer publicKey<br/>exchanged round 0"]
+        n["signer publicNonce<br/>exchanged round 1"]
+        sig["32-byte partial signature<br/>canonical wire form"]
+    end
+    wire --> env["PartialSignature envelope<br/>sig + pubkey + nonce"]
+    env --> rebuild["session rebuilt locally — never serialized:<br/>nonce_process(aggnonce, msg32, keyagg_cache)"]
+    rebuild --> pv["secp256k1_musig_partial_sig_verify<br/>per signer, index-attributed"]
+    pv -->|every partial valid| agg["partial_sig_agg → schnorrsig_verify"]
+    pv -->|any invalid| err["underlyingCryptoError — thrown,<br/>no invariantFailure"]
+    blob["opaque 133-byte session blob —<br/>signer-chosen, byte-match-only gate"] -.->|removed| crash["corrupt aggregate →<br/>invariantFailure — peer-reachable crash"]
+```
 
 ```mermaid
 flowchart LR
@@ -655,7 +718,7 @@ flowchart LR
         keys2 -.->|"opt-in"| helper["sortedPublicKeys(_:)<br/>canonical BIP-327 order"] --> agg2
         msg2["message — exactly 32 bytes<br/>else throw (upstream limit)"] --> proc2["nonce_process"]
         dig2["verify digest — natural length<br/>no gate, no reduction"] --> ver["schnorrsig_verify (msg, msglen)"]
-        pdig2["message + aggnonce + cache<br/>exactly-32 msg32 else throw"] --> proc3["nonce_process<br/>locally rebuilt session"] --> match["carried session blob<br/>must byte-match"] --> pver2["partial_sig_verify"]
+        pdig2["message + aggnonce + cache<br/>exactly-32 msg32 else throw"] --> proc3["nonce_process<br/>locally rebuilt session"] --> match["bundled signer identity<br/>(pubkey + pubnonce)"] --> pver2["partial_sig_verify<br/>per partial before aggregation"]
     end
 ```
 

@@ -249,8 +249,8 @@ import libsecp256k1
         ///   from all signers' public nonces for this session.
         /// - Parameter xonlyKeyAggregate: The x-only form of the
         ///   ``P256K/MuSig/aggregate(_:)`` result — including any applied tweaks
-        ///   — carrying the key aggregation ``P256K/MuSig/XonlyKey/cache`` the
-        ///   session was bound to and the aggregate signature verifies against.
+        ///   — carrying the key-aggregation session state the session was bound
+        ///   to and the aggregate signature verifies against.
         /// - Returns: A verified 64-byte ``AggregateSignature``.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if
         ///   `partialSignatures` is empty or `message` is not exactly 32 bytes;

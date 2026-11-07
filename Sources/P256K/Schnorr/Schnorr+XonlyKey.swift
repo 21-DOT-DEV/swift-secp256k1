@@ -30,10 +30,9 @@ import libsecp256k1
         /// ### Inspection
         /// - ``dataRepresentation``
         /// - ``parity``
-        /// - ``cache``
         ///
         /// ### Construction
-        /// - ``init(dataRepresentation:keyParity:cache:)``
+        /// - ``init(dataRepresentation:keyParity:)``
         struct XonlyKey: Equatable {
             /// The internal `XonlyKeyImplementation` backing this x-only key.
             ///
@@ -71,14 +70,12 @@ import libsecp256k1
             /// The 197-byte `secp256k1_musig_keyagg_cache` associated with this x-only
             /// key when it was produced by MuSig key aggregation; empty otherwise.
             ///
-            /// > Important: These bytes are the opaque upstream `secp256k1_musig_keyagg_cache`
-            /// > struct and are **not** a stable serialization format across libsecp256k1
-            /// > versions. Treat as a within-process session token; use
-            /// > ``P256K/Schnorr/PublicKey/dataRepresentation`` for persistence.
-            ///
-            /// - Returns: The cached key-aggregation bytes, or empty `Data` if no cache
-            ///   was supplied to ``init(dataRepresentation:keyParity:cache:)``.
-            public var cache: Data {
+            /// Internal-visibility: these bytes are the opaque upstream
+            /// `secp256k1_musig_keyagg_cache` struct, which upstream deliberately ships
+            /// with no serialization or parsing functions — not a stable format across
+            /// libsecp256k1 versions. Read in-module by `Schnorr.PublicKey.init(xonlyKey:)`
+            /// when propagating session state; the public surface never hands it out.
+            var cache: Data {
                 Data(baseKey.cache)
             }
 
@@ -92,25 +89,26 @@ import libsecp256k1
                 self.baseKey = baseKey
             }
 
-            /// Creates an x-only public key from a 32-byte X-coordinate, parity bit, and
-            /// optional pre-computed full-pubkey cache.
+            /// Creates an x-only public key from a 32-byte X-coordinate and its
+            /// Y-coordinate parity.
             ///
             /// Useful when reconstructing from persisted state (e.g. a Taproot output-key
-            /// identifier and its parity stored in a wallet database).
+            /// identifier and its parity stored in a wallet database). A key built this
+            /// way carries no MuSig session state — it verifies signatures but cannot
+            /// rejoin a signing session; re-run ``P256K/MuSig/aggregate(_:)`` on the
+            /// participant public keys to resume one.
             ///
             /// - Parameter data: The 32-byte X coordinate of the x-only public key.
-            /// - Parameter keyParity: The Y-coordinate parity as an `Int32`: `0` = even,
-            ///   `1` = odd.
-            /// - Parameter cache: The 197-byte `secp256k1_musig_keyagg_cache` from a MuSig
-            ///   ``P256K/MuSig/aggregate(_:)`` call; pass `[]` (the default) for a
-            ///   verification-only key.
+            /// - Parameter keyParity: The Y-coordinate parity of the full public key:
+            ///   `false` = even (the canonical BIP-340 representative — the only honest
+            ///   value when parity was never persisted, since it cannot be recovered from
+            ///   the X coordinate alone), `true` = odd. Round-trips directly from
+            ///   ``parity``.
             /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not exactly 32 bytes;
-            ///   ``secp256k1Error/incorrectParameterSize`` if `cache` is non-empty but not
-            ///   exactly 197 bytes; ``secp256k1Error/underlyingCryptoError`` if the coordinate
-            ///   fails `secp256k1_xonly_pubkey_parse` (out of range or no curve point) or
-            ///   `cache` lacks the upstream magic prefix.
-            public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32 = 0, cache: [UInt8] = []) throws {
-                self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity, cache: cache)
+            ///   ``secp256k1Error/underlyingCryptoError`` if the coordinate fails
+            ///   `secp256k1_xonly_pubkey_parse` (out of range or no curve point).
+            public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Bool = false) throws {
+                self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity ? 1 : 0)
             }
 
             /// Determines if two x-only keys are equal.

@@ -552,13 +552,13 @@ struct MuSigTestSuite {
         ]
 
         #expect(throws: secp256k1Error.incorrectParameterSize) {
-            _ = try P256K.MuSig.XonlyKey(dataRepresentation: coordinate, cache: [UInt8](repeating: 0, count: 64))
+            _ = try XonlyKeyImplementation(dataRepresentation: coordinate, keyParity: 0, cache: [UInt8](repeating: 0, count: 64))
         }
 
         // Right-size blob without the keyagg magic prefix must throw, not reach
         // `secp256k1_musig_keyagg_cache_load` → upstream ARG_CHECK.
         #expect(throws: secp256k1Error.underlyingCryptoError) {
-            _ = try P256K.MuSig.XonlyKey(dataRepresentation: coordinate, cache: [UInt8](repeating: 0, count: 197))
+            _ = try XonlyKeyImplementation(dataRepresentation: coordinate, keyParity: 0, cache: [UInt8](repeating: 0, count: 197))
         }
     }
 
@@ -795,10 +795,10 @@ struct MuSigTestSuite {
         }
     }
 
-    /// A persisted-and-reloaded aggregate key missing its 197-byte keyagg
-    /// cache (`XonlyKey.init(dataRepresentation:…)`'s `cache: []` default —
-    /// the verification-only form) cannot rebuild the session: the canonical
-    /// `partialSignature` and `aggregateSignatures` both throw
+    /// A persisted-and-reloaded aggregate key — `XonlyKey.init(dataRepresentation:…)`
+    /// takes no cache, so a key rebuilt from serialized bytes is intrinsically
+    /// cacheless (the verification-only form) — cannot rebuild the session: the
+    /// canonical `partialSignature` and `aggregateSignatures` both throw
     /// `underlyingCryptoError` on the cache guard instead of reaching
     /// upstream's aborting `keyagg_cache_load` `ARG_CHECK`.
     @Test("MuSig signing paths reject a cacheless aggregate key")
@@ -807,7 +807,7 @@ struct MuSigTestSuite {
         let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
         let cacheless = try P256K.MuSig.XonlyKey(
             dataRepresentation: aggregate.xonly.dataRepresentation,
-            keyParity: aggregate.xonly.parity ? 1 : 0
+            keyParity: aggregate.xonly.parity
         )
         let message: [UInt8] = .init(repeating: 0xAB, count: 32)
 

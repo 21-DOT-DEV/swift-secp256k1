@@ -85,12 +85,16 @@ public extension P256K.Signing {
         /// (e.g. a Taproot output-key identifier stored in a wallet database).
         ///
         /// - Parameter data: The 32-byte X coordinate of the x-only public key.
-        /// - Parameter keyParity: The Y-coordinate parity as `Int32`: `0` = even, `1` = odd.
+        /// - Parameter keyParity: The Y-coordinate parity of the full public key:
+        ///   `false` = even (the canonical BIP-340 representative — the only honest
+        ///   value when parity was never persisted, since it cannot be recovered from
+        ///   the X coordinate alone), `true` = odd. Round-trips directly from
+        ///   ``parity``.
         /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not exactly 32 bytes;
         ///   ``secp256k1Error/underlyingCryptoError`` if the coordinate fails
         ///   `secp256k1_xonly_pubkey_parse` (out of range or no curve point).
-        public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Int32) throws {
-            self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity)
+        public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Bool = false) throws {
+            self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity ? 1 : 0)
         }
     }
 }

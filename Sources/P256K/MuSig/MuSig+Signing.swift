@@ -164,7 +164,8 @@ import libsecp256k1
         /// - Parameter secureNonce: This signer's secret nonce (`~Copyable`); consumed and zeroed on return.
         /// - Parameter publicNonceAggregate: The ``P256K/MuSig/Nonce`` aggregated from all signers' public nonces.
         /// - Parameter xonlyKeyAggregate: The x-only form of the ``P256K/MuSig/aggregate(_:)`` result;
-        ///   must carry the key aggregation ``P256K/MuSig/XonlyKey/cache`` from that call.
+        ///   must come from that call (or a MuSig tweak of it), carrying the key-aggregation
+        ///   session state internally — a key rebuilt from bytes throws.
         /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `message` is not exactly
         ///   32 bytes; ``secp256k1Error/underlyingCryptoError`` if `xonlyKeyAggregate` lacks a
