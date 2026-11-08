@@ -115,6 +115,22 @@ import libsecp256k1
                 /// for verification, and ``aggregate(_:)`` re-derivation for signing.
                 let baseKey: PublicKeyImplementation
 
+                /// The signer public keys this aggregate was built from, in the order
+                /// ``P256K/MuSig/aggregate(_:)`` received them — BIP-327's session
+                /// participant list `pk 1..u`.
+                ///
+                /// Internal-visibility, public material. The opaque `secp256k1_musig_keyagg_cache`
+                /// stores only `pks_hash` — a hash of this list, not the list itself —
+                /// so membership cannot be recovered from it; the list is retained here
+                /// so ``isValidSignature(_:for:publicNonceAggregate:)`` can reject a
+                /// contribution whose bundled signer is not a participant and
+                /// ``P256K/MuSig/aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``
+                /// can require the bundled identities to equal this list as a multiset
+                /// (duplicate keys in `aggregate(_:)` are legal and keep their own slots).
+                /// Empty on keys rebuilt via ``init(dataRepresentation:format:)``, whose
+                /// missing-cache throw fires before any membership question.
+                let participants: [P256K.Schnorr.PublicKey]
+
                 /// The serialized public key bytes in the key's ``format``.
                 ///
                 /// Internal-visibility passthrough used by the Swift-side MuSig signing and
@@ -169,7 +185,7 @@ import libsecp256k1
                 /// derived from a key rebuilt via ``init(dataRepresentation:format:)``
                 /// is verification-only (no cache was ever loaded).
                 public var xonly: XonlyKey {
-                    XonlyKey(baseKey: baseKey.xonly)
+                    XonlyKey(baseKey: baseKey.xonly, participants: participants)
                 }
 
                 /// Creates a MuSig public key from a validated backing implementation.
@@ -181,8 +197,11 @@ import libsecp256k1
                 ///
                 /// - Parameter baseKey: A `PublicKeyImplementation` produced by the upstream
                 ///   C aggregation call, with its 197-byte keyagg cache populated.
-                init(baseKey: PublicKeyImplementation) {
+                /// - Parameter participants: The signer list that produced the aggregate,
+                ///   in `aggregate(_:)` order — ``participants``.
+                init(baseKey: PublicKeyImplementation, participants: [P256K.Schnorr.PublicKey]) {
                     self.baseKey = baseKey
+                    self.participants = participants
                 }
 
                 /// Creates a MuSig aggregate public key from its x-only form, restoring the key aggregation session state.
@@ -201,6 +220,7 @@ import libsecp256k1
                         cache: xonlyKey.cache.byteArray
                     )
                     self.baseKey = PublicKeyImplementation(xonlyKey: key)
+                    self.participants = xonlyKey.participants
                 }
 
                 /// Creates a MuSig aggregate public key from serialized bytes.
@@ -224,6 +244,7 @@ import libsecp256k1
                         dataRepresentation: data,
                         format: format
                     )
+                    self.participants = []
                 }
             }
 
@@ -251,6 +272,16 @@ import libsecp256k1
                 /// upstream `secp256k1_xonly_pubkey` struct; consumers never see or manipulate
                 /// it directly through the public API.
                 private let baseKey: XonlyKeyImplementation
+
+                /// The signer public keys this aggregate was built from — the same
+                /// participant list ``PublicKey/participants`` carries, flowing from
+                /// ``PublicKey/xonly``, ``add(_:)``, and ``PublicKey/init(xonlyKey:)``.
+                ///
+                /// Internal-visibility, public material; consumed by
+                /// ``P256K/MuSig/aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``
+                /// when this key is declared as the session's aggregate. Empty on keys
+                /// rebuilt via ``init(dataRepresentation:keyParity:)``.
+                let participants: [P256K.Schnorr.PublicKey]
 
                 /// The 32-byte X coordinate of the aggregate public key as `Data`.
                 ///
@@ -301,8 +332,11 @@ import libsecp256k1
                 ///
                 /// - Parameter baseKey: A `XonlyKeyImplementation` produced by the upstream
                 ///   C conversion from an aggregate `secp256k1_pubkey`.
-                init(baseKey: XonlyKeyImplementation) {
+                /// - Parameter participants: The signer list that produced the aggregate —
+                ///   ``participants``.
+                init(baseKey: XonlyKeyImplementation, participants: [P256K.Schnorr.PublicKey]) {
                     self.baseKey = baseKey
+                    self.participants = participants
                 }
 
                 /// Creates a MuSig x-only public key from 32-byte serialized data and its Y-coordinate parity.
@@ -324,6 +358,7 @@ import libsecp256k1
                 ///   `secp256k1_xonly_pubkey_parse` (out of range or no curve point).
                 public init<D: ContiguousBytes>(dataRepresentation data: D, keyParity: Bool = false) throws {
                     self.baseKey = try XonlyKeyImplementation(dataRepresentation: data, keyParity: keyParity ? 1 : 0)
+                    self.participants = []
                 }
 
                 /// Returns `true` if both x-only keys have identical 32-byte X coordinates.
@@ -339,10 +374,20 @@ import libsecp256k1
         }
     }
 
-    extension secp256k1_musig_session {
-        var dataValue: Data {
-            var mutableSession = self
-            return Data(bytes: &mutableSession.data, count: MemoryLayout.size(ofValue: data))
+    @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
+    extension P256K.Schnorr.PublicKey {
+        /// The canonical signer identity of this key — the 32-byte x-only coordinate
+        /// plus its Y-coordinate parity — independent of the stored serialization
+        /// format.
+        ///
+        /// MuSig session checks match signers by curve point, not wire bytes: the
+        /// same key in `.compressed` or `.uncompressed` form is the same
+        /// participant, the same comparison the `secureNonce` binding check in
+        /// `partialSignature(for:pubnonce:secureNonce:publicNonceAggregate:xonlyKeyAggregate:)`
+        /// performs. Internal-visibility; drives the participant-membership and
+        /// multiset checks in the partial-signature verifier and aggregator.
+        var musigIdentity: [UInt8] {
+            baseKey.xonlyBytes + [UInt8(truncatingIfNeeded: baseKey.keyParity)]
         }
     }
 

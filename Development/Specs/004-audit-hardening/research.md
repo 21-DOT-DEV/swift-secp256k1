@@ -101,7 +101,11 @@ findings; its A-1 belongs to the other codebase and stays out of this wave.
   question — it is a wrapper-level policy, resolved for byte-match because
   the compound type's other consumer (`aggregateSignatures`) already
   enforces all-equal sessions and a valid-signature-plus-foreign-blob
-  pair otherwise fails later, unattributed.
+  pair otherwise fails later, unattributed. (Superseded by T032: the
+  session blob left the API entirely — `PartialSignature` bundles the
+  signer's public key and pubnonce, and verification runs
+  `partial_sig_verify` against the rebuilt session, which the byte-match
+  only gated; see plan §3.9 finding B-7.)
 - **B-5 — `Signature.Recoverable.normalize` only converts format, no
   low-S normalization.** (Renamed `signature` by T015; `normalize`
   stays as a deprecated alias until 1.0.) It calls

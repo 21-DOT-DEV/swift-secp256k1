@@ -101,48 +101,15 @@ struct SignVerifyVectorTests {
 
     @Test("Sign error cases reject the offending contribution")
     func signErrorCases() throws {
-        var verified = 0
-        var skipped: [String] = []
-
-        for (index, testCase) in vectors.sign_error_test_cases.enumerated() {
-            if let reason = signErrorSkipReason(for: testCase, index: index) {
-                skipped.append(reason)
-                continue
-            }
+        for testCase in vectors.sign_error_test_cases {
             try verifySignErrorCase(testCase)
-            verified += 1
         }
-
-        #expect(verified == 5, "5 of 6 sign error cases assert rejection")
-        #expect(
-            skipped.count == 1,
-            "Skipped cases with stated reasons: \(skipped.joined(separator: " — "))"
-        )
     }
 
     @Test("Verify fail cases return false")
     func verifyFailCases() throws {
-        // The vector's cases share session inputs; the harvested session is a
-        // pure function of them, so cache by inputs and sign once per distinct
-        // session rather than once per case.
-        var sessions: [String: Data] = [:]
-
         for (index, testCase) in vectors.verify_fail_test_cases.enumerated() {
-            let sessionKey = "\(testCase.key_indices)|\(testCase.nonce_indices)|\(testCase.msg_index)"
-            let session: Data
-            if let cached = sessions[sessionKey] {
-                session = cached
-            } else {
-                // The session the vector's signature was produced under —
-                // built the way a real signer would carry it (see `sessionBytes`).
-                session = try sessionBytes(
-                    keyIndices: testCase.key_indices,
-                    nonceIndices: testCase.nonce_indices,
-                    msgIndex: testCase.msg_index
-                )
-                sessions[sessionKey] = session
-            }
-            try verifyFailCase(testCase, index: index, session: session)
+            try verifyFailCase(testCase, index: index)
         }
     }
 
@@ -270,8 +237,6 @@ struct SignVerifyVectorTests {
         #expect(
             try aggregate.isValidSignature(
                 partial,
-                publicKey: signerPublicKey,
-                nonce: signerPubnonce,
                 for: message,
                 publicNonceAggregate: aggregateNonce
             ),
@@ -281,27 +246,19 @@ struct SignVerifyVectorTests {
 
     // MARK: - Sign error driver
 
-    /// Returns the stated skip reason for a sign-error case, or `nil` when the
-    /// case's expected rejection is assertable.
-    private func signErrorSkipReason(for testCase: SignVerifyErrorCase, index: Int) -> String? {
-        // The vector's own comment marks the signer-membership check optional,
-        // and upstream's C driver skips the case identically: this wrapper does
-        // not check that the signer's public key is in the list either — the
-        // call succeeds (producing a wrong signature) rather than erroring, so
-        // there is no rejection to assert. The structural marker is the case's
-        // own semantics: the signer's pubkey — `pubkeys[0]`, the public key of
-        // `sk` — is absent from `key_indices`. (No prose matching on the error
-        // message; `signer_index` is no marker either — the invalid-
-        // contribution cases omit it too.)
-        if !testCase.key_indices.contains(0) {
-            return "case \(index + 1): optional signer-membership check — the vector marks it skippable and neither upstream's driver nor this API performs it, so no error exists to assert"
-        }
-        return nil
-    }
-
     /// Asserts a sign-error case's expected rejection, dispatched by the
     /// contribution the vector attributes the error to.
     private func verifySignErrorCase(_ testCase: SignVerifyErrorCase) throws {
+        // The signer's pubkey — `pubkeys[0]`, the public key of `sk` — absent
+        // from `key_indices` marks the signer-membership case: BIP-327's `Sign`
+        // raises for a key outside the participant list, and `partialSignature`
+        // enforces the same check against the aggregate's retained list. (No
+        // prose matching on the error message; `signer_index` is no marker
+        // either — the invalid-contribution cases omit it too.)
+        guard testCase.key_indices.contains(0) else {
+            try assertNonParticipantSignRejected(testCase)
+            return
+        }
         switch testCase.error.contrib {
         case "pubkey":
             // `key_agg` stage — an invalid public key must fail `Schnorr.PublicKey.init`.
@@ -326,6 +283,33 @@ struct SignVerifyVectorTests {
                 return
             }
             try assertConsumedNonceRejected(testCase)
+        }
+    }
+
+    /// The vector case the spec marks optional — signer's pubkey absent from
+    /// `key_indices`. `partialSignature` throws ``secp256k1Error/underlyingCryptoError``
+    /// before the nonce reaches upstream, performing the check BIP-327's `Sign`
+    /// specifies and upstream's driver skips. `pnonces[0]` pairs `secnonces[0]`,
+    /// the spec secnonce materialized for `sk`/`pubkeys[0]` — the membership
+    /// guard fires before its byte-compare, so the companion never matters.
+    private func assertNonParticipantSignRejected(_ testCase: SignVerifyErrorCase) throws {
+        let aggregate = try P256K.MuSig.aggregate(testCase.key_indices.map { try publicKey(at: $0) })
+        let aggregateNonce = try P256K.MuSig.Nonce(dataRepresentation: vectors.aggnonces[testCase.aggnonce_index].bytes)
+        let message = try vectors.msgs[testCase.msg_index].bytes
+        let pubnonce = try publicNonce(at: 0)
+
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try secretKey.partialSignature(
+                for: message,
+                pubnonce: pubnonce,
+                secureNonce: secureNonce(
+                    secnonceIndex: testCase.secnonce_index ?? 0,
+                    publicKey: secretKey.publicKey,
+                    publicNonce: pubnonce
+                ),
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
         }
     }
 
@@ -403,9 +387,6 @@ struct SignVerifyVectorTests {
 
     // MARK: - Verify drivers
 
-    /// Asserts a verify-fail case's outcome: if the 32-byte signature scalar is
-    /// malformed it is rejected inside `PartialSignature.init` (upstream's
-    /// `partial_sig_parse` stage); otherwise the verifier must return `false`.
     /// Asserts a verify-fail case's outcome: an in-range scalar must return
     /// `false` from the verifier; an out-of-range scalar is rejected inside
     /// `PartialSignature.init` (upstream's `partial_sig_parse` stage). Which
@@ -413,7 +394,7 @@ struct SignVerifyVectorTests {
     /// against the group order — never by which call happens to throw, so an
     /// unexpected throw propagates and fails the test instead of passing
     /// inside a catch.
-    private func verifyFailCase(_ testCase: VerifyFailCase, index: Int, session: Data) throws {
+    private func verifyFailCase(_ testCase: VerifyFailCase, index: Int) throws {
         let keyList = try testCase.key_indices.map { try publicKey(at: $0) }
         let aggregate = try P256K.MuSig.aggregate(keyList)
         let pubnonces = try testCase.nonce_indices.map { try publicNonce(at: $0) }
@@ -425,15 +406,17 @@ struct SignVerifyVectorTests {
         )
         try #require(signatureBytes.count == 32, "verify_fail sig must be a 32-byte scalar")
 
+        // `signer_index` selects the envelope's identity and nonce from the
+        // case's own lists — the membership gate sees a real participant, so a
+        // `false` verdict lands in cryptographic verification itself.
         if signatureBytes.lexicographicallyPrecedes(Self.groupOrder) {
             let partial = try P256K.Schnorr.PartialSignature(
                 dataRepresentation: signatureBytes,
-                session: session
+                publicKey: keyList[testCase.signer_index],
+                nonce: pubnonces[testCase.signer_index]
             )
             let verified = try aggregate.isValidSignature(
                 partial,
-                publicKey: keyList[testCase.signer_index],
-                nonce: pubnonces[testCase.signer_index],
                 for: message,
                 publicNonceAggregate: aggregateNonce
             )
@@ -442,7 +425,8 @@ struct SignVerifyVectorTests {
             #expect(throws: secp256k1Error.underlyingCryptoError) {
                 _ = try P256K.Schnorr.PartialSignature(
                     dataRepresentation: signatureBytes,
-                    session: session
+                    publicKey: keyList[testCase.signer_index],
+                    nonce: pubnonces[testCase.signer_index]
                 )
             }
         }
@@ -515,34 +499,5 @@ struct SignVerifyVectorTests {
             publicKey: publicKey,
             publicNonce: publicNonce
         )
-    }
-
-    /// Produces the 133-byte `secp256k1_musig_session` a real signer would carry
-    /// for the given session inputs. The session binds `(aggregate nonce,
-    /// msg32, key-aggregation cache)` only — the signer is irrelevant — so
-    /// signing once as the vector's secret key and reading the carried
-    /// ``PartialSignature/session`` yields byte-for-byte the session the
-    /// post-T028 verifier rebuilds.
-    private func sessionBytes(keyIndices: [Int], nonceIndices: [Int], msgIndex: Int) throws -> Data {
-        let aggregate = try P256K.MuSig.aggregate(keyIndices.map { try publicKey(at: $0) })
-        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: nonceIndices.map { try publicNonce(at: $0) })
-        let message = try vectors.msgs[msgIndex].bytes
-        let nonce = try P256K.MuSig.Nonce.generate(
-            secretKey: secretKey,
-            publicKey: secretKey.publicKey,
-            msg32: message
-        )
-        // The produced signature is discarded — only the carried session is
-        // harvested. `partialSignature` does not check that our public nonce
-        // contributed to the declared aggregate nonce, so the sign itself is
-        // well-formed even though the resulting signature is meaningless.
-        let partial = try secretKey.partialSignature(
-            for: message,
-            pubnonce: nonce.pubnonce,
-            secureNonce: nonce.secnonce,
-            publicNonceAggregate: aggregateNonce,
-            publicKeyAggregate: aggregate
-        )
-        return partial.session
     }
 }

@@ -71,7 +71,8 @@ import libsecp256k1
                     validatedBytes: pubKeyBytes,
                     format: format,
                     cache: Swift.withUnsafeBytes(of: cache.data) { [UInt8]($0) }
-                )
+                ),
+                participants: participants
             )
         }
     }
@@ -133,7 +134,8 @@ import libsecp256k1
                     validatedBytes: xonlyBytes,
                     keyParity: keyParity,
                     cache: Swift.withUnsafeBytes(of: cache.data) { [UInt8]($0) }
-                )
+                ),
+                participants: participants
             )
         }
     }

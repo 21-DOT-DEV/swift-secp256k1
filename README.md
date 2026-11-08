@@ -271,11 +271,10 @@ let aggregateSignature = try! P256K.MuSig.aggregateSignatures(
     publicKeyAggregate: aggregateKey
 )
 
-// Verify an individual partial signature against the declared session
+// Verify an individual partial signature — the envelope carries the signer's
+// public key and public nonce, so the verifier needs only the declared session
 let isValid = try! aggregateKey.isValidSignature(
     firstPartialSignature,
-    publicKey: firstPrivateKey.publicKey,
-    nonce: firstNonce.pubnonce,
     for: messageHash,
     publicNonceAggregate: aggregateNonce
 )

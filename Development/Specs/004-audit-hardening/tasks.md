@@ -508,7 +508,7 @@ measured and published on each PR (the "measure-first" promise kept).
       `Tests/P256KTests/AsymmetricTests.swift`,
       `CHANGELOG.md` · **breaking**
 
-- [ ] T032 `PartialSignature` carries signer identity instead of the
+- [x] T032 `PartialSignature` carries signer identity instead of the
       opaque session blob — the `secp256k1_musig_session` struct leaks
       through `init(dataRepresentation:session:)` and the `session`
       accessor (the audit's `keyagg_cache` defect class on a second
@@ -529,22 +529,59 @@ measured and published on each PR (the "measure-first" promise kept).
       `init(dataRepresentation:session:)` and `session` are replaced by
       `init(dataRepresentation:publicKey:nonce:)`; `isValidSignature`
       drops its separate `publicKey:`/`nonce:` parameters (the envelope
-      carries them) and its byte-match (`partial_sig_verify` under the
+      carries them), its byte-match (`partial_sig_verify` under the
       rebuilt session is strictly stronger — it validates the
-      signature, not just the session claim); `aggregateSignatures`
-      runs `partial_sig_verify` per partial so a wrong-session or
-      invalid contribution throws `underlyingCryptoError` attributed to
-      its index instead of crashing; the `MuSigOpaqueState` session
-      validators and the `session.dataValue` extension die; the T028
-      `init(dataRepresentation:session:)` CHANGELOG line is amended ·
+      signature, not just the session claim), and gains BIP-327's
+      structural membership gate — `PartialSigVerify` selects the signer
+      by index from the session's `pk 1..u`, so `MuSig.PublicKey` and
+      `MuSig.XonlyKey` retain the `aggregate(_:)` participant list
+      internally (the opaque `keyagg_cache` stores only `pks_hash`; the
+      list is unrecoverable from it) and a bundled key outside it
+      returns `false`, upstream `keyaggcoef` assigning a coefficient to
+      any key; `aggregateSignatures` requires the bundled identities to
+      equal the participant multiset — duplicate keys are legal and
+      keep their own slots — throws `incorrectParameterSize` on a wrong
+      contribution count, runs `partial_sig_verify` per partial under
+      the rebuilt session, and throws the new
+      `secp256k1Error.invalidMuSigContribution(index:)` — payload-bearing
+      per `DecodingError`'s convention and BIP-327's "output the index
+      of exactly one malicious signer" — on a wrong-session,
+      foreign-identity, or over-contributing envelope instead of
+      crashing; the `MuSigOpaqueState` session validators and the
+      `session.dataValue` extension die; the T028
+      `init(dataRepresentation:session:)` CHANGELOG line is amended.
+      **Jury amendment** — all three panel seats reproduced a residual
+      crash: `partial_sig_verify` proves a signature against the
+      pubnonce it is handed (upstream precondition,
+      `secp256k1_musig.h:533-535`) without proving that nonce entered
+      the declared `aggnonce`, so a participant signing the declared
+      session with an unpublished nonce pair — or a partial resubmitted
+      under a duplicated participant key — passed every check then
+      tripped the verify-after-aggregate `invariantFailure` on peer
+      input. `aggregateSignatures` therefore also re-aggregates the
+      bundled `nonce` set via `secp256k1_musig_nonce_agg` and requires
+      byte-equality with `publicNonceAggregate`, throwing
+      `underlyingCryptoError` on mismatch — set-level, unattributed by
+      construction since no per-index blame is derivable from a point
+      sum; `isValidSignature` cannot make the same proof for one
+      partial, so its contract is documented honestly (`true` =
+      participant + algebra; the aggregate-time check binds the set);
+      `partialSignature` gains the signer-side membership gate BIP-327's
+      `Sign` specifies (rejecting a non-participant key before the nonce
+      reaches upstream, unskipping the BIP-327 `sign_error` vector case
+      the driver previously bypassed); regression tests cover the
+      rogue-nonce, duplicate-resubmission, cross-wired-envelope, and
+      algebraically-valid-foreign-signer paths ·
       `Sources/P256K/MuSig/MuSig+Aggregate.swift`,
       `Sources/P256K/MuSig/MuSig+Signing.swift`,
       `Sources/P256K/MuSig/MuSig.swift`,
-      `Sources/P256K/Util/Utility.swift` (session validators),
+      `Sources/P256K/Errors.swift` (new error case),
+      `Sources/P256K/Utility.swift` (session validators),
       `Tests/P256KTests/MusigTests.swift`,
       `Projects/Sources/MuSig2VectorTests/` (`sessionBytes` helper and
       `verifyFailCase` rewrite),
       `Sources/P256K/P256K.docc/MuSig2MultiSignatures.md`,
+      `README.md`,
       `CHANGELOG.md` · **breaking**
 
 **Checkpoint:** build passes with deprecation warnings on the old names;
@@ -552,8 +589,12 @@ a scratch consumer calling the renamed accessors compiles
 (the removed signing, verify, and cache-initializer names intentionally
 fail); the public signature surface names no upstream-internal type —
 neither `keyagg_cache` nor `musig_session` bytes cross a public boundary;
-a cosigner-submitted invalid partial throws `underlyingCryptoError`
-attributed to its index instead of reaching `invariantFailure`.
+a cosigner-submitted invalid partial throws
+`invalidMuSigContribution(index:)` instead of reaching `invariantFailure`;
+a participant partial signed under the declared session with an
+uncontributed nonce — and a partial resubmitted under a duplicated
+participant key — throw `underlyingCryptoError` at the nonce-set check
+instead of reaching `invariantFailure`.
 
 ## Group G — Managed context ownership (PR 16)
 

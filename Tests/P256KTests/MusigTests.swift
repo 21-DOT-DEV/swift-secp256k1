@@ -9,6 +9,7 @@
 //
 
 import Foundation
+import libsecp256k1
 @testable import P256K
 import Testing
 
@@ -189,14 +190,11 @@ struct MuSigTestSuite {
             publicKeyAggregate: aggregate
         )
 
-        // Verify the signature
-        let firstKey = try #require(publicKeys.first)
-        let firstPubnonce = try #require(publicNonces.first)
+        // Verify the signature — the envelope carries the signer's public key
+        // and public nonce, so the verifier needs only the declared session.
         #expect(
             try aggregate.isValidSignature(
                 firstPartialSignature,
-                publicKey: firstKey,
-                nonce: firstPubnonce,
                 for: messageHash,
                 publicNonceAggregate: aggregateNonce
             ),
@@ -503,31 +501,19 @@ struct MuSigTestSuite {
 
     @Test("MuSig partial signature rejects malformed wire input")
     func musigPartialSignatureRejectsMalformedWire() throws {
-        let sessionBytes: [UInt8] = .init(repeating: 0, count: 133)
-        let validSessionPrefix: [UInt8] = [0x9D, 0xED, 0xE9, 0x17]
-        let session: [UInt8] = validSessionPrefix + [UInt8](repeating: 0, count: 129)
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let nonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKey,
+            publicKey: privateKey.publicKey,
+            msg32: nil
+        )
 
         // Wrong wire size must throw before reaching `partial_sig_parse`.
         #expect(throws: secp256k1Error.incorrectParameterSize) {
             _ = try P256K.Schnorr.PartialSignature(
                 dataRepresentation: [UInt8](repeating: 0x01, count: 36),
-                session: session
-            )
-        }
-
-        // A session of the wrong size must throw before reaching `session_load`.
-        #expect(throws: secp256k1Error.incorrectParameterSize) {
-            _ = try P256K.Schnorr.PartialSignature(
-                dataRepresentation: [UInt8](repeating: 0x01, count: 32),
-                session: [UInt8](repeating: 0, count: 64)
-            )
-        }
-
-        // A right-size session without the upstream magic prefix must throw.
-        #expect(throws: secp256k1Error.underlyingCryptoError) {
-            _ = try P256K.Schnorr.PartialSignature(
-                dataRepresentation: [UInt8](repeating: 0x01, count: 32),
-                session: sessionBytes
+                publicKey: privateKey.publicKey,
+                nonce: nonce.pubnonce
             )
         }
 
@@ -535,9 +521,19 @@ struct MuSigTestSuite {
         #expect(throws: secp256k1Error.underlyingCryptoError) {
             _ = try P256K.Schnorr.PartialSignature(
                 dataRepresentation: [UInt8](repeating: 0xFF, count: 32),
-                session: session
+                publicKey: privateKey.publicKey,
+                nonce: nonce.pubnonce
             )
         }
+
+        // The bundled signer identity and public nonce are typed values — the
+        // envelope no longer accepts raw opaque blobs for either.
+        let partial = try P256K.Schnorr.PartialSignature(
+            dataRepresentation: [UInt8](repeating: 0x01, count: 32),
+            publicKey: privateKey.publicKey,
+            nonce: nonce.pubnonce
+        )
+        #expect(partial.publicKey.musigIdentity == privateKey.publicKey.musigIdentity)
     }
 
     @Test("MuSig x-only key rejects a malformed cache at construction")
@@ -637,8 +633,10 @@ struct MuSigTestSuite {
         )
 
         // Session B: a partial signature produced under a different aggregated
-        // nonce carries a different session blob and must be rejected rather
-        // than silently aggregated under session A's state.
+        // nonce is bound to a different rebuilt session and must be rejected
+        // rather than silently aggregated under session A's state. The signer
+        // is a genuine participant so the failure lands in per-partial
+        // verification — attributed to its submission index.
         let foreignNonce = try P256K.MuSig.Nonce.generate(
             secretKey: privateKeys[0], publicKey: privateKeys[0].publicKey, msg32: Array(messageHash)
         )
@@ -646,15 +644,15 @@ struct MuSigTestSuite {
             secretKey: privateKeys[1], publicKey: privateKeys[1].publicKey, msg32: Array(messageHash)
         )
         let sessionB = try P256K.MuSig.Nonce(aggregating: [foreignNonce.pubnonce, secondForeignNonce.pubnonce])
-        let foreignPartial = try privateKeys[0].partialSignature(
+        let foreignPartial = try privateKeys[1].partialSignature(
             for: messageHash,
-            pubnonce: foreignNonce.pubnonce,
-            secureNonce: foreignNonce.secnonce,
+            pubnonce: secondForeignNonce.pubnonce,
+            secureNonce: secondForeignNonce.secnonce,
             publicNonceAggregate: sessionB,
             publicKeyAggregate: aggregate
         )
 
-        #expect(throws: secp256k1Error.underlyingCryptoError) {
+        #expect(throws: secp256k1Error.invalidMuSigContribution(index: 1)) {
             _ = try P256K.MuSig.aggregateSignatures(
                 [firstPartial, foreignPartial],
                 for: messageHash,
@@ -666,9 +664,10 @@ struct MuSigTestSuite {
 
     /// The aggregate nonce, message, and key aggregate re-declared to
     /// `aggregateSignatures` rebuild the session locally — a declaration that
-    /// disagrees with the carried session pairs the signature with a session
-    /// it was never bound to and throws rather than silently substituting.
-    @Test("MuSig aggregation rejects declared inputs that disagree with the carried session")
+    /// disagrees with what the signature was bound to fails per-partial
+    /// verification with the contributor's index rather than silently
+    /// substituting.
+    @Test("MuSig aggregation rejects declared inputs that disagree with the bound session")
     func musigAggregateRejectsMismatchedDeclaredInputs() throws {
         let privateKey = try P256K.Schnorr.PrivateKey()
         let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
@@ -688,8 +687,8 @@ struct MuSigTestSuite {
         )
 
         // A different declared message rebuilds a different session — the
-        // carried blob can't match it even though the signature is honest.
-        #expect(throws: secp256k1Error.underlyingCryptoError) {
+        // honest signature no longer verifies under it.
+        #expect(throws: secp256k1Error.invalidMuSigContribution(index: 0)) {
             _ = try P256K.MuSig.aggregateSignatures(
                 [partial],
                 for: otherMessage,
@@ -703,7 +702,7 @@ struct MuSigTestSuite {
             secretKey: privateKey, publicKey: privateKey.publicKey, msg32: Array(messageHash)
         )
         let foreignAggregateNonce = try P256K.MuSig.Nonce(aggregating: [foreignNonce.pubnonce])
-        #expect(throws: secp256k1Error.underlyingCryptoError) {
+        #expect(throws: secp256k1Error.invalidMuSigContribution(index: 0)) {
             _ = try P256K.MuSig.aggregateSignatures(
                 [partial],
                 for: messageHash,
@@ -712,10 +711,11 @@ struct MuSigTestSuite {
             )
         }
 
-        // A different declared key aggregate rebuilds a different session —
-        // the key aggregation cache feeds `nonce_process` directly.
+        // A different declared key aggregate carries a different participant
+        // list — this signer's key isn't a member of it, so the multiset check
+        // rejects the contribution before any cryptographic work.
         let otherAggregate = try P256K.MuSig.aggregate([P256K.Schnorr.PrivateKey().publicKey])
-        #expect(throws: secp256k1Error.underlyingCryptoError) {
+        #expect(throws: secp256k1Error.invalidMuSigContribution(index: 0)) {
             _ = try P256K.MuSig.aggregateSignatures(
                 [partial],
                 for: messageHash,
@@ -887,6 +887,38 @@ struct MuSigTestSuite {
         }
     }
 
+    /// `partialSignature` gates the signing key on the aggregate's retained
+    /// participant list before any nonce check — BIP-327's `Sign` raises when
+    /// `GetSessionKeyAggCoeff` cannot find the key, and upstream's `keyaggcoef`
+    /// would otherwise produce a partial that verifies yet can never join the
+    /// aggregate. A signer whose key is absent from `aggregate(_:)`'s list
+    /// throws `underlyingCryptoError` instead of signing.
+    @Test("MuSig partial signing rejects a key outside the participant list")
+    func musigPartialSignatureRejectsNonParticipantSigner() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let outsider = try P256K.Schnorr.PrivateKey()
+        // The aggregate's participant list contains only `privateKey` — the
+        // outsider's key has a `keyaggcoef` but no session slot.
+        let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
+        let messageHash = SHA256.hash(data: Data("non-participant signer".utf8))
+
+        // The outsider generates a well-formed nonce pair — the membership
+        // guard, not nonce validity, is what must throw.
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            let nonce = try P256K.MuSig.Nonce.generate(
+                secretKey: outsider, publicKey: outsider.publicKey, msg32: Array(messageHash)
+            )
+            let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+            _ = try outsider.partialSignature(
+                for: messageHash,
+                pubnonce: nonce.pubnonce,
+                secureNonce: nonce.secnonce,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
+        }
+    }
+
     @Test("MuSig public nonce accessors expose the 66-byte wire form")
     func musigNonceAccessorsYieldWireBytes() throws {
         let privateKey = try P256K.Schnorr.PrivateKey()
@@ -1049,42 +1081,486 @@ struct MuSigKeyOrderTestSuite {
     }
 }
 
-/// Signs one partial signature for a single-signer MuSig session and returns it
-/// with the signer's pubnonce — the pair `isValidSignature` needs (each call
-/// site rebuilds the aggregate nonce, mirroring the verifier's own
-/// reconstruction).
+/// `aggregateSignatures` requires the submitted signer identities to equal the
+/// session's participant list as a *multiset* — BIP-327's `pk 1..u` with
+/// duplicates legal. A missing member fails the count check; a stranger, an
+/// over-contributing duplicate, or a mislabeled envelope throws
+/// `invalidMuSigContribution` naming the position.
+struct MuSigContributionSetTestSuite {
+    /// A two-signer session receiving only one contribution fails the count
+    /// check before any signer identity is examined — the failure is a wrong
+    /// parameter size, not an attributed contribution.
+    @Test("MuSig aggregation rejects an incomplete signer set")
+    func musigAggregateRejectsIncompleteSignerSet() throws {
+        let privateKeys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
+        ]
+        let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
+        let messageHash = SHA256.hash(data: Data("incomplete set".utf8))
+
+        let nonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[0], publicKey: privateKeys[0].publicKey, msg32: Array(messageHash)
+        )
+        let otherNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[1], publicKey: privateKeys[1].publicKey, msg32: Array(messageHash)
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce, otherNonce.pubnonce])
+        let partial = try privateKeys[0].partialSignature(
+            for: messageHash,
+            pubnonce: nonce.pubnonce,
+            secureNonce: nonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        // One honest contribution for a two-participant session — the missing
+        // signer is a count failure, not an attributed bad contribution.
+        #expect(throws: secp256k1Error.incorrectParameterSize) {
+            _ = try P256K.MuSig.aggregateSignatures(
+                [partial],
+                for: messageHash,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
+        }
+    }
+
+    /// `partial_sig_verify` alone proves only algebraic consistency —
+    /// `keyaggcoef` assigns a coefficient to *any* public key, so a stranger's
+    /// valid partial would verify per-signature yet corrupt the aggregate. The
+    /// multiset gate rejects the bundled non-participant identity first.
+    @Test("MuSig aggregation rejects a non-participant contribution")
+    func musigAggregateRejectsNonParticipant() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let stranger = try P256K.Schnorr.PrivateKey()
+        let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
+        let messageHash = SHA256.hash(data: Data("non-participant".utf8))
+
+        let nonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKey, publicKey: privateKey.publicKey, msg32: Array(messageHash)
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+
+        // A stranger's *algebraically valid* partial for this session —
+        // produced through the same C calls a raw-libsecp256k1 attacker uses,
+        // since the public `partialSignature` refuses a non-participant at
+        // signing — can only be rejected by the membership gate, not by
+        // `partial_sig_verify` (`keyaggcoef` gives the stranger a coefficient).
+        let foreignPartial = try foreignMuSigPartialSignature(
+            for: messageHash,
+            signer: stranger,
+            keyAggregate: aggregate,
+            publicNonceAggregate: aggregateNonce
+        )
+        #expect(throws: secp256k1Error.invalidMuSigContribution(index: 0)) {
+            _ = try P256K.MuSig.aggregateSignatures(
+                [foreignPartial],
+                for: messageHash,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
+        }
+    }
+
+    /// One signer submitting both slots consumes the other's participant
+    /// allowance — the first duplicate passes membership, the second finds the
+    /// tally depleted and is attributed by index.
+    @Test("MuSig aggregation rejects a duplicated contribution")
+    func musigAggregateRejectsDuplicatedContribution() throws {
+        let privateKeys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
+        ]
+        let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
+        let messageHash = SHA256.hash(data: Data("duplicated contribution".utf8))
+
+        let firstNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[0], publicKey: privateKeys[0].publicKey, msg32: Array(messageHash)
+        )
+        let secondNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[1], publicKey: privateKeys[1].publicKey, msg32: Array(messageHash)
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+        let firstPartial = try privateKeys[0].partialSignature(
+            for: messageHash,
+            pubnonce: firstNonce.pubnonce,
+            secureNonce: firstNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        // The same envelope twice: index 0 consumes the key's only allowance,
+        // index 1 over-contributes.
+        #expect(throws: secp256k1Error.invalidMuSigContribution(index: 1)) {
+            _ = try P256K.MuSig.aggregateSignatures(
+                [firstPartial, firstPartial],
+                for: messageHash,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
+        }
+    }
+
+    /// BIP-327 permits the same public key at multiple participant positions —
+    /// each occurrence gets its own key-aggregation coefficient and signs its
+    /// own nonce. Two envelopes bundling the same key are legal exactly when
+    /// the participant list contains the key twice.
+    @Test("MuSig aggregation accepts legal duplicate participant keys")
+    func musigAggregateAcceptsDuplicateParticipantKeys() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey, privateKey.publicKey])
+        let messageHash = SHA256.hash(data: Data("duplicate participant".utf8))
+
+        let firstNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKey, publicKey: privateKey.publicKey, msg32: Array(messageHash)
+        )
+        let secondNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKey, publicKey: privateKey.publicKey, msg32: Array(messageHash)
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+
+        let firstPartial = try privateKey.partialSignature(
+            for: messageHash,
+            pubnonce: firstNonce.pubnonce,
+            secureNonce: firstNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+        let secondPartial = try privateKey.partialSignature(
+            for: messageHash,
+            pubnonce: secondNonce.pubnonce,
+            secureNonce: secondNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        let signature = try P256K.MuSig.aggregateSignatures(
+            [firstPartial, secondPartial],
+            for: messageHash,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+        #expect(aggregate.xonly.isValidSignature(signature, for: messageHash))
+    }
+
+    /// A participant who signs under the declared session but with an
+    /// *uncontributed* nonce pair defeats every per-partial check —
+    /// `partial_sig_verify` cannot prove the bundled nonce entered the
+    /// aggregate — and previously reached the final `schnorrsig_verify`
+    /// failure, terminating the process. Re-aggregating the bundled nonces
+    /// and comparing against the declared aggregate closes the path; the
+    /// mismatch is a set property, so the throw is unattributed.
+    @Test("MuSig aggregation rejects a participant's uncontributed nonce")
+    func musigAggregateRejectsUncontributedNonce() throws {
+        let privateKeys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
+        ]
+        let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
+        let messageHash = SHA256.hash(data: Data("uncontributed nonce".utf8))
+
+        let firstNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[0], publicKey: privateKeys[0].publicKey, msg32: Array(messageHash)
+        )
+        let secondNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[1], publicKey: privateKeys[1].publicKey, msg32: Array(messageHash)
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+
+        // The first signer contributes `firstNonce` to the aggregate but signs
+        // with a second, unpublished nonce pair — the bundled pubnonce was
+        // never part of `aggregateNonce`.
+        let rogueNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[0], publicKey: privateKeys[0].publicKey, msg32: Array(messageHash)
+        )
+        let roguePartial = try privateKeys[0].partialSignature(
+            for: messageHash,
+            pubnonce: rogueNonce.pubnonce,
+            secureNonce: rogueNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+        let honestPartial = try privateKeys[1].partialSignature(
+            for: messageHash,
+            pubnonce: secondNonce.pubnonce,
+            secureNonce: secondNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        // The standalone verifier cannot detect the shape: the signature is
+        // algebraically consistent and the signer is a participant.
+        #expect(try aggregate.isValidSignature(
+            roguePartial,
+            for: messageHash,
+            publicNonceAggregate: aggregateNonce
+        ) == true)
+
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.MuSig.aggregateSignatures(
+                [roguePartial, honestPartial],
+                for: messageHash,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
+        }
+    }
+
+    /// Resubmitting the same partial for both slots of a duplicated
+    /// participant key passes the membership tally (the key legitimately
+    /// occupies two positions) but bundles only one nonce — the nonce-set
+    /// check rejects it where key identity alone could not.
+    @Test("MuSig aggregation rejects a resubmitted partial under duplicate keys")
+    func musigAggregateRejectsResubmissionUnderDuplicateKeys() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey, privateKey.publicKey])
+        let messageHash = SHA256.hash(data: Data("duplicate key resubmission".utf8))
+
+        let firstNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKey, publicKey: privateKey.publicKey, msg32: Array(messageHash)
+        )
+        let secondNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKey, publicKey: privateKey.publicKey, msg32: Array(messageHash)
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+        let firstPartial = try privateKey.partialSignature(
+            for: messageHash,
+            pubnonce: firstNonce.pubnonce,
+            secureNonce: firstNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.MuSig.aggregateSignatures(
+                [firstPartial, firstPartial],
+                for: messageHash,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
+        }
+    }
+
+    /// Cross-wiring two honest contributions' bundled nonces preserves the
+    /// nonce *set* — aggregation is commutative — so the envelopes reach
+    /// per-partial verification, where each signature fails under the other
+    /// signer's nonce and is attributed by index.
+    @Test("MuSig aggregation attributes a mislabeled envelope")
+    func musigAggregateAttributesCrossWiredEnvelopes() throws {
+        let privateKeys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
+        ]
+        let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
+        let messageHash = SHA256.hash(data: Data("cross-wired envelopes".utf8))
+
+        let firstNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[0], publicKey: privateKeys[0].publicKey, msg32: Array(messageHash)
+        )
+        let secondNonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKeys[1], publicKey: privateKeys[1].publicKey, msg32: Array(messageHash)
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [firstNonce.pubnonce, secondNonce.pubnonce])
+        let firstPartial = try privateKeys[0].partialSignature(
+            for: messageHash,
+            pubnonce: firstNonce.pubnonce,
+            secureNonce: firstNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+        let secondPartial = try privateKeys[1].partialSignature(
+            for: messageHash,
+            pubnonce: secondNonce.pubnonce,
+            secureNonce: secondNonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        // First signer's bytes bundled with the second signer's nonce — the
+        // nonce set is unchanged, so the failure is attributed by index.
+        let mislabeled = try P256K.Schnorr.PartialSignature(
+            dataRepresentation: firstPartial.dataRepresentation,
+            publicKey: privateKeys[0].publicKey,
+            nonce: secondNonce.pubnonce
+        )
+        #expect(throws: secp256k1Error.invalidMuSigContribution(index: 0)) {
+            _ = try P256K.MuSig.aggregateSignatures(
+                [mislabeled, secondPartial],
+                for: messageHash,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: aggregate
+            )
+        }
+    }
+
+    /// A key rebuilt from serialized bytes carries no participant list and no
+    /// key-aggregation cache — `aggregateSignatures` hits the cache guard
+    /// before the membership check and throws `underlyingCryptoError`, while
+    /// `isValidSignature`'s unusable-input contract reports the same condition
+    /// as `false` rather than answering from an empty participant set.
+    @Test("MuSig session APIs reject a key rebuilt without participant provenance")
+    func musigSessionRejectsReconstructedKey() throws {
+        let privateKey = try P256K.Schnorr.PrivateKey()
+        let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
+        let reconstructed = try P256K.MuSig.PublicKey(
+            dataRepresentation: aggregate.dataRepresentation,
+            format: aggregate.format
+        )
+        let message: [UInt8] = .init(repeating: 0xAB, count: 32)
+
+        let nonce = try P256K.MuSig.Nonce.generate(
+            secretKey: privateKey, publicKey: privateKey.publicKey, msg32: message
+        )
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+        let partial = try privateKey.partialSignature(
+            for: message,
+            pubnonce: nonce.pubnonce,
+            secureNonce: nonce.secnonce,
+            publicNonceAggregate: aggregateNonce,
+            publicKeyAggregate: aggregate
+        )
+
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try P256K.MuSig.aggregateSignatures(
+                [partial],
+                for: message,
+                publicNonceAggregate: aggregateNonce,
+                publicKeyAggregate: reconstructed
+            )
+        }
+
+        // The verifier's contract is `false` for any unusable input — the
+        // missing cache makes the honest contribution unverifiable, not an error.
+        #expect(try reconstructed.isValidSignature(
+            partial,
+            for: message,
+            publicNonceAggregate: aggregateNonce
+        ) == false)
+    }
+}
+
+/// Signs one partial signature for a single-signer MuSig session — the envelope
+/// carries the signer's public key and pubnonce, so the return value is all the
+/// verifier needs (each call site rebuilds the aggregate nonce, mirroring the
+/// verifier's own reconstruction).
 private func muSigPartialSignature(
     for message: some ContiguousBytes,
     privateKey: P256K.Schnorr.PrivateKey,
     aggregate: P256K.MuSig.PublicKey
-) throws -> (P256K.Schnorr.PartialSignature, P256K.Schnorr.Nonce) {
+) throws -> P256K.Schnorr.PartialSignature {
     let nonce = try P256K.MuSig.Nonce.generate(
         secretKey: privateKey,
         publicKey: privateKey.publicKey,
         msg32: nil
     )
-    let pubnonce = nonce.pubnonce
-    let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [pubnonce])
-    return try (privateKey.partialSignature(
+    let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
+    return try privateKey.partialSignature(
         for: message,
-        pubnonce: pubnonce,
+        pubnonce: nonce.pubnonce,
         secureNonce: nonce.secnonce,
         publicNonceAggregate: aggregateNonce,
         publicKeyAggregate: aggregate
-    ), pubnonce)
+    )
 }
 
-/// B-4 session-provenance coverage: `MuSig.PublicKey.isValidSignature` verifies
-/// against a session rebuilt from the caller's declared (message, aggregate
-/// nonce) — never the session blob the signature happens to carry.
+/// Produces a partial signature the public signing API refuses to make: a
+/// *non-participant's* signature under the session — the shape upstream's
+/// `keyaggcoef` permits (it assigns a coefficient to any public key), so the
+/// result verifies algebraically and only the participant gates reject it.
+/// Built through the same public C calls a raw-libsecp256k1 attacker uses;
+/// the helper re-verifies the signature under the session before returning so
+/// callers know the rejection can only come from membership checks.
+private func foreignMuSigPartialSignature(
+    for message: some ContiguousBytes,
+    signer: P256K.Schnorr.PrivateKey,
+    keyAggregate: P256K.MuSig.PublicKey,
+    publicNonceAggregate: P256K.MuSig.Nonce
+) throws -> P256K.Schnorr.PartialSignature {
+    let context = P256K.Context.rawRepresentation
+    var session = secp256k1_musig_session()
+    var cache = secp256k1_musig_keyagg_cache()
+    var aggnonce = secp256k1_musig_aggnonce()
+    var keypair = secp256k1_keypair()
+    var partialSig = secp256k1_musig_partial_sig()
+    var secnonce = secp256k1_musig_secnonce()
+    var signature = [UInt8](repeating: 0, count: P256K.ByteLength.dimension)
+    // `secp256k1_keypair` and the copied secnonce embed secret material —
+    // scrub both after their last use, matching `partialSignature`'s cleanup.
+    defer {
+        Swift.withUnsafeMutableBytes(of: &keypair) { buffer in
+            _ = memset_s(buffer.baseAddress, buffer.count, 0, buffer.count)
+        }
+        Swift.withUnsafeMutableBytes(of: &secnonce) { buffer in
+            _ = memset_s(buffer.baseAddress, buffer.count, 0, buffer.count)
+        }
+    }
+
+    let messageBytes = try message.exactMsg32Bytes
+    keyAggregate.keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
+    publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
+
+    // The stranger's nonce pair — never contributed to `publicNonceAggregate`.
+    // `NonceResult.secnonce` is `let`, so its bytes are read out and bound
+    // into a local struct for upstream to consume — the same shape the
+    // vector driver uses for spec secnonces.
+    let nonce = try P256K.MuSig.Nonce.generate(
+        secretKey: signer, publicKey: signer.publicKey, msg32: nil
+    )
+    var secnonceBytes = nonce.secnonce.data.withUnsafeBytePointer { pointer in
+        Array(UnsafeBufferPointer(start: pointer, count: MemoryLayout<secp256k1_musig_secnonce>.size))
+    }
+    defer {
+        secnonceBytes.withUnsafeMutableBufferPointer { buffer in
+            _ = memset_s(buffer.baseAddress, buffer.count, 0, buffer.count)
+        }
+    }
+    // Copy the array straight into the struct — no `Data` temporary (which
+    // would be an unscrubbed secret-bearing heap copy).
+    secnonceBytes.withUnsafeBufferPointer { source in
+        _ = Swift.withUnsafeMutableBytes(of: &secnonce.data) { $0.copyBytes(from: source) }
+    }
+
+    try #require(secp256k1_musig_nonce_process(context, &session, &aggnonce, messageBytes, &cache).boolValue)
+    let keypairCreated = signer.key.withUnsafeBytePointer { keyPtr in
+        secp256k1_keypair_create(context, &keypair, keyPtr).boolValue
+    }
+    try #require(keypairCreated)
+    try #require(
+        secp256k1_musig_partial_sign(context, &partialSig, &secnonce, &keypair, &cache, &session).boolValue,
+        "keyaggcoef must accept the non-participant key — the attack premise"
+    )
+    try #require(secp256k1_musig_partial_sig_serialize(context, &signature, &partialSig).boolValue)
+
+    // Prove the partial is algebraically valid under this session — without
+    // this check a broken harness could make the membership assertions below
+    // pass for the wrong reason (a signature that simply fails to verify).
+    var parsedSig = secp256k1_musig_partial_sig()
+    var pubnonce = secp256k1_musig_pubnonce()
+    var signerPublicKey = signer.publicKey.baseKey.rawRepresentation
+    nonce.pubnonce.pubnonce.copyToUnsafeMutableBytes(of: &pubnonce.data)
+    try #require(secp256k1_musig_partial_sig_parse(context, &parsedSig, signature).boolValue)
+    try #require(
+        secp256k1_musig_partial_sig_verify(context, &parsedSig, &pubnonce, &signerPublicKey, &cache, &session).boolValue,
+        "foreign partial must verify algebraically — only the membership gate can reject it"
+    )
+
+    return try P256K.Schnorr.PartialSignature(
+        dataRepresentation: signature,
+        publicKey: signer.publicKey,
+        nonce: nonce.pubnonce
+    )
+}
+
+/// Session-provenance coverage: `MuSig.PublicKey.isValidSignature` verifies the
+/// envelope's bundled identity against a session rebuilt from the caller's
+/// declared (message, aggregate nonce) — and rejects contributions whose signer
+/// is not a recorded participant.
 struct MuSigPartialVerifyTestSuite {
-    /// The partial verifier once ignored its `for:` input — it loaded whatever
-    /// session blob the signature carried, so a signature produced over a
-    /// different message reported "valid" for any declared digest. The verifier
-    /// now rebuilds the session locally from the caller's `publicNonceAggregate`,
-    /// a 32-byte `for:` message, and the key aggregation cache — upstream's
-    /// documented verifier flow — requires the carried session blob to match it,
-    /// and throws on a non-32-byte message.
+    /// The partial verifier rebuilds the session locally from the caller's
+    /// `publicNonceAggregate`, a 32-byte `for:` message, and the key aggregation
+    /// cache — upstream's documented verifier flow — verifies the bundled
+    /// identity against that session, and throws on a non-32-byte message.
     @Test("MuSig partial signature verification consults the declared message")
     func musigPartialSignatureVerifyConsultsMessage() throws {
         let privateKey = try P256K.Schnorr.PrivateKey()
@@ -1092,36 +1568,29 @@ struct MuSigPartialVerifyTestSuite {
         let message = Array(SHA256.hash(data: Data("partial verify".utf8)))
         let otherMessage = Array(SHA256.hash(data: Data("other".utf8)))
 
-        let (partial, pubnonce) = try muSigPartialSignature(for: message, privateKey: privateKey, aggregate: aggregate)
-        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [pubnonce])
+        let partial = try muSigPartialSignature(for: message, privateKey: privateKey, aggregate: aggregate)
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [partial.nonce])
 
-        // Honest inputs verify — the carried session blob is exactly what the
-        // verifier rebuilds from (aggregateNonce, message, cache).
+        // Honest inputs verify — the rebuilt session matches what the signer
+        // bound, and the bundled signer is the session's only participant.
         #expect(try aggregate.isValidSignature(
             partial,
-            publicKey: privateKey.publicKey,
-            nonce: pubnonce,
             for: message,
             publicNonceAggregate: aggregateNonce
         ))
 
         // A signature produced over a DIFFERENT message must not verify for the
-        // declared message — under the old signature the unconsulted `for:` let
-        // the carried session answer for itself and this returned `true`. It
-        // verifies once the caller declares the message actually signed.
-        let (otherPartial, otherPubnonce) = try muSigPartialSignature(for: otherMessage, privateKey: privateKey, aggregate: aggregate)
-        let otherAggregateNonce = try P256K.MuSig.Nonce(aggregating: [otherPubnonce])
+        // declared message. It verifies once the caller declares the message
+        // actually signed.
+        let otherPartial = try muSigPartialSignature(for: otherMessage, privateKey: privateKey, aggregate: aggregate)
+        let otherAggregateNonce = try P256K.MuSig.Nonce(aggregating: [otherPartial.nonce])
         #expect(try aggregate.isValidSignature(
             otherPartial,
-            publicKey: privateKey.publicKey,
-            nonce: otherPubnonce,
             for: message,
             publicNonceAggregate: otherAggregateNonce
         ) == false)
         #expect(try aggregate.isValidSignature(
             otherPartial,
-            publicKey: privateKey.publicKey,
-            nonce: otherPubnonce,
             for: otherMessage,
             publicNonceAggregate: otherAggregateNonce
         ))
@@ -1131,40 +1600,57 @@ struct MuSigPartialVerifyTestSuite {
         #expect(throws: secp256k1Error.incorrectParameterSize) {
             _ = try aggregate.isValidSignature(
                 partial,
-                publicKey: privateKey.publicKey,
-                nonce: pubnonce,
                 for: [UInt8](repeating: 0xAB, count: 38),
                 publicNonceAggregate: aggregateNonce
             )
         }
     }
 
-    /// A `PartialSignature` is a compound — signature bytes plus carried session
-    /// — and the compound is dishonest when its session came from elsewhere. The
-    /// byte-match requirement fails the pair here, before the mismatched
-    /// contribution can reach `aggregateSignatures` where the culprit is lost.
-    @Test("MuSig partial signature verification rejects a foreign session blob")
-    func musigPartialSignatureVerifyRejectsForeignSession() throws {
+    /// A `PartialSignature` is a compound — signature bytes plus the signer's
+    /// public key and public nonce — and the compound is dishonest when the
+    /// bundled identity doesn't match what the signature was produced under.
+    /// A non-participant identity fails the membership gate; a mismatched
+    /// nonce fails cryptographic verification — both before the contribution
+    /// can reach `aggregateSignatures`.
+    @Test("MuSig partial signature verification rejects a mismatched envelope")
+    func musigPartialSignatureVerifyRejectsMismatchedEnvelope() throws {
         let privateKey = try P256K.Schnorr.PrivateKey()
+        let stranger = try P256K.Schnorr.PrivateKey()
         let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
-        let message = Array(SHA256.hash(data: Data("foreign session".utf8)))
+        let message = Array(SHA256.hash(data: Data("mismatched envelope".utf8)))
 
-        let (partial, pubnonce) = try muSigPartialSignature(for: message, privateKey: privateKey, aggregate: aggregate)
-        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [pubnonce])
-        let (otherPartial, otherPubnonce) = try muSigPartialSignature(for: message, privateKey: privateKey, aggregate: aggregate)
-        let otherAggregateNonce = try P256K.MuSig.Nonce(aggregating: [otherPubnonce])
+        let partial = try muSigPartialSignature(for: message, privateKey: privateKey, aggregate: aggregate)
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [partial.nonce])
+        let otherPartial = try muSigPartialSignature(for: message, privateKey: privateKey, aggregate: aggregate)
+        let otherAggregateNonce = try P256K.MuSig.Nonce(aggregating: [otherPartial.nonce])
 
-        // A signature valid for the declared session but carrying another
-        // session's blob — constructible through the public
-        // `init(dataRepresentation:session:)` — fails the compound check.
-        let mismatched = try P256K.Schnorr.PartialSignature(
-            dataRepresentation: partial.dataRepresentation,
-            session: otherPartial.session
+        // A stranger's partial that is *algebraically valid for this session*
+        // — produced through the same C calls a raw-libsecp256k1 attacker
+        // uses — proves the membership gate, not `partial_sig_verify`, is what
+        // rejects a non-participant: the helper asserts the signature verifies
+        // before handing it back.
+        let foreignSigner = try foreignMuSigPartialSignature(
+            for: message,
+            signer: stranger,
+            keyAggregate: aggregate,
+            publicNonceAggregate: aggregateNonce
         )
         #expect(try aggregate.isValidSignature(
-            mismatched,
+            foreignSigner,
+            for: message,
+            publicNonceAggregate: aggregateNonce
+        ) == false)
+
+        // A member key bundled with a different nonce pair fails cryptographic
+        // verification: the signature was bound to the envelope's session, not
+        // this one.
+        let mismatchedNonce = try P256K.Schnorr.PartialSignature(
+            dataRepresentation: partial.dataRepresentation,
             publicKey: privateKey.publicKey,
-            nonce: pubnonce,
+            nonce: otherPartial.nonce
+        )
+        #expect(try aggregate.isValidSignature(
+            mismatchedNonce,
             for: message,
             publicNonceAggregate: aggregateNonce
         ) == false)
@@ -1173,8 +1659,6 @@ struct MuSigPartialVerifyTestSuite {
         // signature declared under a different session fails too.
         #expect(try aggregate.isValidSignature(
             partial,
-            publicKey: privateKey.publicKey,
-            nonce: pubnonce,
             for: message,
             publicNonceAggregate: otherAggregateNonce
         ) == false)
@@ -1199,32 +1683,28 @@ struct MuSigPartialVerifyTestSuite {
             publicKey: privateKey.publicKey,
             msg32: nil
         )
-        let pubnonce = nonce.pubnonce
-        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [pubnonce])
+        let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [nonce.pubnonce])
         let partial = try privateKey.partialSignature(
             for: message,
-            pubnonce: pubnonce,
+            pubnonce: nonce.pubnonce,
             secureNonce: nonce.secnonce,
             publicNonceAggregate: aggregateNonce,
             xonlyKeyAggregate: tweakedXonly
         )
 
         // Verifying through the tweaked cache rebuilds the tweaked session —
-        // the carried blob matches and the signature verifies.
+        // the bundled identity is a participant and the signature verifies.
         #expect(try tweakedAggregate.isValidSignature(
             partial,
-            publicKey: privateKey.publicKey,
-            nonce: pubnonce,
             for: message,
             publicNonceAggregate: aggregateNonce
         ))
 
-        // The untweaked aggregate rebuilds a different session — the carried
-        // blob can't match it even though the signature itself is honest.
+        // The untweaked aggregate rebuilds a different session — the bundled
+        // signature can't verify under it even though the signature itself is
+        // honest.
         #expect(try aggregate.isValidSignature(
             partial,
-            publicKey: privateKey.publicKey,
-            nonce: pubnonce,
             for: message,
             publicNonceAggregate: aggregateNonce
         ) == false)

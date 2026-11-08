@@ -682,13 +682,52 @@ session:)` and `session` are replaced by `init(dataRepresentation:
 publicKey:nonce:)`. `isValidSignature` drops its separate
 `publicKey:`/`nonce:` parameters (the envelope carries them) and its
 byte-match (the `partial_sig_verify` it gated is strictly stronger),
-and `aggregateSignatures` runs `partial_sig_verify` per partial under
-the rebuilt session — a wrong-session or invalid contribution throws
-`underlyingCryptoError` attributed to its index instead of crashing,
-and `partial_sig_agg`'s unverifiable-input path becomes unreachable by
-construction. The `secp256k1_musig_session` struct then appears nowhere
-in the public API — same-process state only, rebuilt at each use site,
-exactly as upstream intends.
+and gains a membership gate: BIP-327's `PartialSigVerify` selects the
+signer *by index* from the session's `pk 1..u`, so `MuSig.PublicKey`
+and `MuSig.XonlyKey` retain the `aggregate(_:)` participant list
+internally — the opaque `keyagg_cache` stores only `pks_hash`, making
+the list itself unrecoverable — and the verifier returns `false` for a
+bundled key outside it, since `keyaggcoef` assigns a coefficient to
+any key and a stranger's algebraically-valid partial can otherwise
+verify yet never aggregate. `aggregateSignatures` requires the bundled
+identities to equal the participant *multiset* — duplicate keys are
+legal in BIP-327 and keep their own slots — throws
+`incorrectParameterSize` on a wrong contribution count, then runs
+`partial_sig_verify` per partial under the rebuilt session and throws
+`invalidMuSigContribution(index:)` naming the position of a
+wrong-session, foreign-identity, or duplicated contribution instead of
+crashing. One residual gap jury review caught (upstream's own
+precondition, `secp256k1_musig.h:533-535`): `partial_sig_verify` proves
+a signature against the pubnonce it is *handed* — it cannot prove that
+nonce was summed into the declared `aggnonce`, so a participant signing
+under the declared session with an unpublished nonce pair verified
+cleanly yet made ΣR_i ≠ R, reaching the verify-after-aggregate
+`invariantFailure` on peer input — and the same hole let a partial
+resubmitted under a duplicated participant key pass the multiset tally.
+`aggregateSignatures` therefore also re-aggregates the bundled nonces
+via `secp256k1_musig_nonce_agg` and requires byte-equality with
+`publicNonceAggregate`; the mismatch is a set property — no per-index
+blame is derivable from a point sum — so it throws
+`underlyingCryptoError` unattributed, attributing offline against the
+coordinator's round-1 nonce records instead. With signer identity
+bound as a multiset and the nonce set bound by re-aggregation,
+`partial_sig_agg`'s unverifiable-input path is unreachable by
+construction — one residual remains at the final `schnorrsig_verify`:
+if the session's effective nonce `R₁ + b·R₂` sums to the point at
+infinity, upstream substitutes `G` as the final nonce while each
+partial still verifies, so the aggregate fails verification and
+reports through `invariantFailure`. Every check passes legitimately on
+that input — the nonce set *does* re-aggregate to the declared
+aggregate — so it is a negligible-probability fail-stop (forcing the
+sum requires another signer's committed-nonce discrete log), not a
+peer-reachable crash, and it is recorded here rather than claimed away.
+`isValidSignature` cannot offer the same proof for one
+partial — membership in a point sum is unrecoverable — so its contract
+is documented honestly: `true` means participant identity plus
+algebraic consistency, and the nonce-set check at aggregation is what
+binds the set. The `secp256k1_musig_session` struct then appears
+nowhere in the public API — same-process state only, rebuilt at each
+use site, exactly as upstream intends.
 
 ```mermaid
 flowchart LR
@@ -698,11 +737,18 @@ flowchart LR
         sig["32-byte partial signature<br/>canonical wire form"]
     end
     wire --> env["PartialSignature envelope<br/>sig + pubkey + nonce"]
-    env --> rebuild["session rebuilt locally — never serialized:<br/>nonce_process(aggnonce, msg32, keyagg_cache)"]
+    env --> members{"bundled signers = participant multiset?<br/>pk 1..u retained from aggregate(_:)"}
+    members -->|wrong count| size["incorrectParameterSize — thrown"]
+    members -->|foreign / over-contributed| err["invalidMuSigContribution(index) — thrown,<br/>no invariantFailure"]
+    members -->|exact multiset| rebuild["session rebuilt locally — never serialized:<br/>nonce_process(aggnonce, msg32, keyagg_cache)"]
     rebuild --> pv["secp256k1_musig_partial_sig_verify<br/>per signer, index-attributed"]
-    pv -->|every partial valid| agg["partial_sig_agg → schnorrsig_verify"]
-    pv -->|any invalid| err["underlyingCryptoError — thrown,<br/>no invariantFailure"]
+    pv -->|any invalid| err
+    pv -->|every partial valid| nb{"bundled nonces re-aggregate<br/>to declared aggnonce?"}
+    nb -->|mismatch — uncontributed nonce<br/>or resubmitted partial| uce["underlyingCryptoError — thrown<br/>set-level, unattributed"]
+    nb -->|exact set| agg["partial_sig_agg → schnorrsig_verify"]
+    inf["effective nonce at infinity — R₁+b·R₂=O,<br/>upstream substitutes G"] -.->|residual — negligible probability,<br/>needs committed-nonce DL| agg
     blob["opaque 133-byte session blob —<br/>signer-chosen, byte-match-only gate"] -.->|removed| crash["corrupt aggregate →<br/>invariantFailure — peer-reachable crash"]
+    rogue["uncontributed pubnonce —<br/>verifies per-partial, corrupts ΣR_i"] -.->|removed| crash
 ```
 
 ```mermaid
@@ -718,7 +764,7 @@ flowchart LR
         keys2 -.->|"opt-in"| helper["sortedPublicKeys(_:)<br/>canonical BIP-327 order"] --> agg2
         msg2["message — exactly 32 bytes<br/>else throw (upstream limit)"] --> proc2["nonce_process"]
         dig2["verify digest — natural length<br/>no gate, no reduction"] --> ver["schnorrsig_verify (msg, msglen)"]
-        pdig2["message + aggnonce + cache<br/>exactly-32 msg32 else throw"] --> proc3["nonce_process<br/>locally rebuilt session"] --> match["bundled signer identity<br/>(pubkey + pubnonce)"] --> pver2["partial_sig_verify<br/>per partial before aggregation"]
+        pdig2["message + aggnonce + cache<br/>exactly-32 msg32 else throw"] --> proc3["nonce_process<br/>locally rebuilt session"] --> match["participant-membership gate +<br/>bundled identity (pubkey + pubnonce)"] --> pver2["partial_sig_verify<br/>per partial before aggregation"] --> nagg["bundled nonces re-aggregate<br/>to declared aggnonce"]
     end
 ```
 
