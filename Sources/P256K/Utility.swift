@@ -343,45 +343,36 @@ public extension String {
     }
 }
 
-/// Byte-level validators for the opaque `secp256k1_musig_*` state blobs that
-/// public APIs accept for session/cache persistence.
+/// Byte-level validators for the opaque `secp256k1_musig_keyagg_cache` blob that
+/// internal key types carry for signing sessions.
 ///
-/// Upstream checks each struct's leading 4-byte magic inside `ARG_CHECK` in the
-/// `*_load` helpers (`src/modules/musig/session_impl.h`,
-/// `src/modules/musig/keyagg_impl.h`), which invokes the default
-/// illegal-argument callback — `abort()` — on mismatch. Every blob copied into
-/// one of these structs is therefore validated at the Swift boundary first so a
-/// malformed or truncated blob surfaces a thrown error instead of terminating
-/// the process. The magic values are pinned to the vendored libsecp256k1
-/// version (`vendir.yml`); if upstream ever changes them the vendir bump's
-/// `libsecp256k1Tests` run surfaces the drift.
+/// Upstream checks the struct's leading 4-byte magic inside `ARG_CHECK` in the
+/// `keyagg_cache_load` helper (`src/modules/musig/keyagg_impl.h`), which invokes
+/// the default illegal-argument callback — `abort()` — on mismatch. Every blob
+/// copied into one of these structs is therefore validated at the Swift
+/// boundary first so a malformed or truncated blob surfaces a thrown error
+/// instead of terminating the process. The magic value is pinned to the
+/// vendored libsecp256k1 version (`vendir.yml`); if upstream ever changes it
+/// the vendir bump's `libsecp256k1Tests` run surfaces the drift.
+///
+/// `secp256k1_musig_session` is never carried through the API — it is
+/// process-local state rebuilt from the declared (aggregate nonce, message,
+/// key-aggregation cache) triple at each use site — so no session validator is
+/// needed here.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 enum MuSigOpaqueState {
     /// `sizeof(secp256k1_musig_keyagg_cache)` — 197 bytes
     /// (`secp256k1/include/secp256k1_musig.h`).
     static let keyAggregationCacheByteCount = 197
 
-    /// `sizeof(secp256k1_musig_session)` — 133 bytes.
-    static let sessionByteCount = 133
-
     /// Leading 4 bytes written by `secp256k1_musig_keyagg_cache_save` and checked
     /// by `keyagg_cache_load` (`src/modules/musig/keyagg_impl.h`).
     static let keyAggregationCacheMagic: [UInt8] = [0xF4, 0xAD, 0xBB, 0xDF]
-
-    /// Leading 4 bytes checked by `secp256k1_musig_session_load`
-    /// (`src/modules/musig/session_impl.h`).
-    static let sessionMagic: [UInt8] = [0x9D, 0xED, 0xE9, 0x17]
 
     /// `true` when `bytes` is a complete `secp256k1_musig_keyagg_cache` blob
     /// carrying the upstream magic prefix — safe to pass to a `*_load` path.
     static func isValidKeyAggregationCache(_ bytes: some Collection<UInt8>) -> Bool {
         bytes.count == keyAggregationCacheByteCount && bytes.prefix(4).elementsEqual(keyAggregationCacheMagic)
-    }
-
-    /// `true` when `bytes` is a complete `secp256k1_musig_session` blob carrying
-    /// the upstream magic prefix.
-    static func isValidSession(_ bytes: some Collection<UInt8>) -> Bool {
-        bytes.count == sessionByteCount && bytes.prefix(4).elementsEqual(sessionMagic)
     }
 }
 

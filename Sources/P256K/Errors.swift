@@ -20,7 +20,10 @@
 ///
 /// ### Upstream Failures
 /// - ``underlyingCryptoError``
-public enum secp256k1Error: Error {
+///
+/// ### Contribution Attribution
+/// - ``invalidMuSigContribution(index:)``
+public enum secp256k1Error: Error, Equatable, Hashable {
     /// A key was deserialized with the wrong byte count.
     ///
     /// Thrown when a serialized secp256k1 key's length does not match the expected
@@ -49,4 +52,22 @@ public enum secp256k1Error: Error {
     /// order), invalid signature encoding, off-curve public-key points, invalid Taproot
     /// tweak, or a fatal internal-consistency check.
     case underlyingCryptoError
+
+    /// A MuSig2 partial signature was rejected for the signing session — its index
+    /// names the offending entry in the submitted `partialSignatures` array.
+    ///
+    /// Thrown by ``P256K/MuSig/aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``
+    /// when the bundled partial signature fails `secp256k1_musig_partial_sig_verify`
+    /// against the session rebuilt from the declared inputs, or when its carried
+    /// signer identity is not a session participant — including a duplicate
+    /// contribution that exceeds that signer's position count in the aggregated
+    /// key list. The enum declares `Equatable`/`Hashable` explicitly because the
+    /// associated value ends the implicit conformances a payload-free enum
+    /// receives; equality compares case and index.
+    ///
+    /// BIP-327 calls this "identifying disruptive signers": the associated index
+    /// lets the aggregator blame and evict the faulty cosigner without a second
+    /// verification pass, matching the `signer_index` field upstream's own test
+    /// vectors use to name the failing party.
+    case invalidMuSigContribution(index: Int)
 }

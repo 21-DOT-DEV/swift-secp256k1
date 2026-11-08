@@ -66,7 +66,7 @@ let aggregateNonce = try P256K.MuSig.Nonce(aggregating: [
 
 ### Round 2: Partial Signatures
 
-Each party produces a partial signature using their long-term private key, their own secret half from the prior round, and the aggregated commitment:
+Each party produces a partial signature using their long-term private key, their own secret half from the prior round, and the aggregated commitment. The returned ``P256K/Schnorr/PartialSignature`` is a self-describing envelope: alongside the 32-byte signature it carries the signer's ``P256K/Schnorr/PartialSignature/publicKey`` and public ``P256K/Schnorr/PartialSignature/nonce`` — exactly the public material exchanged in rounds 0–1 — so the coordinator needs nothing else to attribute and verify the contribution:
 
 ```swift
 import P256K
@@ -82,7 +82,7 @@ let alicePartial = try alice.partialSignature(
 
 ### Aggregating Signatures
 
-Once all partial signatures are collected, aggregate them into the final Schnorr signature. The aggregator re-declares the session — the message, the aggregate nonce, and the aggregate key — so the signature is assembled only when every partial's carried session matches, and the produced signature is verified before it is returned:
+Once all partial signatures are collected, aggregate them into the final Schnorr signature. The aggregator rebuilds the session from the declared message, aggregate nonce, and aggregate key, requires the bundled signer identities to equal the session's participant list, requires the bundled public nonces to re-aggregate to the declared aggregate nonce, and verifies every contribution before combining — a wrong-session, foreign-identity, or duplicated partial throws ``secp256k1Error/invalidMuSigContribution(index:)`` naming its position, while a nonce-set mismatch throws ``secp256k1Error/underlyingCryptoError`` without an index (a set-level property; compare envelopes against your round-1 nonce records to find the signer), and the produced signature is verified before it is returned:
 
 ```swift
 import P256K
@@ -105,15 +105,13 @@ import P256K
 let isValid = aggregate.xonly.isValidSignature(finalSignature, for: messageHash)
 ```
 
-You can also verify individual partial signatures before aggregation — useful when a failing aggregate needs a culprit. The verifier rebuilds the signing session from the message and aggregate nonce you declare, then checks the signature against it, so a partial produced over a different message or nonce set fails rather than verifying against the session it happened to carry:
+You can also verify individual partial signatures before aggregation — useful when a failing aggregate needs a culprit. The verifier rebuilds the signing session from the message and aggregate nonce you declare and checks the envelope's bundled signer against the participant list recorded at key aggregation, so a partial produced over a different message or a different session's aggregate nonce — or bundled with a key that isn't a session participant — returns `false` rather than verifying under inputs you never declared. One limit is inherent: a single partial cannot prove its bundled nonce contributed to the aggregate — only the nonce-set check inside `aggregateSignatures` establishes that — so a `true` here followed by a throw there identifies a signer who signed the right session with an unpublished nonce:
 
 ```swift
 import P256K
 
 let isPartialValid = try aggregate.isValidSignature(
     alicePartial,
-    publicKey: alice.publicKey,
-    nonce: aliceNonce.pubnonce,
     for: messageHash,
     publicNonceAggregate: aggregateNonce
 )

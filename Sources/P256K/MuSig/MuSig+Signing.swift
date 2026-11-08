@@ -31,20 +31,39 @@ import libsecp256k1
         /// not consulted at verify time — so this method rebuilds the session locally
         /// from `publicNonceAggregate`, `message`, and this aggregate key's
         /// aggregation cache, the same flow upstream's `doc/musig.md` prescribes for a
-        /// verifying party. The ``P256K/Schnorr/PartialSignature/session`` carried
-        /// inside `partialSignature` must then match that rebuilt session exactly: a
-        /// signature produced over a different message or nonce set, or one paired
-        /// with a foreign session blob through
-        /// ``P256K/Schnorr/PartialSignature/init(dataRepresentation:session:)``, fails
-        /// rather than verifying against a session the caller never declared.
-        /// Because the rebuild runs through this key's aggregation cache, a session
-        /// produced under a BIP-341 tweaked aggregate verifies only through a
-        /// `PublicKey` carrying the tweaked cache — ``init(xonlyKey:)`` on the
-        /// tweaked ``P256K/MuSig/XonlyKey`` — not the untweaked aggregate.
+        /// verifying party. The signer's identity and public nonce travel inside
+        /// `partialSignature` itself — ``P256K/Schnorr/PartialSignature/publicKey``
+        /// and ``P256K/Schnorr/PartialSignature/nonce`` — and a signature produced
+        /// over a different message, a different session's aggregate nonce, or
+        /// bundled with a foreign key/nonce pairing, returns `false` rather than
+        /// verifying under inputs the caller never declared.
         ///
-        /// - Parameter partialSignature: The signer's ``P256K/Schnorr/PartialSignature`` to verify.
-        /// - Parameter publicKey: The individual signer's ``P256K/Schnorr/PublicKey`` (not the aggregate).
-        /// - Parameter nonce: The same signer's public nonce used in this session.
+        /// One limit is inherent: `partial_sig_verify` checks the signature
+        /// against the pubnonce it is handed — it cannot prove that nonce was
+        /// one of the summands of `publicNonceAggregate` (membership is
+        /// unrecoverable from a point sum). A participant who signed under
+        /// this session with an *uncontributed* nonce pair therefore verifies
+        /// `true` here, yet its contribution cannot join the aggregate.
+        /// ``P256K/MuSig/aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``
+        /// closes that gap by re-aggregating every bundled nonce and comparing
+        /// against the declared aggregate — a `true` here followed by a throw
+        /// there identifies exactly this shape of disruptive signer.
+        ///
+        /// Membership is enforced, matching BIP-327's `PartialSigVerify` model —
+        /// where the signer is selected *by index* from the session's participant
+        /// list so a non-participant cannot even be queried. `partial_sig_verify`
+        /// proves only algebraic consistency (`keyaggcoef` assigns a coefficient
+        /// to any public key), so this method returns `false` when the bundled
+        /// ``P256K/Schnorr/PartialSignature/publicKey`` is not one of the
+        /// participants recorded at ``P256K/MuSig/aggregate(_:)``. Because the
+        /// rebuild runs through this key's aggregation cache, a session produced
+        /// under a BIP-341 tweaked aggregate verifies only through a `PublicKey`
+        /// carrying the tweaked cache — ``init(xonlyKey:)`` on the tweaked
+        /// ``P256K/MuSig/XonlyKey`` — not the untweaked aggregate.
+        ///
+        /// - Parameter partialSignature: The signer's ``P256K/Schnorr/PartialSignature``
+        ///   to verify, carrying the signer's ``P256K/Schnorr/PartialSignature/publicKey``
+        ///   and public ``P256K/Schnorr/PartialSignature/nonce``.
         /// - Parameter message: The message that was signed — must be exactly 32 bytes;
         ///   `secp256k1_musig_nonce_process` binds a fixed `msg32` into the session,
         ///   so hash arbitrary-length application messages to 32 bytes first
@@ -54,24 +73,24 @@ import libsecp256k1
         ///   ``P256K/MuSig/Nonce/init(aggregating:)`` or
         ///   ``P256K/MuSig/Nonce/init(dataRepresentation:)`` if you did not take
         ///   part in nonce generation yourself.
-        /// - Returns: `true` if the partial signature is valid under this aggregate key
-        ///   for the session rebuilt from the supplied inputs and the signature's
-        ///   carried session blob matches it, `false` otherwise — where `false`
-        ///   can also mean the declared inputs are stale rather than the cosigner
-        ///   being at fault.
+        /// - Returns: `true` if the bundled signer is a session participant and
+        ///   `secp256k1_musig_partial_sig_verify` accepts the signature under
+        ///   the session rebuilt from the supplied inputs — `false` otherwise,
+        ///   where `false` can also mean the declared inputs are stale rather
+        ///   than the cosigner being at fault. `true` does not prove the bundled
+        ///   nonce contributed to `publicNonceAggregate`; only the nonce-set
+        ///   check inside `aggregateSignatures` establishes that.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `message` is not
         ///   exactly 32 bytes.
         func isValidSignature(
             _ partialSignature: P256K.Schnorr.PartialSignature,
-            publicKey: P256K.Schnorr.PublicKey,
-            nonce: P256K.Schnorr.Nonce,
             for message: some ContiguousBytes,
             publicNonceAggregate: P256K.MuSig.Nonce
         ) throws -> Bool {
             let context = P256K.Context.rawRepresentation
             var partialSig = secp256k1_musig_partial_sig()
             var pubnonce = secp256k1_musig_pubnonce()
-            var publicKey = publicKey.baseKey.rawRepresentation
+            var signerPublicKey = partialSignature.publicKey.baseKey.rawRepresentation
             var cache = secp256k1_musig_keyagg_cache()
             var session = secp256k1_musig_session()
             var aggnonce = secp256k1_musig_aggnonce()
@@ -87,7 +106,17 @@ import libsecp256k1
                 return false
             }
 
-            nonce.pubnonce.copyToUnsafeMutableBytes(of: &pubnonce.data)
+            // `keyaggcoef` assigns a coefficient to any public key, so a valid
+            // partial can be crafted for a key outside the session — BIP-327's
+            // `PartialSigVerify` selects the signer by index into the participant
+            // list, making membership structural. This key retains that list
+            // from `aggregate(_:)`; a contribution that cannot join the session
+            // is `false` here regardless of its algebra.
+            guard participants.contains(where: { $0.musigIdentity == partialSignature.publicKey.musigIdentity }) else {
+                return false
+            }
+
+            partialSignature.nonce.pubnonce.copyToUnsafeMutableBytes(of: &pubnonce.data)
             keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
             publicNonceAggregate.aggregatedNonce.copyToUnsafeMutableBytes(of: &aggnonce.data)
 
@@ -96,15 +125,12 @@ import libsecp256k1
             }
 
             // `nonce_process` is deterministic — the same (aggregate nonce, msg32,
-            // keyagg cache) triple always produces the same session bytes — so an
-            // honestly produced `PartialSignature` embeds exactly the session this
-            // rebuilds. A carried blob that differs pairs the signature with a
-            // different session and fails before the verify call. `nonce_process`
-            // itself fails only when the copied cache or aggregate nonce fails to
-            // load — both returns run before `session_save` — so the guard's `&&`
-            // short-circuit, not a zeroed session, is what keeps a bogus match out.
-            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, messageBytes, &cache).boolValue,
-                  partialSignature.session == session.dataValue else {
+            // keyagg cache) triple always produces the same session — so the
+            // rebuilt session is exactly the one an honest signer bound.
+            // `nonce_process` itself fails only when the copied cache or
+            // aggregate nonce fails to load — both returns run before
+            // `session_save`.
+            guard secp256k1_musig_nonce_process(context, &session, &aggnonce, messageBytes, &cache).boolValue else {
                 return false
             }
 
@@ -112,7 +138,7 @@ import libsecp256k1
                 context,
                 &partialSig,
                 &pubnonce,
-                &publicKey,
+                &signerPublicKey,
                 &cache,
                 &session
             ).boolValue
@@ -169,7 +195,10 @@ import libsecp256k1
         /// - Returns: A ``P256K/Schnorr/PartialSignature`` to send to the aggregator.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `message` is not exactly
         ///   32 bytes; ``secp256k1Error/underlyingCryptoError`` if `xonlyKeyAggregate` lacks a
-        ///   usable key aggregation cache, if `secureNonce` was generated for a different
+        ///   usable key aggregation cache, if this signing key is not one of the
+        ///   session's participants (BIP-327's `Sign` rejects a key outside the
+        ///   list; upstream's `keyaggcoef` would produce a partial that verifies
+        ///   yet can never aggregate), if `secureNonce` was generated for a different
         ///   public key than this signing key (BIP-327 binds the signer's public key into the
         ///   secret nonce; upstream enforces the match via an aborting `ARG_CHECK`, which is
         ///   unreachable after this method's own check), or if `pubnonce` differs
@@ -211,6 +240,17 @@ import libsecp256k1
             // which aborts on a zeroed or malformed struct — a missing or corrupt
             // cache must throw before the copy, not reach upstream.
             guard MuSigOpaqueState.isValidKeyAggregationCache(xonlyKeyAggregate.cache) else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
+            // BIP-327's `Sign` runs `GetSessionKeyAggCoeff` on the signing
+            // pubkey, which raises when it is not in the participant list —
+            // upstream's `keyaggcoef` assigns a coefficient to any key, so a
+            // non-participant would otherwise produce a partial that verifies
+            // and only fails at the aggregator, unattributed. The key retains
+            // the list from `aggregate(_:)`; a byte-reconstructed key has
+            // neither cache nor list and was already rejected above.
+            guard xonlyKeyAggregate.participants.contains(where: { $0.musigIdentity == publicKey.musigIdentity }) else {
                 throw secp256k1Error.underlyingCryptoError
             }
 
@@ -313,9 +353,14 @@ import libsecp256k1
                 P256K.invariantFailure("produced MuSig partial signature failed verification — output corruption or library bug")
             }
 
+            // The envelope carries this signer's public identity and the
+            // companion public nonce — public material exchanged in rounds 0–1 —
+            // so the aggregator needs nothing else to attribute and verify the
+            // contribution. The session itself never leaves the process.
             return P256K.Schnorr.PartialSignature(
                 Data(partialSignature),
-                session: session.dataValue
+                publicKey: publicKey,
+                nonce: secureNonce.publicNonce
             )
         }
 
