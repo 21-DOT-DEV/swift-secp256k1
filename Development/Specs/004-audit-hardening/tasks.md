@@ -598,7 +598,7 @@ instead of reaching `invariantFailure`.
 
 ## Group G — Managed context ownership (PR 16)
 
-- [ ] T029 [P] A managed owner for `secp256k1_context` —
+- [x] T029 [P] A managed owner for `secp256k1_context` —
       `Context.create()` returns a raw `OpaquePointer` with no typed
       lifecycle (`Context.swift:129`): nothing pairs the pointer with
       `secp256k1_context_destroy`, so a consumer-created context leaks
@@ -607,8 +607,9 @@ instead of reaching `invariantFailure`.
       `secp256k1_context_struct` carries no per-context tables — small
       per leak, unbounded in count, with the destroy contract
       unenforced (audit finding B-6). The wave adds a managed owning
-      type in swift-crypto's `BackingStorage` idiom — a value-type facade
-      holding `final class` storage that owns the pointer — whose init
+      type in swift-crypto's `BackingStorage` idiom — `Context` itself, a
+      `struct` gaining `init()` over `final class Storage` that owns the
+      pointer — whose init
       runs `create()`'s existing sequence verbatim
       (`secp256k1_context_create`, the illegal/error callbacks routed to
       `P256K.invariantFailure`, `secp256k1_context_randomize` on 32
@@ -620,8 +621,10 @@ instead of reaching `invariantFailure`.
       upstream's const-call thread-safety — randomize and destroy exist
       only at init and deinit (`~Copyable` was rejected: contexts are
       long-lived and shared, unlike the one-shot `SecureNonce`). Raw
-      access stays explicit through a labeled interop accessor — rust's
-      `ctx()` equivalent — `Context.create()` gains
+      access stays explicit through `withUnsafeContextPointer(_:)` — a
+      scoped borrow carrying the `&self`-scoped contract of rust's `ctx()`
+      by convention —
+      `Context.create()` gains
       `@available(*, deprecated, message:)` naming the managed type
       (`renamed:` is wrong here: its fix-it would rewrite callers into
       code returning the managed type where an `OpaquePointer` is

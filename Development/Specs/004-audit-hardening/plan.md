@@ -789,20 +789,34 @@ randomizes once in `init` and takes `Sendable` from the const-only
 post-init surface. `~Copyable` was rejected: noncopyable types suit
 one-shot resources like `SecureNonce`; a context is deliberately long-lived
 and shareable — forcing `borrowing` across the API would punish the common
-case for a resource upstream designed for shared const access.
+case for a resource upstream designed for shared const access. The owner is
+`Context` itself, which gains `init()` — the facade exists for type-kind
+stability (a shared resource has no value semantics to restore, so this is
+the minimal-diff application of the storage idiom, keeping the only type
+name consumers already spell rather than adding a parallel `ManagedContext`).
+Raw interop is `withUnsafeContextPointer(_:)`, a scoped borrow carrying the
+`&self`-scoped contract of rust's `ctx()` by convention — the house
+`withUnsafe*` idiom rather than a storable property — while `create()` forwards to the shared
+creation sequence as a deprecated shim (the sequence itself moves verbatim
+to a private `makeContext()` so the module's own new call sites emit no
+self-deprecation warnings). API Notes were investigated against an external
+precedent (`SwiftImportAs: reference` retyping
+`secp256k1_context*` to a named class plus `SwiftName` member-mapping) and
+deferred to the roadmap backlog: the annotations can retype the pointer and
+member-map calls but cannot own it — `immortal` retain/release is the only
+honest annotation since no C function serves as retain — and delivery needs
+vendir-surface edits outside this wave's fence.
 
 ```mermaid
 classDiagram
-    class `P256K.Context — facade` {
-        +static rawRepresentation: OpaquePointer (shared, process-lifetime)
-        +create() OpaquePointer — deprecated
-        +ManagedContext
-    }
-    class `ManagedContext — value facade` {
+    class `P256K.Context — struct` {
         +init() — create + callbacks + randomize (32B)
-        +withContext / raw accessor — explicit interop only
+        +withUnsafeContextPointer(_:) — scoped raw borrow
+        +static rawRepresentation: OpaquePointer — process-lifetime
+        +static create() OpaquePointer — deprecated, forwards
     }
-    class `Storage — final class` {
+    class `Context.Storage — final class` {
+        +context: OpaquePointer
         +deinit → secp256k1_context_destroy
         +Sendable via const-only post-init calls
     }
@@ -811,8 +825,8 @@ classDiagram
         +destroy at deinit — exclusive
         +all other calls — const, thread-safe
     }
-    `ManagedContext — value facade` --> `Storage — final class` : owns
-    `Storage — final class` --> `secp256k1_context — upstream` : OpaquePointer
+    `P256K.Context — struct` --> `Context.Storage — final class` : owns
+    `Context.Storage — final class` --> `secp256k1_context — upstream` : OpaquePointer
 ```
 
 ### 3.11 Versioning and migration artifacts
