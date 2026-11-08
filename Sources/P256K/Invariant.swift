@@ -38,7 +38,7 @@ public extension P256K {
     ///
     /// The handler receives a description of the violated invariant — the
     /// upstream call that failed and why it is provably unreachable. Contexts
-    /// created by ``Context/create()`` additionally route libsecp256k1's own
+    /// created by ``Context/init()`` or ``Context/create()`` additionally route libsecp256k1's own
     /// illegal-argument (`ARG_CHECK`) and internal-error callbacks through the
     /// same reporter, so those are observed identically rather than aborting
     /// anonymously — including violations triggered by C calls a consumer makes

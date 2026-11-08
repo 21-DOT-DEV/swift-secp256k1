@@ -21,14 +21,14 @@ import libsecp256k1
 /// [`secp256k1/include/secp256k1.h`](https://github.com/bitcoin-core/secp256k1/blob/master/include/secp256k1.h).
 ///
 /// Use ``Context/rawRepresentation`` to access the shared, pre-initialized context for standard
-/// operations, or call ``Context/create()`` to create a fresh, independently randomized context.
+/// operations, or create a managed ``Context`` value for fresh, independently randomized state.
 ///
 /// ## Context Objects and Side-Channel Protection
 ///
 /// The secp256k1 context stores randomization data that protects against side-channel leakage
 /// during operations that multiply a secret scalar with the elliptic curve base point, such as
 /// ECDSA signing, Schnorr signing, and public key generation. This protection is only effective
-/// when the context is randomized after creation, which ``Context/create()`` handles automatically
+/// when the context is randomized after creation, which ``Context/init()`` handles automatically
 /// using 32 bytes of cryptographically secure randomness drawn via `SecureBytes`.
 ///
 /// Per the upstream `secp256k1_context_randomize` documentation:
@@ -63,11 +63,11 @@ public extension P256K {
     /// let ctx = P256K.Context.rawRepresentation
     /// ```
     ///
-    /// Call ``create()`` when you need a fresh, independently randomized context with isolated
-    /// cryptographic state.
+    /// Create a ``Context`` value when you need a fresh, independently randomized context with
+    /// isolated cryptographic state.
     ///
     /// ```swift
-    /// let ctx = P256K.Context.create()
+    /// let ctx = P256K.Context()
     /// ```
     ///
     /// ## secp256k1 Context Lifecycle
@@ -91,17 +91,44 @@ public extension P256K {
     /// ### Shared Context
     /// - ``rawRepresentation``
     ///
-    /// ### Construction
+    /// ### Construction and Lifetime
+    /// - ``init()``
+    /// - ``withUnsafeContextPointer(_:)``
     /// - ``create()``
     struct Context: Sendable {
+        /// Owns the `secp256k1_context` pointer held by a ``Context`` value.
+        ///
+        /// `Sendable` is verified by contract rather than by the compiler: every upstream call
+        /// made through the pointer is const-qualified and thread-safe, while the two mutable
+        /// calls — `secp256k1_context_randomize` and `secp256k1_context_destroy` — happen only
+        /// inside `init` and `deinit`, which are exclusive by construction. The conformance
+        /// additionally rests on `withUnsafeContextPointer`'s contract: a caller invoking the
+        /// exclusive mutable calls on the borrowed pointer — as its `- Warning:` forbids —
+        /// would race in C.
+        ///
+        /// Default `internal` visibility rather than `private` so tests can weakly
+        /// observe `deinit` ordering; it never escapes into the public interface.
+        final class Storage: @unchecked Sendable {
+            /// The owned context pointer, valid until `deinit` destroys it.
+            let context: OpaquePointer
+
+            init() {
+                self.context = P256K.Context.makeContext()
+            }
+
+            deinit {
+                secp256k1_context_destroy(context)
+            }
+        }
+
         /// The shared secp256k1 context, created and randomized at initialization for use across all P256K cryptographic operations.
         ///
         /// Use this property to access the default secp256k1 context for ECDSA signing, Schnorr
         /// signatures, ECDH key agreement, and public key generation. The context is created once
-        /// with ``create()`` and randomized with cryptographically secure random bytes, providing
+        /// at process startup and randomized with cryptographically secure random bytes, providing
         /// side-channel protection for operations that involve secret scalar multiplication with
         /// the elliptic curve base point.
-        nonisolated(unsafe) public static let rawRepresentation = P256K.Context.create()
+        nonisolated(unsafe) public static let rawRepresentation = P256K.Context.makeContext()
 
         /// The context configuration flags passed to `secp256k1_context_create`, set to `SECP256K1_CONTEXT_NONE`.
         ///
@@ -110,6 +137,30 @@ public extension P256K {
         /// available regardless of the flag value, making the separate `SECP256K1_CONTEXT_SIGN`
         /// and `SECP256K1_CONTEXT_VERIFY` flags unnecessary.
         static let rawValue = UInt32(SECP256K1_CONTEXT_NONE)
+
+        /// The reference-type storage owning the context pointer.
+        ///
+        /// Default `internal` visibility rather than `private` so tests can
+        /// weakly observe `deinit` ordering; it never escapes into the public interface.
+        let storage: Storage
+
+        /// Creates a new, independently randomized secp256k1 context owned by this value.
+        ///
+        /// The context is allocated with `secp256k1_context_create`, its illegal-argument
+        /// and error callbacks are routed to ``P256K/invariantFailure(_:)``, and it is randomized
+        /// with 32 bytes of `SecureBytes` — the same creation sequence the deprecated
+        /// ``create()`` forwards to. When the
+        /// last ``Context`` value sharing this storage is released, the context is destroyed via
+        /// `secp256k1_context_destroy`.
+        ///
+        /// - Note: Context creation and randomization are treated as unreachable-by-contract
+        ///   invariants — if `secp256k1_context_create` returns `nil` or
+        ///   `secp256k1_context_randomize` fails, the handler installed via
+        ///   ``setInvariantViolationHandler(_:)`` is notified and the process terminates via
+        ///   `fatalError`.
+        public init() {
+            self.storage = Storage()
+        }
 
         /// Creates a new secp256k1 context and randomizes it with cryptographically secure bytes for side-channel protection.
         ///
@@ -126,7 +177,16 @@ public extension P256K {
         ///   ``setInvariantViolationHandler(_:)`` is notified and
         ///   the process terminates via `fatalError`.
         /// - Returns: An opaque pointer to the newly created and randomized secp256k1 context.
+        ///   Callers remain responsible for `secp256k1_context_destroy` — the pairing
+        ///   ``init()`` enforces automatically.
+        @available(*, deprecated, message: "use P256K.Context() — a managed owner that destroys the context on release")
         public static func create() -> OpaquePointer {
+            makeContext()
+        }
+
+        /// The shared context-creation sequence backing ``init()``, ``create()``, and
+        /// ``rawRepresentation``: allocate, install the invariant-failure callbacks, randomize.
+        private static func makeContext() -> OpaquePointer {
             let seed = SecureBytes(count: P256K.ByteLength.privateKey)
 
             guard let context = secp256k1_context_create(Self.rawValue) else {
@@ -155,6 +215,28 @@ public extension P256K {
             }
 
             return context
+        }
+
+        /// Borrows the underlying `secp256k1_context` pointer for the duration of `body`.
+        ///
+        /// This is the explicit interop path for calling the `libsecp256k1` C API directly —
+        /// the equivalent of rust-secp256k1's `Secp256k1::ctx()`, whose `&self` borrow scopes
+        /// the pointer's validity to the owner. The closure scope reproduces that contract: the
+        /// pointer is valid for the call and must not be stored or otherwise outlive this
+        /// ``Context`` value.
+        ///
+        /// - Warning: Do not call `secp256k1_context_destroy`,
+        ///   `secp256k1_context_preallocated_destroy`, or `secp256k1_context_randomize` on the
+        ///   borrowed pointer — the owner manages its lifecycle, and those functions require
+        ///   exclusive access anyway.
+        /// - Parameter body: A closure receiving the context's `OpaquePointer`.
+        /// - Returns: The value `body` returns.
+        public func withUnsafeContextPointer<Result>(
+            _ body: (OpaquePointer) throws -> Result
+        ) rethrows -> Result {
+            try withExtendedLifetime(storage) {
+                try body(storage.context)
+            }
         }
     }
 }
