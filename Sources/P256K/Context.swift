@@ -147,7 +147,7 @@ public extension P256K {
         /// Creates a new, independently randomized secp256k1 context owned by this value.
         ///
         /// The context is allocated with `secp256k1_context_create`, its illegal-argument
-        /// and error callbacks are routed to ``P256K/invariantFailure(_:)``, and it is randomized
+        /// and error callbacks are routed to `P256K.invariantFailure`, and it is randomized
         /// with 32 bytes of `SecureBytes` — the same creation sequence the deprecated
         /// ``create()`` forwards to. When the
         /// last ``Context`` value sharing this storage is released, the context is destroyed via
