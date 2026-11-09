@@ -22,8 +22,8 @@ This package is pre-1.0 ([SemVer major version zero](https://semver.org/#spec-it
 
 | Version | Supported          |
 |---------|--------------------|
-| 0.24.x  | :white_check_mark: |
-| < 0.24  | :x:                |
+| 0.25.x  | :white_check_mark: |
+| < 0.25  | :x:                |
 
 `0.23.x` — including `0.23.2`, the last release with the zkp modules — receives no security fixes; pin it only until a dedicated zkp package ships.
 
