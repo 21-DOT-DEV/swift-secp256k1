@@ -642,7 +642,7 @@ type; `swift test` green.
 
 ## Group H — Tag (release step, no code)
 
-- [ ] T017 Roll `[Unreleased]` into `[0.25.0]`, cut the tag only after
+- [x] T017 Roll `[Unreleased]` into `[0.25.0]`, cut the tag only after
       every breaking task merges (T004–T006, T012, T015–T016, T026–T028,
       T032)
       and the deprecation pairs land (T025's redaction rides along; T029's
@@ -669,19 +669,19 @@ post-state; every breaking symbol in the changelog names its replacement.
 
 ## Group I — Documentation recipes (PR 17)
 
-- [ ] T018 [P] DocC article: fixed-32-byte signing flow (hash → sign via the
+- [x] T018 [P] DocC article: fixed-32-byte signing flow (hash → sign via the
       32-byte method → verify), shown only against the post-redesign API;
       the test compiling this article's exact code against the library
       lands with it (carries T020's share) · `Sources/P256K/P256K.docc/`,
       `Tests/P256KTests/`
-- [ ] T019 DocC article: key agreement + key derivation — slice the
+- [x] T019 DocC article: key agreement + key derivation — slice the
       compressed-point prefix byte for the bare 32-byte shared x, feed it
       unhashed to `HKDF<SHA256>` (CryptoKit/swift-crypto), salt guidance
       with the verified NIP-44 v2 shape as the worked example; states it is
       an example composition; the test compiling this article's exact code
       lands with it (carries T020's share) · `Sources/P256K/P256K.docc/`,
       `Tests/P256KTests/`
-- [ ] T020 _Folded into T018/T019 — each article lands with the test that
+- [x] T020 _Folded into T018/T019 — each article lands with the test that
       exercises its own code (the same change-carries-its-proof shape as
       the Group C folds); one compile-scaffold file, extended per article.
       Tick this box in T019's commit._ · `Tests/P256KTests/`

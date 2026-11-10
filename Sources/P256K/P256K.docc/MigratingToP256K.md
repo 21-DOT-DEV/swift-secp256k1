@@ -12,7 +12,7 @@ Move a Swift project off the original `secp256k1` module — GigaBitcoin's `secp
 
 For the GigaBitcoin lineage, migrating to ``P256K`` is a mechanical rename, not a rewrite. The module `secp256k1` became `P256K` in a single breaking change, and the type-safe API carried over unchanged — so you repoint the dependency at the maintained repository, move to a release at or above the rename, and replace `import secp256k1` with `import P256K` (and the `secp256k1.` type prefixes with `P256K.`). Most GigaBitcoin-lineage migrations are a 5–10 minute change; porting from the raw C API — Boilertalk, status-im, or a vendored copy — is a per-call-site rewrite, covered in the final section.
 
-The rename landed in **0.20.0** (April 2025): the primary module was renamed from `secp256k1` to `P256K`, and the C-bindings module from `secp256k1_bindings` to `libsecp256k1`. Releases at or below **0.19.0** vend the old `secp256k1` module; **0.20.0** and later vend `P256K`. The current release is **0.24.0**, and the supported toolchain since 0.22.0 is **Swift 6.1 / Xcode 16.3** or newer.
+The rename landed in **0.20.0** (April 2025): the primary module was renamed from `secp256k1` to `P256K`, and the C-bindings module from `secp256k1_bindings` to `libsecp256k1`. Releases at or below **0.19.0** vend the old `secp256k1` module; **0.20.0** and later vend `P256K`. The current release is **0.25.0**, and the supported toolchain since 0.22.0 is **Swift 6.1 / Xcode 16.3** or newer.
 
 > Important: This guide covers the GigaBitcoin lineage — `GigaBitcoin/secp256k1.swift` (now `21-DOT-DEV/swift-secp256k1`) and its forks. If your `import secp256k1` instead resolves to Boilertalk or status-im's `secp256k1.swift` — both of which just package the raw bitcoin-core C API — or to a vendored C copy, the move is a port, not a rename. Identify which one you have before editing anything; the section *Coming from the raw libsecp256k1 C API* covers that case.
 
@@ -35,7 +35,7 @@ Many public Swift manifests still reference the pre-rename `GigaBitcoin/secp256k
 
 Confirm from the map above that you are on the rename path (the GigaBitcoin lineage). Then commit or stash your working tree first: Steps 2 and 3 are a find-and-replace across your codebase, and a clean starting diff makes the rename reviewable and trivially reversible.
 
-If you are on an older toolchain than Swift 6.1 / Xcode 16.3, you can pin a 0.20.x–0.21.x release during the move (those have `P256K` but predate the Swift 6.1 floor), but migrating straight to the current **0.24.0** is recommended — a frozen fork misses every libsecp256k1 update and API addition made upstream since.
+If you are on an older toolchain than Swift 6.1 / Xcode 16.3, you can pin a 0.20.x–0.21.x release during the move (those have `P256K` but predate the Swift 6.1 floor), but migrating straight to the current **0.25.0** is recommended — a frozen fork misses every libsecp256k1 update and API addition made upstream since.
 
 ``P256K`` builds on Linux as well as Apple platforms, so server-side Swift migrations follow the same steps — with one exception: the `UInt256` type is Apple-only.
 
@@ -48,7 +48,7 @@ Change the dependency URL to `21-DOT-DEV/swift-secp256k1` and pin a version at o
 .package(url: "https://github.com/GigaBitcoin/secp256k1.swift", from: "0.18.0"),
 
 // after
-.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.24.0"),
+.package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", exact: "0.25.0"),
 ```
 
 The product and package names changed too, so update the target dependency:
@@ -61,7 +61,7 @@ The product and package names changed too, so update the target dependency:
 .product(name: "P256K", package: "swift-secp256k1")
 ```
 
-The pin uses `exact:` because the package is pre-1.0: under [SemVer §4][semver-4], releases below `1.0.0` may break the public API, so `exact:` keeps upgrades deliberate. (`.upToNextMinor(from: "0.24.0")` is a reasonable alternative if you want patch-level fixes within a minor release; this guide uses `exact:` so the migration is a single deterministic version bump.) In Xcode, the equivalent flow is **File → Add Package Dependencies…**, pasting `https://github.com/21-DOT-DEV/swift-secp256k1`.
+The pin uses `exact:` because the package is pre-1.0: under [SemVer §4][semver-4], releases below `1.0.0` may break the public API, so `exact:` keeps upgrades deliberate. (`.upToNextMinor(from: "0.25.0")` is a reasonable alternative if you want patch-level fixes within a minor release; this guide uses `exact:` so the migration is a single deterministic version bump.) In Xcode, the equivalent flow is **File → Add Package Dependencies…**, pasting `https://github.com/21-DOT-DEV/swift-secp256k1`.
 
 GitHub redirects the old `GigaBitcoin` URL, so a stale URL may still resolve — but pin the canonical `21-DOT-DEV` URL so your manifest names the repository that actually receives updates. If you are coming from a fork (jb55, Damus, or another), replace the fork URL entirely: the fork is frozen, and this step rejoins the maintained line.
 
@@ -70,7 +70,7 @@ Most migrations need no package traits — the default set (`ecdh`, `musig`, `re
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    exact: "0.24.0",
+    exact: "0.25.0",
     traits: ["ellswift", "uint256"]   // optional modules; most migrations need neither
 ),
 ```

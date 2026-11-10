@@ -7,9 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Migrating from 0.24.x
-
 <!-- each breaking change lands with its replacement named here; tag cut after the last breaking change, never between -->
+
+## [0.25.0] - 2026-11-08
+
+### Migrating from 0.24.x
 
 - **Breaking**: `P256K.Recovery.PublicKey.init(_:signature:format:)` (both `Data` and `Digest` overloads) now `throws` — `secp256k1Error.underlyingCryptoError` when `secp256k1_ecdsa_recover` rejects the signature — where a failed recovery previously reached `fatalError` and terminated the process
 - **Breaking**: `P256K.Signing.XonlyKey.init(dataRepresentation:keyParity:)`, `P256K.Schnorr.XonlyKey.init(dataRepresentation:keyParity:)`, and `P256K.MuSig.XonlyKey.init(dataRepresentation:keyParity:)` now `throws` — the coordinate is validated with `secp256k1_xonly_pubkey_parse` at construction (length **and** curve-point membership), so a malformed x-only key is no longer representable: wrong byte counts throw `secp256k1Error.incorrectKeySize` and an X coordinate with no curve point throws `secp256k1Error.underlyingCryptoError`. Downstream APIs lean on the invariant instead — `init(xonlyKey:)` on all three public-key types remains non-throwing
@@ -42,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `secp256k1Error.invalidMuSigContribution(index: Int)` — thrown by `P256K.MuSig.aggregateSignatures` to name the submission position of a partial signature whose bundled signer is not a session participant, over-contributes a duplicate participant key, or fails `secp256k1_musig_partial_sig_verify` against the rebuilt session — BIP-327's "output the index of exactly one malicious signer"; `catch` it and read `partialSignatures[index].publicKey` to identify the culprit. **Source-breaking**: a new case on the public `secp256k1Error` enum breaks consumer `switch`es that were exhaustive
 - `secp256k1Error` now declares explicit `Equatable` and `Hashable` conformances — previously implicit on a payload-free enum, they are declared so the associated value on `invalidMuSigContribution(index:)` does not silently drop them
 - `P256K.Context.init()` — creates an independently owned, pre-randomized `secp256k1_context` behind a `Sendable` value type: the same `secp256k1_context_create` → illegal/error callbacks → `secp256k1_context_randomize` sequence `create()` performs, with `secp256k1_context_destroy` called from the owning storage's `deinit` so the pairing is enforced rather than documented. `P256K.Context.withUnsafeContextPointer(_:)` borrows the raw `OpaquePointer` for direct `libsecp256k1` interop — the rust-secp256k1 `ctx()` equivalent — scoped so the pointer's validity is tied to the owner by convention (a `withUnsafe*`-style borrow rather than a freely storable property)
+- Two DocC how-to guides — *Signing Fixed-Size Messages with Schnorr* (the exactly-32-byte `signature(message:)` flow Nostr-style event signing and Taproot sighashes share) and *Deriving Keys from a Shared Secret* (ECDH → HKDF composition in the NIP-44 v2 shape) — each exercised by a compile-and-run test so the recipes cannot drift from the API
 
 ### Changed
 

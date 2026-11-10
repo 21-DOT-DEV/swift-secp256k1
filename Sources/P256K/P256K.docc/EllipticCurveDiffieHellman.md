@@ -95,7 +95,7 @@ let tagged = SHA256.taggedHash(
 )
 ```
 
-**HKDF (when you need multiple keys from one shared secret, or a non-SHA-256 underlying hash):** use Apple's `swift-crypto` `HKDF` API or `CryptoKit.HKDF` with `aliceShared.byteArray` as input keying material.
+**HKDF (when you need multiple keys from one shared secret, or a non-SHA-256 underlying hash):** use Apple's `swift-crypto` `HKDF` API or `CryptoKit.HKDF`, feeding the sliced shared x coordinate — not the full 33-byte point — as input keying material. The end-to-end recipe — slicing the compressed-point prefix, feeding the shared x coordinate unhashed into `HKDF` with the protocol's salt — is <doc:DerivingKeysFromSharedSecrets>.
 
 ### Protocols Using ECDH on secp256k1
 
@@ -126,6 +126,7 @@ ECDH keys can be **static** (long-lived, like a Nostr identity) or **ephemeral**
 
 - <doc:CryptoKitP256AndSecp256k1>
 - <doc:GettingStarted>
+- <doc:DerivingKeysFromSharedSecrets>
 - <doc:SilentPayments>
 - <doc:SecurityConsiderations>
 - ``P256K/KeyAgreement``
