@@ -141,10 +141,6 @@ jobs:
           # Install Cocoapods
           gem install cocoapods
 
-          # Get the current release tag name (version) from GitHub
-          # This ensures the podspec uses the same version as the GitHub release
-          export POD_VERSION=$(gh release list -R 21-DOT-DEV/swift-secp256k1 -L 1 --json tagName --jq '.[0].tagName')
-          
           # Calculate SHA256 checksum of the XCFramework zip file
           # CocoaPods requires this hash for security verification when downloading the binary
           export XCFRAMEWORK_SHA=$(shasum -a 256 P256K.xcframework.zip | awk '{print $1}')
@@ -154,7 +150,57 @@ jobs:
           pod spec lint Projects/swift-secp256k1.podspec
           
           # Push the podspec to the CocoaPods Trunk service
-          # This publishes the new version of the pod to the CocoaPods registry
-          pod trunk push Projects/swift-secp256k1.podspec
+          # This publishes the new version of the pod to the CocoaPods registry.
+          # A failed push isn't proof of a failed deploy: trunk push can publish
+          # the spec and then die on a post-publish verification call (the
+          # GitHub commit API check timed out once). It can also fail with
+          # "duplicate version" on a re-run. Verify server-side state instead of
+          # trusting the exit code: poll trunk for the version (its API lags
+          # registration by seconds-to-minutes, so a single check raced it in
+          # practice), then confirm the published spec pins this run's archive
+          # checksum — a re-run after the zip was re-uploaded would otherwise
+          # bless a stale spec. The spec comes from the Specs git repo, which
+          # the CDN mirrors but caches for hours.
+          pod trunk push Projects/swift-secp256k1.podspec || {
+            live=''
+            for i in 1 2 3 4 5 6; do
+              curl -sfL --retry 3 --retry-delay 3 \
+                "https://trunk.cocoapods.org/api/v1/pods/swift-secp256k1" \
+                -o "$RUNNER_TEMP/trunk.json" \
+                && jq -e --arg v "$POD_VERSION" \
+                    'any(.versions[].name; . == $v)' "$RUNNER_TEMP/trunk.json" \
+                    >/dev/null \
+                && { live=1; break; }
+              sleep 30
+            done
+            [ -n "$live" ] || {
+              echo "::error::pod trunk push failed and $POD_VERSION did not appear on trunk"
+              exit 1
+            }
+            published=''
+            for i in 1 2 3; do
+              curl -sfL --retry 3 --retry-delay 3 \
+                "https://raw.githubusercontent.com/CocoaPods/Specs/master/Specs/7/b/2/swift-secp256k1/$POD_VERSION/swift-secp256k1.podspec.json" \
+                -o "$RUNNER_TEMP/published.json" \
+                && { published=1; break; }
+              sleep 30
+            done
+            [ -n "$published" ] || {
+              echo "::warning::$POD_VERSION is live on trunk but its published spec is not fetchable yet — sha256 unverified; a spec accepted moments ago can only carry this run's checksum"
+              exit 0
+            }
+            jq -e --arg s "$XCFRAMEWORK_SHA" \
+              '.source.sha256 == $s' "$RUNNER_TEMP/published.json" >/dev/null \
+              || {
+                echo "::error::$POD_VERSION is live but its published sha256 does not match this run's archive — the registry pins a stale spec"
+                exit 1
+              }
+            echo "::notice::$POD_VERSION is live on CocoaPods trunk and matches this run's archive — the push succeeded before a later call failed; treating as deployed"
+            exit 0
+          }
         env:
           COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
+          # The tag that triggered this run — the same source the upload step
+          # uses — so the podspec can't drift to a newer release published
+          # mid-run (a "latest release" query can).
+          POD_VERSION: ${{ github.ref_name }}
