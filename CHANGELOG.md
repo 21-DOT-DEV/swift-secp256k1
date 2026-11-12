@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <!-- each breaking change lands with its replacement named here; tag cut after the last breaking change, never between -->
 
+### Fixed
+
+- `P256K.MuSig.PublicKey.add(_:format:)` no longer terminates the process on `format: .uncompressed` — the method fed the caller's *output* format length into `secp256k1_ec_pubkey_parse` as `inputlen` while parsing the key's *stored* serialization (33-byte compressed on every cache-carrying key), so the parse rejected a valid key and the reachable rejection was misclassified as unreachable, escaping through `P256K.invariantFailure`'s `fatalError` in 0.25.0 (earlier releases threw `secp256k1Error.underlyingCryptoError` for the same call — uncompressed tweak output had never worked). The reparse is deleted outright — `secp256k1_musig_pubkey_ec_tweak_add` writes the tweaked key purely from the key-aggregation cache, so the parse's result was never consumed; it existed only to fail. `format` now sizes the output buffer only, and a `.uncompressed`-stored tweaked key chains correctly under the default format. Reported as GHSA-7g3x-fj89-693j by Gleb Lizunov (@hokvo)
+
 ## [0.25.0] - 2026-11-08
 
 ### Migrating from 0.24.x

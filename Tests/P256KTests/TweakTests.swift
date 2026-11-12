@@ -96,4 +96,49 @@ struct TweakTestSuite {
             _ = try xonlyKey.add(shortTweak)
         }
     }
+
+    /// The contract class the MuSig advisory (GHSA-7g3x-fj89-693j) violated
+    /// on its side: every public-key operation taking `format:` must treat it
+    /// as output-only — the input side always parses stored bytes at their
+    /// own length. `uncompressedRepresentation` re-serializes the point
+    /// uncompressed regardless of stored format, so it is the same-point
+    /// oracle across formats.
+    @Test("Public key operations honor both output formats")
+    func publicKeyOperationsHonorBothFormats() throws {
+        let privateKey = try P256K.Signing.PrivateKey()
+        let publicKey = privateKey.publicKey
+        let other = try P256K.Signing.PrivateKey().publicKey
+        let tweak = [UInt8](repeating: 1, count: P256K.ByteLength.dimension)
+
+        let compressedAdd = try publicKey.add(tweak)
+        let uncompressedAdd = try publicKey.add(tweak, format: .uncompressed)
+        #expect(uncompressedAdd.format == .uncompressed)
+        #expect(uncompressedAdd.dataRepresentation.count == P256K.Format.uncompressed.length)
+        #expect(uncompressedAdd.uncompressedRepresentation == compressedAdd.uncompressedRepresentation)
+
+        let compressedMultiply = try publicKey.multiply(tweak)
+        let uncompressedMultiply = try publicKey.multiply(tweak, format: .uncompressed)
+        #expect(uncompressedMultiply.format == .uncompressed)
+        #expect(uncompressedMultiply.uncompressedRepresentation == compressedMultiply.uncompressedRepresentation)
+
+        let compressedCombine = try publicKey.combine([other])
+        let uncompressedCombine = try publicKey.combine([other], format: .uncompressed)
+        #expect(uncompressedCombine.format == .uncompressed)
+        #expect(uncompressedCombine.uncompressedRepresentation == compressedCombine.uncompressedRepresentation)
+
+        // Reverse direction: an uncompressed-stored input must produce the
+        // same points under the default compressed output — the stored
+        // format must not reach the input side either.
+        let uncompressedStored = try P256K.Signing.PublicKey(
+            dataRepresentation: publicKey.uncompressedRepresentation,
+            format: .uncompressed
+        )
+        let addFromUncompressed = try uncompressedStored.add(tweak)
+        let multiplyFromUncompressed = try uncompressedStored.multiply(tweak)
+        let combineFromUncompressed = try uncompressedStored.combine([other])
+        #expect(addFromUncompressed.format == .compressed)
+        #expect(addFromUncompressed.uncompressedRepresentation == uncompressedAdd.uncompressedRepresentation)
+        #expect(multiplyFromUncompressed.uncompressedRepresentation == uncompressedMultiply.uncompressedRepresentation)
+        #expect(combineFromUncompressed.uncompressedRepresentation == uncompressedCombine.uncompressedRepresentation)
+    }
 }

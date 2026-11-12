@@ -90,6 +90,22 @@ struct InvariantTestSuite {
             #expect(stderr.contains("HANDLER-END"))
             #expect(!stderr.contains("second violation"))
         }
+
+        /// GHSA-7g3x-fj89-693j: `MuSig.PublicKey.add(_:format:)` fed the
+        /// caller's output-format length into `secp256k1_ec_pubkey_parse`'s
+        /// `inputlen`, turning a caller-reachable state into
+        /// `invariantFailure` — a documented call shape that terminated the
+        /// process. The exact reported call must now exit normally; running
+        /// it in a child process keeps a regression an attributed failure
+        /// instead of a whole-runner abort.
+        @Test("MuSig uncompressed-format tweak exits normally on valid input")
+        func musigUncompressedTweakExitsNormally() async {
+            await #expect(processExitsWith: .success) {
+                let privateKey = try P256K.Schnorr.PrivateKey()
+                let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
+                _ = try aggregate.add([UInt8](repeating: 0x01, count: 32), format: .uncompressed)
+            }
+        }
     #endif
 
     /// `secp256k1_musig_nonce_gen` rejects an all-zero `session_secrand32` as a
