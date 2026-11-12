@@ -48,11 +48,12 @@ information in the same place:
 - **Impact** — what an attacker (or a legitimate caller) can and cannot achieve.
 - **Patches** — the first fixed release.
 - **Workarounds** — how to stay safe without upgrading, or an explicit "none".
+- **References** — links to the fix pull request, the merge commit, and the patched release tag; repository advisories have no separate references field, so links live in the body.
 
 Affected versions use GitHub Advisory Database range syntax (`= 0.25.0`, `>= 0.24.0, < 0.25.0`), never bare version numbers.
 
-Every advisory cross-links its fix end to end: the advisory's references point
-to the fix pull request, the merge commit, and the patched release tag; the
+Every advisory cross-links its fix end to end: the body's `References` section
+links the fix pull request, the merge commit, and the patched release tag; the
 fix's pull request and the changelog entry name the advisory's
 `GHSA-xxxx-xxxx-xxxx` identifier. Publication waits for the merge commit and
 release tag to exist so every link is live on day one.
