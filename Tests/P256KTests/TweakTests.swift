@@ -99,8 +99,8 @@ struct TweakTestSuite {
 
     /// The contract class the MuSig advisory (GHSA-7g3x-fj89-693j) violated
     /// on its side: every public-key operation taking `format:` must treat it
-    /// as output-only — the input side always parses stored bytes at their
-    /// own length. `uncompressedRepresentation` re-serializes the point
+    /// as output-only — the caller's chosen output format can never reach
+    /// the input side. `uncompressedRepresentation` re-serializes the point
     /// uncompressed regardless of stored format, so it is the same-point
     /// oracle across formats.
     @Test("Public key operations honor both output formats")
