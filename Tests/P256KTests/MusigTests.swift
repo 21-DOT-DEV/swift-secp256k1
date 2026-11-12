@@ -405,6 +405,98 @@ struct MuSigTestSuite {
         }
     }
 
+    /// GHSA-7g3x-fj89-693j: `add(_:format:)` once fed the *output* format's
+    /// length into `secp256k1_ec_pubkey_parse` as `inputlen` while parsing
+    /// the key's *stored* serialization — always 33-byte compressed on
+    /// cache-carrying keys — so `.uncompressed` rejected a valid key and the
+    /// wrapper escalated the rejection to `invariantFailure`, terminating
+    /// the process. The reparse is deleted outright: the tweak writes the
+    /// output key purely from the key-aggregation cache, so the parse's
+    /// result was never consumed; `format` sizes the output buffer only.
+    @Test("MuSig tweak honors an uncompressed output format")
+    func musigTweakUncompressedOutput() throws {
+        let privateKeys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
+        ]
+        let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
+        let tweak = [UInt8](repeating: 0x01, count: P256K.ByteLength.dimension)
+
+        let compressed = try aggregate.add(tweak)
+        let uncompressed = try aggregate.add(tweak, format: .uncompressed)
+
+        #expect(uncompressed.format == .uncompressed)
+        #expect(uncompressed.dataRepresentation.count == P256K.Format.uncompressed.length)
+        // Same point as the compressed-format result — upstream's
+        // serialize-both-ways oracle.
+        #expect(uncompressed.xonly == compressed.xonly)
+        #expect(uncompressed.xonly.parity == compressed.xonly.parity)
+    }
+
+    /// The reverse direction of the same mismatch: a tweak that stores
+    /// `.uncompressed` bytes — now reachable for the first time — must still
+    /// tweak correctly with the default `.compressed` output, proving the
+    /// stored format never leaks into the next call either.
+    @Test("MuSig tweak on an uncompressed-stored key stays tweakable")
+    func musigTweakChainedFormats() throws {
+        let aggregate = try P256K.MuSig.aggregate([P256K.Schnorr.PrivateKey().publicKey])
+        let firstTweak = [UInt8](repeating: 0x01, count: P256K.ByteLength.dimension)
+        let secondTweak = [UInt8](repeating: 0x02, count: P256K.ByteLength.dimension)
+
+        let uncompressed = try aggregate.add(firstTweak, format: .uncompressed)
+        let rechained = try uncompressed.add(secondTweak)
+
+        #expect(rechained.format == .compressed)
+        #expect(rechained.dataRepresentation.count == P256K.Format.compressed.length)
+        // The intermediate wire format must not change the point: the chain
+        // equals a compressed-store first tweak followed by the same second.
+        let expected = try aggregate.add(firstTweak).add(secondTweak)
+        #expect(rechained.xonly == expected.xonly)
+        #expect(rechained.xonly.parity == expected.xonly.parity)
+    }
+
+    /// The format oracles above prove both outputs describe *a* shared
+    /// point — this proves it is the *right* point: `add` must produce
+    /// `agg_pk + tweak·G`, the same result the independent
+    /// `secp256k1_ec_pubkey_tweak_add` path (`Signing.PublicKey.add`)
+    /// yields on the same aggregate point.
+    @Test("MuSig EC tweak agrees with the plain public-key tweak oracle")
+    func musigTweakMatchesPublicKeyOracle() throws {
+        let privateKeys = try [
+            P256K.Schnorr.PrivateKey(),
+            P256K.Schnorr.PrivateKey()
+        ]
+        let aggregate = try P256K.MuSig.aggregate(privateKeys.map(\.publicKey))
+        let tweak = [UInt8](repeating: 0x01, count: P256K.ByteLength.dimension)
+
+        let oracle = try P256K.Signing.PublicKey(
+            dataRepresentation: aggregate.dataRepresentation,
+            format: .compressed
+        ).add(tweak)
+
+        #expect(try aggregate.add(tweak).dataRepresentation == oracle.dataRepresentation)
+        #expect(try aggregate.add(tweak, format: .uncompressed).dataRepresentation == oracle.uncompressedRepresentation)
+    }
+
+    /// A `MuSig.PublicKey` rebuilt via `init(dataRepresentation:format:)`
+    /// carries no key-aggregation cache — the opaque upstream struct has no
+    /// blessed serialization (`MuSig.swift`), so the key is verification-only.
+    /// `add` must throw before the missing cache reaches
+    /// `secp256k1_musig_keyagg_cache_load`, whose `ARG_CHECK` would abort the
+    /// process — the same reachable-crash class as GHSA-7g3x-fj89-693j.
+    @Test("MuSig tweak on a cache-less key throws instead of aborting")
+    func musigTweakOnCachelessKeyThrows() throws {
+        let aggregate = try P256K.MuSig.aggregate([P256K.Schnorr.PrivateKey().publicKey])
+        let rebuilt = try P256K.MuSig.PublicKey(
+            dataRepresentation: aggregate.dataRepresentation,
+            format: .compressed
+        )
+
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            _ = try rebuilt.add([UInt8](repeating: 0x01, count: P256K.ByteLength.dimension))
+        }
+    }
+
     @Test("MuSig x-only key rejects a malformed-length coordinate at construction")
     func musigXonlyKeyRejectsShortCoordinate() throws {
         // `secp256k1_xonly_pubkey_parse` reads a fixed 32 bytes — malformed input

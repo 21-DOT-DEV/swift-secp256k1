@@ -46,6 +46,8 @@ import libsecp256k1
             }
 
             let context = P256K.Context.rawRepresentation
+            // Output-only: the tweak writes the tweaked key purely from the
+            // key-aggregation cache; the stored serialization never feeds it.
             var pubKey = secp256k1_pubkey()
             var cache = secp256k1_musig_keyagg_cache()
             var pubKeyLen = format.length
@@ -53,10 +55,6 @@ import libsecp256k1
 
             keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
 
-            // `bytes` was validated at construction; the parse cannot fail on it.
-            guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, pubKeyLen).boolValue else {
-                P256K.invariantFailure("secp256k1_ec_pubkey_parse failed on validated key — library bug")
-            }
             // Only the tweak can legitimately fail (invalid scalar or
             // point-at-infinity result).
             guard secp256k1_musig_pubkey_ec_tweak_add(context, &pubKey, &cache, tweak).boolValue else {
