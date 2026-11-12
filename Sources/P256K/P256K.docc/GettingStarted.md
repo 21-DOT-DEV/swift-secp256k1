@@ -19,7 +19,7 @@ Add `swift-secp256k1` as a dependency in your `Package.swift`:
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", .upToNextMinor(from: "0.25.0")),
+    .package(url: "https://github.com/21-DOT-DEV/swift-secp256k1", .upToNextMinor(from: "0.25.1")),
 ],
 targets: [
     .target(
@@ -75,7 +75,7 @@ To opt into additional modules, pass `traits:` in your dependency declaration:
 ```swift
 .package(
     url: "https://github.com/21-DOT-DEV/swift-secp256k1",
-    .upToNextMinor(from: "0.25.0"),
+    .upToNextMinor(from: "0.25.1"),
     traits: ["ellswift", "uint256"]
 ),
 ```
@@ -93,7 +93,7 @@ Two modules remain opt-in: the `ellswift` trait compiles upstream's ElligatorSwi
 Add the following to your `Podfile`:
 
 ```ruby
-pod 'swift-secp256k1', '0.25.0'
+pod 'swift-secp256k1', '0.25.1'
 ```
 
 CocoaPods consumes a pre-built `P256K.xcframework` produced by the release pipeline rather than building from source. Swift Package Manager remains the recommended path and receives feature parity first; CocoaPods support may be deprecated in a future release.
