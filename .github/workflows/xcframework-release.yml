@@ -135,15 +135,34 @@ jobs:
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
-          gh release upload "$TAG_NAME" P256K.xcframework.zip
+          # Re-runs converge on the asset that's already there: it is the
+          # artifact the release serves, so leave it untouched rather than
+          # clobbering (a failed --clobber leaves no asset at all). The
+          # deploy step pins the podspec to the published asset's digest,
+          # not this local copy, so whichever run uploaded it stays
+          # consistent.
+          [ "$(gh release view "$TAG_NAME" --json assets \
+              --jq 'any(.assets[]; .name == "P256K.xcframework.zip")')" = true ] \
+            && echo "::notice::P256K.xcframework.zip already on $TAG_NAME — skipping upload" \
+            || gh release upload "$TAG_NAME" P256K.xcframework.zip
       - name: Deploy to Cocoapods
         run: |
           # Install Cocoapods
           gem install cocoapods
 
-          # Calculate SHA256 checksum of the XCFramework zip file
-          # CocoaPods requires this hash for security verification when downloading the binary
-          export XCFRAMEWORK_SHA=$(shasum -a 256 P256K.xcframework.zip | awk '{print $1}')
+          # Pin the podspec to the artifact consumers actually download —
+          # the published release asset's own digest — not this job's local
+          # zip. A re-run's rebuild differs byte-wise, so a local hash could
+          # make the spec point at bytes that were never uploaded.
+          export XCFRAMEWORK_SHA=$(
+            gh api "repos/$GITHUB_REPOSITORY/releases/tags/$POD_VERSION" \
+              --jq '.assets[] | select(.name == "P256K.xcframework.zip") | .digest // empty' \
+              | sed 's/^sha256://' || true
+          )
+          [[ "$XCFRAMEWORK_SHA" =~ ^[0-9a-f]{64}$ ]] || {
+            echo "::error::no usable P256K.xcframework.zip digest on the $POD_VERSION release"
+            exit 1
+          }
           
           # Validate the podspec using the environment variables set above
           # This checks that the podspec is valid before attempting to publish
@@ -151,53 +170,63 @@ jobs:
           
           # Push the podspec to the CocoaPods Trunk service
           # This publishes the new version of the pod to the CocoaPods registry.
-          # A failed push isn't proof of a failed deploy: trunk push can publish
-          # the spec and then die on a post-publish verification call (the
-          # GitHub commit API check timed out once). It can also fail with
-          # "duplicate version" on a re-run. Verify server-side state instead of
-          # trusting the exit code: poll trunk for the version (its API lags
-          # registration by seconds-to-minutes, so a single check raced it in
-          # practice), then confirm the published spec pins this run's archive
-          # checksum — a re-run after the zip was re-uploaded would otherwise
-          # bless a stale spec. The spec comes from the Specs git repo, which
-          # the CDN mirrors but caches for hours.
-          pod trunk push Projects/swift-secp256k1.podspec || {
-            live=''
-            for i in 1 2 3 4 5 6; do
-              curl -sfL --retry 3 --retry-delay 3 \
-                "https://trunk.cocoapods.org/api/v1/pods/swift-secp256k1" \
-                -o "$RUNNER_TEMP/trunk.json" \
-                && jq -e --arg v "$POD_VERSION" \
-                    'any(.versions[].name; . == $v)' "$RUNNER_TEMP/trunk.json" \
-                    >/dev/null \
-                && { live=1; break; }
-              sleep 30
-            done
-            [ -n "$live" ] || {
-              echo "::error::pod trunk push failed and $POD_VERSION did not appear on trunk"
-              exit 1
-            }
-            published=''
-            for i in 1 2 3; do
-              curl -sfL --retry 3 --retry-delay 3 \
-                "https://raw.githubusercontent.com/CocoaPods/Specs/master/Specs/7/b/2/swift-secp256k1/$POD_VERSION/swift-secp256k1.podspec.json" \
-                -o "$RUNNER_TEMP/published.json" \
-                && { published=1; break; }
-              sleep 30
-            done
-            [ -n "$published" ] || {
-              echo "::warning::$POD_VERSION is live on trunk but its published spec is not fetchable yet — sha256 unverified; a spec accepted moments ago can only carry this run's checksum"
-              exit 0
-            }
-            jq -e --arg s "$XCFRAMEWORK_SHA" \
-              '.source.sha256 == $s' "$RUNNER_TEMP/published.json" >/dev/null \
-              || {
-                echo "::error::$POD_VERSION is live but its published sha256 does not match this run's archive — the registry pins a stale spec"
-                exit 1
-              }
-            echo "::notice::$POD_VERSION is live on CocoaPods trunk and matches this run's archive — the push succeeded before a later call failed; treating as deployed"
+          # `pod trunk push` exit codes lie in both directions: the GitHub
+          # commit API check that kills it can fire before trunk accepts the
+          # spec (nothing lands — a retry can succeed) or after (the spec
+          # landed — the "failure" is the post-publish verification). Trunk
+          # rejects duplicates structurally, so retrying a possibly-landed
+          # push is safe; probe server state between attempts and after.
+          trunk_live() {
+            curl -sfL --retry 3 --retry-delay 3 \
+              "https://trunk.cocoapods.org/api/v1/pods/swift-secp256k1" \
+              -o "$RUNNER_TEMP/trunk.json" \
+              && jq -e --arg v "$POD_VERSION" \
+                  'any(.versions[].name; . == $v)' "$RUNNER_TEMP/trunk.json" \
+                  >/dev/null
+          }
+          for attempt in 1 2 3; do
+            pod trunk push Projects/swift-secp256k1.podspec && exit 0
+            sleep 30
+            trunk_live && break
+          done
+          # Every push reported failure — but the spec may have landed anyway,
+          # and the trunk API lags registration by seconds-to-minutes. Poll
+          # before calling it a real miss.
+          live=''
+          for i in 1 2 3 4 5 6; do
+            trunk_live && { live=1; break; }
+            sleep 30
+          done
+          [ -n "$live" ] || {
+            echo "::error::pod trunk push failed and $POD_VERSION did not appear on trunk"
+            exit 1
+          }
+          # The version is live. Confirm the published spec pins the same
+          # checksum as the release asset — a spec published by an earlier
+          # run while the asset was replaced outside this workflow would
+          # otherwise be blessed while installs fail integrity checks.
+          # Fetch from the Specs git repo (the CDN mirrors it but caches for
+          # hours), polling for propagation.
+          published=''
+          for i in 1 2 3; do
+            curl -sfL --retry 3 --retry-delay 3 \
+              "https://raw.githubusercontent.com/CocoaPods/Specs/master/Specs/7/b/2/swift-secp256k1/$POD_VERSION/swift-secp256k1.podspec.json" \
+              -o "$RUNNER_TEMP/published.json" \
+              && { published=1; break; }
+            sleep 30
+          done
+          [ -n "$published" ] || {
+            echo "::warning::$POD_VERSION is live on trunk but its published spec is not fetchable yet — sha256 unverified; a spec accepted moments ago can only carry the release asset's checksum"
             exit 0
           }
+          jq -e --arg s "$XCFRAMEWORK_SHA" \
+            '.source.sha256 == $s' "$RUNNER_TEMP/published.json" >/dev/null \
+            || {
+              echo "::error::$POD_VERSION is live but its published sha256 does not match the release asset's digest — the registry pins a stale spec"
+              exit 1
+            }
+          echo "::notice::$POD_VERSION is live on CocoaPods trunk and matches the release asset's checksum — the push succeeded before a later call failed; treating as deployed"
+          exit 0
         env:
           COCOAPODS_TRUNK_TOKEN: ${{ secrets.COCOAPODS_TRUNK_TOKEN }}
           # The tag that triggered this run — the same source the upload step

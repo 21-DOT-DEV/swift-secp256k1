@@ -118,3 +118,19 @@ iOSInjectionProject/
 # skills write here at catalog root; ignore at any depth to defend against
 # stray writes from eval sessions running against fixtures.
 .docc-suite-state/
+
+# Credential-hygiene — shapes that carry tokens and key material, never meant
+# to be stageable here. The staged diff is what `jury` sends to external
+# model providers, and nothing scans it on the way out — this block is the
+# only guard between a stray secrets file and the panel. (.vscode/ is
+# deliberately absent: shared editor settings are committed.)
+.env
+.env.*
+!.env.example
+.envrc
+*.pem
+*.key
+*.p12
+*.mobileprovision
+.mcp.json
+.idea/
