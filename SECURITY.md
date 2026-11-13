@@ -36,3 +36,28 @@ Vulnerabilities in the underlying C library should be reported directly to its p
 - **libsecp256k1**: See [bitcoin-core/secp256k1 SECURITY.md](https://github.com/bitcoin-core/secp256k1/blob/master/SECURITY.md)
 
 Releases `0.20.0` through `0.23.2` also embedded [libsecp256k1-zkp](https://github.com/BlockstreamResearch/secp256k1-zkp); vulnerabilities in that library should be reported to the BlockstreamResearch project.
+
+## Published Security Advisories
+
+Published advisories follow a fixed format so readers always find the same
+information in the same place:
+
+- **Summary** — what breaks, on which versions, at what severity.
+- **Details** — the root cause, with the vulnerable code excerpt.
+- **PoC** — a minimal reproduction.
+- **Impact** — what an attacker (or a legitimate caller) can and cannot achieve.
+- **Patches** — the first fixed release.
+- **Workarounds** — how to stay safe without upgrading, or an explicit "none".
+- **References** — links to the fix pull request, the merge commit, and the patched release tag; repository advisories have no separate references field, so links live in the body.
+
+Affected versions use GitHub Advisory Database range syntax (`= 0.25.0`, `>= 0.24.0, < 0.25.0`), never bare version numbers.
+
+Every advisory cross-links its fix end to end: the body's `References` section
+links the fix pull request, the merge commit, and the patched release tag; the
+fix's pull request and the changelog entry name the advisory's
+`GHSA-xxxx-xxxx-xxxx` identifier. Publication waits for the merge commit and
+release tag to exist so every link is live on day one.
+
+Maintainers request a CVE through the draft advisory's **Request CVE** button
+before publishing. Reporters are credited by name in the advisory body and in
+GitHub's credits field.
