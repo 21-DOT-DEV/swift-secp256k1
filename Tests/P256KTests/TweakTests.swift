@@ -141,4 +141,174 @@ struct TweakTestSuite {
         #expect(multiplyFromUncompressed.uncompressedRepresentation == uncompressedMultiply.uncompressedRepresentation)
         #expect(combineFromUncompressed.uncompressedRepresentation == uncompressedCombine.uncompressedRepresentation)
     }
+
+    /// Spec 005 (T004) — every public-key type's `uncompressedRepresentation` must
+    /// encode the *same point* its stored-format `dataRepresentation` stores: a
+    /// `0x04` tag, the identical X coordinate in bytes 1–32, and byte 64's low bit
+    /// equal to the compressed tag's `0x02`/`0x03` parity (the `serialize33`/
+    /// `serialize65` contract in vendored `eckey_impl.h:38-55`). Each type is
+    /// checked on a compressed-stored key and on an uncompressed-stored key;
+    /// the byte-correspondence oracle is uniform because `Recovery.PublicKey`
+    /// exposes no `xonly`/`parity` accessor to compare against instead.
+    @Test("uncompressedRepresentation encodes the same point on every public-key type")
+    func uncompressedRepresentationEncodesSamePoint() throws {
+        // Signing — companion key stores compressed; re-ingest 65 bytes for
+        // the uncompressed-stored case.
+        let signingCompressed = try P256K.Signing.PrivateKey().publicKey
+        expectSEC1SamePoint(
+            compressed: signingCompressed.dataRepresentation,
+            uncompressed: signingCompressed.uncompressedRepresentation,
+            "Signing.PublicKey compressed-stored"
+        )
+        let signingUncompressed = try P256K.Signing.PublicKey(
+            dataRepresentation: signingCompressed.uncompressedRepresentation,
+            format: .uncompressed
+        )
+        #expect(
+            signingUncompressed.uncompressedRepresentation == signingUncompressed.dataRepresentation,
+            "Signing.PublicKey uncompressed-stored: accessor must equal stored bytes"
+        )
+        #expect(
+            signingUncompressed.uncompressedRepresentation == signingCompressed.uncompressedRepresentation,
+            "Signing.PublicKey: same point across stored formats"
+        )
+
+        // Schnorr — the companion key stores *uncompressed* internally
+        // (`secp256k1_keypair_create` requires it), so it doubles as this leg's
+        // uncompressed-stored case. A compressed-stored Schnorr key of the same
+        // point comes from the same scalar re-derived through the Signing
+        // wrapper's 33-byte form.
+        let schnorrPrivateKey = try P256K.Schnorr.PrivateKey()
+        let schnorrUncompressedStored = schnorrPrivateKey.publicKey
+        let sameScalarSigningPrivateKey = try P256K.Signing.PrivateKey(
+            dataRepresentation: schnorrPrivateKey.dataRepresentation
+        )
+        let schnorrCompressed = try P256K.Schnorr.PublicKey(
+            dataRepresentation: sameScalarSigningPrivateKey.publicKey.dataRepresentation,
+            format: .compressed
+        )
+        expectSEC1SamePoint(
+            compressed: schnorrCompressed.dataRepresentation,
+            uncompressed: schnorrCompressed.uncompressedRepresentation,
+            "Schnorr.PublicKey compressed-stored"
+        )
+        #expect(
+            schnorrUncompressedStored.uncompressedRepresentation == schnorrUncompressedStored.dataRepresentation,
+            "Schnorr.PublicKey uncompressed-stored: accessor must equal stored bytes"
+        )
+        #expect(
+            schnorrUncompressedStored.uncompressedRepresentation == schnorrCompressed.uncompressedRepresentation,
+            "Schnorr.PublicKey: same point across stored formats"
+        )
+
+        // KeyAgreement — companion key stores compressed.
+        let keyAgreementCompressed = try P256K.KeyAgreement.PrivateKey().publicKey
+        expectSEC1SamePoint(
+            compressed: keyAgreementCompressed.dataRepresentation,
+            uncompressed: keyAgreementCompressed.uncompressedRepresentation,
+            "KeyAgreement.PublicKey compressed-stored"
+        )
+        let keyAgreementUncompressed = try P256K.KeyAgreement.PublicKey(
+            dataRepresentation: keyAgreementCompressed.uncompressedRepresentation,
+            format: .uncompressed
+        )
+        #expect(
+            keyAgreementUncompressed.uncompressedRepresentation == keyAgreementUncompressed.dataRepresentation,
+            "KeyAgreement.PublicKey uncompressed-stored: accessor must equal stored bytes"
+        )
+        #expect(
+            keyAgreementUncompressed.uncompressedRepresentation == keyAgreementCompressed.uncompressedRepresentation,
+            "KeyAgreement.PublicKey: same point across stored formats"
+        )
+
+        // MuSig — the aggregate always stores compressed; a key rebuilt from
+        // 65 bytes is verification-only but serializes the same point.
+        let muSigSigner = try P256K.Schnorr.PrivateKey().publicKey
+        let muSigPeer = try P256K.Schnorr.PrivateKey().publicKey
+        let muSigCompressed = try P256K.MuSig.aggregate([muSigSigner, muSigPeer])
+        expectSEC1SamePoint(
+            compressed: muSigCompressed.dataRepresentation,
+            uncompressed: muSigCompressed.uncompressedRepresentation,
+            "MuSig.PublicKey compressed-stored"
+        )
+        let muSigUncompressed = try P256K.MuSig.PublicKey(
+            dataRepresentation: muSigCompressed.uncompressedRepresentation,
+            format: .uncompressed
+        )
+        #expect(
+            muSigUncompressed.uncompressedRepresentation == muSigUncompressed.dataRepresentation,
+            "MuSig.PublicKey uncompressed-stored: accessor must equal stored bytes"
+        )
+        #expect(
+            muSigUncompressed.uncompressedRepresentation == muSigCompressed.uncompressedRepresentation,
+            "MuSig.PublicKey: same point across stored formats"
+        )
+
+        // Recovery — derivation-only: the stored format comes from the
+        // recovery initializer, so both forms are built from one signature.
+        let recoveryPrivateKey = try P256K.Recovery.PrivateKey()
+        let message = Data("same-point".utf8)
+        let recoverable = recoveryPrivateKey.signature(for: message)
+        let recoveryCompressed = try P256K.Recovery.PublicKey(message, signature: recoverable)
+        expectSEC1SamePoint(
+            compressed: recoveryCompressed.dataRepresentation,
+            uncompressed: recoveryCompressed.uncompressedRepresentation,
+            "Recovery.PublicKey compressed-stored"
+        )
+        // A recovered key is the signer's public key by construction — the
+        // same point the companion `publicKey` derives, byte-for-byte.
+        #expect(
+            recoveryCompressed.dataRepresentation == recoveryPrivateKey.publicKey.dataRepresentation,
+            "Recovery.PublicKey: recovered key must equal the signer's companion public key"
+        )
+        #expect(
+            recoveryCompressed.uncompressedRepresentation == recoveryPrivateKey.publicKey.uncompressedRepresentation,
+            "Recovery.PublicKey: recovered key must serialize to the same 65 bytes as the companion key"
+        )
+        let recoveryUncompressed = try P256K.Recovery.PublicKey(message, signature: recoverable, format: .uncompressed)
+        #expect(
+            recoveryUncompressed.uncompressedRepresentation == recoveryUncompressed.dataRepresentation,
+            "Recovery.PublicKey uncompressed-stored: accessor must equal stored bytes"
+        )
+        #expect(
+            recoveryUncompressed.uncompressedRepresentation == recoveryCompressed.uncompressedRepresentation,
+            "Recovery.PublicKey: same point across stored formats"
+        )
+    }
+
+    /// Asserts the SEC1 same-point correspondence between a key's compressed
+    /// `dataRepresentation` (33 bytes, `0x02`/`0x03` tag) and its
+    /// `uncompressedRepresentation` (65 bytes, `0x04` tag): same X coordinate
+    /// in bytes 1–32, and the last byte's low bit equal to the compressed
+    /// tag's parity bit. Guards on both lengths first so a wrong-size argument
+    /// fails its expectation instead of trapping — or silently mis-oracling —
+    /// on a later index. (A 65-byte `compressed` argument means the caller
+    /// stored uncompressed; that is a test-construction bug, not a key defect.)
+    private func expectSEC1SamePoint(
+        compressed dataRepresentation: Data,
+        uncompressed uncompressedRepresentation: Data,
+        _ label: String
+    ) {
+        #expect(
+            dataRepresentation.count == P256K.Format.compressed.length,
+            "\(label): compressed argument must be the 33-byte stored form"
+        )
+        #expect(
+            uncompressedRepresentation.count == P256K.Format.uncompressed.length,
+            "\(label): must return 65 bytes"
+        )
+        guard dataRepresentation.count == P256K.Format.compressed.length,
+              uncompressedRepresentation.count == P256K.Format.uncompressed.length else {
+            return
+        }
+        #expect(uncompressedRepresentation[0] == 0x04, "\(label): tag must be 0x04")
+        #expect(
+            uncompressedRepresentation[1...32] == dataRepresentation[1...32],
+            "\(label): bytes 1–32 must equal the compressed X coordinate"
+        )
+        #expect(
+            uncompressedRepresentation[64] & 1 == dataRepresentation[0] & 1,
+            "\(label): last byte's parity must equal the compressed tag's parity"
+        )
+    }
 }

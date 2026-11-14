@@ -10,11 +10,11 @@ commit order.
 
 ## Accessors — the replacement lands first
 
-- [ ] T001 [P] `uncompressedRepresentation` on `Recovery.PublicKey` — same delegation
+- [x] T001 [P] `uncompressedRepresentation` on `Recovery.PublicKey` — same delegation
   to stored serialization as the two existing accessors · `Sources/P256K/Recovery/Recovery.swift`
-- [ ] T002 [P] `uncompressedRepresentation` on `Schnorr.PublicKey` · `Sources/P256K/Schnorr/Schnorr+PublicKey.swift`
-- [ ] T003 [P] `uncompressedRepresentation` on `MuSig.PublicKey` · `Sources/P256K/MuSig/MuSig.swift`
-- [ ] T004 Same-point tests: each new accessor returns 65 bytes encoding the same
+- [x] T002 [P] `uncompressedRepresentation` on `Schnorr.PublicKey` · `Sources/P256K/Schnorr/Schnorr+PublicKey.swift`
+- [x] T003 [P] `uncompressedRepresentation` on `MuSig.PublicKey` · `Sources/P256K/MuSig/MuSig.swift`
+- [x] T004 Same-point tests: each new accessor returns 65 bytes encoding the same
   point as `dataRepresentation`, verified by SEC1 byte correspondence — `0x04` tag,
   bytes 1–32 equal the key's compressed X coordinate, byte 64's low bit equals the
   `0x02`/`0x03` tag parity (the `serialize33`/`serialize65` contract in vendored

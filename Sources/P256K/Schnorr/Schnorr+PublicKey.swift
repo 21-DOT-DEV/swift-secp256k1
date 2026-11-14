@@ -36,6 +36,7 @@ import libsecp256k1
         ///
         /// ### Serialized Forms
         /// - ``dataRepresentation``
+        /// - ``uncompressedRepresentation``
         /// - ``format``
         /// - ``xonly``
         struct PublicKey {
@@ -70,6 +71,16 @@ import libsecp256k1
             /// consume the x-only form instead — use ``xonly`` in that case.
             public var dataRepresentation: Data {
                 baseKey.dataRepresentation
+            }
+
+            /// The 65-byte uncompressed serialization of this public key (`0x04` prefix +
+            /// 32-byte X + 32-byte Y), regardless of the key's stored ``format``.
+            ///
+            /// Always returns the uncompressed SEC1 form via
+            /// `secp256k1_ec_pubkey_serialize` with `SECP256K1_EC_UNCOMPRESSED`. Useful when
+            /// interoperating with systems that require the full `(x, y)` point encoding.
+            public var uncompressedRepresentation: Data {
+                baseKey.uncompressedRepresentation
             }
 
             /// The 32-byte x-only public key (X coordinate only) derived from this key for

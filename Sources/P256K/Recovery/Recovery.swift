@@ -158,6 +158,7 @@ import libsecp256k1
             ///
             /// ### Inspection
             /// - ``dataRepresentation``
+            /// - ``uncompressedRepresentation``
             public struct PublicKey {
                 /// The internal `PublicKeyImplementation` backing this recovered key.
                 ///
@@ -174,6 +175,16 @@ import libsecp256k1
                 /// inherited from the `format:` argument passed to the recovery initializer.
                 public var dataRepresentation: Data {
                     baseKey.dataRepresentation
+                }
+
+                /// The 65-byte uncompressed serialization of this public key (`0x04` prefix
+                /// + 32-byte X + 32-byte Y).
+                ///
+                /// Always returns the uncompressed form regardless of the key's stored
+                /// ``P256K/Format``. Useful when interoperating with systems that require
+                /// the full `(x, y)` point encoding.
+                public var uncompressedRepresentation: Data {
+                    baseKey.uncompressedRepresentation
                 }
 
                 /// Recovers the signer's public key from a message and its ``ECDSASignature`` via `secp256k1_ecdsa_recover`, hashing `data` with SHA-256 first.
