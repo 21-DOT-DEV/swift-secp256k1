@@ -412,6 +412,9 @@ struct MuSigTestSuite {
     /// the process. The reparse is deleted outright: the tweak writes the
     /// output key purely from the key-aggregation cache, so the parse's
     /// result was never consumed; `format` sizes the output buffer only.
+    /// The `.uncompressed`-stored result is reachable only through the
+    /// deprecated `format:` overload kept until 1.0.
+    @available(*, deprecated)
     @Test("MuSig tweak honors an uncompressed output format")
     func musigTweakUncompressedOutput() throws {
         let privateKeys = try [
@@ -435,7 +438,10 @@ struct MuSigTestSuite {
     /// The reverse direction of the same mismatch: a tweak that stores
     /// `.uncompressed` bytes — now reachable for the first time — must still
     /// tweak correctly with the default `.compressed` output, proving the
-    /// stored format never leaks into the next call either.
+    /// stored format never leaks into the next call either. The uncompressed-stored,
+    /// cache-carrying key is reachable only through the deprecated `format:`
+    /// overload kept until 1.0.
+    @available(*, deprecated)
     @Test("MuSig tweak on an uncompressed-stored key stays tweakable")
     func musigTweakChainedFormats() throws {
         let aggregate = try P256K.MuSig.aggregate([P256K.Schnorr.PrivateKey().publicKey])
@@ -473,7 +479,7 @@ struct MuSigTestSuite {
         ).add(tweak)
 
         #expect(try aggregate.add(tweak).dataRepresentation == oracle.dataRepresentation)
-        #expect(try aggregate.add(tweak, format: .uncompressed).dataRepresentation == oracle.uncompressedRepresentation)
+        #expect(try aggregate.add(tweak).uncompressedRepresentation == oracle.uncompressedRepresentation)
     }
 
     /// A `MuSig.PublicKey` rebuilt via `init(dataRepresentation:)`

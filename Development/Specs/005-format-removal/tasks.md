@@ -77,12 +77,23 @@ nothing removed yet; `swift test` green.
 
 ## Bare operations
 
-- [ ] T008 `add(_:)`, `multiply(_:)` on `Signing.PublicKey`; `add(_:)` on
+- [x] T008 `add(_:)`, `multiply(_:)` on `Signing.PublicKey`; `add(_:)` on
   `MuSig.PublicKey` — compressed storage always; deprecate the `format:` overloads
   via `message:` naming `uncompressedRepresentation` as the `.uncompressed`
   migration, keeping current bodies so `.uncompressed` still stores uncompressed
-  until 1.0 · `Sources/P256K/ECDSA/ECDSA+Tweak.swift`,
-  `Sources/P256K/MuSig/MuSig+Tweak.swift`
+  until 1.0. Test policy (subject rule): tests whose subject is the deprecated
+  signature keep their calls under `@available(*, deprecated)` marks —
+  `musigTweakUncompressedOutput`, `musigTweakChainedFormats`,
+  `musigUncompressedTweakExitsNormally`, `publicKeyOperationsHonorBothFormats`;
+  incidental callers migrate (`musigTweakMatchesPublicKeyOracle`'s uncompressed
+  oracle line; the five `init(dataRepresentation:format:)` calls T004 left in
+  `TweakTests.swift` move to `init(dataRepresentation:)`, output-identical);
+  parity pins for the three deprecated ops land in `DeprecatedAliasTests.swift` ·
+  `Sources/P256K/ECDSA/ECDSA+Tweak.swift`,
+  `Sources/P256K/MuSig/MuSig+Tweak.swift`,
+  `Tests/P256KTests/DeprecatedAliasTests.swift`,
+  `Tests/P256KTests/TweakTests.swift`, `Tests/P256KTests/MusigTests.swift`,
+  `Tests/P256KTests/InvariantTests.swift`
 - [ ] T009 `combine(_:)` on `Signing.PublicKey`; deprecate `combine(_:format:)` via
   `message:` naming `uncompressedRepresentation` for `.uncompressed` callers,
   keeping the body until 1.0 · `Sources/P256K/Combine.swift`

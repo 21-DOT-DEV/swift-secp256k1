@@ -107,13 +107,45 @@ public extension P256K.Signing.PublicKey {
     /// available.
     ///
     /// - Parameter tweak: A 32-byte tweak scalar; must not produce the point at infinity.
-    /// - Parameter format: The serialization format of the returned ``PublicKey``; defaults
-    ///   to `.compressed`.
+    /// - Returns: A new ``PublicKey`` equal to the original key plus the tweak times the
+    ///   generator, always stored ``P256K/Format/compressed`` — apply
+    ///   ``uncompressedRepresentation`` for 65-byte output.
+    /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+    ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
+    ///   result is the point at infinity.
+    func add(_ tweak: [UInt8]) throws -> Self {
+        let context = P256K.Context.rawRepresentation
+        var pubKey = baseKey.rawRepresentation
+        var pubKeyLen = P256K.Format.compressed.length
+        var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
+
+        guard tweak.count == P256K.ByteLength.dimension else {
+            throw secp256k1Error.incorrectParameterSize
+        }
+
+        guard secp256k1_ec_pubkey_tweak_add(context, &pubKey, tweak).boolValue else {
+            throw secp256k1Error.underlyingCryptoError
+        }
+        guard secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, P256K.Format.compressed.rawValue).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on tweaked key — library bug")
+        }
+
+        return Self(baseKey: PublicKeyImplementation(validatedBytes: pubKeyBytes, format: .compressed))
+    }
+
+    /// Deprecated variant of ``add(_:)`` — the output serialization format is a
+    /// boundary concern, not an operation input. Identical to ``add(_:)`` for
+    /// `.compressed`; for `.uncompressed` output, call ``add(_:)`` and read
+    /// ``uncompressedRepresentation``.
+    ///
+    /// - Parameter tweak: A 32-byte tweak scalar; must not produce the point at infinity.
+    /// - Parameter format: The serialization format of the returned ``PublicKey``.
     /// - Returns: A new ``PublicKey`` equal to the original key plus the tweak times the
     ///   generator.
     /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
     ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
     ///   result is the point at infinity.
+    @available(*, deprecated, message: "use add(_:) — uncompressed output via uncompressedRepresentation")
     func add(_ tweak: [UInt8], format: P256K.Format = .compressed) throws -> Self {
         let context = P256K.Context.rawRepresentation
         var pubKey = baseKey.rawRepresentation
@@ -141,13 +173,45 @@ public extension P256K.Signing.PublicKey {
     /// the same tweak to both forms yields a valid `(sk', pk')` pair.
     ///
     /// - Parameter tweak: A 32-byte tweak scalar; must be non-zero.
-    /// - Parameter format: The serialization format of the returned ``PublicKey``; defaults
-    ///   to `.compressed`.
+    /// - Returns: A new ``PublicKey`` equal to the original key multiplied by the tweak
+    ///   scalar, always stored ``P256K/Format/compressed`` — apply
+    ///   ``uncompressedRepresentation`` for 65-byte output.
+    /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+    ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
+    ///   result is the point at infinity.
+    func multiply(_ tweak: [UInt8]) throws -> Self {
+        let context = P256K.Context.rawRepresentation
+        var pubKey = baseKey.rawRepresentation
+        var pubKeyLen = P256K.Format.compressed.length
+        var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
+
+        guard tweak.count == P256K.ByteLength.dimension else {
+            throw secp256k1Error.incorrectParameterSize
+        }
+
+        guard secp256k1_ec_pubkey_tweak_mul(context, &pubKey, tweak).boolValue else {
+            throw secp256k1Error.underlyingCryptoError
+        }
+        guard secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, P256K.Format.compressed.rawValue).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on tweaked key — library bug")
+        }
+
+        return Self(baseKey: PublicKeyImplementation(validatedBytes: pubKeyBytes, format: .compressed))
+    }
+
+    /// Deprecated variant of ``multiply(_:)`` — the output serialization format is a
+    /// boundary concern, not an operation input. Identical to ``multiply(_:)`` for
+    /// `.compressed`; for `.uncompressed` output, call ``multiply(_:)`` and read
+    /// ``uncompressedRepresentation``.
+    ///
+    /// - Parameter tweak: A 32-byte tweak scalar; must be non-zero.
+    /// - Parameter format: The serialization format of the returned ``PublicKey``.
     /// - Returns: A new ``PublicKey`` equal to the original key multiplied by the tweak
     ///   scalar.
     /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
     ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid or the
     ///   result is the point at infinity.
+    @available(*, deprecated, message: "use multiply(_:) — uncompressed output via uncompressedRepresentation")
     func multiply(_ tweak: [UInt8], format: P256K.Format = .compressed) throws -> Self {
         let context = P256K.Context.rawRepresentation
         var pubKey = baseKey.rawRepresentation

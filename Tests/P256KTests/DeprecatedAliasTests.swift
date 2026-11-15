@@ -226,4 +226,63 @@ struct DeprecatedAliasTestSuite {
             }
         }
     #endif
+
+    /// Spec 005 (T008) — the deprecated `add(_:format:)` / `multiply(_:format:)`
+    /// keep their signatures' semantics: `.compressed` is byte-identical to
+    /// the new bare overloads, `.uncompressed` still stores a 65-byte key
+    /// encoding the same point (the deprecated path remains the only way to
+    /// store uncompressed until 1.0).
+    @available(*, deprecated)
+    @Test("Deprecated Signing tweak overloads match bare calls and preserve stored format")
+    func signingTweakAliases() throws {
+        let publicKey = try P256K.Signing.PrivateKey().publicKey
+        let tweak = [UInt8](repeating: 0x01, count: P256K.ByteLength.dimension)
+
+        let compressedAdd = try publicKey.add(tweak)
+        #expect(try publicKey.add(tweak, format: .compressed).dataRepresentation == compressedAdd.dataRepresentation)
+        let uncompressedAdd = try publicKey.add(tweak, format: .uncompressed)
+        #expect(uncompressedAdd.format == .uncompressed)
+        #expect(uncompressedAdd.dataRepresentation == compressedAdd.uncompressedRepresentation)
+
+        let compressedMultiply = try publicKey.multiply(tweak)
+        #expect(try publicKey.multiply(tweak, format: .compressed).dataRepresentation == compressedMultiply.dataRepresentation)
+        let uncompressedMultiply = try publicKey.multiply(tweak, format: .uncompressed)
+        #expect(uncompressedMultiply.format == .uncompressed)
+        #expect(uncompressedMultiply.dataRepresentation == compressedMultiply.uncompressedRepresentation)
+    }
+
+    #if Xcode || ENABLE_MODULE_MUSIG
+        /// Spec 005 (T008) — deprecated `add(_:format:)` keeps its semantics on
+        /// the aggregate too: `.compressed` matches the bare overload, `.uncompressed`
+        /// still stores a 65-byte key, and the updated key-aggregation cache still
+        /// propagates — the uncompressed-stored result accepts a second tweak,
+        /// which the bare `add(_:)` then stores compressed.
+        @available(*, deprecated)
+        @Test("Deprecated MuSig add matches bare call, preserves stored format and cache")
+        func musigTweakAlias() throws {
+            let aggregate = try P256K.MuSig.aggregate([
+                P256K.Schnorr.PrivateKey().publicKey,
+                P256K.Schnorr.PrivateKey().publicKey
+            ])
+            let tweak = [UInt8](repeating: 0x01, count: P256K.ByteLength.dimension)
+            let secondTweak = [UInt8](repeating: 0x02, count: P256K.ByteLength.dimension)
+
+            let compressed = try aggregate.add(tweak)
+            #expect(try aggregate.add(tweak, format: .compressed).dataRepresentation == compressed.dataRepresentation)
+            let uncompressed = try aggregate.add(tweak, format: .uncompressed)
+            #expect(uncompressed.format == .uncompressed)
+            #expect(uncompressed.dataRepresentation == compressed.uncompressedRepresentation)
+
+            let rechained = try uncompressed.add(secondTweak)
+            let expectedRechained = try compressed.add(secondTweak)
+            #expect(rechained.format == .compressed)
+            #expect(rechained.dataRepresentation == expectedRechained.dataRepresentation)
+
+            // Signing-session checks resolve signers from `participants` — a
+            // tweak that dropped the list would silently break later sessions.
+            for tweaked in [compressed, uncompressed, rechained] {
+                #expect(tweaked.participants.map(\.dataRepresentation) == aggregate.participants.map(\.dataRepresentation))
+            }
+        }
+    #endif
 }

@@ -97,7 +97,10 @@ struct InvariantTestSuite {
         /// `invariantFailure` — a documented call shape that terminated the
         /// process. The exact reported call must now exit normally; running
         /// it in a child process keeps a regression an attributed failure
-        /// instead of a whole-runner abort.
+        /// instead of a whole-runner abort. The call exercises the deprecated
+        /// `format:` overload kept until 1.0 — the regression's reproducer
+        /// must not be rewritten.
+        @available(*, deprecated)
         @Test("MuSig uncompressed-format tweak exits normally on valid input")
         func musigUncompressedTweakExitsNormally() async {
             await #expect(processExitsWith: .success) {

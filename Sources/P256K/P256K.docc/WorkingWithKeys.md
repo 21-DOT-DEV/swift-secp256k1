@@ -240,7 +240,7 @@ The `TapTweak` tag provides domain separation so the same offset cannot be reint
 
 ### Tweaking MuSig2 aggregate keys
 
-A BIP-327 ``P256K/MuSig`` aggregate has its own tweak overloads — `add(_:format:)` on the full public key and `add(_:)` on the x-only form — that call `secp256k1_musig_pubkey_ec_tweak_add` and `secp256k1_musig_pubkey_xonly_tweak_add` respectively. Unlike a plain key tweak, these update the BIP-327 key-aggregation cache in place, which is required if downstream MuSig partial signatures must verify against the tweaked aggregate. Use the full form for BIP-32 chaining and the x-only form for Taproot output construction:
+A BIP-327 ``P256K/MuSig`` aggregate has its own tweak overloads — `add(_:)` on the full public key and `add(_:)` on its x-only form — that call `secp256k1_musig_pubkey_ec_tweak_add` and `secp256k1_musig_pubkey_xonly_tweak_add` respectively. The full-key tweak stores the compressed form; apply `uncompressedRepresentation` for the 65-byte encoding. Unlike a plain key tweak, these update the BIP-327 key-aggregation cache in place, which is required if downstream MuSig partial signatures must verify against the tweaked aggregate. Use the full form for BIP-32 chaining and the x-only form for Taproot output construction:
 
 ```swift
 import P256K

@@ -28,11 +28,71 @@ import libsecp256k1
         /// directly instead.
         ///
         /// - Parameter tweak: A 32-byte tweak scalar; must pass `secp256k1_ec_seckey_verify` and must not negate the aggregate key.
-        /// - Parameter format: The serialization format of the returned ``PublicKey``; defaults to `.compressed`.
+        /// - Returns: A new ``PublicKey`` equal to the original aggregate key plus the tweak times the
+        ///   generator, always stored ``P256K/Format/compressed`` — apply ``uncompressedRepresentation``
+        ///   for 65-byte output.
+        /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
+        ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid, the result is the
+        ///   point at infinity, or this key lacks a usable key aggregation cache.
+        func add(_ tweak: [UInt8]) throws -> Self {
+            guard tweak.count == P256K.ByteLength.dimension else {
+                throw secp256k1Error.incorrectParameterSize
+            }
+
+            // `keyagg_cache_load` checks the blob's magic prefix inside `ARG_CHECK`,
+            // which aborts on a zeroed or malformed struct — a missing or corrupt
+            // cache must throw before the copy, not reach upstream.
+            guard MuSigOpaqueState.isValidKeyAggregationCache(keyAggregationCache) else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+
+            let context = P256K.Context.rawRepresentation
+            // Output-only: the tweak writes the tweaked key purely from the
+            // key-aggregation cache; the stored serialization never feeds it.
+            var pubKey = secp256k1_pubkey()
+            var cache = secp256k1_musig_keyagg_cache()
+            var pubKeyLen = P256K.Format.compressed.length
+            var pubKeyBytes = [UInt8](repeating: 0, count: pubKeyLen)
+
+            keyAggregationCache.copyToUnsafeMutableBytes(of: &cache.data)
+
+            // Only the tweak can legitimately fail (invalid scalar or
+            // point-at-infinity result).
+            guard secp256k1_musig_pubkey_ec_tweak_add(context, &pubKey, &cache, tweak).boolValue else {
+                throw secp256k1Error.underlyingCryptoError
+            }
+            guard secp256k1_ec_pubkey_serialize(
+                context,
+                &pubKeyBytes,
+                &pubKeyLen,
+                &pubKey,
+                P256K.Format.compressed.rawValue
+            ).boolValue else {
+                P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on tweaked key — library bug")
+            }
+
+            return Self(
+                baseKey: PublicKeyImplementation(
+                    validatedBytes: pubKeyBytes,
+                    format: .compressed,
+                    cache: Swift.withUnsafeBytes(of: cache.data) { [UInt8]($0) }
+                ),
+                participants: participants
+            )
+        }
+
+        /// Deprecated variant of ``add(_:)`` — the output serialization format is a
+        /// boundary concern, not an operation input. Identical to ``add(_:)`` for
+        /// `.compressed`; for `.uncompressed` output, call ``add(_:)`` and read
+        /// ``uncompressedRepresentation``.
+        ///
+        /// - Parameter tweak: A 32-byte tweak scalar; must pass `secp256k1_ec_seckey_verify` and must not negate the aggregate key.
+        /// - Parameter format: The serialization format of the returned ``PublicKey``.
         /// - Returns: A new ``PublicKey`` equal to the original aggregate key plus the tweak times the generator.
         /// - Throws: ``secp256k1Error/incorrectParameterSize`` if `tweak` is not exactly 32 bytes;
         ///   ``secp256k1Error/underlyingCryptoError`` if the tweak is invalid, the result is the
         ///   point at infinity, or this key lacks a usable key aggregation cache.
+        @available(*, deprecated, message: "use add(_:) — uncompressed output via uncompressedRepresentation")
         func add(_ tweak: [UInt8], format: P256K.Format = .compressed) throws -> Self {
             guard tweak.count == P256K.ByteLength.dimension else {
                 throw secp256k1Error.incorrectParameterSize

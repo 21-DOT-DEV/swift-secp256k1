@@ -102,7 +102,9 @@ struct TweakTestSuite {
     /// as output-only — the caller's chosen output format can never reach
     /// the input side. `uncompressedRepresentation` re-serializes the point
     /// uncompressed regardless of stored format, so it is the same-point
-    /// oracle across formats.
+    /// oracle across formats. Exercises the deprecated `format:` overloads
+    /// kept until 1.0 — bare-call paths are covered identically.
+    @available(*, deprecated)
     @Test("Public key operations honor both output formats")
     func publicKeyOperationsHonorBothFormats() throws {
         let privateKey = try P256K.Signing.PrivateKey()
@@ -130,8 +132,7 @@ struct TweakTestSuite {
         // same points under the default compressed output — the stored
         // format must not reach the input side either.
         let uncompressedStored = try P256K.Signing.PublicKey(
-            dataRepresentation: publicKey.uncompressedRepresentation,
-            format: .uncompressed
+            dataRepresentation: publicKey.uncompressedRepresentation
         )
         let addFromUncompressed = try uncompressedStored.add(tweak)
         let multiplyFromUncompressed = try uncompressedStored.multiply(tweak)
@@ -161,8 +162,7 @@ struct TweakTestSuite {
             "Signing.PublicKey compressed-stored"
         )
         let signingUncompressed = try P256K.Signing.PublicKey(
-            dataRepresentation: signingCompressed.uncompressedRepresentation,
-            format: .uncompressed
+            dataRepresentation: signingCompressed.uncompressedRepresentation
         )
         #expect(
             signingUncompressed.uncompressedRepresentation == signingUncompressed.dataRepresentation,
@@ -184,8 +184,7 @@ struct TweakTestSuite {
             dataRepresentation: schnorrPrivateKey.dataRepresentation
         )
         let schnorrCompressed = try P256K.Schnorr.PublicKey(
-            dataRepresentation: sameScalarSigningPrivateKey.publicKey.dataRepresentation,
-            format: .compressed
+            dataRepresentation: sameScalarSigningPrivateKey.publicKey.dataRepresentation
         )
         expectSEC1SamePoint(
             compressed: schnorrCompressed.dataRepresentation,
@@ -209,8 +208,7 @@ struct TweakTestSuite {
             "KeyAgreement.PublicKey compressed-stored"
         )
         let keyAgreementUncompressed = try P256K.KeyAgreement.PublicKey(
-            dataRepresentation: keyAgreementCompressed.uncompressedRepresentation,
-            format: .uncompressed
+            dataRepresentation: keyAgreementCompressed.uncompressedRepresentation
         )
         #expect(
             keyAgreementUncompressed.uncompressedRepresentation == keyAgreementUncompressed.dataRepresentation,
@@ -232,8 +230,7 @@ struct TweakTestSuite {
             "MuSig.PublicKey compressed-stored"
         )
         let muSigUncompressed = try P256K.MuSig.PublicKey(
-            dataRepresentation: muSigCompressed.uncompressedRepresentation,
-            format: .uncompressed
+            dataRepresentation: muSigCompressed.uncompressedRepresentation
         )
         #expect(
             muSigUncompressed.uncompressedRepresentation == muSigUncompressed.dataRepresentation,
