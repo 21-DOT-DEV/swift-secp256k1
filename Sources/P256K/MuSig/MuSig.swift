@@ -105,6 +105,7 @@ import libsecp256k1
             ///
             /// ### Reconstruction
             /// - ``init(xonlyKey:)``
+            /// - ``init(dataRepresentation:)``
             /// - ``init(dataRepresentation:format:)``
             public struct PublicKey {
                 /// The internal `PublicKeyImplementation` backing this aggregate, produced
@@ -128,8 +129,9 @@ import libsecp256k1
                 /// ``P256K/MuSig/aggregateSignatures(_:for:publicNonceAggregate:xonlyKeyAggregate:)``
                 /// can require the bundled identities to equal this list as a multiset
                 /// (duplicate keys in `aggregate(_:)` are legal and keep their own slots).
-                /// Empty on keys rebuilt via ``init(dataRepresentation:format:)``, whose
-                /// missing-cache throw fires before any membership question.
+                /// Empty on keys rebuilt via ``init(dataRepresentation:)`` or
+                /// ``init(dataRepresentation:format:)``, whose missing-cache throw fires
+                /// before any membership question.
                 let participants: [P256K.Schnorr.PublicKey]
 
                 /// The serialized public key bytes in the key's ``format``.
@@ -155,8 +157,9 @@ import libsecp256k1
                 /// The serialization format of this public key: `.compressed` (33 bytes) or
                 /// `.uncompressed` (65 bytes).
                 ///
-                /// Inherited from whichever format was used when aggregating or reconstructing
-                /// the key. Most Bitcoin / Taproot workflows use ``P256K/Format/compressed``;
+                /// Inherited from whichever format was used — or inferred from the input
+                /// byte count — when aggregating or reconstructing the key. Most Bitcoin /
+                /// Taproot workflows use ``P256K/Format/compressed``;
                 /// ``P256K/Format/uncompressed`` is supported for interoperability with
                 /// legacy systems that require the full `(x, y)` point encoding.
                 public var format: P256K.Format {
@@ -232,6 +235,34 @@ import libsecp256k1
                     )
                     self.baseKey = PublicKeyImplementation(xonlyKey: key)
                     self.participants = xonlyKey.participants
+                }
+
+                /// Creates a MuSig aggregate public key from serialized bytes,
+                /// inferring the serialization format from the byte count.
+                ///
+                /// The reconstructed key verifies signatures but cannot join a signing
+                /// session or take MuSig tweaks — the key-aggregation session state lives
+                /// in an upstream struct with no blessed serialization, so it exists only
+                /// on keys produced by ``aggregate(_:)`` (or a MuSig tweak of one).
+                /// Re-aggregate the participant public keys, then re-apply any tweaks, to
+                /// resume signing.
+                ///
+                /// Full SEC1 public keys are self-describing: 33 bytes stores
+                /// `.compressed`, 65 bytes stores `.uncompressed` (see ``format``).
+                /// Whatever `secp256k1_ec_pubkey_parse` accepts at each length is
+                /// ingested — at 65 bytes that includes legacy hybrid `0x06`/`0x07`
+                /// forms, which ``dataRepresentation`` echoes back as ingested while
+                /// ``uncompressedRepresentation`` always emits the canonical `0x04`
+                /// encoding.
+                ///
+                /// - Parameter data: Serialized public key bytes; must be 33 or 65 bytes.
+                /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is neither 33
+                ///   nor 65 bytes; ``secp256k1Error/underlyingCryptoError`` if parsing via
+                ///   `secp256k1_ec_pubkey_parse` fails.
+                public init<D: ContiguousBytes>(dataRepresentation data: D) throws {
+                    let format = try P256K.Format.inferred(serializedPublicKeyCount: data.withUnsafeBytes { $0.count })
+                    self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
+                    self.participants = []
                 }
 
                 /// Creates a MuSig aggregate public key from serialized bytes.

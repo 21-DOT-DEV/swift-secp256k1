@@ -41,7 +41,7 @@ nothing removed yet; `swift test` green.
   `Sources/P256K/Keys/PrivateKeyImplementation.swift`,
   `Sources/P256K/Keys/XonlyKeyImplementation.swift`,
   `Tests/P256KTests/FormatInferenceTests.swift`
-- [ ] T006 `init(dataRepresentation:)` on the four byte-describing public-key types
+- [x] T006 `init(dataRepresentation:)` on the four byte-describing public-key types
   (`Signing`, `Schnorr`, `MuSig`, `KeyAgreement`) delegating through T005 ·
   `Sources/P256K/ECDSA/ECDSA+PublicKey.swift`, `Sources/P256K/Schnorr/Schnorr+PublicKey.swift`,
   `Sources/P256K/MuSig/MuSig.swift`, `Sources/P256K/ECDH.swift`

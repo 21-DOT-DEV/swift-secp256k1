@@ -28,6 +28,7 @@ public extension P256K.Signing {
     /// ## Topics
     ///
     /// ### Construction
+    /// - ``init(dataRepresentation:)``
     /// - ``init(dataRepresentation:format:)``
     /// - ``init(xonlyKey:)``
     /// - ``init(pemRepresentation:)``
@@ -81,8 +82,9 @@ public extension P256K.Signing {
         /// The serialization format of this public key: `.compressed` (33 bytes) or
         /// `.uncompressed` (65 bytes).
         ///
-        /// Inherited from the `format:` argument at construction time. See
-        /// ``P256K/Format`` for the SEC1 encoding details and upstream `#define` mapping.
+        /// Inherited from the `format:` argument or inferred from the input byte count
+        /// at construction time. See ``P256K/Format`` for the SEC1 encoding details and
+        /// upstream `#define` mapping.
         public var format: P256K.Format {
             baseKey.format
         }
@@ -131,6 +133,25 @@ public extension P256K.Signing {
                 cache: []
             )
             self.baseKey = PublicKeyImplementation(xonlyKey: key)
+        }
+
+        /// Creates a secp256k1 public key from serialized bytes, inferring the
+        /// serialization format from the byte count.
+        ///
+        /// Full SEC1 public keys are self-describing: 33 bytes stores `.compressed`,
+        /// 65 bytes stores `.uncompressed` (see ``format``). Whatever
+        /// `secp256k1_ec_pubkey_parse` accepts at each length is ingested — at 65
+        /// bytes that includes legacy hybrid `0x06`/`0x07` forms, which
+        /// ``dataRepresentation`` echoes back as ingested while
+        /// ``uncompressedRepresentation`` always emits the canonical `0x04` encoding.
+        ///
+        /// - Parameter data: Serialized public key bytes; must be 33 or 65 bytes.
+        /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is neither 33 nor
+        ///   65 bytes; ``secp256k1Error/underlyingCryptoError`` if parsing via
+        ///   `secp256k1_ec_pubkey_parse` fails.
+        public init<D: ContiguousBytes>(dataRepresentation data: D) throws {
+            let format = try P256K.Format.inferred(serializedPublicKeyCount: data.withUnsafeBytes { $0.count })
+            self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
         }
 
         /// Creates a secp256k1 public key from serialized bytes.

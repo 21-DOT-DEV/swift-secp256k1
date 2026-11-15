@@ -32,6 +32,7 @@ import libsecp256k1
         ///
         /// ### Construction
         /// - ``init(xonlyKey:)``
+        /// - ``init(dataRepresentation:)``
         /// - ``init(dataRepresentation:format:)``
         ///
         /// ### Serialized Forms
@@ -58,9 +59,9 @@ import libsecp256k1
             /// The serialization format of this public key: `.compressed` (33 bytes) or
             /// `.uncompressed` (65 bytes).
             ///
-            /// Inherited from the `format:` argument at construction time. Both forms
-            /// contain the same underlying `(x, y)` point; pick whichever the downstream
-            /// wire format expects.
+            /// Inherited from the `format:` argument or inferred from the input byte
+            /// count at construction time. Both forms contain the same underlying
+            /// `(x, y)` point; pick whichever the downstream wire format expects.
             public var format: P256K.Format {
                 baseKey.format
             }
@@ -117,6 +118,26 @@ import libsecp256k1
                     cache: xonlyKey.cache.byteArray
                 )
                 self.baseKey = PublicKeyImplementation(xonlyKey: key)
+            }
+
+            /// Creates a secp256k1 Schnorr public key from serialized bytes,
+            /// inferring the serialization format from the byte count.
+            ///
+            /// Full SEC1 public keys are self-describing: 33 bytes stores
+            /// `.compressed`, 65 bytes stores `.uncompressed` (see ``format``).
+            /// Whatever `secp256k1_ec_pubkey_parse` accepts at each length is
+            /// ingested — at 65 bytes that includes legacy hybrid `0x06`/`0x07`
+            /// forms, which ``dataRepresentation`` echoes back as ingested while
+            /// ``uncompressedRepresentation`` always emits the canonical `0x04`
+            /// encoding.
+            ///
+            /// - Parameter data: Serialized public key bytes; must be 33 or 65 bytes.
+            /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is neither 33
+            ///   nor 65 bytes; ``secp256k1Error/underlyingCryptoError`` if parsing via
+            ///   `secp256k1_ec_pubkey_parse` fails.
+            public init<D: ContiguousBytes>(dataRepresentation data: D) throws {
+                let format = try P256K.Format.inferred(serializedPublicKeyCount: data.withUnsafeBytes { $0.count })
+                self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
             }
 
             /// Creates a secp256k1 Schnorr public key from serialized bytes.
