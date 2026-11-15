@@ -143,6 +143,29 @@ public extension P256K {
 
             return UInt32(value)
         }
+
+        /// Infers the serialization format of a public key from its serialized
+        /// byte count: 33 bytes maps to ``compressed``, 65 bytes to
+        /// ``uncompressed``.
+        ///
+        /// Full SEC1 public keys are self-describing — `secp256k1_ec_pubkey_parse`
+        /// accepts exactly those two lengths — so the count determines the format
+        /// without a caller-supplied label. This is the boundary rule the
+        /// byte-count-inferring initializers apply.
+        ///
+        /// - Parameter serializedPublicKeyCount: The byte count of a serialized
+        ///   public key.
+        /// - Returns: ``compressed`` for 33 bytes, ``uncompressed`` for 65 bytes.
+        /// - Throws: ``secp256k1Error/incorrectKeySize`` for any other count —
+        ///   the same error an explicit `count == format.length` check produces.
+        @usableFromInline
+        static func inferred(serializedPublicKeyCount count: Int) throws -> Self {
+            switch count {
+            case compressed.length: return .compressed
+            case uncompressed.length: return .uncompressed
+            default: throw secp256k1Error.incorrectKeySize
+            }
+        }
     }
 }
 

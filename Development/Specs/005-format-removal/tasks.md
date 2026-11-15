@@ -28,9 +28,19 @@ nothing removed yet; `swift test` green.
 
 ## Inferred-format initializers
 
-- [ ] T005 Internal `P256K.Format.inferred(serializedPublicKeyCount:)` — 33 →
-  `.compressed`, 65 → `.uncompressed`, else throws `incorrectKeySize` ·
-  `Sources/P256K/Keys/PublicKeyImplementation.swift` (or wherever `P256K.Format` lives)
+- [x] T005 Internal `P256K.Format.inferred(serializedPublicKeyCount:)` — 33 →
+  `.compressed`, 65 → `.uncompressed`, else throws `incorrectKeySize`; the four
+  internal `secp256k1_ec_pubkey_parse` sites that fed `format.length` as the
+  input length now pass the buffer's own count, with the three constructors
+  (both `validatedBytes` inits, recovery `init(_:signature:format:)`) gaining
+  `precondition(buffer.count == format.length)` while
+  `XonlyKeyImplementation.generate`'s existing count guard already covers it —
+  the caller-length-into-stored-parse shape the advisory exposed, retired
+  inside the module · `Sources/P256K/Keys/P256K.swift`,
+  `Sources/P256K/Keys/PublicKeyImplementation.swift`,
+  `Sources/P256K/Keys/PrivateKeyImplementation.swift`,
+  `Sources/P256K/Keys/XonlyKeyImplementation.swift`,
+  `Tests/P256KTests/FormatInferenceTests.swift`
 - [ ] T006 `init(dataRepresentation:)` on the four byte-describing public-key types
   (`Signing`, `Schnorr`, `MuSig`, `KeyAgreement`) delegating through T005 ·
   `Sources/P256K/ECDSA/ECDSA+PublicKey.swift`, `Sources/P256K/Schnorr/Schnorr+PublicKey.swift`,

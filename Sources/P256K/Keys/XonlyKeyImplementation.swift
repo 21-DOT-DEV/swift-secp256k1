@@ -188,7 +188,7 @@ import libsecp256k1
         var xonlyBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
 
         // `publicBytes` is caller-supplied, so the parse can legitimately fail.
-        guard secp256k1_ec_pubkey_parse(context, &pubKey, publicBytes, format.length).boolValue else {
+        guard secp256k1_ec_pubkey_parse(context, &pubKey, publicBytes, publicBytes.count).boolValue else {
             throw secp256k1Error.underlyingCryptoError
         }
         guard secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue else {

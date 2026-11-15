@@ -207,7 +207,8 @@ import libsecp256k1
             cache.isEmpty || cache.count == MuSigOpaqueState.keyAggregationCacheByteCount,
             "Invalid key aggregation cache size"
         )
-        guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, format.length).boolValue else {
+        precondition(bytes.count == format.length, "Public key byte count does not match format")
+        guard secp256k1_ec_pubkey_parse(context, &pubKey, bytes, bytes.count).boolValue else {
             P256K.invariantFailure("secp256k1_ec_pubkey_parse failed for validated public key — library bug")
         }
         guard secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue else {
@@ -287,7 +288,8 @@ import libsecp256k1
             var xonlyPubKey = secp256k1_xonly_pubkey()
             var xonlyBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
 
-            guard secp256k1_ec_pubkey_parse(context, &pubKey, pubBytes, format.length).boolValue else {
+            precondition(pubBytes.count == format.length, "Recovered key byte count does not match format")
+            guard secp256k1_ec_pubkey_parse(context, &pubKey, pubBytes, pubBytes.count).boolValue else {
                 P256K.invariantFailure("secp256k1_ec_pubkey_parse failed for recovered public key — library bug")
             }
             guard secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue else {

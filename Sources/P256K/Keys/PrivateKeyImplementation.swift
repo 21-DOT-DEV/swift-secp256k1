@@ -163,7 +163,8 @@ import libsecp256k1
             P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed for validated private key — library bug")
         }
 
-        guard secp256k1_ec_pubkey_parse(context, &pubKey, pubBytes, format.length).boolValue else {
+        precondition(pubBytes.count == format.length, "Derived public key byte count does not match format")
+        guard secp256k1_ec_pubkey_parse(context, &pubKey, pubBytes, pubBytes.count).boolValue else {
             P256K.invariantFailure("secp256k1_ec_pubkey_parse failed for validated private key — library bug")
         }
         guard secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue else {
