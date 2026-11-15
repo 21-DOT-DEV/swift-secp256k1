@@ -167,29 +167,50 @@ import libsecp256k1
         self.cache = cache
     }
 
-    /// Derives the 32-byte x-only public key from serialized public key bytes using `secp256k1_ec_pubkey_parse`, `secp256k1_xonly_pubkey_from_pubkey`, and `secp256k1_xonly_pubkey_serialize`.
+    /// Derives the 32-byte x-only public key and the canonical serialization
+    /// from serialized public key bytes using `secp256k1_ec_pubkey_parse`,
+    /// `secp256k1_xonly_pubkey_from_pubkey`, `secp256k1_xonly_pubkey_serialize`,
+    /// and `secp256k1_ec_pubkey_serialize`.
+    ///
+    /// `serialized` is the upstream-canonical encoding of the parsed point in
+    /// `format` — never a verbatim copy of `publicBytes`. For 65-byte input the
+    /// parser also accepts the legacy hybrid `0x06`/`0x07` tags
+    /// (`secp256k1_eckey_pubkey_parse`), which `secp256k1_ec_pubkey_serialize`
+    /// can never emit: reserializing collapses every accepted encoding to the
+    /// `0x04` form ``P256K/Format/uncompressed`` denotes, so stored key bytes
+    /// stay canonical regardless of the caller's input tag.
     /// - Parameter publicBytes: Serialized public key bytes whose count must match `format.length`.
     /// - Parameter keyParity: Updated with 0 if the Y coordinate is even, 1 if odd.
     /// - Parameter format: The serialization format of `publicBytes`.
-    /// - Returns: The 32-byte x-only public key (X coordinate).
-    /// - Throws: ``secp256k1Error/incorrectKeySize`` if byte count does not match `format.length`; ``secp256k1Error/underlyingCryptoError`` if `publicBytes` fails public-key parsing.
+    /// - Returns: `xonly` — the 32-byte x-only public key (X coordinate);
+    ///   `serialized` — the canonical `format` serialization of the parsed point.
+    /// - Throws: ``secp256k1Error/incorrectKeySize`` if byte count does not match
+    ///   `format.length`; ``secp256k1Error/underlyingCryptoError`` if `publicBytes`
+    ///   fails public-key parsing.
     static func generate(
         bytes publicBytes: [UInt8],
         keyParity: inout Int32,
         format: P256K.Format
-    ) throws -> [UInt8] {
+    ) throws -> (xonly: [UInt8], serialized: [UInt8]) {
         guard publicBytes.count == format.length else {
             throw secp256k1Error.incorrectKeySize
         }
 
         let context = P256K.Context.rawRepresentation
+        var pubKeyLen: Int = format.length
         var pubKey = secp256k1_pubkey()
+        var pubKeyBytes: [UInt8] = .init(repeating: 0, count: pubKeyLen)
         var xonlyPubKey = secp256k1_xonly_pubkey()
         var xonlyBytes = [UInt8](repeating: 0, count: P256K.ByteLength.privateKey)
 
         // `publicBytes` is caller-supplied, so the parse can legitimately fail.
         guard secp256k1_ec_pubkey_parse(context, &pubKey, publicBytes, publicBytes.count).boolValue else {
             throw secp256k1Error.underlyingCryptoError
+        }
+        // `pubKey` was just populated by a successful parse, so serialization
+        // is infallible; a failure indicates a library bug.
+        guard secp256k1_ec_pubkey_serialize(context, &pubKeyBytes, &pubKeyLen, &pubKey, format.rawValue).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on parsed key — library bug")
         }
         guard secp256k1_xonly_pubkey_from_pubkey(context, &xonlyPubKey, &keyParity, &pubKey).boolValue else {
             P256K.invariantFailure("secp256k1_xonly_pubkey_from_pubkey failed on parsed key — library bug")
@@ -198,6 +219,6 @@ import libsecp256k1
             P256K.invariantFailure("secp256k1_xonly_pubkey_serialize failed on derived key — library bug")
         }
 
-        return xonlyBytes
+        return (xonlyBytes, pubKeyBytes)
     }
 }

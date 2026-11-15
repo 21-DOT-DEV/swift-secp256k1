@@ -38,16 +38,14 @@ struct SilentPaymentsAPIShapeSuite {
         // when B is also being used as an ECDH peer; here only signing-side
         // is needed since b_scan handles ECDH on the receiver side).
         let bobSpendKey = try P256K.Signing.PublicKey(
-            dataRepresentation: bobSpendBytes,
-            format: .compressed
+            dataRepresentation: bobSpendBytes
         )
 
         // For the sender flow, Alice ECDHs against B_scan (Bob's published scan key).
         // Materialize both views of the same compressed point.
         let bobScanPubBytes = bobScanKey.publicKey.dataRepresentation
         let bobScanECDHKey = try P256K.KeyAgreement.PublicKey(
-            dataRepresentation: bobScanPubBytes,
-            format: .compressed
+            dataRepresentation: bobScanPubBytes
         )
 
         // Synthetic 36-byte outpoint (txid is 32 bytes, vout is 4 bytes; little-endian per BIP-352).
@@ -88,8 +86,7 @@ struct SilentPaymentsAPIShapeSuite {
         // Bob extracts A from the transaction. Round-trip via dataRepresentation
         // to produce the KeyAgreement.PublicKey form used for ECDH.
         let summedInputPubKey = try P256K.KeyAgreement.PublicKey(
-            dataRepresentation: aliceSigningKey.publicKey.dataRepresentation,
-            format: .compressed
+            dataRepresentation: aliceSigningKey.publicKey.dataRepresentation
         )
 
         // Step 1: reproduce input_hash with the summed input pubkey (A).

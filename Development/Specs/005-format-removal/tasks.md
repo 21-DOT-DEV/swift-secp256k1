@@ -45,15 +45,32 @@ nothing removed yet; `swift test` green.
   (`Signing`, `Schnorr`, `MuSig`, `KeyAgreement`) delegating through T005 ·
   `Sources/P256K/ECDSA/ECDSA+PublicKey.swift`, `Sources/P256K/Schnorr/Schnorr+PublicKey.swift`,
   `Sources/P256K/MuSig/MuSig.swift`, `Sources/P256K/ECDH.swift`
-- [ ] T007 Deprecate `init(dataRepresentation:format:)` at the same four sites via
-  `renamed:` (output-identical for both labels) — shims check
-  `data.count == format.length` (preserving `incorrectKeySize`) then forward; tests
-  land here: inferred init accepts 33/65 — including a valid 65-byte hybrid
-  `0x06`/`0x07` vector, which parses, stores `.uncompressed`, and reserializes
-  canonical `0x04` `dataRepresentation`/`uncompressedRepresentation` byte-identical
-  to the same point ingested as `0x04` — and rejects other lengths with
-  `incorrectKeySize`; shim `count`/`format` mismatch throws `incorrectKeySize` ·
-  same files + `Tests/P256KTests/DeprecatedAliasTests.swift`
+- [x] T007 Deprecate `init(dataRepresentation:format:)` at the same four sites via
+  `renamed:` (output-identical for both labels) — each shim checks
+  `data.count == format.length` (preserving `incorrectKeySize`) then delegates
+  to `self.init(dataRepresentation:)`. Companion change the task's hybrid
+  assertion requires: `XonlyKeyImplementation.generate` now also reserializes
+  its already-parsed point (`secp256k1_ec_pubkey_serialize` can never emit the
+  hybrid tag), so `PublicKeyImplementation` stores canonical `0x02`/`0x03`/`0x04`
+  bytes rather than the input verbatim — new and deprecated paths canonicalize
+  identically, matching upstream's parse-lenient/emit-canonical architecture and
+  rust-secp256k1's `from_slice`. Tests split by file charter: inferred-init
+  acceptance, hybrid canonicalization, and non-SEC1-length rejection land in
+  `FormatInferenceTests.swift` (including a parity-inconsistent `0x07` vector
+  upstream rejects); shim byte-parity and the `count`/`format` mismatch →
+  `incorrectKeySize` contract land in `DeprecatedAliasTests.swift` under
+  `@available(*, deprecated)` marks; incidental `format:` callers in
+  `AsymmetricTests.swift`, `MusigTests.swift`, `SilentPaymentsAPIShapeTests.swift`
+  migrate to the inferred init; the same migration reaches
+  `Projects/Sources/MuSig2VectorTests/` (14 sites — Tuist-only, invisible to
+  `swift test`) · `Sources/P256K/Keys/XonlyKeyImplementation.swift`,
+  `Sources/P256K/Keys/PublicKeyImplementation.swift`,
+  `Sources/P256K/Keys/PrivateKeyImplementation.swift`, the four public-key files,
+  `Tests/P256KTests/FormatInferenceTests.swift`,
+  `Tests/P256KTests/DeprecatedAliasTests.swift`,
+  `Tests/P256KTests/AsymmetricTests.swift`, `Tests/P256KTests/MusigTests.swift`,
+  `Tests/P256KTests/SilentPaymentsAPIShapeTests.swift`,
+  `Projects/Sources/MuSig2VectorTests/` (8 files)
 
 **Checkpoint:** `PublicKey(dataRepresentation: b)` compiles warning-free for 33- and
 65-byte inputs; mismatched explicit labels still throw `incorrectKeySize` via the shim.
@@ -104,8 +121,11 @@ return byte-identical results (covered in `Tests/P256KTests/DeprecatedAliasTests
   `[Unreleased]` CHANGELOG `Breaking:`/`Deprecated:` entries — including the
   `Breaking:` note that `KeyAgreement.PublicKey(dataRepresentation:)` now accepts
   65-byte input (the `.compressed` default previously rejected it; migration: check
-  `data.count == 33` for a compressed-only filter) · `Sources/P256K/P256K.docc`,
-  `CHANGELOG.md`
+  `data.count == 33` for a compressed-only filter), and a second `Breaking:` note
+  for hybrid input on the *deprecated* `init(dataRepresentation:format:)` paths:
+  pre-deprecation code echoed `0x06`/`0x07` tags through `dataRepresentation`,
+  while the deprecated shims now canonicalize to `0x04` identically to the
+  inferred init · `Sources/P256K/P256K.docc`, `CHANGELOG.md`
 
 **Checkpoint:** plan §5 verification list all pass; `grep 'format: P256K.Format'` shows
 only the enumerated survivors — no *non-deprecated* public parameter besides

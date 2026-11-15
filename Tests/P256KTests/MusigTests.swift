@@ -82,8 +82,7 @@ struct MuSigTestSuite {
     func nonceKeyMatchIsFormatAgnostic() throws {
         let secretKey = try P256K.Schnorr.PrivateKey()
         let uncompressedPub = try P256K.Schnorr.PublicKey(
-            dataRepresentation: secretKey.publicKey.baseKey.uncompressedRepresentation,
-            format: .uncompressed
+            dataRepresentation: secretKey.publicKey.baseKey.uncompressedRepresentation
         )
 
         // Same point, different stored format — `generate` must not throw.
@@ -470,15 +469,14 @@ struct MuSigTestSuite {
         let tweak = [UInt8](repeating: 0x01, count: P256K.ByteLength.dimension)
 
         let oracle = try P256K.Signing.PublicKey(
-            dataRepresentation: aggregate.dataRepresentation,
-            format: .compressed
+            dataRepresentation: aggregate.dataRepresentation
         ).add(tweak)
 
         #expect(try aggregate.add(tweak).dataRepresentation == oracle.dataRepresentation)
         #expect(try aggregate.add(tweak, format: .uncompressed).dataRepresentation == oracle.uncompressedRepresentation)
     }
 
-    /// A `MuSig.PublicKey` rebuilt via `init(dataRepresentation:format:)`
+    /// A `MuSig.PublicKey` rebuilt via `init(dataRepresentation:)`
     /// carries no key-aggregation cache — the opaque upstream struct has no
     /// blessed serialization (`MuSig.swift`), so the key is verification-only.
     /// `add` must throw before the missing cache reaches
@@ -488,8 +486,7 @@ struct MuSigTestSuite {
     func musigTweakOnCachelessKeyThrows() throws {
         let aggregate = try P256K.MuSig.aggregate([P256K.Schnorr.PrivateKey().publicKey])
         let rebuilt = try P256K.MuSig.PublicKey(
-            dataRepresentation: aggregate.dataRepresentation,
-            format: .compressed
+            dataRepresentation: aggregate.dataRepresentation
         )
 
         #expect(throws: secp256k1Error.underlyingCryptoError) {
@@ -1496,8 +1493,7 @@ struct MuSigContributionSetTestSuite {
         let privateKey = try P256K.Schnorr.PrivateKey()
         let aggregate = try P256K.MuSig.aggregate([privateKey.publicKey])
         let reconstructed = try P256K.MuSig.PublicKey(
-            dataRepresentation: aggregate.dataRepresentation,
-            format: aggregate.format
+            dataRepresentation: aggregate.dataRepresentation
         )
         let message: [UInt8] = .init(repeating: 0xAB, count: 32)
 

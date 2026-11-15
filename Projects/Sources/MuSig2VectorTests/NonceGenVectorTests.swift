@@ -78,7 +78,7 @@ struct NonceGenVectorTests {
         let msgBytes = try testCase.msg.map { try $0.bytes }
         let randBytes = try testCase.rand_.bytes
         let pkBytes = try testCase.pk.bytes
-        let publicKey = try P256K.Schnorr.PublicKey(dataRepresentation: pkBytes, format: .compressed)
+        let publicKey = try P256K.Schnorr.PublicKey(dataRepresentation: pkBytes)
         let secretKey = try testCase.sk.map { try P256K.Schnorr.PrivateKey(dataRepresentation: $0.bytes) }
         let extraInput = try testCase.extra_in.map { try $0.bytes }
 

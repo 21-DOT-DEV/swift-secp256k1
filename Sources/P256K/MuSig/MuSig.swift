@@ -251,9 +251,9 @@ import libsecp256k1
                 /// `.compressed`, 65 bytes stores `.uncompressed` (see ``format``).
                 /// Whatever `secp256k1_ec_pubkey_parse` accepts at each length is
                 /// ingested — at 65 bytes that includes legacy hybrid `0x06`/`0x07`
-                /// forms, which ``dataRepresentation`` echoes back as ingested while
-                /// ``uncompressedRepresentation`` always emits the canonical `0x04`
-                /// encoding.
+                /// forms, whose tag is parse-time tolerance only: the stored point
+                /// reserializes canonically, so ``dataRepresentation`` and
+                /// ``uncompressedRepresentation`` always emit `0x02`/`0x03`/`0x04`.
                 ///
                 /// - Parameter data: Serialized public key bytes; must be 33 or 65 bytes.
                 /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is neither 33
@@ -265,7 +265,10 @@ import libsecp256k1
                     self.participants = []
                 }
 
-                /// Creates a MuSig aggregate public key from serialized bytes.
+                /// Deprecated alias for ``init(dataRepresentation:)`` — the byte
+                /// count already encodes the serialization format; `format:` only
+                /// verifies the label agrees with `data`, throwing
+                /// ``secp256k1Error/incorrectKeySize`` on a mismatch.
                 ///
                 /// The reconstructed key verifies signatures but cannot join a signing
                 /// session or take MuSig tweaks — the key-aggregation session state lives
@@ -273,20 +276,15 @@ import libsecp256k1
                 /// on keys produced by ``aggregate(_:)`` (or a MuSig tweak of one).
                 /// Re-aggregate the participant public keys, then re-apply any tweaks, to
                 /// resume signing.
-                ///
-                /// - Parameter data: Serialized public key bytes matching `format.length`.
-                /// - Parameter format: The serialization format of `data`.
-                /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` does not match `format.length`;
-                ///   ``secp256k1Error/underlyingCryptoError`` if parsing via `secp256k1_ec_pubkey_parse` fails.
+                @available(*, deprecated, renamed: "init(dataRepresentation:)")
                 public init<D: ContiguousBytes>(
                     dataRepresentation data: D,
                     format: P256K.Format
                 ) throws {
-                    self.baseKey = try PublicKeyImplementation(
-                        dataRepresentation: data,
-                        format: format
-                    )
-                    self.participants = []
+                    guard data.withUnsafeBytes { $0.count } == format.length else {
+                        throw secp256k1Error.incorrectKeySize
+                    }
+                    try self.init(dataRepresentation: data)
                 }
             }
 

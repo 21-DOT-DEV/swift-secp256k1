@@ -41,7 +41,7 @@ struct DetSignVectorTests {
     func publicKeysValid() throws {
         for i in 0..<3 {
             let pubkeyBytes = try vectors.pubkeys[i].bytes
-            let pubkey = try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
+            let pubkey = try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes)
             #expect(pubkey.dataRepresentation.count == 33, "Public key \(i) should be valid")
         }
     }

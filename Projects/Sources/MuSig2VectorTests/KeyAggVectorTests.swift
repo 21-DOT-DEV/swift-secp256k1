@@ -29,7 +29,7 @@ struct KeyAggVectorTests {
             // Extract public keys for this test case
             let pubkeys = try testCase.key_indices.map { index -> P256K.Schnorr.PublicKey in
                 let pubkeyBytes = try vectors.pubkeys[index].bytes
-                return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
+                return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes)
             }
             let expected = try testCase.expected.bytes
 
@@ -62,7 +62,7 @@ struct KeyAggVectorTests {
         // `validKeyAggregation` above.
         let pubkeys = try [0, 1, 2].map { index -> P256K.Schnorr.PublicKey in
             let pubkeyBytes = try vectors.pubkeys[index].bytes
-            return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
+            return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes)
         }
 
         let forward = try P256K.MuSig.aggregate(pubkeys)
@@ -83,7 +83,7 @@ struct KeyAggVectorTests {
             #expect(throws: (any Error).self, "Should reject invalid pubkeys") {
                 let pubkeys = try testCase.key_indices.map { index -> P256K.Schnorr.PublicKey in
                     let pubkeyBytes = try vectors.pubkeys[index].bytes
-                    return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
+                    return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes)
                 }
                 _ = try P256K.MuSig.aggregate(pubkeys)
             }

@@ -41,7 +41,7 @@ struct TweakVectorTests {
             // every tweak in sequence — the same pipeline `invalidTweaks` uses.
             let pubkeys = try testCase.key_indices.map { index -> P256K.Schnorr.PublicKey in
                 let pubkeyBytes = try vectors.pubkeys[index].bytes
-                return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
+                return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes)
             }
 
             var currentKey = try P256K.MuSig.aggregate(pubkeys)
@@ -104,7 +104,7 @@ struct TweakVectorTests {
         let testCase = vectors.valid_test_cases[0]
         let pubkeys = try testCase.key_indices.map { index -> P256K.Schnorr.PublicKey in
             let pubkeyBytes = try vectors.pubkeys[index].bytes
-            return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
+            return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes)
         }
 
         let aggregatedKey = try P256K.MuSig.aggregate(pubkeys)
@@ -120,7 +120,7 @@ struct TweakVectorTests {
         let testCase = vectors.valid_test_cases[1]
         let pubkeys = try testCase.key_indices.map { index -> P256K.Schnorr.PublicKey in
             let pubkeyBytes = try vectors.pubkeys[index].bytes
-            return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
+            return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes)
         }
 
         let aggregatedKey = try P256K.MuSig.aggregate(pubkeys)
@@ -136,7 +136,7 @@ struct TweakVectorTests {
         let testCase = vectors.valid_test_cases[3]
         let pubkeys = try testCase.key_indices.map { index -> P256K.Schnorr.PublicKey in
             let pubkeyBytes = try vectors.pubkeys[index].bytes
-            return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
+            return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes)
         }
 
         var currentKey = try P256K.MuSig.aggregate(pubkeys)
@@ -167,7 +167,7 @@ struct TweakVectorTests {
             #expect(throws: (any Error).self, "\(comment) should throw") {
                 let pubkeys = try testCase.key_indices.map { index -> P256K.Schnorr.PublicKey in
                     let pubkeyBytes = try vectors.pubkeys[index].bytes
-                    return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes, format: .compressed)
+                    return try P256K.Schnorr.PublicKey(dataRepresentation: pubkeyBytes)
                 }
 
                 var aggregatedKey = try P256K.MuSig.aggregate(pubkeys)

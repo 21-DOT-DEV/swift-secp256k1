@@ -159,8 +159,10 @@ on `Signing`, `Schnorr`, and `MuSig` is new API. Callers who used that bare call
 compressed-only filter must check `data.count == 33` themselves — no compressed-only
 labeled variant is added, since a label for the old behavior would re-admit the
 vocabulary this spec removes. A hybrid-ingested key stores `.uncompressed` and
-reserializes canonical `0x04` — the parser consumes the tag into a validated point, so
-`dataRepresentation`/`uncompressedRepresentation` never echo `0x06`/`0x07`. T014
+reserializes canonical `0x04`: the ingest path reserializes the parsed point inside
+`XonlyKeyImplementation.generate`, so `dataRepresentation`/`uncompressedRepresentation`
+never echo `0x06`/`0x07` — the same parse-lenient/emit-canonical architecture
+libsecp256k1 and rust-secp256k1 (`PublicKey::from_slice`) both follow. T014
 carries the `[Unreleased]` `Breaking:` entry and the migration note.
 
 ## 4. Implementation steps

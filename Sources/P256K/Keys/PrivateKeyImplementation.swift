@@ -114,7 +114,7 @@ import libsecp256k1
             bytes: publicBytes,
             keyParity: &keyParity,
             format: format
-        )
+        ).xonly
     }
 
     /// Backing initialization that creates a secp256k1 private key for signing from a data representation.
@@ -134,7 +134,7 @@ import libsecp256k1
             bytes: publicBytes,
             keyParity: &keyParity,
             format: format
-        )
+        ).xonly
     }
 
     /// Non-throwing initialization for bytes already proven valid by a libsecp256k1 operation (e.g. negation).

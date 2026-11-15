@@ -458,8 +458,7 @@ struct SignVerifyVectorTests {
     /// `underlyingCryptoError` for the malformed entries the error cases carry.
     private func publicKey(at index: Int) throws -> P256K.Schnorr.PublicKey {
         try P256K.Schnorr.PublicKey(
-            dataRepresentation: vectors.pubkeys[index].bytes,
-            format: .compressed
+            dataRepresentation: vectors.pubkeys[index].bytes
         )
     }
 

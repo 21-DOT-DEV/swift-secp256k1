@@ -137,8 +137,8 @@ struct AsymmetricTestSuite {
         let publicKeyBytes1 = try "021b4f0e9851971998e732078544c96b36c3d01cedf7caa332359d6f1d83567014".bytes
         let publicKeyBytes2 = try "0260303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752".bytes
 
-        let publicKey1 = try P256K.Signing.PublicKey(dataRepresentation: publicKeyBytes1, format: .compressed)
-        let publicKey2 = try P256K.Signing.PublicKey(dataRepresentation: publicKeyBytes2, format: .compressed)
+        let publicKey1 = try P256K.Signing.PublicKey(dataRepresentation: publicKeyBytes1)
+        let publicKey2 = try P256K.Signing.PublicKey(dataRepresentation: publicKeyBytes2)
 
         let combinedPublicKey = try publicKey1.combine([publicKey2])
 
@@ -150,8 +150,7 @@ struct AsymmetricTestSuite {
     @Test("Uncompressed Public Key Test")
     func keyFormatConversion() throws {
         let pubkey = try P256K.Signing.PublicKey(
-            dataRepresentation: "02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2".bytes,
-            format: .compressed
+            dataRepresentation: "02a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba2".bytes
         )
         let uncompressed = pubkey.uncompressedRepresentation
         #expect(String(bytes: uncompressed.byteArray) == "04a9acc1e48c25eeeb9289b5031cc57da9fe72f3fe2861d264bdc074209b107ba270b2031fef3acf8e13ea7a395e375491bdc37be1cd79e073d82bfd5ba8d35d68")

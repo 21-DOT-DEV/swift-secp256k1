@@ -141,9 +141,10 @@ public extension P256K.Signing {
         /// Full SEC1 public keys are self-describing: 33 bytes stores `.compressed`,
         /// 65 bytes stores `.uncompressed` (see ``format``). Whatever
         /// `secp256k1_ec_pubkey_parse` accepts at each length is ingested — at 65
-        /// bytes that includes legacy hybrid `0x06`/`0x07` forms, which
-        /// ``dataRepresentation`` echoes back as ingested while
-        /// ``uncompressedRepresentation`` always emits the canonical `0x04` encoding.
+        /// bytes that includes legacy hybrid `0x06`/`0x07` forms, whose tag is
+        /// parse-time tolerance only: the stored point reserializes canonically,
+        /// so ``dataRepresentation`` and ``uncompressedRepresentation`` always
+        /// emit `0x02`/`0x03`/`0x04`.
         ///
         /// - Parameter data: Serialized public key bytes; must be 33 or 65 bytes.
         /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is neither 33 nor
@@ -154,13 +155,16 @@ public extension P256K.Signing {
             self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
         }
 
-        /// Creates a secp256k1 public key from serialized bytes.
-        ///
-        /// - Parameter data: Serialized public key bytes whose length must match `format.length`.
-        /// - Parameter format: The serialization format of `data` (`.compressed` for 33 bytes, `.uncompressed` for 65 bytes).
-        /// - Throws: ``secp256k1Error/underlyingCryptoError`` if parsing via `secp256k1_ec_pubkey_parse` fails.
+        /// Deprecated alias for ``init(dataRepresentation:)`` — the byte count
+        /// already encodes the serialization format; `format:` only verifies the
+        /// label agrees with `data`, throwing
+        /// ``secp256k1Error/incorrectKeySize`` on a mismatch.
+        @available(*, deprecated, renamed: "init(dataRepresentation:)")
         public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format) throws {
-            self.baseKey = try PublicKeyImplementation(dataRepresentation: data, format: format)
+            guard data.withUnsafeBytes { $0.count } == format.length else {
+                throw secp256k1Error.incorrectKeySize
+            }
+            try self.init(dataRepresentation: data)
         }
 
         /// Creates a secp256k1 public key for signing from a Privacy-Enhanced Mail (PEM) representation.

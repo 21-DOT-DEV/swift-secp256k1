@@ -31,7 +31,7 @@ struct KeySortVectorTests {
     @Test("sortedPublicKeys matches the official canonical ordering")
     func canonicalSortOrder() throws {
         let pubkeys = try vectors.pubkeys.map { hex -> P256K.Schnorr.PublicKey in
-            try P256K.Schnorr.PublicKey(dataRepresentation: hex.bytes, format: .compressed)
+            try P256K.Schnorr.PublicKey(dataRepresentation: hex.bytes)
         }
         let expected = try vectors.sorted_pubkeys.map { try $0.bytes }
 
@@ -49,7 +49,7 @@ struct KeySortVectorTests {
     @Test("Aggregating sorted keys is order-invariant")
     func aggregateSortedKeysOrderInvariant() throws {
         let pubkeys = try vectors.pubkeys.map { hex -> P256K.Schnorr.PublicKey in
-            try P256K.Schnorr.PublicKey(dataRepresentation: hex.bytes, format: .compressed)
+            try P256K.Schnorr.PublicKey(dataRepresentation: hex.bytes)
         }
 
         let canonical = try P256K.MuSig.aggregate(P256K.MuSig.sortedPublicKeys(pubkeys))

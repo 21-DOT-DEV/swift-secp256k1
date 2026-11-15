@@ -141,6 +141,10 @@ import libsecp256k1
     }
 
     /// Backing initialization that generates a secp256k1 public key from only a data representation and key format.
+    ///
+    /// ``bytes`` stores the canonical upstream reserialization of the parsed
+    /// point — not the input verbatim — so a legacy hybrid `0x06`/`0x07`
+    /// encoding ingests to the same stored form as its canonical `0x04` twin.
     /// - Parameters:
     ///   - data: A data representation of the public key.
     ///   - format: an enum that represents the format of the public key
@@ -151,11 +155,12 @@ import libsecp256k1
     ) throws {
         var keyParity = Int32()
 
-        self.xonlyBytes = try XonlyKeyImplementation.generate(
+        let derived: (xonly: [UInt8], serialized: [UInt8]) = try XonlyKeyImplementation.generate(
             bytes: data.withUnsafeBytes { Array($0) },
             keyParity: &keyParity,
             format: format
         )
+        self.xonlyBytes = derived.xonly
 
         // A non-empty cache must be a complete `secp256k1_musig_keyagg_cache`
         // blob: upstream checks its 4-byte magic inside `ARG_CHECK` on every
@@ -169,7 +174,7 @@ import libsecp256k1
             }
         }
 
-        self.bytes = data.withUnsafeBytes { Array($0) }
+        self.bytes = derived.serialized
         self.format = format
         self.cache = cache.byteArray
         self.keyParity = keyParity
