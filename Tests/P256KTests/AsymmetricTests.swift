@@ -147,6 +147,18 @@ struct AsymmetricTestSuite {
         #expect(combinedPublicKey.dataRepresentation.byteArray == expectedCombinedKey, "Combined public key does not match the expected value.")
     }
 
+    /// `combine` always includes `self` in the sum, so an empty argument array
+    /// satisfies upstream's `n ≥ 1` requirement and returns this key unchanged —
+    /// the documented edge contract, pinned while `combine(_:)` is added.
+    @Test("Combining with an empty array returns the same key")
+    func combineEmptyArrayReturnsSelf() throws {
+        let publicKey = try P256K.Signing.PrivateKey().publicKey
+        let combined = try publicKey.combine([])
+
+        #expect(combined.dataRepresentation == publicKey.dataRepresentation)
+        #expect(combined.format == publicKey.format)
+    }
+
     @Test("Uncompressed Public Key Test")
     func keyFormatConversion() throws {
         let pubkey = try P256K.Signing.PublicKey(

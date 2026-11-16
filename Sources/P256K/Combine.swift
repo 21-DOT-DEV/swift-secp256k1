@@ -33,11 +33,50 @@ public extension P256K.Signing.PublicKey {
     /// - Parameter pubkeys: Additional ``PublicKey`` values to combine with this key;
     ///   may be empty — this key itself always participates, so upstream's `n ≥ 1`
     ///   requirement is already met and an empty array simply returns this key.
-    /// - Parameter format: The serialization format of the returned ``PublicKey``; defaults
-    ///   to `.compressed`.
+    /// - Returns: A new ``PublicKey`` equal to the elliptic-curve sum of all input keys,
+    ///   always stored ``P256K/Format/compressed`` — apply ``uncompressedRepresentation``
+    ///   for 65-byte output.
+    /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ec_pubkey_combine`
+    ///   fails (e.g., all keys cancel to the point at infinity).
+    func combine(_ pubkeys: [Self]) throws -> Self {
+        let context = P256K.Context.rawRepresentation
+        let allPubKeys = [self] + pubkeys
+        var pubKeyLen = P256K.Format.compressed.length
+        var combinedKey = secp256k1_pubkey()
+        var combinedBytes = [UInt8](repeating: 0, count: pubKeyLen)
+
+        guard PointerArrayUtility
+            .withUnsafePointerArray(allPubKeys.map { $0.baseKey.rawRepresentation }, { pointers in
+                secp256k1_ec_pubkey_combine(context, &combinedKey, pointers, pointers.count).boolValue
+            }) else {
+            throw secp256k1Error.underlyingCryptoError
+        }
+
+        guard secp256k1_ec_pubkey_serialize(
+            context,
+            &combinedBytes,
+            &pubKeyLen,
+            &combinedKey,
+            P256K.Format.compressed.rawValue
+        ).boolValue else {
+            P256K.invariantFailure("secp256k1_ec_pubkey_serialize failed on combined key — library bug")
+        }
+
+        return Self(baseKey: PublicKeyImplementation(validatedBytes: combinedBytes, format: .compressed))
+    }
+
+    /// Deprecated variant of ``combine(_:)`` — the output serialization format is a
+    /// boundary concern, not an operation input. Identical to ``combine(_:)`` for
+    /// `.compressed`; for `.uncompressed` output, call ``combine(_:)`` and read
+    /// ``uncompressedRepresentation``.
+    ///
+    /// - Parameter pubkeys: Additional ``PublicKey`` values to combine with this key;
+    ///   may be empty — this key itself always participates.
+    /// - Parameter format: The serialization format of the returned ``PublicKey``.
     /// - Returns: A new ``PublicKey`` equal to the elliptic-curve sum of all input keys.
     /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ec_pubkey_combine`
     ///   fails (e.g., all keys cancel to the point at infinity).
+    @available(*, deprecated, message: "use combine(_:) — uncompressed output via uncompressedRepresentation")
     func combine(_ pubkeys: [Self], format: P256K.Format = .compressed) throws -> Self {
         let context = P256K.Context.rawRepresentation
         let allPubKeys = [self] + pubkeys

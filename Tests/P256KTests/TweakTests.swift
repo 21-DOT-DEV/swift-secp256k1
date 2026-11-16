@@ -143,6 +143,27 @@ struct TweakTestSuite {
         #expect(combineFromUncompressed.uncompressedRepresentation == uncompressedCombine.uncompressedRepresentation)
     }
 
+    /// Spec 005 (T009) — a key's *stored* format never reaches an operation's
+    /// input: an uncompressed-stored `Signing.PublicKey` combines to the same
+    /// point as its compressed-stored twin, and the result stores compressed.
+    /// This leg previously lived only inside `publicKeyOperationsHonorBothFormats`,
+    /// which is marked deprecated and dies with the `format:` shims at 1.0 —
+    /// the coverage gets a permanent home here.
+    @Test("Combining from an uncompressed-stored key yields the same point")
+    func combineFromUncompressedStoredKey() throws {
+        let compressed = try P256K.Signing.PrivateKey().publicKey
+        let other = try P256K.Signing.PrivateKey().publicKey
+        let uncompressedStored = try P256K.Signing.PublicKey(
+            dataRepresentation: compressed.uncompressedRepresentation
+        )
+
+        let fromCompressed = try compressed.combine([other])
+        let fromUncompressed = try uncompressedStored.combine([other])
+
+        #expect(fromUncompressed.format == .compressed)
+        #expect(fromUncompressed.dataRepresentation == fromCompressed.dataRepresentation)
+    }
+
     /// Spec 005 (T004) — every public-key type's `uncompressedRepresentation` must
     /// encode the *same point* its stored-format `dataRepresentation` stores: a
     /// `0x04` tag, the identical X coordinate in bytes 1–32, and byte 64's low bit

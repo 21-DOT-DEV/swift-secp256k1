@@ -94,9 +94,16 @@ nothing removed yet; `swift test` green.
   `Tests/P256KTests/DeprecatedAliasTests.swift`,
   `Tests/P256KTests/TweakTests.swift`, `Tests/P256KTests/MusigTests.swift`,
   `Tests/P256KTests/InvariantTests.swift`
-- [ ] T009 `combine(_:)` on `Signing.PublicKey`; deprecate `combine(_:format:)` via
+- [x] T009 `combine(_:)` on `Signing.PublicKey`; deprecate `combine(_:format:)` via
   `message:` naming `uncompressedRepresentation` for `.uncompressed` callers,
-  keeping the body until 1.0 · `Sources/P256K/Combine.swift`
+  keeping the body until 1.0. Parity pin lands in `DeprecatedAliasTests.swift`;
+  two permanent pins cover the `combine([])`-returns-self edge and the
+  uncompressed-stored-input leg that previously existed only inside the
+  deprecated-marked `publicKeyOperationsHonorBothFormats`; the README example
+  drops the deprecated label · `Sources/P256K/Combine.swift`,
+  `Tests/P256KTests/DeprecatedAliasTests.swift`,
+  `Tests/P256KTests/AsymmetricTests.swift`, `Tests/P256KTests/TweakTests.swift`,
+  `README.md`
 - [ ] T010 `Recovery.PublicKey.init(_:signature:)` (both overloads) without `format`;
   deprecate the `format:` overloads via `message:` naming `uncompressedRepresentation`
   as the `.uncompressed` migration, keeping current bodies so `.uncompressed` still

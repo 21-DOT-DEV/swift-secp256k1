@@ -193,8 +193,11 @@ let signature = recoverySignature.signature
 let privateKey = try! P256K.Signing.PrivateKey()
 let publicKey = try! P256K.Signing.PrivateKey().publicKey
 
-// The Combine API arguments are an array of PublicKey objects and an optional format 
-publicKey.combine([privateKey.publicKey], format: .uncompressed)
+// The Combine API takes an array of PublicKey objects
+let combinedKey = try! publicKey.combine([privateKey.publicKey])
+
+// 65-byte output comes from the uncompressedRepresentation accessor
+combinedKey.uncompressedRepresentation
 ```
 
 *→ Full API: [docs.21.dev/documentation/p256k/p256k/signing/publickey](https://docs.21.dev/documentation/p256k/p256k/signing/publickey)*

@@ -251,6 +251,33 @@ struct DeprecatedAliasTestSuite {
         #expect(uncompressedMultiply.dataRepresentation == compressedMultiply.uncompressedRepresentation)
     }
 
+    /// Spec 005 (T009) — deprecated `combine(_:format:)` keeps its semantics:
+    /// `.compressed` is byte-identical to the new bare overload, `.uncompressed`
+    /// still stores a 65-byte key encoding the same point (the deprecated path
+    /// remains the only way to store uncompressed until 1.0).
+    @available(*, deprecated)
+    @Test("Deprecated Signing combine matches bare call and preserves stored format")
+    func signingCombineAlias() throws {
+        let publicKey = try P256K.Signing.PrivateKey().publicKey
+        let other = try P256K.Signing.PrivateKey().publicKey
+
+        let compressed = try publicKey.combine([other])
+        #expect(try publicKey.combine([other], format: .compressed).dataRepresentation == compressed.dataRepresentation)
+        let uncompressed = try publicKey.combine([other], format: .uncompressed)
+        #expect(uncompressed.format == .uncompressed)
+        #expect(uncompressed.dataRepresentation == compressed.uncompressedRepresentation)
+
+        // The empty-array self-return holds on the deprecated path too, in the
+        // label's stored form — and the infinity-sum still throws before the
+        // format label is ever consulted.
+        let uncompressedSelf = try publicKey.combine([], format: .uncompressed)
+        #expect(uncompressedSelf.format == .uncompressed)
+        #expect(uncompressedSelf.dataRepresentation == publicKey.uncompressedRepresentation)
+        #expect(throws: secp256k1Error.underlyingCryptoError) {
+            try publicKey.combine([publicKey.negation], format: .uncompressed)
+        }
+    }
+
     #if Xcode || ENABLE_MODULE_MUSIG
         /// Spec 005 (T008) — deprecated `add(_:format:)` keeps its semantics on
         /// the aggregate too: `.compressed` matches the bare overload, `.uncompressed`
