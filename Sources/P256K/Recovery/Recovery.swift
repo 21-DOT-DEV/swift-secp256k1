@@ -167,12 +167,13 @@ import libsecp256k1
                 /// the raw C handle through the public API.
                 let baseKey: PublicKeyImplementation
 
-                /// The serialized public key bytes as `Data`, in the key's format.
+                /// The serialized public key bytes as `Data`, in the key's stored format.
                 ///
                 /// Suitable for comparison with a known-authentic public key via constant-time
-                /// equality (see `safeCompare`) to authenticate the recovery result. The
-                /// format (``P256K/Format/compressed`` or ``P256K/Format/uncompressed``) is
-                /// inherited from the `format:` argument passed to the recovery initializer.
+                /// equality (see `safeCompare`) to authenticate the recovery result. Keys
+                /// recovered through the `init(_:signature:)` initializers store
+                /// ``P256K/Format/compressed`` (33 bytes); the deprecated `format:` initializer
+                /// may still produce a 65-byte stored form until it is removed at 1.0.
                 public var dataRepresentation: Data {
                     baseKey.dataRepresentation
                 }
@@ -194,10 +195,29 @@ import libsecp256k1
                 /// point, or a point-at-infinity result). A failure here reflects
                 /// invalid signature data, not a library defect.
                 ///
+                /// The recovered key is stored ``P256K/Format/compressed`` — apply
+                /// ``uncompressedRepresentation`` for 65-byte output.
+                ///
+                /// - Parameter data: The original message; it is SHA-256 hashed before recovery.
+                /// - Parameter signature: The 65-byte ``ECDSASignature`` containing the compact signature and recovery ID.
+                /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ecdsa_recover` rejects the signature.
+                public init<D: DataProtocol>(
+                    _ data: D,
+                    signature: P256K.Recovery.ECDSASignature
+                ) throws {
+                    try self.init(SHA256.hash(data: data), signature: signature)
+                }
+
+                /// Deprecated variant of ``init(_:signature:)-2fyhm`` — the recovered key's stored
+                /// serialization format is a boundary concern, not a recovery input. Identical
+                /// to ``init(_:signature:)-2fyhm`` for `.compressed`; for 65-byte output, recover via
+                /// ``init(_:signature:)-2fyhm`` and read ``uncompressedRepresentation``.
+                ///
                 /// - Parameter data: The original message; it is SHA-256 hashed before recovery.
                 /// - Parameter signature: The 65-byte ``ECDSASignature`` containing the compact signature and recovery ID.
                 /// - Parameter format: The serialization format of the recovered key; defaults to `.compressed`.
                 /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ecdsa_recover` rejects the signature.
+                @available(*, deprecated, message: "use init(_:signature:) — uncompressed output via uncompressedRepresentation")
                 public init<D: DataProtocol>(
                     _ data: D,
                     signature: P256K.Recovery.ECDSASignature,
@@ -217,12 +237,33 @@ import libsecp256k1
                 /// point, or a point-at-infinity result). A failure here reflects
                 /// invalid signature data, not a library defect.
                 ///
+                /// The recovered key is stored ``P256K/Format/compressed`` — apply
+                /// ``uncompressedRepresentation`` for 65-byte output.
+                ///
+                /// - Parameter digest: The pre-computed message digest that was signed; reduced to
+                ///   the 32-byte `msg32` value per SEC1 §4.1.3 (leftmost 32 bytes for longer digests,
+                ///   integer value for shorter).
+                /// - Parameter signature: The 65-byte ``ECDSASignature`` containing the compact signature and recovery ID.
+                /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ecdsa_recover` rejects the signature.
+                public init<D: Digest>(
+                    _ digest: D,
+                    signature: P256K.Recovery.ECDSASignature
+                ) throws {
+                    self.baseKey = try PublicKeyImplementation(digest, signature: signature, format: .compressed)
+                }
+
+                /// Deprecated variant of ``init(_:signature:)-8fj5w`` — the recovered key's stored
+                /// serialization format is a boundary concern, not a recovery input. Identical
+                /// to ``init(_:signature:)-8fj5w`` for `.compressed`; for 65-byte output, recover via
+                /// ``init(_:signature:)-8fj5w`` and read ``uncompressedRepresentation``.
+                ///
                 /// - Parameter digest: The pre-computed message digest that was signed; reduced to
                 ///   the 32-byte `msg32` value per SEC1 §4.1.3 (leftmost 32 bytes for longer digests,
                 ///   integer value for shorter).
                 /// - Parameter signature: The 65-byte ``ECDSASignature`` containing the compact signature and recovery ID.
                 /// - Parameter format: The serialization format of the recovered key; defaults to `.compressed`.
                 /// - Throws: ``secp256k1Error/underlyingCryptoError`` if `secp256k1_ecdsa_recover` rejects the signature.
+                @available(*, deprecated, message: "use init(_:signature:) — uncompressed output via uncompressedRepresentation")
                 public init<D: Digest>(
                     _ digest: D,
                     signature: P256K.Recovery.ECDSASignature,

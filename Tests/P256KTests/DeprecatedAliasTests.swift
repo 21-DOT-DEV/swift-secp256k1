@@ -56,6 +56,47 @@ struct DeprecatedAliasTestSuite {
             let recoverable = try P256K.Recovery.PrivateKey().signature(for: Data("deprecated alias".utf8))
             #expect(recoverable.normalize.dataRepresentation == recoverable.signature.dataRepresentation)
         }
+
+        /// Spec 005 (T010) — the deprecated `init(_:signature:format:)` overloads
+        /// keep their signatures' semantics on both the `DataProtocol` and
+        /// `Digest` forms: `.compressed` is byte-identical to the new bare
+        /// initializers, and `.uncompressed` still stores a 65-byte key encoding
+        /// the same point. The deprecated path is the only way an
+        /// uncompressed-stored `Recovery.PublicKey` can exist — the type is
+        /// derivation-only and exposes no public `format` property, so stored
+        /// form is checked on both the internal `baseKey.format` record and the
+        /// `dataRepresentation` byte length.
+        @available(*, deprecated)
+        @Test("Deprecated Recovery inits match bare calls and preserve stored format")
+        func recoveryInitAliases() throws {
+            let privateKey = try P256K.Recovery.PrivateKey()
+            let message = Data("deprecated recovery init".utf8)
+            let signature = privateKey.signature(for: message)
+            let digest = SHA256.hash(data: message)
+
+            let compressed = try P256K.Recovery.PublicKey(message, signature: signature)
+            #expect(compressed.baseKey.format == .compressed)
+            #expect(try P256K.Recovery.PublicKey(digest, signature: signature).dataRepresentation == compressed.dataRepresentation)
+
+            for labeled in try [
+                P256K.Recovery.PublicKey(message, signature: signature, format: .compressed),
+                P256K.Recovery.PublicKey(digest, signature: signature, format: .compressed)
+            ] {
+                #expect(labeled.baseKey.format == .compressed)
+                #expect(labeled.dataRepresentation == compressed.dataRepresentation)
+                #expect(labeled.uncompressedRepresentation == compressed.uncompressedRepresentation)
+            }
+
+            for uncompressed in try [
+                P256K.Recovery.PublicKey(message, signature: signature, format: .uncompressed),
+                P256K.Recovery.PublicKey(digest, signature: signature, format: .uncompressed)
+            ] {
+                #expect(uncompressed.baseKey.format == .uncompressed)
+                #expect(uncompressed.dataRepresentation.count == 65)
+                #expect(uncompressed.dataRepresentation == uncompressed.uncompressedRepresentation)
+                #expect(uncompressed.uncompressedRepresentation == compressed.uncompressedRepresentation)
+            }
+        }
     #endif
 
     /// The secp256k1 base point `G`: canonical compressed (`0x02`), canonical

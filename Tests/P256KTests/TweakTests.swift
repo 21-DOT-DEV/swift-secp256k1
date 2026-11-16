@@ -169,9 +169,12 @@ struct TweakTestSuite {
     /// `0x04` tag, the identical X coordinate in bytes 1–32, and byte 64's low bit
     /// equal to the compressed tag's `0x02`/`0x03` parity (the `serialize33`/
     /// `serialize65` contract in vendored `eckey_impl.h:38-55`). Each type is
-    /// checked on a compressed-stored key and on an uncompressed-stored key;
-    /// the byte-correspondence oracle is uniform because `Recovery.PublicKey`
-    /// exposes no `xonly`/`parity` accessor to compare against instead.
+    /// checked on a compressed-stored key and on an uncompressed-stored key —
+    /// except `Recovery.PublicKey`, whose uncompressed-stored state is reachable
+    /// only through the deprecated `format:` initializer and is pinned in
+    /// `DeprecatedAliasTests.swift` (Spec 005, T010). The byte-correspondence
+    /// oracle is uniform because `Recovery.PublicKey` exposes no `xonly`/`parity`
+    /// accessor to compare against instead.
     @Test("uncompressedRepresentation encodes the same point on every public-key type")
     func uncompressedRepresentationEncodesSamePoint() throws {
         // Signing — companion key stores compressed; re-ingest 65 bytes for
@@ -262,8 +265,9 @@ struct TweakTestSuite {
             "MuSig.PublicKey: same point across stored formats"
         )
 
-        // Recovery — derivation-only: the stored format comes from the
-        // recovery initializer, so both forms are built from one signature.
+        // Recovery — derivation-only: recovery always stores compressed. The
+        // uncompressed-stored case exists only through the deprecated `format:`
+        // initializer and is pinned in `DeprecatedAliasTests.swift` (T010).
         let recoveryPrivateKey = try P256K.Recovery.PrivateKey()
         let message = Data("same-point".utf8)
         let recoverable = recoveryPrivateKey.signature(for: message)
@@ -282,15 +286,6 @@ struct TweakTestSuite {
         #expect(
             recoveryCompressed.uncompressedRepresentation == recoveryPrivateKey.publicKey.uncompressedRepresentation,
             "Recovery.PublicKey: recovered key must serialize to the same 65 bytes as the companion key"
-        )
-        let recoveryUncompressed = try P256K.Recovery.PublicKey(message, signature: recoverable, format: .uncompressed)
-        #expect(
-            recoveryUncompressed.uncompressedRepresentation == recoveryUncompressed.dataRepresentation,
-            "Recovery.PublicKey uncompressed-stored: accessor must equal stored bytes"
-        )
-        #expect(
-            recoveryUncompressed.uncompressedRepresentation == recoveryCompressed.uncompressedRepresentation,
-            "Recovery.PublicKey: same point across stored formats"
         )
     }
 

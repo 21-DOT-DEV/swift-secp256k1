@@ -104,10 +104,15 @@ nothing removed yet; `swift test` green.
   `Tests/P256KTests/DeprecatedAliasTests.swift`,
   `Tests/P256KTests/AsymmetricTests.swift`, `Tests/P256KTests/TweakTests.swift`,
   `README.md`
-- [ ] T010 `Recovery.PublicKey.init(_:signature:)` (both overloads) without `format`;
+- [x] T010 `Recovery.PublicKey.init(_:signature:)` (both overloads) without `format`;
   deprecate the `format:` overloads via `message:` naming `uncompressedRepresentation`
   as the `.uncompressed` migration, keeping current bodies so `.uncompressed` still
-  stores uncompressed until 1.0 · `Sources/P256K/Recovery/Recovery.swift`
+  stores uncompressed until 1.0. Parity pin for both deprecated overloads lands in
+  `DeprecatedAliasTests.swift`; the uncompressed-stored Recovery leg of
+  `uncompressedRepresentationEncodesSamePoint` folds into the same pin — the type is
+  derivation-only, so that state is reachable only through the deprecated
+  initializer · `Sources/P256K/Recovery/Recovery.swift`,
+  `Tests/P256KTests/DeprecatedAliasTests.swift`, `Tests/P256KTests/TweakTests.swift`
 
 **Checkpoint:** every public-key operation is format-free; deprecated calls warn but
 return byte-identical results (covered in `Tests/P256KTests/DeprecatedAliasTests.swift`);
