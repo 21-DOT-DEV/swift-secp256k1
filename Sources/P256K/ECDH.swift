@@ -269,6 +269,8 @@ import libsecp256k1
             /// ## Topics
             ///
             /// ### Construction
+            /// - ``init()``
+            /// - ``init(dataRepresentation:)``
             /// - ``init(format:)``
             /// - ``init(dataRepresentation:format:)``
             ///
@@ -288,10 +290,27 @@ import libsecp256k1
 
                 /// Creates a random secp256k1 ECDH private key.
                 ///
+                /// The companion ``publicKey`` is stored ``P256K/Format/compressed`` — apply ``PublicKey/uncompressedRepresentation`` for 65-byte output.
+                /// - Throws: ``secp256k1Error/underlyingCryptoError`` if key generation fails.
+                public init() throws {
+                    self.baseKey = try PrivateKeyImplementation(format: .compressed)
+                }
+
+                /// Creates a random secp256k1 ECDH private key.
+                ///
                 /// - Parameter format: The serialization format of the companion ``publicKey``; defaults to `.compressed`.
                 /// - Throws: ``secp256k1Error/underlyingCryptoError`` if key generation fails.
                 public init(format: P256K.Format = .compressed) throws {
                     self.baseKey = try PrivateKeyImplementation(format: format)
+                }
+
+                /// Creates a secp256k1 ECDH private key from a 32-byte raw scalar.
+                ///
+                /// The companion ``publicKey`` is stored ``P256K/Format/compressed`` — apply ``PublicKey/uncompressedRepresentation`` for 65-byte output.
+                /// - Parameter data: Exactly 32 bytes; must pass `secp256k1_ec_seckey_verify`.
+                /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not 32 bytes; ``secp256k1Error/underlyingCryptoError`` if the scalar is invalid.
+                public init<D: ContiguousBytes>(dataRepresentation data: D) throws {
+                    self.baseKey = try PrivateKeyImplementation(dataRepresentation: data, format: .compressed)
                 }
 
                 /// Creates a secp256k1 ECDH private key from a 32-byte raw scalar.

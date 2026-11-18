@@ -120,12 +120,17 @@ return byte-identical results (covered in `Tests/P256KTests/DeprecatedAliasTests
 
 ## Private-key initializers
 
-- [ ] T011 `init()`, `init(_:)`, `init(dataRepresentation:)` without `format` on
+- [x] T011 `init()`, `init(_:)`, `init(dataRepresentation:)` without `format` on
   `Signing.PrivateKey`; `init()`, `init(dataRepresentation:)` on `Recovery.PrivateKey`
   and `KeyAgreement.PrivateKey` — only `Signing.PrivateKey` has an `init(_:format:)`
   to replace (`ECDSA+PrivateKey.swift:191`) — companion `publicKey` always
   compressed · `Sources/P256K/ECDSA/ECDSA+PrivateKey.swift`,
-  `Sources/P256K/Recovery/Recovery.swift`, `Sources/P256K/ECDH.swift`
+  `Sources/P256K/Recovery/Recovery.swift`, `Sources/P256K/ECDH.swift`,
+  `Tests/P256KTests/AsymmetricTests.swift`, `Tests/P256KTests/ECDHTests.swift`,
+  `Tests/P256KTests/RecoveryTests.swift`,
+  `Sources/P256K/Schnorr/Schnorr+PrivateKey.swift` (stale `publicKey`/`init()`
+  doc claims only — adjacent stored-form inconsistency recorded in
+  `Development/Roadmap/backlog.md`, behavior unchanged)
 - [ ] T012 Deprecate the seven `format:` initializers via `message:` naming
   `publicKey.uncompressedRepresentation` as the `.uncompressed` migration,
   forwarding to the existing internal format machinery; tests cover deprecated

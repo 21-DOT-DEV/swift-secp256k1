@@ -42,6 +42,28 @@ struct AsymmetricTestSuite {
         #expect(privateKey.publicKey.dataRepresentation.count == P256K.Format.uncompressed.length, "PublicKey length mismatch for uncompressed format")
     }
 
+    @Test("Private-key initializers store a compressed companion public key")
+    func privateKeyInitializerCompanionsCompressed() throws {
+        let privateBytes = try "703d3b63e84421e59f9359f8b27c25365df9d85b6b1566e3168412fa599c12f4".bytes
+
+        let generated = try P256K.Signing.PrivateKey()
+        let imported = try P256K.Signing.PrivateKey(dataRepresentation: privateBytes)
+
+        #expect(generated.publicKey.format == .compressed, "init() companion should store compressed")
+        #expect(imported.publicKey.format == .compressed, "init(dataRepresentation:) companion should store compressed")
+        #expect(generated.publicKey.dataRepresentation.count == P256K.Format.compressed.length, "init() companion length mismatch")
+        #expect(imported.publicKey.dataRepresentation.count == P256K.Format.compressed.length, "init(dataRepresentation:) companion length mismatch")
+
+        #if Xcode || ENABLE_UINT256
+            if #available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                let scalar: UInt256 = 0x0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_0001
+                let constant = try P256K.Signing.PrivateKey(scalar)
+                #expect(constant.publicKey.format == .compressed, "init(_:) companion should store compressed")
+                #expect(constant.publicKey.dataRepresentation.count == P256K.Format.compressed.length, "init(_:) companion length mismatch")
+            }
+        #endif
+    }
+
     @Test("Verify uncompressed public key with specific bytes")
     func uncompressedPublicKeyWithKey() throws {
         let privateBytes = try "703d3b63e84421e59f9359f8b27c25365df9d85b6b1566e3168412fa599c12f4".bytes

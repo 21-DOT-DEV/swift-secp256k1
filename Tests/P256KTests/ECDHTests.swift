@@ -30,6 +30,19 @@ struct ECDHTestSuite {
         #expect(sharedSecret1.byteArray == sharedSecret2.byteArray, "Shared secrets should be equal")
     }
 
+    @Test("KeyAgreement private-key initializers store a compressed companion public key")
+    func privateKeyInitializerCompanionsCompressed() throws {
+        let privateBytes = try "7da12cc39bb4189ac72d34fc2225df5cf36aaacdcac7e5a43963299bc8d888ed".bytes
+
+        let generated = try P256K.KeyAgreement.PrivateKey()
+        let imported = try P256K.KeyAgreement.PrivateKey(dataRepresentation: privateBytes)
+
+        #expect(generated.publicKey.baseKey.format == .compressed, "init() companion should store compressed")
+        #expect(imported.publicKey.baseKey.format == .compressed, "init(dataRepresentation:) companion should store compressed")
+        #expect(generated.publicKey.dataRepresentation.count == P256K.Format.compressed.length, "init() companion length mismatch")
+        #expect(imported.publicKey.dataRepresentation.count == P256K.Format.compressed.length, "init(dataRepresentation:) companion length mismatch")
+    }
+
     @Test("Test Key Agreement Public Key Tweak Addition")
     func keyAgreementPublicKeyTweakAdd() throws {
         let privateSign1 = try P256K.Signing.PrivateKey()

@@ -46,6 +46,19 @@ struct RecoveryTestSuite {
         #expect(signature.derRepresentation.base64EncodedString() == expectedDerSignature)
     }
 
+    @Test("Recovery private-key initializers store a compressed companion public key")
+    func privateKeyInitializerCompanionsCompressed() throws {
+        let privateBytes = try "5f6d5afecc677d66fb3d41eee7a8ad8195659ceff588edaf416a9a17daf38fdd".bytes
+
+        let generated = try P256K.Recovery.PrivateKey()
+        let imported = try P256K.Recovery.PrivateKey(dataRepresentation: privateBytes)
+
+        #expect(generated.publicKey.baseKey.format == .compressed, "init() companion should store compressed")
+        #expect(imported.publicKey.baseKey.format == .compressed, "init(dataRepresentation:) companion should store compressed")
+        #expect(generated.publicKey.dataRepresentation.count == P256K.Format.compressed.length, "init() companion length mismatch")
+        #expect(imported.publicKey.dataRepresentation.count == P256K.Format.compressed.length, "init(dataRepresentation:) companion length mismatch")
+    }
+
     @Test("Public key recovery test")
     func publicKeyRecoveryTest() throws {
         let expectedRecoverySignature = "dLXvu5gAKdfwfMP6EZsblf8XiIe5GbYO9PKU4JXh+axWbj0MDud/oVzRqL87JjZpCN+kLl8Egcc/GiOigWJg+AE="

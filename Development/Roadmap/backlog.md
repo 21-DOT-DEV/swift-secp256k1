@@ -155,6 +155,17 @@ General-purpose structures supporting specific BIPs (in-repo vs recommend-extern
 
 ---
 
+## API consistency
+
+### `Schnorr.PrivateKey` companion `publicKey` stored form varies by initializer
+
+**Status**: Deferred — surfaced 2026-11-17 during spec 005's T011 review; normalizing is a behavior change outside that task's fence  
+**Priority**: Low — both stored forms encode the same point; `xonly` and signing are unaffected, so the wart is visible only through `publicKey.dataRepresentation` length and `.format`  
+**Notes**: `Schnorr.PrivateKey.init()` passes `.uncompressed` to `PrivateKeyImplementation` while `init(dataRepresentation:)` falls through to its `.compressed` default, so two keys holding the same secret scalar produce `publicKey` values with different stored serialization (65 vs 33 bytes) depending only on which initializer ran — an inconsistency both peer architectures make impossible (swift-crypto stores the parsed `EC_KEY` point; libsecp256k1's `secp256k1_pubkey`/`secp256k1_keypair` are format-agnostic). The in-code justification — uncompressed "as required by `secp256k1_keypair_create`" — is stale: that API takes the 32-byte secret and derives the point internally (`Schnorr+Signature.swift`), never consuming the serialized `publicBytes`. The likely normalization direction is `.compressed` on `init()` — matching the other three private-key types and spec 005's compressed-companion contract — which shrinks `init()`-derived `publicKey.dataRepresentation` from 65 to 33 bytes; the inverse (uncompressed on `init(dataRepresentation:)`) diverges from the library convention. The `publicKey`/`init()` doc comments were corrected to describe the init-path-dependent form as part of spec 005 T011; behavior is unchanged.  
+**Acceptance**: A `Development/Specs/` entry picks one stored form; `Schnorr.PrivateKey().publicKey.dataRepresentation` equals `Schnorr.PrivateKey(dataRepresentation: same).publicKey.dataRepresentation` for every valid scalar; docs and tests updated.
+
+---
+
 ## Prioritization Criteria
 
 When promoting an item from backlog to a phase:
