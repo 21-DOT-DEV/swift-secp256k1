@@ -161,7 +161,7 @@ public extension P256K.Signing {
         /// ``secp256k1Error/incorrectKeySize`` on a mismatch.
         @available(*, deprecated, renamed: "init(dataRepresentation:)")
         public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format) throws {
-            guard data.withUnsafeBytes { $0.count } == format.length else {
+            guard data.withUnsafeBytes({ $0.count }) == format.length else {
                 throw secp256k1Error.incorrectKeySize
             }
             try self.init(dataRepresentation: data)

@@ -110,7 +110,7 @@ import libsecp256k1
                 /// ``secp256k1Error/incorrectKeySize`` on a mismatch.
                 @available(*, deprecated, renamed: "init(dataRepresentation:)")
                 public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format = .compressed) throws {
-                    guard data.withUnsafeBytes { $0.count } == format.length else {
+                    guard data.withUnsafeBytes({ $0.count }) == format.length else {
                         throw secp256k1Error.incorrectKeySize
                     }
                     try self.init(dataRepresentation: data)
@@ -271,8 +271,6 @@ import libsecp256k1
             /// ### Construction
             /// - ``init()``
             /// - ``init(dataRepresentation:)``
-            /// - ``init(format:)``
-            /// - ``init(dataRepresentation:format:)``
             ///
             /// ### Inspection
             /// - ``publicKey``
@@ -280,6 +278,10 @@ import libsecp256k1
             ///
             /// ### Key Agreement
             /// - ``sharedSecretFromKeyAgreement(with:format:)``
+            ///
+            /// ### Deprecated
+            /// - ``init(format:)``
+            /// - ``init(dataRepresentation:format:)``
             public struct PrivateKey: Sendable {
                 /// The internal `PrivateKeyImplementation` backing this ECDH signing key.
                 ///
@@ -296,10 +298,15 @@ import libsecp256k1
                     self.baseKey = try PrivateKeyImplementation(format: .compressed)
                 }
 
-                /// Creates a random secp256k1 ECDH private key.
+                /// Deprecated variant of ``init()`` — the companion ``publicKey``'s
+                /// stored serialization is a boundary concern, not a key-creation
+                /// input. Identical to ``init()`` for `.compressed`; for a 65-byte
+                /// ``publicKey``, construct via ``init()`` and read
+                /// ``PublicKey/uncompressedRepresentation``.
                 ///
                 /// - Parameter format: The serialization format of the companion ``publicKey``; defaults to `.compressed`.
                 /// - Throws: ``secp256k1Error/underlyingCryptoError`` if key generation fails.
+                @available(*, deprecated, message: "use init() — uncompressed publicKey via publicKey.uncompressedRepresentation")
                 public init(format: P256K.Format = .compressed) throws {
                     self.baseKey = try PrivateKeyImplementation(format: format)
                 }
@@ -313,11 +320,21 @@ import libsecp256k1
                     self.baseKey = try PrivateKeyImplementation(dataRepresentation: data, format: .compressed)
                 }
 
-                /// Creates a secp256k1 ECDH private key from a 32-byte raw scalar.
+                /// Deprecated variant of ``init(dataRepresentation:)`` — the
+                /// companion ``publicKey``'s stored serialization is a boundary
+                /// concern, not a key-creation input. Identical to
+                /// ``init(dataRepresentation:)`` for `.compressed`; for a 65-byte
+                /// ``publicKey``, construct via ``init(dataRepresentation:)`` and
+                /// read ``PublicKey/uncompressedRepresentation``.
                 ///
                 /// - Parameter data: Exactly 32 bytes; must pass `secp256k1_ec_seckey_verify`.
                 /// - Parameter format: The serialization format of the companion ``publicKey``; defaults to `.compressed`.
                 /// - Throws: ``secp256k1Error/incorrectKeySize`` if `data` is not 32 bytes; ``secp256k1Error/underlyingCryptoError`` if the scalar is invalid.
+                @available(
+                    *,
+                    deprecated,
+                    message: "use init(dataRepresentation:) — uncompressed publicKey via publicKey.uncompressedRepresentation"
+                )
                 public init<D: ContiguousBytes>(dataRepresentation data: D, format: P256K.Format = .compressed) throws {
                     self.baseKey = try PrivateKeyImplementation(dataRepresentation: data, format: format)
                 }

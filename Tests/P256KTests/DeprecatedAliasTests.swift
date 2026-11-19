@@ -353,4 +353,110 @@ struct DeprecatedAliasTestSuite {
             }
         }
     #endif
+
+    /// Spec 005 (T012) — the deprecated `format:` private-key initializers keep
+    /// their signatures' semantics: `.compressed` matches the new bare
+    /// initializers, and `.uncompressed` still produces an uncompressed-stored
+    /// companion `publicKey` encoding the same point — the deprecated paths are
+    /// the only way uncompressed storage is reachable on this type until 1.0.
+    /// `init(format:)` generates random bytes, so only stored-form properties
+    /// pin there; the fixed-scalar inits pin byte-for-byte.
+    @available(*, deprecated)
+    @Test("Deprecated Signing.PrivateKey format inits preserve scalar and companion stored format")
+    func signingPrivateKeyInitAliases() throws {
+        for format in [P256K.Format.compressed, .uncompressed] {
+            let generated = try P256K.Signing.PrivateKey(format: format)
+            #expect(generated.dataRepresentation.count == P256K.ByteLength.privateKey)
+            #expect(generated.publicKey.format == format)
+            #expect(generated.publicKey.dataRepresentation.count == format.length)
+            #expect(generated.publicKey.uncompressedRepresentation.count == P256K.Format.uncompressed.length)
+        }
+
+        let scalar = try "703d3b63e84421e59f9359f8b27c25365df9d85b6b1566e3168412fa599c12f4".bytes
+        let bare = try P256K.Signing.PrivateKey(dataRepresentation: scalar)
+
+        for format in [P256K.Format.compressed, .uncompressed] {
+            let labeled = try P256K.Signing.PrivateKey(dataRepresentation: scalar, format: format)
+            #expect(labeled.dataRepresentation == bare.dataRepresentation)
+            #expect(labeled.publicKey.format == format)
+            #expect(labeled.publicKey.uncompressedRepresentation == bare.publicKey.uncompressedRepresentation)
+            #expect(labeled.publicKey.dataRepresentation == (format == .compressed
+                    ? bare.publicKey.dataRepresentation
+                    : bare.publicKey.uncompressedRepresentation))
+        }
+
+        #if Xcode || ENABLE_UINT256
+            if #available(macOS 15.0, iOS 18.0, macCatalyst 18.0, watchOS 11.0, tvOS 18.0, visionOS 2.0, *) {
+                let uintScalar = try #require(UInt256(rawValue: bare.dataRepresentation))
+                for format in [P256K.Format.compressed, .uncompressed] {
+                    let labeled = try P256K.Signing.PrivateKey(uintScalar, format: format)
+                    #expect(labeled.dataRepresentation == bare.dataRepresentation)
+                    #expect(labeled.publicKey.format == format)
+                    #expect(labeled.publicKey.uncompressedRepresentation == bare.publicKey.uncompressedRepresentation)
+                }
+            }
+        #endif
+    }
+
+    #if Xcode || ENABLE_MODULE_RECOVERY
+        /// Spec 005 (T012) — the same stored-form contract holds on
+        /// `Recovery.PrivateKey`'s deprecated `format:` initializers.
+        /// `Recovery.PublicKey` exposes no public `format` property, so stored
+        /// form is checked on the internal `baseKey.format` record and the
+        /// `dataRepresentation` byte length.
+        @available(*, deprecated)
+        @Test("Deprecated Recovery.PrivateKey format inits preserve scalar and companion stored format")
+        func recoveryPrivateKeyInitAliases() throws {
+            for format in [P256K.Format.compressed, .uncompressed] {
+                let generated = try P256K.Recovery.PrivateKey(format: format)
+                #expect(generated.dataRepresentation.count == P256K.ByteLength.privateKey)
+                #expect(generated.publicKey.baseKey.format == format)
+                #expect(generated.publicKey.dataRepresentation.count == format.length)
+            }
+
+            let scalar = try "703d3b63e84421e59f9359f8b27c25365df9d85b6b1566e3168412fa599c12f4".bytes
+            let bare = try P256K.Recovery.PrivateKey(dataRepresentation: scalar)
+
+            for format in [P256K.Format.compressed, .uncompressed] {
+                let labeled = try P256K.Recovery.PrivateKey(dataRepresentation: scalar, format: format)
+                #expect(labeled.dataRepresentation == bare.dataRepresentation)
+                #expect(labeled.publicKey.baseKey.format == format)
+                #expect(labeled.publicKey.uncompressedRepresentation == bare.publicKey.uncompressedRepresentation)
+                #expect(labeled.publicKey.dataRepresentation == (format == .compressed
+                        ? bare.publicKey.dataRepresentation
+                        : bare.publicKey.uncompressedRepresentation))
+            }
+        }
+    #endif
+
+    #if Xcode || ENABLE_MODULE_ECDH
+        /// Spec 005 (T012) — the same stored-form contract holds on
+        /// `KeyAgreement.PrivateKey`'s deprecated `format:` initializers.
+        /// `KeyAgreement.PublicKey` exposes no public `format` property, so
+        /// stored form is checked on `baseKey.format`; the private scalar's
+        /// accessor on this type is `rawRepresentation`.
+        @available(*, deprecated)
+        @Test("Deprecated KeyAgreement.PrivateKey format inits preserve scalar and companion stored format")
+        func keyAgreementPrivateKeyInitAliases() throws {
+            for format in [P256K.Format.compressed, .uncompressed] {
+                let generated = try P256K.KeyAgreement.PrivateKey(format: format)
+                #expect(generated.rawRepresentation.count == P256K.ByteLength.privateKey)
+                #expect(generated.publicKey.baseKey.format == format)
+                #expect(generated.publicKey.dataRepresentation.count == format.length)
+            }
+
+            let scalar = try "703d3b63e84421e59f9359f8b27c25365df9d85b6b1566e3168412fa599c12f4".bytes
+            let bare = try P256K.KeyAgreement.PrivateKey(dataRepresentation: scalar)
+
+            for format in [P256K.Format.compressed, .uncompressed] {
+                let labeled = try P256K.KeyAgreement.PrivateKey(dataRepresentation: scalar, format: format)
+                #expect(labeled.rawRepresentation == bare.rawRepresentation)
+                #expect(labeled.publicKey.baseKey.format == format)
+                #expect(labeled.publicKey.uncompressedRepresentation == bare.publicKey.uncompressedRepresentation)
+                #expect(labeled.publicKey.dataRepresentation == (format == .compressed
+                        ? bare.publicKey.dataRepresentation
+                        : bare.publicKey.uncompressedRepresentation))
+            }
+        }
+    #endif
 }

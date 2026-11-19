@@ -35,6 +35,7 @@ struct AsymmetricTestSuite {
         #expect(privateKey.publicKey.dataRepresentation.count == P256K.Format.compressed.length, "PublicKey length mismatch for compressed format")
     }
 
+    @available(*, deprecated)
     @Test("Verify uncompressed public key characteristics")
     func uncompressedPublicKey() throws {
         let privateKey = try P256K.Signing.PrivateKey(format: .uncompressed)
@@ -67,15 +68,21 @@ struct AsymmetricTestSuite {
     @Test("Verify uncompressed public key with specific bytes")
     func uncompressedPublicKeyWithKey() throws {
         let privateBytes = try "703d3b63e84421e59f9359f8b27c25365df9d85b6b1566e3168412fa599c12f4".bytes
-        let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateBytes, format: .uncompressed)
-        #expect(privateKey.publicKey.format == .uncompressed, "PublicKey format should be uncompressed")
-        #expect(privateKey.publicKey.dataRepresentation.count == P256K.Format.uncompressed.length, "PublicKey length mismatch for uncompressed format")
+        let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateBytes)
+        #expect(privateKey.publicKey.format == .compressed, "PublicKey format should be compressed")
+        #expect(
+            privateKey.publicKey.uncompressedRepresentation.count == P256K.Format.uncompressed.length,
+            "PublicKey length mismatch for uncompressed representation"
+        )
 
         let expectedPublicKeyString = "04c9c68596824505dd6cd1993a16452b4b1a13bacde56f80e9049fd03850cce137c1fa4acb7bef7edcc04f4fa29e071ea17e34fa07fa5d87b5ebf6340df6558498"
         let expectedPublicKey = try expectedPublicKeyString.bytes
 
-        #expect(expectedPublicKey == privateKey.publicKey.bytes, "PublicKey bytes do not match expected value")
-        #expect(expectedPublicKeyString == String(bytes: privateKey.publicKey.bytes), "PublicKey string representation mismatch")
+        #expect(expectedPublicKey == Array(privateKey.publicKey.uncompressedRepresentation), "PublicKey bytes do not match expected value")
+        #expect(
+            expectedPublicKeyString == String(bytes: privateKey.publicKey.uncompressedRepresentation),
+            "PublicKey string representation mismatch"
+        )
     }
 
     @Test("Verify invalid private key bytes throw appropriate error")
@@ -216,10 +223,13 @@ struct AsymmetricTestSuite {
         """
 
         let privateKeyBytes = try "15f01cf0e979ce9bd3b19e2db9f07ad4f476f5b3a749d5dcc47ee293ca5c873b".bytes
-        let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes, format: .uncompressed)
+        let privateKey = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
         let publicKey = try P256K.Signing.PublicKey(pemRepresentation: publicKeyString)
 
-        #expect(privateKey.publicKey.dataRepresentation == publicKey.dataRepresentation, "Public key PEM data representation does not match the expected value.")
+        #expect(
+            privateKey.publicKey.uncompressedRepresentation == publicKey.dataRepresentation,
+            "Public key PEM data representation does not match the expected value."
+        )
     }
 
     #if Xcode || ENABLE_UINT256

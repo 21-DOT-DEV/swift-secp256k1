@@ -61,19 +61,16 @@ let privateKeyBytes = privateKey.dataRepresentation  // 32 bytes
 let restored = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
 ```
 
-Select the public-key form at private-key creation time using the `format:` parameter, or convert an existing compressed public key to its uncompressed bytes on demand:
+New private keys always store a compressed (33-byte) companion public key; when a protocol needs the 65-byte form, read it from `uncompressedRepresentation` — no format choice happens at key-creation time:
 
 ```swift
 import P256K
 
-let compressed = try P256K.Signing.PrivateKey(format: .compressed)
-compressed.publicKey.dataRepresentation.count  // 33
-
-let uncompressed = try P256K.Signing.PrivateKey(format: .uncompressed)
-uncompressed.publicKey.dataRepresentation.count  // 65
+let privateKey = try P256K.Signing.PrivateKey()
+privateKey.publicKey.dataRepresentation.count  // 33
 
 // Compressed public key → uncompressed bytes without a new key pair
-let fullBytes = compressed.publicKey.uncompressedRepresentation  // 65 bytes
+let fullBytes = privateKey.publicKey.uncompressedRepresentation  // 65 bytes
 ```
 
 ### Importing PEM-encoded keys

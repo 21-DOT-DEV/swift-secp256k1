@@ -176,7 +176,7 @@ The C calls seen most often in Swift code map to P256K as follows:
 | `secp256k1_ec_pubkey_create` | ``P256K/Signing/PrivateKey`` → `.publicKey` |
 | `secp256k1_ecdsa_sign` | `privateKey.signature(for:)` |
 | `secp256k1_ecdsa_verify` | `publicKey.isValidSignature(_:for:)` |
-| `secp256k1_ec_pubkey_serialize` / `_parse` | ``P256K/Signing/PublicKey`` `dataRepresentation` / `init(dataRepresentation:format:)` |
+| `secp256k1_ec_pubkey_serialize` / `_parse` | ``P256K/Signing/PublicKey`` `dataRepresentation` / `init(dataRepresentation:)` — `uncompressedRepresentation` for the 65-byte form |
 | `secp256k1_ecdsa_signature_serialize_der` / compact | ``P256K/Signing/ECDSASignature`` `derRepresentation` / `compactRepresentation` |
 | `secp256k1_ecdsa_sign_recoverable` / `secp256k1_ecdsa_recover` | ``P256K/Recovery/PrivateKey`` / ``P256K/Recovery/PublicKey`` — see <doc:RecoveringPublicKeys> |
 | `secp256k1_ecdh` | `sharedSecretFromKeyAgreement(with:)` on ``P256K/KeyAgreement/PrivateKey`` — see <doc:EllipticCurveDiffieHellman> |

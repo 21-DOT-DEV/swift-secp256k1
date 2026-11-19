@@ -281,7 +281,7 @@ import libsecp256k1
                     dataRepresentation data: D,
                     format: P256K.Format
                 ) throws {
-                    guard data.withUnsafeBytes { $0.count } == format.length else {
+                    guard data.withUnsafeBytes({ $0.count }) == format.length else {
                         throw secp256k1Error.incorrectKeySize
                     }
                     try self.init(dataRepresentation: data)
