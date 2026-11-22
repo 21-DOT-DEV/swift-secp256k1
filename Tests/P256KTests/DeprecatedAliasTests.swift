@@ -266,6 +266,28 @@ struct DeprecatedAliasTestSuite {
                 )
             }
         }
+
+        /// Spec 005 (T013) — deprecated `sharedSecretFromKeyAgreement(with:format:)`
+        /// keeps its semantics: `.compressed` is byte-identical to the bare call,
+        /// and `.uncompressed` still returns the 65-byte serialization of the
+        /// same shared point — the deprecated path remains the only way a
+        /// 65-byte `SharedSecret` exists until 1.0. Both forms re-serialize to
+        /// the same `uncompressedRepresentation`.
+        @available(*, deprecated)
+        @Test("Deprecated sharedSecretFromKeyAgreement matches bare call and preserves stored form")
+        func sharedSecretFromKeyAgreementAlias() throws {
+            let privateKey = try P256K.KeyAgreement.PrivateKey()
+            let peerPrivateKey = try P256K.KeyAgreement.PrivateKey()
+
+            let compressed = privateKey.sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey)
+            let labeledCompressed = privateKey.sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey, format: .compressed)
+            #expect(labeledCompressed.byteArray == compressed.byteArray)
+
+            let uncompressed = privateKey.sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey, format: .uncompressed)
+            #expect(uncompressed.byteArray.count == P256K.Format.uncompressed.length)
+            #expect(uncompressed.byteArray.first == 0x04, "Deprecated .uncompressed still stores the uncompressed SEC1 form")
+            #expect(uncompressed.uncompressedRepresentation == compressed.uncompressedRepresentation)
+        }
     #endif
 
     /// Spec 005 (T008) — the deprecated `add(_:format:)` / `multiply(_:format:)`

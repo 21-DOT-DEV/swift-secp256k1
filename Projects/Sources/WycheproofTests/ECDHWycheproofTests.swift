@@ -112,7 +112,7 @@ struct ECDHWycheproofTests {
             let expectedShared = try vector.shared.bytes
 
             let privateKey = try P256K.KeyAgreement.PrivateKey(dataRepresentation: privateKeyBytes)
-            let sharedSecret = privateKey.sharedSecretFromKeyAgreement(with: publicKey, format: .compressed)
+            let sharedSecret = privateKey.sharedSecretFromKeyAgreement(with: publicKey)
 
             // libsecp256k1 returns compressed format: version byte + x-coordinate
             // Wycheproof expects just the x-coordinate (32 bytes)

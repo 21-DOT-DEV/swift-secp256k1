@@ -54,21 +54,20 @@ let bobShared = bobPrivateKey.sharedSecretFromKeyAgreement(with: alicePublicKey)
 
 The returned ``SharedSecret`` wraps the **raw serialized EC point** in compressed form (33 bytes: `0x02`/`0x03` prefix + 32-byte x-coordinate). This differs from libsecp256k1's upstream default (`secp256k1_ecdh_hash_function_sha256`, which would return a SHA-256 of the compressed point) — this package surfaces the unhashed point so callers can pipe it into whatever KDF their protocol requires.
 
-### Format Selection
+### The Uncompressed Encoding
 
-The default is `.compressed` (33 bytes). For protocols that mandate the full point (uncompressed SEC1 encoding, 65 bytes: `0x04` prefix + 32-byte x + 32-byte y):
+The shared point itself has no format — the serialization is chosen at the boundary. For protocols that mandate the full point (uncompressed SEC1 encoding, 65 bytes: `0x04` prefix + 32-byte x + 32-byte y), read ``SharedSecret/uncompressedRepresentation``:
 
 ```swift
 import P256K
 
-let sharedUncompressed = alicePrivateKey.sharedSecretFromKeyAgreement(
-    with: bobPublicKey,
-    format: .uncompressed
-)
-// sharedUncompressed.byteArray.count == 65
+let sharedUncompressed = alicePrivateKey
+    .sharedSecretFromKeyAgreement(with: bobPublicKey)
+    .uncompressedRepresentation
+// sharedUncompressed.count == 65
 ```
 
-Choose compressed unless interoperability with a protocol that requires uncompressed encoding (for example, some legacy ECIES variants, or specific OpenSSL-generated key material) forces the larger form. See <doc:WorkingWithKeys> for the broader format-selection story.
+Stick with the stored compressed form unless interoperability with a protocol that requires uncompressed encoding (for example, some legacy ECIES variants, or specific OpenSSL-generated key material) forces the larger form. See <doc:WorkingWithKeys> for the broader format-selection story.
 
 ### Deriving a Symmetric Key
 

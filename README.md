@@ -132,7 +132,7 @@ let privateKey = try! P256K.KeyAgreement.PrivateKey()
 let publicKey = try! P256K.KeyAgreement.PrivateKey().publicKey
 
 // Create a compressed shared secret with a private key from only a public key
-let sharedSecret = privateKey.sharedSecretFromKeyAgreement(with: publicKey, format: .compressed)
+let sharedSecret = privateKey.sharedSecretFromKeyAgreement(with: publicKey)
 
 // By default, libsecp256k1 hashes the x-coordinate with version information.
 let symmetricKey = SHA256.hash(data: sharedSecret.bytes)

@@ -44,6 +44,15 @@ A post-fix audit of every `secp256k1_ec_pubkey_parse` / `secp256k1_xonly_pubkey_
 Every peer puts representation at the boundary. The `format:` parameter is a
 holdover predating the accessors — the peers converged on the shape this spec adopts.
 
+The ECDH shared secret follows the same rule on re-examination: upstream
+swift-crypto's `SharedSecret` stores `ss: SecureBytes` alone — no `format` member —
+and varies output only through derivation methods on the result
+(`x963DerivedSymmetricKey`, `hkdfDerivedSymmetricKey`); rust-secp256k1's
+`ecdh::SharedSecret` is a fixed 32-byte hash while `shared_secret_point` hands the
+caller the raw point to serialize; and vendored `secp256k1_ecdh` has no format
+concept at all — output bytes are whatever the pluggable `hashfp` derivation
+writes. No peer carries a representation parameter on ECDH output.
+
 ## 3. This repo was already moving this way
 
 - `MuSig` aggregate keys hardcode `.compressed` storage (`MuSig+Aggregate.swift:50-87`)
@@ -71,7 +80,24 @@ Every public signature carrying `format: P256K.Format` today (verified by grep):
 | 10–11 | `Recovery.PrivateKey` ×2 — `Recovery.swift:123,132` | same | same |
 | 12–13 | `KeyAgreement.PrivateKey` ×2 — `ECDH.swift:272,281` | same | same |
 | 14–17 | `init(dataRepresentation:format:)` on `Signing`, `Schnorr`, `MuSig`, `KeyAgreement` public keys — `ECDSA+PublicKey.swift:141`, `Schnorr+PublicKey.swift:116`, `MuSig.swift:239`, `ECDH.swift:94` | labels self-describing bytes | `init(dataRepresentation:)` inferring from `count` + deprecated shims |
-| — | `sharedSecretFromKeyAgreement(with:format:)` — `ECDH.swift:377`; `SharedSecret.format` (internal stored property) — `DH.swift:70` | **semantic**: chooses the secret's own bytes (33 vs 65 serialized point → different `ssHash` input → different secret). `SharedSecret` is opaque — no accessor can recover the other form | **kept**, documented as the exception |
+| 18 | `sharedSecretFromKeyAgreement(with:format:)` — `ECDH.swift:446`; `SharedSecret.format` (write-only stored property, deleted) — `DH.swift:70` | output serialization choice — the shared secret's stored form | `sharedSecretFromKeyAgreement(with:)` + deprecated shim + `SharedSecret.uncompressedRepresentation` |
+
+Site 18 read as exceptional on first pass — the parameter selects the secret's
+*own bytes* (33 vs 65 serialized point → different KDF input → different derived
+key), and `SharedSecret` looked opaque: "no accessor can recover the other form."
+The opacity claim doesn't hold: the 33-byte compressed SEC1 secret encodes the
+full point (X + Y parity), and `secp256k1_ecdh`'s `hashfp` already hands both
+coordinates to the callback in constant time — capturing the 65-byte form there
+(upstream's own `ecdh_hash_function_custom` test and rust-secp256k1's
+`shared_secret_point` do exactly this) keeps it an accessor, not a parameter,
+without routing secret material back through the variable-time
+`ge_set_xo_var`/`fe_normalize_var` decompression primitives `ec_pubkey_parse`
+uses — and holding that capture as `SharedSecret`'s *single* stored form, with
+serializations derived at the boundary (rust's `shared_secret_point` shape),
+makes "a compressed-only secret" unconstructible entirely. `SharedSecret.format` was also
+write-only: nothing read it, and `ss.count` discriminated the stored form
+identically. With the exception removed, the boundary principle holds with zero
+survivors, matching every peer in §2.
 
 `Recovery.PublicKey` has **no** `init(dataRepresentation:format:)` — recovery keys are
 derivation-only, which is exactly why it needs `uncompressedRepresentation` before

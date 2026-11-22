@@ -8,7 +8,7 @@ Turn the ``SharedSecret`` produced by ECDH key agreement into symmetric key mate
 
 ## Overview
 
-``P256K/KeyAgreement/PrivateKey/sharedSecretFromKeyAgreement(with:format:)`` returns the **raw serialized EC point**, not a usable key. In the default `.compressed` format that is 33 bytes — a `0x02`/`0x03` parity prefix followed by the 32-byte x coordinate — and a KDF is what turns that point into key material. Which KDF, which inputs, and which salt are decisions the *protocol* you implement makes, not the library.
+``P256K/KeyAgreement/PrivateKey/sharedSecretFromKeyAgreement(with:)`` returns the **raw serialized EC point**, not a usable key — 33 bytes of compressed SEC1 encoding, a `0x02`/`0x03` parity prefix followed by the 32-byte x coordinate — and a KDF is what turns that point into key material. Which KDF, which inputs, and which salt are decisions the *protocol* you implement makes, not the library.
 
 The recipe's two moving parts:
 
@@ -78,17 +78,17 @@ Deriving several keys from one shared secret calls `extract` once and `expand` p
 
 > Important: This recipe is an **example composition** of the library's ECDH output with a standard KDF — not a Nostr implementation. NIP-44 v2 layers its own padding, nonce, and message-authentication scheme on top of the conversation key; work from [nips/44.md][nip-44] if you are implementing it.
 
-### Choosing the slice by format
+### Choosing the slice by encoding
 
-The `.compressed` default yields `0x02/0x03 ‖ x` — `dropFirst()` leaves the x coordinate. If a protocol forces `.uncompressed` (65 bytes, `0x04 ‖ x ‖ y`), the x coordinate is the 32 bytes following the `0x04` prefix — 0-indexed bytes 1–32 — so take `dropFirst().prefix(32)`. Never take the *last* 32 bytes: on the uncompressed layout that yields the **y** coordinate, a different and incompatible input to the KDF.
+The stored 33-byte form is `0x02/0x03 ‖ x` — `dropFirst()` leaves the x coordinate. If a protocol needs the 65-byte uncompressed encoding (`0x04 ‖ x ‖ y`, read via ``SharedSecret/uncompressedRepresentation``), the x coordinate is the 32 bytes following the `0x04` prefix — 0-indexed bytes 1–32 — so take `dropFirst().prefix(32)`. Never take the *last* 32 bytes: on the uncompressed layout that yields the **y** coordinate, a different and incompatible input to the KDF.
 
 ```swift
-let uncompressedInputKeyMaterial = privateKey.sharedSecretFromKeyAgreement(
-    with: peerPrivateKey.publicKey,
-    format: .uncompressed
-).withUnsafeBytes { bytes in
-    SymmetricKey(data: bytes.dropFirst().prefix(32))
-}
+let uncompressedInputKeyMaterial = privateKey
+    .sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey)
+    .uncompressedRepresentation
+    .withUnsafeBytes { bytes in
+        SymmetricKey(data: bytes.dropFirst().prefix(32))
+    }
 // == inputKeyMaterial — same point, wider encoding
 ```
 

@@ -3,7 +3,7 @@ feature: 005
 title: Remove `format:` parameters — representations at the boundary, points inside
 phase: null
 status: Planned
-updated: 2026-11-12
+updated: 2026-11-19
 adrs: []
 ---
 
@@ -19,23 +19,29 @@ a pure representation choice: public-key operations always return compressed sto
 65-byte output moves to `uncompressedRepresentation` accessors (already present on two
 of five public-key types, added here to the other three), and byte-describing
 initializers infer 33-vs-65 from `data.count` — `secp256k1_ec_pubkey_parse` sniffs the
-tag either way, so the label was redundant. One parameter survives:
-`sharedSecretFromKeyAgreement(with:format:)` changes the shared secret's *own bytes*,
-which is a protocol choice, not an encoding preference. Ordered work: tasks.md.
-Evidence: research.md.
+tag either way, so the label was redundant. The last parameter,
+`sharedSecretFromKeyAgreement(with:format:)`, looked exceptional because it selects the
+shared secret's *own bytes* — but the 33-byte compressed secret encodes the full point,
+so the 65-byte form moves to `SharedSecret.uncompressedRepresentation` like every other
+site, the dead `SharedSecret.format` record is deleted, and no public `format:`
+parameter survives. Ordered work: tasks.md. Evidence: research.md.
 
 ## 1. Goal & success criteria
 
-- No *non-deprecated* public `format:` parameter remains except
-  `sharedSecretFromKeyAgreement(with:format:)`, which is documented as the deliberate
-  exception. `grep -rn 'format: P256K.Format' Sources/P256K` returns only expected
-  survivors: that signature, the `@available(*, deprecated)` forwarding shims enumerated
-  in research.md §4 (kept until 1.0), the public `.format` reporting properties, and
-  internal parameters — including `SharedSecret`'s internal stored `format`
-  (`DH.swift:70`, no access modifier).
+- No *non-deprecated* public `format:` parameter remains — the ECDH variant that
+  looked exceptional deprecates like the rest. `grep -rn 'format: P256K.Format'
+  Sources/P256K` returns only expected survivors: the `@available(*, deprecated)`
+  forwarding shims enumerated in research.md §4 (kept until 1.0), the public `.format`
+  reporting properties, and internal parameters. `SharedSecret`'s write-only `format`
+  record is deleted; the deprecated shim's exposed-view discrimination moves to an
+  internal `exposedForm` tag — the stored point's count can no longer discriminate
+  (it is always 65), so unlike the deleted write-only record this one is actually read.
 - Every public-key type (`Signing`, `Recovery`, `Schnorr`, `MuSig`, `KeyAgreement`)
   can produce a 65-byte `uncompressedRepresentation`; the three accessors added here
-  match the two that exist byte-for-byte.
+  match the two that exist byte-for-byte. `SharedSecret` gains the same accessor,
+  returning a copy of the type's only stored form — the 65-byte encoding captured
+  inside `secp256k1_ecdh` in constant time — not a re-parse of secret bytes
+  (recorded decision in §6).
 - Every removal lands with a replacement named: bare overloads for operations,
   inferred-length initializers for byte inputs, `uncompressedRepresentation` for
   65-byte output, `init()`/`init(dataRepresentation:)` for private keys — plus
@@ -51,22 +57,34 @@ Evidence: research.md.
   `PublicKey(dataRepresentation: bytes)` is new API on `Signing`, `Schnorr`, and
   `MuSig` — their `init(dataRepresentation:format:)` declares no default — and a
   documented `Breaking:` widening on `KeyAgreement` (recorded decision in §3).
+  `sharedSecretFromKeyAgreement(with:)` keeps resolving warning-free too: the
+  formerly-internal `DiffieHellmanKeyAgreement` witness goes `public` carrying
+  the `.compressed` body, so the call shape that used the `format:` default
+  lands on the new method.
 
 ## 2. Scope
 
 **In scope:**
 
-- 17 removable `format:` sites across `Sources/P256K/` — full taxonomy in research.md §4:
-  - Operations (6): `MuSig.PublicKey.add`, `Signing.PublicKey.add`, `Signing.PublicKey.multiply`,
-    `Signing.PublicKey.combine`, `Recovery.PublicKey.init(_:signature:format:)` ×2 overloads.
+- 18 removable `format:` sites across `Sources/P256K/` — full taxonomy in research.md §4:
+  - Operations (7): `MuSig.PublicKey.add`, `Signing.PublicKey.add`, `Signing.PublicKey.multiply`,
+    `Signing.PublicKey.combine`, `Recovery.PublicKey.init(_:signature:format:)` ×2 overloads,
+    `KeyAgreement.PrivateKey.sharedSecretFromKeyAgreement(with:format:)`.
   - Private-key initializers (7): `Signing.PrivateKey` ×3, `Recovery.PrivateKey` ×2,
     `KeyAgreement.PrivateKey` ×2 — the parameter only ever steered the companion
     `publicKey`'s stored form; private-key input bytes are always a 32-byte scalar.
   - Public-key byte initializers (4): `Signing`, `Schnorr`, `MuSig`, `KeyAgreement`
     `init(dataRepresentation:format:)` — replaced by `init(dataRepresentation:)`
     inferring format from byte count.
-- Three new `uncompressedRepresentation` accessors (`Recovery.PublicKey`,
-  `Schnorr.PublicKey`, `MuSig.PublicKey`).
+- Four new `uncompressedRepresentation` accessors (`Recovery.PublicKey`,
+  `Schnorr.PublicKey`, `MuSig.PublicKey`, `SharedSecret`).
+- Deletion of `SharedSecret`'s write-only `format` stored property — nothing read
+  it, and `ss.count` discriminated the stored form identically.
+- `SharedSecret` storage refactor (internal only — no signature delta; the §6
+  equality tighten is publicly observable): the secret stores the captured
+  65-byte point itself, plus an internal `exposedForm` tag recording which
+  serialization `withUnsafeBytes(_:)` emits; every byte accessor derives from
+  that single stored form.
 - Deprecated forwarding shims for every removed signature.
 - DocC article and doc-comment updates wherever `format:` is named; `[Unreleased]`
   CHANGELOG `Breaking:`/`Deprecated:` entries.
@@ -79,8 +97,8 @@ Evidence: research.md.
 - Internal `format:` parameters on `PublicKeyImplementation` / `PrivateKeyImplementation` /
   `XonlyKeyImplementation` — they are how stored form is set; deprecated public shims
   forward through them.
-- `sharedSecretFromKeyAgreement(with:format:)` and the internal `SharedSecret.format`
-  stored property (`DH.swift:70`) — semantic (see §3), deliberately retained.
+- `secp256k1_ecdh`'s `hashfp` plumbing and `hashClosure()` — internal machinery the
+  deprecated ECDH shim forwards through until 1.0.
 - Vendored `Sources/libsecp256k1/` — untouched.
 - Actual deletion of the deprecated shims — happens at 1.0 alongside the existing
   `Deprecated:` aliases from 0.25.0 (`.bytes`, `normalize`, `create()`).
@@ -108,7 +126,7 @@ flowchart LR
     inBytes["caller bytes"] --> init --> impl
     impl --> ops --> impl
     impl --> read --> outBytes["caller bytes"]
-    dh["EXCEPTION — sharedSecretFromKeyAgreement(format:)<br/>format selects the secret's own bytes (33 vs 65)<br/>fed to the shared-secret hash = different secret"]
+    secret["SharedSecret — same boundary rule:<br/>stores the captured point itself (0x04‖x‖y, 65);<br/>withUnsafeBytes emits the exposed view,<br/>uncompressedRepresentation copies storage"]
 ```
 
 Before/after pocket sketch:
@@ -118,7 +136,7 @@ Before/after pocket sketch:
 try key.add(tweak, format: .uncompressed)
 try P256K.Signing.PublicKey(dataRepresentation: bytes, format: .uncompressed)
 try P256K.Signing.PrivateKey(format: .uncompressed)          // companion publicKey uncompressed
-let ss = try priv.sharedSecretFromKeyAgreement(with: pub, format: .uncompressed)  // stays
+let ss = try priv.sharedSecretFromKeyAgreement(with: pub, format: .uncompressed)
 
 // After (this spec)
 try key.add(tweak)                                           // always compressed storage
@@ -126,7 +144,8 @@ tweaked.uncompressedRepresentation                           // 65 bytes on dema
 try P256K.Signing.PublicKey(dataRepresentation: bytes)       // 33/65 sniffed from bytes.count
 try P256K.Signing.PrivateKey()                               // companion publicKey compressed
 priv.publicKey.uncompressedRepresentation                    // 65 bytes on demand
-let ss = try priv.sharedSecretFromKeyAgreement(with: pub, format: .uncompressed)  // unchanged
+let ss = priv.sharedSecretFromKeyAgreement(with: pub)
+ss.uncompressedRepresentation                                // 65 bytes on demand
 ```
 
 Deprecations, not hard removals: the repo's convention (0.25.0's `.bytes` →
@@ -184,24 +203,34 @@ Ordered as review slices in tasks.md:
    uncompressed until 1.0.
 4. **Private-key initializers** — `init()`, `init(_:)`, `init(dataRepresentation:)`
    producing compressed companion `publicKey`s; deprecate the `format:` variants.
-5. **Docs + bookkeeping** — doc-comment and DocC article updates, CHANGELOG
-   `Breaking:`/`Deprecated:` entries, the exception documented on
-   `sharedSecretFromKeyAgreement`.
+5. **ECDH shared secret** — `SharedSecret.uncompressedRepresentation` (the 65-byte
+   form is captured inside `secp256k1_ecdh`, where both coordinates exist in
+   constant time, so it is an accessor, not a parameter); the internal
+   `DiffieHellmanKeyAgreement` witness goes `public` carrying the `.compressed`
+   body; `sharedSecretFromKeyAgreement(with:format:)`
+   deprecates like every other site; the write-only `SharedSecret.format` record
+   is deleted. Same slice, second step: `SharedSecret` stores the captured point
+   itself — the 65-byte capture is the single storage, with an internal
+   `exposedForm` tag carrying the deprecated shim's observable view — so every
+   byte accessor is a total boundary derivation rather than a serialization the
+   type must keep consistent.
+6. **Docs + bookkeeping** — doc-comment and DocC article updates, CHANGELOG
+   `Breaking:`/`Deprecated:` entries.
 
 ## 5. Verification
 
-- [ ] `grep -rn 'format: P256K.Format' Sources/P256K` — the only *non-deprecated*
-      public parameter survivor is `sharedSecretFromKeyAgreement(with:format:)`;
-      every other public match is an enumerated survivor: a `@available(*, deprecated)`
-      forwarding shim at a research.md §4 site (kept until 1.0), a public `.format`
-      reporting property, or an internal parameter (implementation `format:`s and
-      `SharedSecret`'s internal stored `format` at `DH.swift:70`). Any match outside
-      those categories fails this check.
+- [ ] `grep -rn 'format: P256K.Format' Sources/P256K` — no *non-deprecated* public
+      parameter survives; every public match is an enumerated survivor: a
+      `@available(*, deprecated)` forwarding shim at a research.md §4 site (kept
+      until 1.0), a public `.format` reporting property, or an internal parameter
+      (the implementation `format:`s). Any match outside those categories fails
+      this check.
 - [ ] `swift build` clean: un-parametered calls (`PrivateKey()`, `add(t)`,
       `PublicKey(dataRepresentation: b)`) resolve without deprecation warnings.
 - [ ] `swift test`: every `uncompressedRepresentation` returns the same point as
-      `dataRepresentation`, checked by SEC1 byte correspondence on all five
-      public-key types — `0x04` tag, identical X coordinate in bytes 1–32, and
+      the stored form, checked by SEC1 byte correspondence on all five
+      public-key types and `SharedSecret` — `0x04` tag, identical X coordinate
+      in bytes 1–32, and
       byte 64's low bit matching the compressed tag's `0x02`/`0x03` parity (the
       `serialize33`/`serialize65` contract in vendored `eckey_impl.h:38-55`), so no
       `xonly`/`parity` accessor is needed (`Recovery.PublicKey` has neither);
@@ -226,10 +255,41 @@ Ordered as review slices in tasks.md:
 - **Capability loss.** Removing `.uncompressed` output with no accessor would strand
   callers who need 65-byte keys — mitigated by ordering: the accessor group lands
   first, and the sweep covers all five public-key types, not just the reported site.
-- **Scope creep into `SharedSecret`.** The DH format parameter looks like the same
-  shape but changes the secret bytes themselves (33- vs 65-byte serialized point
-  hashed into the shared secret). It is named and justified as the exception in §3
-  and the diagram so a future sweep doesn't "fix" it.
+- **Constant-time coverage of 65-byte ECDH output (recorded decision).**
+  `secp256k1_ecdh` advertises "in constant time" — but a re-parse-based accessor
+  would run the *secret* shared point through `secp256k1_ec_pubkey_parse`'s
+  variable-time primitives (`ge_set_xo_var`, `fe_normalize_var` — `field.h:120-124`
+  documents "not constant time in r"), carving a hole in the contract the module
+  advertises, and after the deprecated shim's 1.0 deletion it would be the *only*
+  route to 65 bytes. Instead the hash closure always writes the 65-byte SEC1 form
+  into `SecureBytes` storage while upstream still holds both coordinates in
+  constant time — the same arrangement upstream's own `ecdh_hash_function_custom`
+  test (which writes `0x04‖x‖y` in the callback and byte-compares against
+  `serialize`'s uncompressed output) and rust-secp256k1's `shared_secret_point`
+  use — and the capture *is* `SharedSecret`'s storage: a single `SecureBytes`
+  field holds the full point, so no serialization the type stores can ever need
+  expanding. The 33-byte compressed view derives by branchless byte selection
+  (`0x02 | (y & 1)` + X copy, no field arithmetic) at the boundary, and
+  `uncompressedRepresentation` is an unconditional `SecureBytes`→`Data` copy:
+  constant-time production with no re-parse, no `secp256k1_pubkey` stack copy,
+  no secret-bearing plain arrays — and the constant-time route survives the
+  shim's deletion.
+- **`SharedSecret` storage shape and equality (recorded decision).** Storing the
+  point — rather than one exposed serialization plus an optional second form —
+  makes "a compressed-only secret" unconstructible at every site, test fixtures
+  included: the internal `init(point:exposedForm:)` requires the 65-byte capture,
+  so `uncompressedRepresentation` is total and carries no invariant-failure
+  branch. `exposedForm` is an internal `P256K.Format` record of which
+  serialization `withUnsafeBytes(_:)` emits — `.uncompressed` only under the
+  deprecated shim, whose 65-byte `withUnsafeBytes` contract it preserves until
+  1.0 — internal bookkeeping, not the deleted write-only public record, and it
+  deletes with the shim. `==`/`hash` compare the stored point itself —
+  `safeCompare` over the 65 bytes, keeping the existing constant-time
+  guarantee: a canonical secret and a deprecated-`.uncompressed` secret over
+  the same shared point are the same shared secret, a deliberate (and publicly
+  observable — CHANGELOG-noted) tighten over comparing stored serializations. `description` reports the exposed view's byte count, keeping
+  the redaction contract's 33/65 pins — fixtures construct
+  `init(point:exposedForm:)` with 65-byte point bytes.
 - **`.format` property staleness.** Left public and honest: uncompressed storage is
   still reachable through inferred initializers, so the property still varies.
 
@@ -237,7 +297,9 @@ Ordered as review slices in tasks.md:
 
 - Internal `format:` parameters could slim further (e.g. `PrivateKeyImplementation`
   always storing compressed) once callers can't reach uncompressed storage — revisit
-  at 1.0 shim deletion.
+  at 1.0 shim deletion. `SharedSecret.exposedForm` deletes in the same sweep —
+  without the deprecated `.uncompressed` path every secret exposes the compressed
+  view unconditionally.
 - If `uncompressedRepresentation` proves the whole uncompressed-storage story,
   `.format` as a public property could deprecate too — deferred; inference keeps
   uncompressed storage reachable today.
@@ -249,6 +311,6 @@ Ordered as review slices in tasks.md:
 
 Review slices map to tasks.md groups: Accessors (T001–T004), Inferred initializers
 (T005–T007), Bare operations (T008–T010), Private-key initializers (T011–T012),
-Docs + bookkeeping (T013–T014). The accessor group is self-contained and
-non-breaking — a valid standalone early PR; the rest lands as one breaking-change PR
-in commit order.
+ECDH shared secret (T013–T014), Docs + bookkeeping (T015). The accessor group is
+self-contained and non-breaking — a valid standalone early PR; the rest lands as
+one breaking-change PR in commit order.

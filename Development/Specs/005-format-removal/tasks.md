@@ -131,7 +131,7 @@ return byte-identical results (covered in `Tests/P256KTests/DeprecatedAliasTests
   `Sources/P256K/Schnorr/Schnorr+PrivateKey.swift` (stale `publicKey`/`init()`
   doc claims only — adjacent stored-form inconsistency recorded in
   `Development/Roadmap/backlog.md`, behavior unchanged)
-- [ ] T012 Deprecate the seven `format:` initializers via `message:` naming
+- [x] T012 Deprecate the seven `format:` initializers via `message:` naming
   `publicKey.uncompressedRepresentation` as the `.uncompressed` migration,
   forwarding to the existing internal format machinery; tests cover deprecated
   private-key paths producing byte-identical results · same files +
@@ -140,12 +140,63 @@ return byte-identical results (covered in `Tests/P256KTests/DeprecatedAliasTests
 **Checkpoint:** `PrivateKey()` compiles warning-free; `PrivateKey(format:
 .uncompressed)` warns and still yields an uncompressed-stored `publicKey`.
 
+## ECDH shared secret — the exception eliminated, not documented
+
+- [x] T013 Re-review eliminated the last `format:` parameter rather than
+  documenting it as the exception: `SharedSecret` gains
+  `uncompressedRepresentation` (returns the 65-byte SEC1 form the hash closure
+  captures inside `secp256k1_ecdh` — upstream hands both coordinates to the
+  callback in constant time, so the accessor is a `SecureBytes` copy, never a
+  `ge_set_xo_var`/`fe_normalize_var` re-parse of secret material — recorded
+  decision in plan §6), the bare
+  `sharedSecretFromKeyAgreement(with:)` witness goes `public` carrying the
+  `.compressed` body, `sharedSecretFromKeyAgreement(with:format:)` deprecates
+  via `message:` keeping its body until 1.0, and the write-only
+  `SharedSecret.format` stored property is deleted (`ss.count` discriminates
+  identically). Parity pin lands in `DeprecatedAliasTests.swift`; the
+  SEC1-correspondence accessor test in `ECDHTests.swift`, which also gains a
+  known-answer pin — stored secrets checked byte-for-byte against the published
+  6·G and 7·G SEC1 encodings (odd and even Y), closing the self-consistency
+  blind spot review found; incidental `format:`
+  callers migrate (`ECDHTests.keyAgreement`, both `DocRecipeTests`
+  uncompressed bindings, `WycheproofTests`) · `Sources/P256K/DH.swift`,
+  `Sources/P256K/ECDH.swift`, `Tests/P256KTests/ECDHTests.swift`,
+  `Tests/P256KTests/DeprecatedAliasTests.swift`,
+  `Tests/P256KTests/DocRecipeTests.swift`,
+  `Tests/P256KTests/SecretRedactionTests.swift`,
+  `Projects/Sources/WycheproofTests/ECDHWycheproofTests.swift`, `README.md`
+- [ ] T014 `SharedSecret` stores the captured point, not a serialization — `ss`
+  and the `uncompressed` sidecar collapse into one `point: SecureBytes` holding
+  the 65-byte `0x04‖x‖y` form the hash closure already writes inside
+  `secp256k1_ecdh`, plus an internal `exposedForm` tag naming which view
+  `withUnsafeBytes` emits (`.uncompressed` only under the deprecated shim — the
+  tag retires with it at 1.0). Every byte accessor becomes total:
+  `uncompressedRepresentation` is `Data(point)` with no guard branch;
+  `withUnsafeBytes` returns the stored bytes for `.uncompressed`, otherwise
+  materializes the 33-byte compressed view into a per-access `SecureBytes` temp
+  (`0x02 | (y & 1)` + X copy, branchless — the same derivation T013 applied at
+  derivation time, moved to the boundary); `==`/`hash` compare the point, so a
+  deprecated-`.uncompressed` and a canonical secret for the same ECDH pair
+  compare equal — a deliberate tighten over stored-serialization equality;
+  `description` reports the exposed view's count so the redaction pins hold.
+  `init(ss:)` becomes `init(point:exposedForm:)` — the compressed-only state is
+  unconstructible at every site including fixtures, and the accessor's
+  `invariantFailure` branch deletes outright; `SecretRedactionTests` keeps both
+  `description` cases by building `init(point: Self.uncompressedSecret,
+  exposedForm: .compressed)` for the 33-byte pin. Recorded decision in plan §6;
+  §3 diagram corrected in the same edit · `Sources/P256K/DH.swift`,
+  `Sources/P256K/ECDH.swift`, `Tests/P256KTests/SecretRedactionTests.swift`
+
+**Checkpoint:** `SharedSecret` storage is the captured point; every accessor is
+total over constructible states; all T013 behavior pins stay green — same review
+slice, second commit after T013 stages.
+
 ## Docs + bookkeeping
 
-- [ ] T013 `sharedSecretFromKeyAgreement(with:format:)` doc comment gains the
-  exception note (format selects the secret's own bytes — protocol choice, not
-  encoding preference) · `Sources/P256K/DH.swift`, `Sources/P256K/ECDH.swift`
-- [ ] T014 DocC articles + doc comments scrubbed of removed-parameter references;
+- [ ] T015 DocC articles + doc comments scrubbed of removed-parameter references
+  — including `DerivingKeysFromSharedSecrets.md` and
+  `EllipticCurveDiffieHellman.md`, whose `sharedSecretFromKeyAgreement` examples
+  move to the `uncompressedRepresentation` accessor;
   `[Unreleased]` CHANGELOG `Breaking:`/`Deprecated:` entries — including the
   `Breaking:` note that `KeyAgreement.PublicKey(dataRepresentation:)` now accepts
   65-byte input (the `.compressed` default previously rejected it; migration: check
@@ -153,8 +204,16 @@ return byte-identical results (covered in `Tests/P256KTests/DeprecatedAliasTests
   for hybrid input on the *deprecated* `init(dataRepresentation:format:)` paths:
   pre-deprecation code echoed `0x06`/`0x07` tags through `dataRepresentation`,
   while the deprecated shims now canonicalize to `0x04` identically to the
-  inferred init · `Sources/P256K/P256K.docc`, `CHANGELOG.md`
+  inferred init — plus a `Deprecated:` entry for
+  `sharedSecretFromKeyAgreement(with:format:)` naming
+  `SharedSecret.uncompressedRepresentation` as the 65-byte migration — plus a
+  `Changed:` entry for T014's `SharedSecret` equality tighten (canonical and
+  deprecated-`.uncompressed` secrets over the same point now compare equal;
+  the comparison stays `safeCompare`-constant-time). The two articles'
+  `sharedSecretFromKeyAgreement` snippets and the `[Unreleased]` entries
+  landed early with T013's jury-review fixes · `Sources/P256K/P256K.docc`,
+  `CHANGELOG.md`
 
 **Checkpoint:** plan §5 verification list all pass; `grep 'format: P256K.Format'` shows
-only the enumerated survivors — no *non-deprecated* public parameter besides
-`sharedSecretFromKeyAgreement(with:format:)`.
+only the enumerated survivors — no *non-deprecated* public `format:` parameter
+anywhere.

@@ -57,17 +57,55 @@ protocol DiffieHellmanKeyAgreement: Sendable {
 /// A key agreement result from which you can derive a symmetric cryptographic key.
 ///
 /// Generate a shared secret by calling
-/// ``P256K/KeyAgreement/PrivateKey/sharedSecretFromKeyAgreement(with:format:)``
+/// ``P256K/KeyAgreement/PrivateKey/sharedSecretFromKeyAgreement(with:)``
 /// on a private key with the public key from another party, then access the raw
-/// serialized EC point via ``withUnsafeBytes(_:)``. The byte layout follows the
-/// requested ``P256K/KeyAgreement`` format — 33 bytes when compressed,
-/// 65 bytes when uncompressed.
+/// serialized EC point via ``withUnsafeBytes(_:)``. The stored bytes are the
+/// canonical 33-byte compressed SEC1 serialization of the shared point — or
+/// the 65-byte encoding for secrets produced by the deprecated `format:`
+/// variant's `.uncompressed` until its removal; read
+/// ``uncompressedRepresentation`` when a protocol requires the 65-byte form.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public struct SharedSecret: ContiguousBytes, Sendable {
+    /// The stored form ``withUnsafeBytes(_:)`` hands out: the 33-byte compressed
+    /// SEC1 encoding for secrets produced by `sharedSecretFromKeyAgreement(with:)`
+    /// (and the deprecated `format:` variant's `.compressed`), or the 65-byte
+    /// encoding for its `.uncompressed` until that shim's removal.
     var ss: SecureBytes
 
-    // secp256k1: An enum that represents the format of the shared secret
-    let format: P256K.Format
+    /// The 65-byte uncompressed SEC1 encoding of the shared point, captured inside
+    /// `secp256k1_ecdh` while the point's coordinates are still constant-time
+    /// live — carried by every constructible secret so
+    /// ``uncompressedRepresentation`` is total.
+    var uncompressed: SecureBytes
+
+    /// Internal initializer — `secp256k1_ecdh`-produced secrets pass the capture;
+    /// test fixtures must supply a 65-byte stand-in too.
+    init(ss: SecureBytes, uncompressed: SecureBytes) {
+        self.ss = ss
+        self.uncompressed = uncompressed
+    }
+
+    /// The 65-byte uncompressed serialization of the shared point (`0x04`
+    /// prefix + 32-byte X + 32-byte Y).
+    ///
+    /// Every ``P256K/KeyAgreement/PrivateKey/sharedSecretFromKeyAgreement(with:)``
+    /// call captures the uncompressed encoding inside `secp256k1_ecdh`, while the
+    /// coordinates upstream computes in constant time are still live — so this
+    /// accessor copies captured bytes and never routes secret material back
+    /// through `secp256k1_ec_pubkey_parse`'s variable-time decompression. The
+    /// shared point itself has no format — serialization is a boundary choice,
+    /// which is why the 65-byte form is an accessor rather than a derivation
+    /// parameter. Secrets produced by the deprecated `format:` variant may store
+    /// 65 bytes until its removal; ``withUnsafeBytes(_:)`` returns the stored
+    /// form in both cases.
+    ///
+    /// > Important: The returned `Data` copies the secret bytes out of the
+    /// > zeroizing `SecureBytes` storage — copies made through this accessor are
+    /// > **not** zeroed and must be handled by the caller, like
+    /// > ``P256K/KeyAgreement/PrivateKey/rawRepresentation``.
+    public var uncompressedRepresentation: Data {
+        Data(uncompressed)
+    }
 
     // Invokes the given closure with a buffer pointer covering the raw bytes
     // of the shared secret.

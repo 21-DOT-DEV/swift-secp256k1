@@ -71,10 +71,8 @@ struct DocRecipeTests {
 
             // The uncompressed layout: x is 0-indexed bytes 1–32 (the 32 bytes
             // after the 0x04 prefix), never the last 32 — that's the y coordinate.
-            let uncompressed = privateKey.sharedSecretFromKeyAgreement(
-                with: peerPrivateKey.publicKey,
-                format: .uncompressed
-            )
+            let uncompressed = privateKey.sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey)
+                .uncompressedRepresentation
             let sharedXFromUncompressed = Data(uncompressed.byteArray.dropFirst().prefix(32))
             #expect(sharedXFromUncompressed == sharedX)
         }
@@ -93,10 +91,8 @@ struct DocRecipeTests {
 
                 let sharedSecret = privateKey.sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey)
                 let peerSharedSecret = peerPrivateKey.sharedSecretFromKeyAgreement(with: privateKey.publicKey)
-                let uncompressed = privateKey.sharedSecretFromKeyAgreement(
-                    with: peerPrivateKey.publicKey,
-                    format: .uncompressed
-                )
+                let uncompressed = privateKey.sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey)
+                    .uncompressedRepresentation
                 let sharedX = Data(sharedSecret.byteArray.dropFirst())
                 let inputKeyMaterial = sharedSecret.withUnsafeBytes { bytes in
                     SymmetricKey(data: bytes.dropFirst())

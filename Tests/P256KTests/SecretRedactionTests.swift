@@ -69,8 +69,16 @@ struct SecretRedactionTestSuite {
     /// now prints a byte count and nothing else.
     @Test("SharedSecret description reports a byte count, never the bytes")
     func sharedSecretRendersRedacted() {
-        let compressed = SharedSecret(ss: SecureBytes(bytes: Self.compressedSecret), format: .compressed)
-        let uncompressed = SharedSecret(ss: SecureBytes(bytes: Self.uncompressedSecret), format: .uncompressed)
+        // The captured uncompressed form is required of every SharedSecret —
+        // fixtures pass the 65-byte stand-in alongside the stored form.
+        let compressed = SharedSecret(
+            ss: SecureBytes(bytes: Self.compressedSecret),
+            uncompressed: SecureBytes(bytes: Self.uncompressedSecret)
+        )
+        let uncompressed = SharedSecret(
+            ss: SecureBytes(bytes: Self.uncompressedSecret),
+            uncompressed: SecureBytes(bytes: Self.uncompressedSecret)
+        )
 
         #expect(String(describing: compressed) == "SharedSecret representation contains 33 bytes.")
         #expect(String(describing: uncompressed) == "SharedSecret representation contains 65 bytes.")
