@@ -8,7 +8,8 @@
 #   exports: only _$s* and _P256KVersion* may be global, tripwiring exported-symbols.txt.
 #   consumers: Tests/XCFrameworkTests runs on macOS and builds+links for each platform
 #   against only the shipped interfaces (no libsecp256k1 module) — catches a leaked C
-#   import, a hollow or missing slice, and a missing standard arch.
+#   import, a hollow or missing slice, and a missing standard arch — then runs on an
+#   iOS Simulator when that slice is archived, catching a slice that links but misbehaves.
 # Exit: 0 pass · 1 detected defect or usage · tool failures keep their own code.
 set -euo pipefail
 
@@ -17,7 +18,13 @@ shift
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 
 WORKDIR=$(mktemp -d)
-trap 'rm -rf "$WORKDIR"' EXIT
+# Set only for a simulator that was Shutdown when picked; any other state may belong to someone else.
+booted_sim=''
+cleanup() {
+    [[ -z "$booted_sim" ]] || xcrun simctl shutdown "$booted_sim" >/dev/null 2>&1 || true
+    rm -rf "$WORKDIR"
+}
+trap cleanup EXIT
 
 die() {
     echo "error: $*" >&2
@@ -61,4 +68,49 @@ for dest in "$@"; do
     xcodebuild build-for-testing -scheme "$scheme" -destination "generic/platform=$dest" -derivedDataPath "$WORKDIR/dd" CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=NO -quiet
 done
 
-echo "verified: ${#bins[@]} binaries — exports allowlisted, consumer builds passed"
+# build-for-testing proves the simulator slice links, not that it runs; no eligible iPhone fails the gate.
+# Newest iOS runtime whose major.minor ≤ the active SDK's (never one for a newer Xcode than the pin), compared
+# numerically; single-device-type runtimes are skipped by type count because their IDs can look general (iOS-27-1).
+if [[ " $* " == *" iOS Simulator "* ]]; then
+    command -v jq >/dev/null || die "jq is required to select and judge the iOS Simulator run"
+    sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
+    pick=$(xcrun simctl list --json | jq -r --arg sdk "$sdk" '
+        def ver: split(".") | map(tonumber);
+        def major_minor: (. + [0, 0])[:2];
+        ($sdk | ver | major_minor) as $cap | .devices as $devices
+        | [.runtimes[] as $r
+           | select($r.platform == "iOS" and $r.isAvailable and ($r.supportedDeviceTypes | length) > 1)
+           | ($r.version | ver) as $v | select(($v | major_minor) <= $cap)
+           | ($devices[$r.identifier] // [])[] | select(.isAvailable and (.name | startswith("iPhone")))
+           | {v: $v, version: $r.version, udid, state: (.state | gsub(" "; "_")), name}]
+        | max_by(.v) // empty | "\(.udid) \(.state) \(.name), iOS \(.version)"')
+    [[ -n "$pick" ]] || die "iOS Simulator slice archived but no available iPhone simulator on an iOS runtime ≤ the $sdk SDK"
+    read -r sim state label <<<"$pick"
+    if [[ "$state" == Shutdown ]]; then
+        booted_sim=$sim
+    fi
+    echo "consumer test: iOS Simulator ($label)"
+
+    # -collect-test-diagnostics never: skip the simulator sysdiagnose a failing test otherwise waits on.
+    result="$WORKDIR/ios-simulator.xcresult"
+    rc=0
+    xcodebuild test-without-building -scheme "$scheme" -destination "platform=iOS Simulator,id=$sim" -derivedDataPath "$WORKDIR/dd" -resultBundlePath "$result" -collect-test-diagnostics never -quiet || rc=$?
+
+    # The bundle is the only record of failure text: -quiet hides it and $WORKDIR is deleted on exit.
+    summary=$(xcrun xcresulttool get test-results summary --path "$result" --compact) || {
+        echo "warning: could not read the iOS Simulator result bundle summary" >&2
+        summary='{}'
+    }
+    if ((rc != 0)); then
+        jq -r '.testFailures[]? | "failure: \(.testName // "?"): \(.failureText // "" | gsub("\n"; "\n    "))"' <<<"$summary" >&2 || true
+        echo "error: iOS Simulator consumer test failed (xcodebuild exit $rc)" >&2
+        exit "$rc"
+    fi
+
+    # xcodebuild exits 0 when no Swift Testing test ran, so require ≥1 passing test from the bundle.
+    jq -e '.result == "Passed" and .passedTests > 0 and .failedTests == 0' <<<"$summary" >/dev/null ||
+        die "iOS Simulator run reported no passing test: $(jq -c '{result, totalTestCount, passedTests, failedTests}' <<<"$summary")"
+    echo "consumer test: iOS Simulator passed $(jq -r '.passedTests' <<<"$summary") test(s)"
+fi
+
+echo "verified: ${#bins[@]} binaries — exports allowlisted, consumer builds passed, consumer tests ran"
