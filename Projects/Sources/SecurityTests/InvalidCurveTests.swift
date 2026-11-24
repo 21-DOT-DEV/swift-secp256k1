@@ -26,8 +26,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -38,8 +37,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.Signing.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -52,8 +50,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -64,8 +61,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.Signing.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -78,8 +74,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -90,8 +85,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -125,8 +119,7 @@ struct InvalidCurveTests {
         // Serialize and deserialize Bob's public key (simulating network transmission)
         let bobPublicBytes = bobPrivate.publicKey.dataRepresentation
         let deserializedBobPublic = try P256K.KeyAgreement.PublicKey(
-            dataRepresentation: bobPublicBytes,
-            format: .compressed
+            dataRepresentation: bobPublicBytes
         )
 
         // Alice computes shared secret with deserialized key
@@ -145,8 +138,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -159,8 +151,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -175,8 +166,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .uncompressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -187,8 +177,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .uncompressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -199,8 +188,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .uncompressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -211,8 +199,7 @@ struct InvalidCurveTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.KeyAgreement.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .uncompressed
+                dataRepresentation: invalidPoint
             )
         }
     }

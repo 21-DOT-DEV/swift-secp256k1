@@ -274,7 +274,7 @@ struct DeprecatedAliasTestSuite {
         /// 65-byte `SharedSecret` exists until 1.0. Both forms re-serialize to
         /// the same `uncompressedRepresentation`.
         @available(*, deprecated)
-        @Test("Deprecated sharedSecretFromKeyAgreement matches bare call and preserves stored form")
+        @Test("Deprecated sharedSecretFromKeyAgreement matches bare call and preserves exposed form")
         func sharedSecretFromKeyAgreementAlias() throws {
             let privateKey = try P256K.KeyAgreement.PrivateKey()
             let peerPrivateKey = try P256K.KeyAgreement.PrivateKey()
@@ -285,8 +285,49 @@ struct DeprecatedAliasTestSuite {
 
             let uncompressed = privateKey.sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey, format: .uncompressed)
             #expect(uncompressed.byteArray.count == P256K.Format.uncompressed.length)
-            #expect(uncompressed.byteArray.first == 0x04, "Deprecated .uncompressed still stores the uncompressed SEC1 form")
+            #expect(uncompressed.byteArray.first == 0x04, "Deprecated .uncompressed still exposes the uncompressed SEC1 form")
             #expect(uncompressed.uncompressedRepresentation == compressed.uncompressedRepresentation)
+            // The exposed 65-byte view must equal the canonical uncompressed
+            // encoding byte-for-byte — interior bytes (X, Y) included, not
+            // merely the tag and count.
+            #expect(uncompressed.byteArray == Array(uncompressed.uncompressedRepresentation))
+        }
+
+        /// Spec 005 (T014) — `SharedSecret` equality compares the agreed
+        /// point, not the serialization `withUnsafeBytes` exposes: a
+        /// deprecated `.uncompressed` secret and the canonical secret over
+        /// the same ECDH pair are the same shared secret, so `==` and `hash`
+        /// agree. The `== Data` overload stays byte-level — it compares the
+        /// exposed view, so the 65-byte and 33-byte serializations of the same
+        /// point do not compare equal.
+        @available(*, deprecated)
+        @Test("SharedSecret equality compares the shared point, not the exposed view")
+        func sharedSecretPointEquality() throws {
+            let privateKey = try P256K.KeyAgreement.PrivateKey()
+            let peerPrivateKey = try P256K.KeyAgreement.PrivateKey()
+
+            let compressed = privateKey.sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey)
+            let uncompressed = privateKey.sharedSecretFromKeyAgreement(with: peerPrivateKey.publicKey, format: .uncompressed)
+
+            // Same agreed point → equal secrets and consistent hashes,
+            // despite different exposed serializations.
+            #expect(uncompressed == compressed)
+            #expect(uncompressed.hashValue == compressed.hashValue)
+
+            // The peer computing the reciprocal secret agrees on the same
+            // point — the semantic guarantee `==` is defined over.
+            #expect(peerPrivateKey.sharedSecretFromKeyAgreement(with: privateKey.publicKey) == compressed)
+
+            // A different ECDH pair yields a different point → not equal.
+            let other = try privateKey.sharedSecretFromKeyAgreement(with: P256K.KeyAgreement.PrivateKey().publicKey)
+            #expect(other != compressed)
+
+            // The byte-level overload still compares the exposed view:
+            // each secret equals its own serialization, not the other's.
+            #expect(compressed == compressed.byteArray)
+            #expect(uncompressed == uncompressed.byteArray)
+            #expect(!(uncompressed == compressed.byteArray))
+            #expect(!(compressed == uncompressed.byteArray))
         }
     #endif
 

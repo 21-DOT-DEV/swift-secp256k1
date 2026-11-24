@@ -36,7 +36,7 @@ struct ECDHTestSuite {
 
     /// `SharedSecret.uncompressedRepresentation` returns the 65-byte SEC1
     /// encoding of the same shared point: `0x04` tag, bytes 1–32 equal to the
-    /// stored compressed form's X coordinate, and byte 64's low bit matching
+    /// emitted compressed view's X coordinate, and byte 64's low bit matching
     /// the compressed tag's `0x02`/`0x03` parity — the `serialize33`/`serialize65`
     /// contract in vendored `eckey_impl.h`.
     @Test("SharedSecret uncompressedRepresentation encodes the same point")
@@ -84,8 +84,8 @@ struct ECDHTestSuite {
         let expectedUncompressed7 = try "045cbdf0646e5db4eaa398f365f2ea7a0e3d419b7e0330e39ce92bddedcac4f9bc6aebca40ba255960a3178d6d861a54dba813d0b813fde7b5a5082628087264da".bytes
 
         #expect(sharedSecret7.byteArray == peerSharedSecret7.byteArray, "Both parties must agree on the secret")
-        #expect(sharedSecret6.byteArray == expectedCompressed6, "Stored secret must be the 33-byte compressed 6G")
-        #expect(sharedSecret7.byteArray == expectedCompressed7, "Stored secret must be the 33-byte compressed 7G")
+        #expect(sharedSecret6.byteArray == expectedCompressed6, "Emitted secret must be the 33-byte compressed 6G")
+        #expect(sharedSecret7.byteArray == expectedCompressed7, "Emitted secret must be the 33-byte compressed 7G")
         #expect(
             sharedSecret6.uncompressedRepresentation == Data(expectedUncompressed6),
             "uncompressedRepresentation must be the 65-byte 6G"

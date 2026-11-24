@@ -123,8 +123,7 @@ struct ECDSAWycheproofTests {
             let sigBytes = try vector.sig.bytes
 
             let signingPubKey = try P256K.Signing.PublicKey(
-                dataRepresentation: pubKeyBytes,
-                format: .uncompressed
+                dataRepresentation: pubKeyBytes
             )
 
             let signature = try P256K.Signing.ECDSASignature(derRepresentation: sigBytes)

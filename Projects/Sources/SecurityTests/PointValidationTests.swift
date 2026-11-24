@@ -26,8 +26,7 @@ struct PointValidationTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.Signing.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -38,8 +37,7 @@ struct PointValidationTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.Signing.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .uncompressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -52,8 +50,7 @@ struct PointValidationTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.Signing.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -66,8 +63,7 @@ struct PointValidationTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.Signing.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .compressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -80,8 +76,7 @@ struct PointValidationTests {
 
         #expect(throws: (any Error).self) {
             _ = try P256K.Signing.PublicKey(
-                dataRepresentation: invalidPoint,
-                format: .uncompressed
+                dataRepresentation: invalidPoint
             )
         }
     }
@@ -93,8 +88,7 @@ struct PointValidationTests {
         let validPoint = SecurityTestVectors.PointValidation.validCompressedKey
 
         let publicKey = try P256K.Signing.PublicKey(
-            dataRepresentation: validPoint,
-            format: .compressed
+            dataRepresentation: validPoint
         )
 
         #expect(publicKey.dataRepresentation.count == 33)

@@ -33,13 +33,15 @@ import libsecp256k1
         /// ### Construction
         /// - ``init(xonlyKey:)``
         /// - ``init(dataRepresentation:)``
-        /// - ``init(dataRepresentation:format:)``
         ///
         /// ### Serialized Forms
         /// - ``dataRepresentation``
         /// - ``uncompressedRepresentation``
         /// - ``format``
         /// - ``xonly``
+        ///
+        /// ### Deprecated
+        /// - ``init(dataRepresentation:format:)``
         struct PublicKey {
             /// The internal `PublicKeyImplementation` backing this Schnorr public key.
             ///

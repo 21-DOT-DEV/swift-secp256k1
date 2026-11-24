@@ -197,8 +197,10 @@ struct TweakTestSuite {
             "Signing.PublicKey: same point across stored formats"
         )
 
-        // Schnorr — the companion key stores *uncompressed* internally
-        // (`secp256k1_keypair_create` requires it), so it doubles as this leg's
+        // Schnorr — `init()`'s companion key stores *uncompressed* internally
+        // (the init-path-dependent stored form is recorded in the spec-005
+        // backlog note; `secp256k1_keypair_create` consumes only the 32-byte
+        // secret, not the serialized companion), so it doubles as this leg's
         // uncompressed-stored case. A compressed-stored Schnorr key of the same
         // point comes from the same scalar re-derived through the Signing
         // wrapper's 33-byte form.

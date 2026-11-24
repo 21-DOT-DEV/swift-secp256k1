@@ -28,9 +28,10 @@ import libsecp256k1
         /// elliptic curve. The upstream C function executes in constant time with respect to
         /// the secret scalar, matching its contract line: *"Compute an EC Diffie-Hellman secret
         /// in constant time."* Secrets produced by
-        /// ``PrivateKey/sharedSecretFromKeyAgreement(with:)`` store the 33-byte
-        /// compressed SEC1 encoding — the deprecated `format:` variant's
-        /// `.uncompressed` stores the 65-byte form until its removal — via the
+        /// ``PrivateKey/sharedSecretFromKeyAgreement(with:)`` expose the 33-byte
+        /// compressed SEC1 encoding through `withUnsafeBytes` — the deprecated
+        /// `format:` variant's `.uncompressed` exposes the 65-byte form until its
+        /// removal — via the
         /// custom hash closure the call installs. This overrides the upstream
         /// default (`secp256k1_ecdh_hash_function_sha256`, which would return a 32-byte
         /// SHA-256 hash of the compressed point) so callers receive the raw serialized EC
@@ -73,7 +74,6 @@ import libsecp256k1
             ///
             /// ### Construction
             /// - ``init(dataRepresentation:)``
-            /// - ``init(dataRepresentation:format:)``
             /// - ``init(x963Representation:)``
             /// - ``init(derRepresentation:)``
             ///
@@ -81,6 +81,9 @@ import libsecp256k1
             /// - ``dataRepresentation``
             /// - ``uncompressedRepresentation``
             /// - ``xonly``
+            ///
+            /// ### Deprecated
+            /// - ``init(dataRepresentation:format:)``
             public struct PublicKey: Sendable {
                 /// The internal `PublicKeyImplementation` backing this ECDH public key.
                 ///
@@ -408,7 +411,8 @@ import libsecp256k1
         /// Computes an ECDH shared secret by calling `secp256k1_ecdh` with a custom hash
         /// closure that serializes the shared point.
         ///
-        /// The stored form is the 33-byte compressed SEC1 encoding. This
+        /// ``SharedSecret/withUnsafeBytes(_:)`` yields the 33-byte compressed
+        /// SEC1 encoding. This
         /// overrides the upstream default (`secp256k1_ecdh_hash_function_sha256`, which
         /// would return a 32-byte SHA-256 hash of the compressed point) so callers
         /// receive the raw serialized EC point, suitable as input to any higher-level
@@ -423,10 +427,10 @@ import libsecp256k1
         /// > randomization provides to ECDSA / Schnorr signing.
         ///
         /// - Parameter publicKeyShare: The peer's secp256k1 public key.
-        /// - Returns: A ``SharedSecret`` containing the compressed (33-byte)
-        ///   serialization of the shared point.
+        /// - Returns: A ``SharedSecret`` whose `withUnsafeBytes` yields the
+        ///   compressed (33-byte) serialization of the shared point.
         public func sharedSecretFromKeyAgreement(with publicKeyShare: P256K.KeyAgreement.PublicKey) -> SharedSecret {
-            deriveSharedSecret(with: publicKeyShare, storeUncompressed: false)
+            deriveSharedSecret(with: publicKeyShare, exposedForm: .compressed)
         }
 
         /// Deprecated variant of ``sharedSecretFromKeyAgreement(with:)`` — the
@@ -449,11 +453,11 @@ import libsecp256k1
             with publicKeyShare: P256K.KeyAgreement.PublicKey,
             format: P256K.Format = .compressed
         ) -> SharedSecret {
-            deriveSharedSecret(with: publicKeyShare, storeUncompressed: format == .uncompressed)
+            deriveSharedSecret(with: publicKeyShare, exposedForm: format)
         }
 
         /// Performs `secp256k1_ecdh` for both `sharedSecretFromKeyAgreement` variants,
-        /// capturing the shared point's 65-byte uncompressed SEC1 encoding while the
+        /// capturing the shared point's 65-byte `0x04‖x‖y` encoding while the
         /// point is still inside the constant-time call.
         ///
         /// Upstream hands the point's `x` and `y` coordinates to the hash closure —
@@ -461,32 +465,33 @@ import libsecp256k1
         /// `fe_normalize` + `fe_get_b32`, the same path upstream's own test suite uses
         /// to emit the uncompressed form). The closure writes all 65 bytes directly
         /// into `SecureBytes` storage — the same arrangement rust-secp256k1's
-        /// `shared_secret_point` uses — so ``SharedSecret/uncompressedRepresentation``
-        /// is a copy of captured bytes rather than a `secp256k1_ec_pubkey_parse`
-        /// round-trip through the variable-time `ge_set_xo_var`/`fe_normalize_var`
-        /// primitives on secret material.
+        /// `shared_secret_point` uses — so no serialization ``SharedSecret`` stores
+        /// ever routes secret material back through `secp256k1_ec_pubkey_parse`'s
+        /// variable-time `ge_set_xo_var`/`fe_normalize_var` decompression primitives.
         ///
-        /// The stored form keeps the deprecated shim's observable behavior: `.uncompressed`
-        /// stores the captured bytes as-is, `.compressed` derives the 33-byte encoding
-        /// by branchless byte selection — the tag is `0x02 | (y & 1)` and X already sits
-        /// at bytes 1…32 — with no field arithmetic, preserving constant-time coverage
-        /// for both forms.
+        /// The capture's `0x04` tag is then rewritten to the point's compressed
+        /// tag (`0x02 | (y & 1)` — branchless byte selection, no field
+        /// arithmetic), so ``SharedSecret``'s stored record `tag‖x‖y` yields the
+        /// compressed view as a 33-byte prefix borrow and the canonical 65-byte
+        /// form as a tag-byte fix on the copies it already makes.
         ///
         /// - Parameters:
         ///   - publicKeyShare: The peer's secp256k1 public key.
-        ///   - storeUncompressed: `true` to store the 65-byte form (deprecated `format:`
-        ///     variant only); `false` for the canonical 33-byte storage.
-        /// - Returns: A ``SharedSecret`` whose `withUnsafeBytes` yields the stored form.
+        ///   - exposedForm: Which serialization the secret's
+        ///     ``SharedSecret/withUnsafeBytes(_:)`` emits — `.compressed` for the
+        ///     canonical call; `.uncompressed` only for the deprecated `format:`
+        ///     variant, preserving its 65-byte contract until 1.0.
+        /// - Returns: A ``SharedSecret`` storing the captured point record.
         private func deriveSharedSecret(
             with publicKeyShare: P256K.KeyAgreement.PublicKey,
-            storeUncompressed: Bool
+            exposedForm: P256K.Format
         ) -> SharedSecret {
             let context = P256K.Context.rawRepresentation
             var publicKey = publicKeyShare.baseKey.rawRepresentation
 
             // The shared point is written by upstream directly into `SecureBytes`
             // storage — no plain array copy of secret material is materialized.
-            let uncompressed = SecureBytes(unsafeUninitializedCapacity: P256K.Format.uncompressed.length) { buffer, initializedCount in
+            var point = SecureBytes(unsafeUninitializedCapacity: P256K.Format.uncompressed.length) { buffer, initializedCount in
                 let computed = baseKey.key.withUnsafeBytePointer { keyPtr in
                     guard let outPtr = buffer.bindMemory(to: UInt8.self).baseAddress else {
                         return false
@@ -506,18 +511,14 @@ import libsecp256k1
                 initializedCount = buffer.count
             }
 
-            if storeUncompressed {
-                return SharedSecret(ss: uncompressed, uncompressed: uncompressed)
+            // `0x04` → the compressed tag `0x02 | (y & 1)`: the stored record's
+            // 33-byte prefix then *is* the compressed SEC1 form, borrowed
+            // rather than derived at every access.
+            point.withUnsafeMutableBytePointer { record in
+                record.pointee = 0x02 | (record.advanced(by: P256K.Format.uncompressed.length - 1).pointee & 0x01)
             }
 
-            var ss = SecureBytes(count: P256K.Format.compressed.length)
-            ss.withUnsafeMutableBytePointer { outPtr in
-                uncompressed.withUnsafeBytePointer { point in
-                    outPtr.pointee = 0x02 | (point[P256K.Format.uncompressed.length - 1] & 0x01)
-                    outPtr.advanced(by: 1).update(from: point.advanced(by: 1), count: P256K.ByteLength.dimension)
-                }
-            }
-            return SharedSecret(ss: ss, uncompressed: uncompressed)
+            return SharedSecret(point: point, exposedForm: exposedForm)
         }
 
         /// Returns a `secp256k1_ecdh` hash function closure that writes the shared EC
@@ -526,8 +527,9 @@ import libsecp256k1
         ///
         /// Both coordinates arrive inside `secp256k1_ecdh`'s constant-time boundary, so
         /// capturing the full point here is the only serialization the library performs
-        /// on the secret: ``SharedSecret``'s compressed storage derives from these bytes
-        /// Swift-side, and the `data` pointer is unused (`nil` at every call site).
+        /// on the secret: ``SharedSecret``'s stored record derives from these bytes
+        /// Swift-side (the `0x04` tag is rewritten to the compressed tag in
+        /// `deriveSharedSecret`), and the `data` pointer is unused (`nil` at every call site).
         ///
         /// - Returns: A C-compatible ``HashFunctionType`` closure for use as the `hashfp`
         ///   argument of `secp256k1_ecdh`.

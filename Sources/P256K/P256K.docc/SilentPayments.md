@@ -62,14 +62,8 @@ let aliceSigningKey = try P256K.Signing.PrivateKey()  // (a, A)
 // `bobECDHKey` participates in ECDH; `bobSigningKey` is the base point we
 // add the shared-secret tweak to in Step 4. Both wrap the same point.
 let bobPublicKeyBytes: Data = /* 33-byte compressed B from Bob's address */
-let bobECDHKey = try P256K.KeyAgreement.PublicKey(
-    dataRepresentation: bobPublicKeyBytes,
-    format: .compressed
-)
-let bobSigningKey = try P256K.Signing.PublicKey(
-    dataRepresentation: bobPublicKeyBytes,
-    format: .compressed
-)
+let bobECDHKey = try P256K.KeyAgreement.PublicKey(dataRepresentation: bobPublicKeyBytes)
+let bobSigningKey = try P256K.Signing.PublicKey(dataRepresentation: bobPublicKeyBytes)
 
 let smallestOutpoint: Data = /* 36-byte COutPoint: little-endian txid || vout */
 
@@ -115,10 +109,7 @@ import P256K
 
 let bobScanKey: P256K.KeyAgreement.PrivateKey = /* b_scan */
 let bobSpendBytes: Data = /* B_spend as 33-byte compressed point */
-let bobSpendKey = try P256K.Signing.PublicKey(
-    dataRepresentation: bobSpendBytes,
-    format: .compressed
-)
+let bobSpendKey = try P256K.Signing.PublicKey(dataRepresentation: bobSpendBytes)
 
 let summedInputPubKey: P256K.KeyAgreement.PublicKey = /* A from tx inputs */
 let smallestOutpoint: Data = /* same 36-byte COutPoint as sender */

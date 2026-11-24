@@ -106,6 +106,8 @@ import libsecp256k1
             /// ### Reconstruction
             /// - ``init(xonlyKey:)``
             /// - ``init(dataRepresentation:)``
+            ///
+            /// ### Deprecated
             /// - ``init(dataRepresentation:format:)``
             public struct PublicKey {
                 /// The internal `PublicKeyImplementation` backing this aggregate, produced

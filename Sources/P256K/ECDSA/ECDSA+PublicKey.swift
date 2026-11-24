@@ -29,7 +29,6 @@ public extension P256K.Signing {
     ///
     /// ### Construction
     /// - ``init(dataRepresentation:)``
-    /// - ``init(dataRepresentation:format:)``
     /// - ``init(xonlyKey:)``
     /// - ``init(pemRepresentation:)``
     /// - ``init(derRepresentation:)``
@@ -43,6 +42,9 @@ public extension P256K.Signing {
     ///
     /// ### Algebra
     /// - ``negation``
+    ///
+    /// ### Deprecated
+    /// - ``init(dataRepresentation:format:)``
     struct PublicKey: Sendable {
         /// The internal `PublicKeyImplementation` backing this verifying key.
         ///

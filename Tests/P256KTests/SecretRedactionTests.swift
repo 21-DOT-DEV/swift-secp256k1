@@ -27,10 +27,10 @@ import Testing
 struct SecretRedactionTestSuite {
     /// A valid 32-byte secp256k1 secret scalar, fixed so the absence checks are exact.
     private static let secretScalar = [UInt8](repeating: 0x11, count: 32)
-    /// A 33-byte input standing in for the compressed-form shared point.
-    private static let compressedSecret = [UInt8](1...33)
-    /// A 65-byte input standing in for the uncompressed-form shared point.
-    private static let uncompressedSecret = [UInt8](1...65)
+    /// A 65-byte stand-in matching the interior point record `SharedSecret`
+    /// stores — compressed tag + X + Y (`0x02‖x‖y` shape), the form
+    /// `init(point:exposedForm:)` requires.
+    private static let pointRecord = [UInt8](2...66)
 
     /// The encodings a render channel could use to expose a byte sequence:
     /// lowercase hex, a Swift collection literal, and Base64.
@@ -69,23 +69,29 @@ struct SecretRedactionTestSuite {
     /// now prints a byte count and nothing else.
     @Test("SharedSecret description reports a byte count, never the bytes")
     func sharedSecretRendersRedacted() {
-        // The captured uncompressed form is required of every SharedSecret —
-        // fixtures pass the 65-byte stand-in alongside the stored form.
+        // Both fixtures store the same point record and differ only in the
+        // view `withUnsafeBytes` exposes — `exposedForm` is the deprecated
+        // shim's surviving bookkeeping.
         let compressed = SharedSecret(
-            ss: SecureBytes(bytes: Self.compressedSecret),
-            uncompressed: SecureBytes(bytes: Self.uncompressedSecret)
+            point: SecureBytes(bytes: Self.pointRecord),
+            exposedForm: .compressed
         )
         let uncompressed = SharedSecret(
-            ss: SecureBytes(bytes: Self.uncompressedSecret),
-            uncompressed: SecureBytes(bytes: Self.uncompressedSecret)
+            point: SecureBytes(bytes: Self.pointRecord),
+            exposedForm: .uncompressed
         )
 
         #expect(String(describing: compressed) == "SharedSecret representation contains 33 bytes.")
         #expect(String(describing: uncompressed) == "SharedSecret representation contains 65 bytes.")
         #expect(String(reflecting: compressed) == compressed.description)
 
-        assertRedacted(compressed, secretBytes: Self.compressedSecret)
-        assertRedacted(uncompressed, secretBytes: Self.uncompressedSecret)
+        // Neither the stored record nor the emitted views render: the
+        // `.compressed` view is the record's 33-byte prefix; the
+        // `.uncompressed` view retags byte 0 to `0x04`.
+        assertRedacted(compressed, secretBytes: Self.pointRecord)
+        assertRedacted(compressed, secretBytes: Array(Self.pointRecord.prefix(33)))
+        assertRedacted(uncompressed, secretBytes: Self.pointRecord)
+        assertRedacted(uncompressed, secretBytes: [0x04] + Self.pointRecord.dropFirst())
     }
 
     @Test("Signing.PrivateKey renderings omit the secret scalar")

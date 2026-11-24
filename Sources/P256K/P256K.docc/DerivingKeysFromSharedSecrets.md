@@ -80,7 +80,7 @@ Deriving several keys from one shared secret calls `extract` once and `expand` p
 
 ### Choosing the slice by encoding
 
-The stored 33-byte form is `0x02/0x03 ‖ x` — `dropFirst()` leaves the x coordinate. If a protocol needs the 65-byte uncompressed encoding (`0x04 ‖ x ‖ y`, read via ``SharedSecret/uncompressedRepresentation``), the x coordinate is the 32 bytes following the `0x04` prefix — 0-indexed bytes 1–32 — so take `dropFirst().prefix(32)`. Never take the *last* 32 bytes: on the uncompressed layout that yields the **y** coordinate, a different and incompatible input to the KDF.
+The 33-byte form `withUnsafeBytes` emits is `0x02/0x03 ‖ x` — `dropFirst()` leaves the x coordinate. If a protocol needs the 65-byte uncompressed encoding (`0x04 ‖ x ‖ y`, read via ``SharedSecret/uncompressedRepresentation``), the x coordinate is the 32 bytes following the `0x04` prefix — 0-indexed bytes 1–32 — so take `dropFirst().prefix(32)`. Never take the *last* 32 bytes: on the uncompressed layout that yields the **y** coordinate, a different and incompatible input to the KDF.
 
 ```swift
 let uncompressedInputKeyMaterial = privateKey

@@ -38,7 +38,7 @@ Use **uncompressed** only when a legacy protocol or external system explicitly r
 
 ### Encoding raw bytes
 
-Round-trip a public key through `dataRepresentation` and the format-aware initializer on ``P256K/Signing/PublicKey``:
+Round-trip a public key through `dataRepresentation` and the byte initializer on ``P256K/Signing/PublicKey`` — the encoding is inferred from the byte count:
 
 ```swift
 import P256K
@@ -46,10 +46,7 @@ import P256K
 // Export — 33 bytes for compressed, 65 for uncompressed
 let keyData = publicKey.dataRepresentation
 
-let restored = try P256K.Signing.PublicKey(
-    dataRepresentation: keyData,
-    format: .compressed
-)
+let restored = try P256K.Signing.PublicKey(dataRepresentation: keyData)
 ```
 
 Private keys are a fixed 32-byte scalar; no format flag is needed on ``P256K/Signing/PrivateKey``:
@@ -61,7 +58,7 @@ let privateKeyBytes = privateKey.dataRepresentation  // 32 bytes
 let restored = try P256K.Signing.PrivateKey(dataRepresentation: privateKeyBytes)
 ```
 
-New private keys always store a compressed (33-byte) companion public key; when a protocol needs the 65-byte form, read it from `uncompressedRepresentation` — no format choice happens at key-creation time:
+New private keys store a compressed (33-byte) companion public key — `Schnorr.PrivateKey()` is the one exception, storing the 65-byte form; when a protocol needs that form anyway, read it from `uncompressedRepresentation` — no format choice happens at key-creation time:
 
 ```swift
 import P256K

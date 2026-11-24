@@ -62,15 +62,19 @@ nothing removed yet; `swift test` green.
   `@available(*, deprecated)` marks; incidental `format:` callers in
   `AsymmetricTests.swift`, `MusigTests.swift`, `SilentPaymentsAPIShapeTests.swift`
   migrate to the inferred init; the same migration reaches
-  `Projects/Sources/MuSig2VectorTests/` (14 sites — Tuist-only, invisible to
-  `swift test`) · `Sources/P256K/Keys/XonlyKeyImplementation.swift`,
+  `Projects/Sources/MuSig2VectorTests/` (14 sites), `Projects/Sources/WycheproofTests/`
+  (2 sites), and `Projects/Sources/SecurityTests/` (19 sites — all Tuist-only,
+  invisible to `swift test`) · `Sources/P256K/Keys/XonlyKeyImplementation.swift`,
   `Sources/P256K/Keys/PublicKeyImplementation.swift`,
   `Sources/P256K/Keys/PrivateKeyImplementation.swift`, the four public-key files,
   `Tests/P256KTests/FormatInferenceTests.swift`,
   `Tests/P256KTests/DeprecatedAliasTests.swift`,
   `Tests/P256KTests/AsymmetricTests.swift`, `Tests/P256KTests/MusigTests.swift`,
   `Tests/P256KTests/SilentPaymentsAPIShapeTests.swift`,
-  `Projects/Sources/MuSig2VectorTests/` (8 files)
+  `Projects/Sources/MuSig2VectorTests/` (7 files),
+  `Projects/Sources/WycheproofTests/` (`ECDHWycheproofTests.swift`,
+  `ECDSAWycheproofTests.swift`),
+  `Projects/Sources/SecurityTests/` (2 files)
 
 **Checkpoint:** `PublicKey(dataRepresentation: b)` compiles warning-free for 33- and
 65-byte inputs; mismatched explicit labels still throw `incorrectKeySize` via the shim.
@@ -123,7 +127,7 @@ return byte-identical results (covered in `Tests/P256KTests/DeprecatedAliasTests
 - [x] T011 `init()`, `init(_:)`, `init(dataRepresentation:)` without `format` on
   `Signing.PrivateKey`; `init()`, `init(dataRepresentation:)` on `Recovery.PrivateKey`
   and `KeyAgreement.PrivateKey` — only `Signing.PrivateKey` has an `init(_:format:)`
-  to replace (`ECDSA+PrivateKey.swift:191`) — companion `publicKey` always
+  to replace (`ECDSA+PrivateKey.swift:239`) — companion `publicKey` always
   compressed · `Sources/P256K/ECDSA/ECDSA+PrivateKey.swift`,
   `Sources/P256K/Recovery/Recovery.swift`, `Sources/P256K/ECDH.swift`,
   `Tests/P256KTests/AsymmetricTests.swift`, `Tests/P256KTests/ECDHTests.swift`,
@@ -165,27 +169,29 @@ return byte-identical results (covered in `Tests/P256KTests/DeprecatedAliasTests
   `Tests/P256KTests/DocRecipeTests.swift`,
   `Tests/P256KTests/SecretRedactionTests.swift`,
   `Projects/Sources/WycheproofTests/ECDHWycheproofTests.swift`, `README.md`
-- [ ] T014 `SharedSecret` stores the captured point, not a serialization — `ss`
+- [x] T014 `SharedSecret` stores the captured point, not a serialization — `ss`
   and the `uncompressed` sidecar collapse into one `point: SecureBytes` holding
-  the 65-byte `0x04‖x‖y` form the hash closure already writes inside
-  `secp256k1_ecdh`, plus an internal `exposedForm` tag naming which view
-  `withUnsafeBytes` emits (`.uncompressed` only under the deprecated shim — the
-  tag retires with it at 1.0). Every byte accessor becomes total:
-  `uncompressedRepresentation` is `Data(point)` with no guard branch;
-  `withUnsafeBytes` returns the stored bytes for `.uncompressed`, otherwise
-  materializes the 33-byte compressed view into a per-access `SecureBytes` temp
-  (`0x02 | (y & 1)` + X copy, branchless — the same derivation T013 applied at
-  derivation time, moved to the boundary); `==`/`hash` compare the point, so a
+  the shared point record `0x02/0x03‖x‖y` (compressed SEC1 + Y coordinate): the
+  `0x04‖x‖y` capture the hash closure writes inside `secp256k1_ecdh` gets one
+  branchless tag-byte rewrite in `deriveSharedSecret`, so the compressed view
+  is the record's 33-byte prefix — a zero-copy borrow, matching every peer's
+  `withUnsafeBytes` contract — rather than a per-access `SecureBytes` temp.
+  Plus an internal `exposedForm` tag naming which view `withUnsafeBytes`
+  emits (`.uncompressed` only under the deprecated shim — the tag retires with
+  it at 1.0). Every byte accessor becomes total:
+  `uncompressedRepresentation` is `Data(point)` with byte 0 retagged `0x04` —
+  no guard branch; `withUnsafeBytes` borrows the prefix for `.compressed` and
+  rebuilds `0x04‖x‖y` into a per-access temp for `.uncompressed` (deprecated-
+  path allocation only); `==`/`hash` compare the point record, so a
   deprecated-`.uncompressed` and a canonical secret for the same ECDH pair
   compare equal — a deliberate tighten over stored-serialization equality;
   `description` reports the exposed view's count so the redaction pins hold.
   `init(ss:)` becomes `init(point:exposedForm:)` — the compressed-only state is
-  unconstructible at every site including fixtures, and the accessor's
-  `invariantFailure` branch deletes outright; `SecretRedactionTests` keeps both
-  `description` cases by building `init(point: Self.uncompressedSecret,
-  exposedForm: .compressed)` for the 33-byte pin. Recorded decision in plan §6;
-  §3 diagram corrected in the same edit · `Sources/P256K/DH.swift`,
-  `Sources/P256K/ECDH.swift`, `Tests/P256KTests/SecretRedactionTests.swift`
+  unconstructible at every site including fixtures; `SecretRedactionTests`
+  keeps both `description` cases on a `tag‖x‖y` stand-in plus exposed-view
+  redaction checks. Recorded decision in plan §6; §3 diagram corrected in the
+  same edit · `Sources/P256K/DH.swift`, `Sources/P256K/ECDH.swift`,
+  `Tests/P256KTests/SecretRedactionTests.swift`
 
 **Checkpoint:** `SharedSecret` storage is the captured point; every accessor is
 total over constructible states; all T013 behavior pins stay green — same review

@@ -67,7 +67,7 @@ let sharedUncompressed = alicePrivateKey
 // sharedUncompressed.count == 65
 ```
 
-Stick with the stored compressed form unless interoperability with a protocol that requires uncompressed encoding (for example, some legacy ECIES variants, or specific OpenSSL-generated key material) forces the larger form. See <doc:WorkingWithKeys> for the broader format-selection story.
+Stick with the default compressed form unless interoperability with a protocol that requires uncompressed encoding (for example, some legacy ECIES variants, or specific OpenSSL-generated key material) forces the larger form. See <doc:WorkingWithKeys> for the broader format-selection story.
 
 ### Deriving a Symmetric Key
 

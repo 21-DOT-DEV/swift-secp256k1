@@ -58,54 +58,103 @@ protocol DiffieHellmanKeyAgreement: Sendable {
 ///
 /// Generate a shared secret by calling
 /// ``P256K/KeyAgreement/PrivateKey/sharedSecretFromKeyAgreement(with:)``
-/// on a private key with the public key from another party, then access the raw
-/// serialized EC point via ``withUnsafeBytes(_:)``. The stored bytes are the
-/// canonical 33-byte compressed SEC1 serialization of the shared point — or
-/// the 65-byte encoding for secrets produced by the deprecated `format:`
-/// variant's `.uncompressed` until its removal; read
-/// ``uncompressedRepresentation`` when a protocol requires the 65-byte form.
+/// on a private key with the public key from another party, then access the
+/// shared point's serialization via ``withUnsafeBytes(_:)`` — the 33-byte
+/// compressed SEC1 form, or the 65-byte canonical encoding for secrets
+/// produced by the deprecated `format:` variant's `.uncompressed` until its
+/// removal. Read ``uncompressedRepresentation`` when a protocol requires the
+/// 65-byte form.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 public struct SharedSecret: ContiguousBytes, Sendable {
-    /// The stored form ``withUnsafeBytes(_:)`` hands out: the 33-byte compressed
-    /// SEC1 encoding for secrets produced by `sharedSecretFromKeyAgreement(with:)`
-    /// (and the deprecated `format:` variant's `.compressed`), or the 65-byte
-    /// encoding for its `.uncompressed` until that shim's removal.
-    var ss: SecureBytes
+    /// The shared point record captured inside `secp256k1_ecdh`: the 33-byte
+    /// compressed SEC1 serialization (`0x02`/`0x03` tag + X coordinate)
+    /// followed by the 32-byte Y coordinate.
+    ///
+    /// Interior encoding, not a canonical SEC1 octet string — the 65-byte
+    /// record leads with the *compressed* tag so ``withUnsafeBytes(_:)``'s
+    /// `.compressed` view is the record's prefix rather than a derivation
+    /// requiring fresh storage; the uncompressed views rewrite byte 0 to
+    /// `0x04` inside the copies they already make.
+    var point: SecureBytes
 
-    /// The 65-byte uncompressed SEC1 encoding of the shared point, captured inside
-    /// `secp256k1_ecdh` while the point's coordinates are still constant-time
-    /// live — carried by every constructible secret so
-    /// ``uncompressedRepresentation`` is total.
-    var uncompressed: SecureBytes
+    /// Which serialization ``withUnsafeBytes(_:)`` exposes: `.compressed`
+    /// (the record's 33-byte prefix) for secrets produced by
+    /// `sharedSecretFromKeyAgreement(with:)` and the deprecated variant's
+    /// `.compressed`; `.uncompressed` (the canonical `0x04‖x‖y` rebuild) only
+    /// under the deprecated `format:` variant's `.uncompressed` — the tag
+    /// retires with that shim at 1.0.
+    var exposedForm: P256K.Format
 
-    /// Internal initializer — `secp256k1_ecdh`-produced secrets pass the capture;
-    /// test fixtures must supply a 65-byte stand-in too.
-    init(ss: SecureBytes, uncompressed: SecureBytes) {
-        self.ss = ss
-        self.uncompressed = uncompressed
+    /// Internal initializer — `point` is the interior record described above
+    /// (compressed tag + X + Y, 65 bytes), produced at capture time by
+    /// `deriveSharedSecret`; test fixtures supply the same `tag‖x‖y` shape.
+    init(point: SecureBytes, exposedForm: P256K.Format) {
+        precondition(point.count == P256K.Format.uncompressed.length)
+        self.point = point
+        self.exposedForm = exposedForm
     }
 
     /// The 65-byte uncompressed serialization of the shared point (`0x04`
     /// prefix + 32-byte X + 32-byte Y).
     ///
     /// Every ``P256K/KeyAgreement/PrivateKey/sharedSecretFromKeyAgreement(with:)``
-    /// call captures the uncompressed encoding inside `secp256k1_ecdh`, while the
+    /// call captures the point inside `secp256k1_ecdh`, while the
     /// coordinates upstream computes in constant time are still live — so this
-    /// accessor copies captured bytes and never routes secret material back
-    /// through `secp256k1_ec_pubkey_parse`'s variable-time decompression. The
-    /// shared point itself has no format — serialization is a boundary choice,
-    /// which is why the 65-byte form is an accessor rather than a derivation
-    /// parameter. Secrets produced by the deprecated `format:` variant may store
-    /// 65 bytes until its removal; ``withUnsafeBytes(_:)`` returns the stored
-    /// form in both cases.
+    /// accessor copies the stored record and retags it `0x04`, never routing
+    /// secret material back through `secp256k1_ec_pubkey_parse`'s variable-time
+    /// decompression. The shared point itself has no format — serialization is
+    /// a boundary choice, which is why the 65-byte form is an accessor rather
+    /// than a derivation parameter.
     ///
     /// > Important: The returned `Data` copies the secret bytes out of the
     /// > zeroizing `SecureBytes` storage — copies made through this accessor are
     /// > **not** zeroed and must be handled by the caller, like
     /// > ``P256K/KeyAgreement/PrivateKey/rawRepresentation``.
     public var uncompressedRepresentation: Data {
-        Data(uncompressed)
+        var uncompressed = Data(point)
+        uncompressed[0] = 0x04
+        return uncompressed
     }
+
+    /// The canonical 65-byte `0x04‖x‖y` encoding rebuilt from the stored
+    /// record — the `.uncompressed` exposed view's per-access materialization.
+    private var uncompressedView: SecureBytes {
+        var view = SecureBytes(bytes: point)
+        view.withUnsafeMutableBytePointer { $0.pointee = 0x04 }
+        return view
+    }
+
+    // Forwards a buffer covering the serialization `exposedForm` selects:
+    // the record's 33-byte prefix for `.compressed` — a borrow, no copy —
+    // or the canonical `0x04‖x‖y` rebuild for `.uncompressed`, materialized
+    // into a per-access `SecureBytes` temp. Only deprecated-shim secrets
+    // expose `.uncompressed`, so the allocation never touches the canonical
+    // path — and secret material stays in `SecureBytes` storage either way.
+    #if hasFeature(Embedded)
+        func withExposedBytes<Result, E: Error>(_ body: (UnsafeRawBufferPointer) throws(E) -> Result) throws(E) -> Result {
+            switch exposedForm {
+            case .compressed:
+                return try point.withUnsafeBytes { (record: UnsafeRawBufferPointer) throws(E) -> Result in
+                    try body(UnsafeRawBufferPointer(start: record.baseAddress, count: P256K.Format.compressed.length))
+                }
+
+            case .uncompressed:
+                return try uncompressedView.withUnsafeBytes(body)
+            }
+        }
+    #else
+        func withExposedBytes<Result>(_ body: (UnsafeRawBufferPointer) throws -> Result) rethrows -> Result {
+            switch exposedForm {
+            case .compressed:
+                return try point.withUnsafeBytes { record in
+                    try body(UnsafeRawBufferPointer(start: record.baseAddress, count: P256K.Format.compressed.length))
+                }
+
+            case .uncompressed:
+                return try uncompressedView.withUnsafeBytes(body)
+            }
+        }
+    #endif
 
     // Invokes the given closure with a buffer pointer covering the raw bytes
     // of the shared secret.
@@ -117,11 +166,11 @@ public struct SharedSecret: ContiguousBytes, Sendable {
     // - Returns: The shared secret, as returned from the body closure.
     #if hasFeature(Embedded)
         public func withUnsafeBytes<R, E: Error>(_ body: (UnsafeRawBufferPointer) throws(E) -> R) throws(E) -> R {
-            try ss.withUnsafeBytes(body)
+            try withExposedBytes(body)
         }
     #else
         public func withUnsafeBytes<R>(_ body: (UnsafeRawBufferPointer) throws -> R) rethrows -> R {
-            try ss.withUnsafeBytes(body)
+            try withExposedBytes(body)
         }
     #endif
 }
@@ -129,26 +178,35 @@ public struct SharedSecret: ContiguousBytes, Sendable {
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension SharedSecret: Hashable {
     public func hash(into hasher: inout Hasher) {
-        ss.withUnsafeBytes { hasher.combine(bytes: $0) }
+        point.withUnsafeBytes { hasher.combine(bytes: $0) }
     }
 }
 
 /// We want to implement constant-time comparison for shared secrets.
 @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
 extension SharedSecret: Equatable {
+    /// Shared secrets compare on the agreed point itself — the stored
+    /// `tag‖x‖y` record — not the serialization ``withUnsafeBytes(_:)``
+    /// exposes, so a canonical secret and one produced by the deprecated
+    /// `format:` variant's `.uncompressed` compare equal when the two
+    /// parties agreed on the same point. `SecureBytes`'s `safeCompare` keeps
+    /// the record comparison constant-time, and every record is 65 bytes, so
+    /// no length-mismatch early exit applies.
     public static func == (lhs: Self, rhs: Self) -> Bool {
-        safeCompare(lhs, rhs)
+        lhs.point == rhs.point
     }
 
-    /// Determines whether a shared secret is equivalent to a collection of
-    /// contiguous bytes.
+    /// Determines whether a shared secret's exposed serialization —
+    /// the bytes ``withUnsafeBytes(_:)`` emits — is equivalent to a
+    /// collection of contiguous bytes.
     ///
     /// - Parameters:
     ///   - lhs: The shared secret to compare.
     ///   - rhs: A collection of contiguous bytes to compare.
     ///
-    /// - Returns: A Boolean value that's `true` if the shared secret and the
-    /// collection of binary data are equivalent.
+    /// - Returns: A Boolean value that's `true` if the shared secret's
+    /// exposed serialization and the collection of binary data are
+    /// equivalent.
     public static func == <D: DataProtocol>(lhs: Self, rhs: D) -> Bool {
         if rhs.regions.count == 1, let region = rhs.regions.first {
             return safeCompare(lhs, region)
@@ -161,14 +219,15 @@ extension SharedSecret: Equatable {
 #if !hasFeature(Embedded)
     @available(macOS 10.15, iOS 13, watchOS 6, tvOS 13, macCatalyst 13, visionOS 1.0, *)
     extension SharedSecret: CustomStringConvertible {
-        /// A redacted form reporting only the stored byte count (33 for
-        /// ``P256K/Format/compressed``, 65 for ``P256K/Format/uncompressed``).
+        /// A redacted form reporting only the exposed view's byte count (33
+        /// for ``P256K/Format/compressed``, 65 for
+        /// ``P256K/Format/uncompressed``).
         ///
         /// The shared secret's bytes are never rendered — printing, interpolating,
         /// or logging this value cannot disclose the agreed key. Reach the bytes
         /// explicitly through ``withUnsafeBytes(_:)``.
         public var description: String {
-            "\(Self.self) representation contains \(ss.count) bytes."
+            "\(Self.self) representation contains \(exposedForm.length) bytes."
         }
     }
 #endif
