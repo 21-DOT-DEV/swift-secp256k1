@@ -74,7 +74,8 @@ done
 if [[ " $* " == *" iOS Simulator "* ]]; then
     command -v jq >/dev/null || die "jq is required to select and judge the iOS Simulator run"
     sdk=$(xcrun --sdk iphonesimulator --show-sdk-version)
-    pick=$(xcrun simctl list --json | jq -r --arg sdk "$sdk" '
+    sims=$(xcrun simctl list --json)
+    pick=$(jq -r --arg sdk "$sdk" '
         def ver: split(".") | map(tonumber);
         def major_minor: (. + [0, 0])[:2];
         ($sdk | ver | major_minor) as $cap | .devices as $devices
@@ -83,8 +84,17 @@ if [[ " $* " == *" iOS Simulator "* ]]; then
            | ($r.version | ver) as $v | select(($v | major_minor) <= $cap)
            | ($devices[$r.identifier] // [])[] | select(.isAvailable and (.name | startswith("iPhone")))
            | {v: $v, version: $r.version, udid, state: (.state | gsub(" "; "_")), name}]
-        | max_by(.v) // empty | "\(.udid) \(.state) \(.name), iOS \(.version)"')
-    [[ -n "$pick" ]] || die "iOS Simulator slice archived but no available iPhone simulator on an iOS runtime ≤ the $sdk SDK"
+        | max_by(.v) // empty | "\(.udid) \(.state) \(.name), iOS \(.version)"' <<<"$sims") || pick=''
+    if [[ -z "$pick" ]]; then
+        echo "iOS runtimes and devices simctl reported:" >&2
+        jq -r 'def err: if .availabilityError then " (\(.availabilityError))" else "" end;
+            def rt: ltrimstr("com.apple.CoreSimulator.SimRuntime.");
+            (.runtimes[]? | select(.platform == "iOS")
+             | "  runtime \(.identifier | rt) \(.version) available=\(.isAvailable) device_types=\(.supportedDeviceTypes | length)\(err)"),
+            (.devices // {} | to_entries[] | select(.key | contains("SimRuntime.iOS-")) | (.key | rt) as $rt
+             | .value[] | "  device \($rt) \(.name) \(.state) available=\(.isAvailable)\(err)")' <<<"$sims" >&2 || true
+        die "iOS Simulator slice archived but no available iPhone simulator on an iOS runtime ≤ the $sdk SDK"
+    fi
     read -r sim state label <<<"$pick"
     if [[ "$state" == Shutdown ]]; then
         booted_sim=$sim
@@ -93,19 +103,27 @@ if [[ " $* " == *" iOS Simulator "* ]]; then
 
     # -collect-test-diagnostics never: skip the simulator sysdiagnose a failing test otherwise waits on.
     result="$WORKDIR/ios-simulator.xcresult"
-    rc=0
-    xcodebuild test-without-building -scheme "$scheme" -destination "platform=iOS Simulator,id=$sim" -derivedDataPath "$WORKDIR/dd" -resultBundlePath "$result" -collect-test-diagnostics never -quiet || rc=$?
+    for attempt in 1 2; do
+        rm -rf "$result"
+        rc=0
+        xcodebuild test-without-building -scheme "$scheme" -destination "platform=iOS Simulator,id=$sim" -derivedDataPath "$WORKDIR/dd" -resultBundlePath "$result" -collect-test-diagnostics never -quiet || rc=$?
 
-    # The bundle is the only record of failure text: -quiet hides it and $WORKDIR is deleted on exit.
-    summary=$(xcrun xcresulttool get test-results summary --path "$result" --compact) || {
-        echo "warning: could not read the iOS Simulator result bundle summary" >&2
-        summary='{}'
-    }
-    if ((rc != 0)); then
+        # The bundle is the only record of failure text: -quiet hides it and $WORKDIR is deleted on exit.
+        summary=$(xcrun xcresulttool get test-results summary --path "$result" --compact) || {
+            echo "warning: could not read the iOS Simulator result bundle summary" >&2
+            summary='{}'
+        }
+        ((rc != 0)) || break
         jq -r '.testFailures[]? | "failure: \(.testName // "?"): \(.failureText // "" | gsub("\n"; "\n    "))"' <<<"$summary" >&2 || true
-        echo "error: iOS Simulator consumer test failed (xcodebuild exit $rc)" >&2
-        exit "$rc"
-    fi
+        # A runner that never connects is a simulator fault seen on fresh CI VMs, not a test verdict: retry it once,
+        # but only when that is every recorded failure, so a real test failure can't be retried into a pass.
+        if ((attempt == 1)) && jq -e '[.testFailures[]?.failureText // ""] | length > 0 and all(contains("hung before establishing connection"))' <<<"$summary" >/dev/null; then
+            echo "warning: iOS Simulator test runner never connected; retrying once" >&2
+        else
+            echo "error: iOS Simulator consumer test failed (xcodebuild exit $rc)" >&2
+            exit "$rc"
+        fi
+    done
 
     # xcodebuild exits 0 when no Swift Testing test ran, so require ≥1 passing test from the bundle.
     jq -e '.result == "Passed" and .passedTests > 0 and .failedTests == 0' <<<"$summary" >/dev/null ||
