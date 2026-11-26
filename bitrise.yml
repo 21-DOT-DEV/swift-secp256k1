@@ -93,8 +93,9 @@ workflows:
         title: ARCHIVE & CREATE XCFRAMEWORK
         # Raised 720→1800: the verify script now consumer-builds the artifact
         # per shipped platform — ~154s measured locally (8 builds × ~19-20s)
-        # plus `swift test` — on top of the archive loop; CI runners without
-        # warm DerivedData need the headroom.
+        # plus `swift test` and an iOS Simulator test run (3–5 min cold on the
+        # GitHub xcode-27 image) — on top of the archive loop; CI runners
+        # without warm DerivedData need the headroom.
         timeout: 1800
         inputs:
         - content: |-
@@ -161,7 +162,8 @@ workflows:
             # under -dead_strip, invisible to builds — plus a real consumer
             # build of the shipped artifact per platform: `swift test` on
             # macOS and `xcodebuild build-for-testing` for each name this
-            # step archived (interface typechecking already happened at
+            # step archived, then the suite executed on an iOS Simulator
+            # (interface typechecking already happened at
             # archive emit via -verify-emitted-module-interface). Shared
             # with the release workflow so both verify the same thing.
             bash Scripts/verify-p256k-xcframework.sh P256K.xcframework "${PLATFORMS[@]}"
