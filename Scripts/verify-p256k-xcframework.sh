@@ -103,6 +103,8 @@ if [[ " $* " == *" iOS Simulator "* ]]; then
 
     # -collect-test-diagnostics never: skip the simulator sysdiagnose a failing test otherwise waits on.
     result="$WORKDIR/ios-simulator.xcresult"
+    # Xcode's failureText when the runner never connects — the bundle's only marker of that state; update if Xcode rewords it.
+    runner_hang_text='hung before establishing connection'
     for attempt in 1 2; do
         rm -rf "$result"
         rc=0
@@ -117,7 +119,7 @@ if [[ " $* " == *" iOS Simulator "* ]]; then
         jq -r '.testFailures[]? | "failure: \(.testName // "?"): \(.failureText // "" | gsub("\n"; "\n    "))"' <<<"$summary" >&2 || true
         # A runner that never connects is a simulator fault seen on fresh CI VMs, not a test verdict: retry it once,
         # but only when that is every recorded failure, so a real test failure can't be retried into a pass.
-        if ((attempt == 1)) && jq -e '[.testFailures[]?.failureText // ""] | length > 0 and all(contains("hung before establishing connection"))' <<<"$summary" >/dev/null; then
+        if ((attempt == 1)) && jq -e --arg hang "$runner_hang_text" '[.testFailures[]?.failureText // ""] | length > 0 and all(contains($hang))' <<<"$summary" >/dev/null; then
             echo "warning: iOS Simulator test runner never connected; retrying once" >&2
         else
             echo "error: iOS Simulator consumer test failed (xcodebuild exit $rc)" >&2
