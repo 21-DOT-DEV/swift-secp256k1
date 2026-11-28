@@ -94,8 +94,9 @@ workflows:
         # Raised 720→1800: the verify script now consumer-builds the artifact
         # per shipped platform — ~154s measured locally (8 builds × ~19-20s)
         # plus `swift test` and an iOS Simulator test run (3–5 min cold on the
-        # GitHub xcode-27 image) — on top of the archive loop; CI runners
-        # without warm DerivedData need the headroom.
+        # GitHub xcode-27 image, ~10 min more if a hung test runner is retried
+        # once) — on top of the archive loop; CI runners without warm
+        # DerivedData need the headroom.
         timeout: 1800
         inputs:
         - content: |-
